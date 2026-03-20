@@ -1,0 +1,554 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONSENT SYSTEM - ACCEPTANCE CRITERIA (FIGMA PAGE NOTE)
+═══════════════════════════════════════════════════════════════════════════════
+
+PROJECT: ListingBug Consent Management System
+VERSION: 1.0
+LAST UPDATED: December 6, 2024
+STATUS: Ready for Review
+
+═══════════════════════════════════════════════════════════════════════════════
+1. CONSENT PROVENANCE PANEL
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPONENT: ConsentProvenancePanel
+FILE: /components/consent/ConsentProvenancePanel.tsx
+INTEGRATION: CreateAutomationModal (Step 3: Consent Validation)
+
+✓ ACCEPTANCE CRITERIA:
+
+□ Interactive provenance panel displays consent summary
+  └─> Shows: total_contacts, verified_opt_in_count, verified_opt_in_percentage,
+      missing_consent_count, suppressed_count
+  └─> API: GET /api/consent/provenance?search_id={searchId}
+
+□ Per-source badges with action menus
+  └─> Sources: "Form" | "Phone" | "In-person" | "Imported"
+  └─> Each badge displays: count, consent rate, status dot (green/yellow/red)
+  └─> Status colors: Green (≥90%), Yellow (80-90%), Red (<80%)
+
+□ Badge action menu (⋯) provides 4 bulk actions:
+  ├─> Review - Opens detailed review
+  ├─> Mark Opted In - Bulk marks all contacts from that source
+  ├─> Send Confirmation - Sends opt-in requests to all from that source
+  └─> Exclude - Removes all from that source from sync
+  └─> API: POST /api/ledger/events
+
+□ Expandable sample table shows up to 5 contacts per source
+  └─> Fields: contact_id, email, phone, provenance_source, provenance_method,
+      provenance_timestamp, consent_flag, consent_method, consent_timestamp
+
+□ Per-row actions in sample table:
+  ├─> Mark as Opted In (individual contact)
+  ├─> Send Opt-In Request (individual contact)
+  └─> Exclude (individual contact)
+  └─> API: POST /api/ledger/events with contact_ids array
+
+□ "View Details" button expands full sample table
+  └─> Shows all sample contacts with full provenance data
+
+□ "View Consent Ledger" link opens /settings/consent-ledger in new tab
+
+□ Concierge CTA shows when consent rate < 80%
+  └─> Text: "Need help? We'll set this up for you — one call, we do the rest."
+  └─> Triggers concierge request workflow
+
+□ Top instruction displays above panel:
+  └─> Text: "Only sync contacts who asked to hear from you. Choose how to 
+      confirm opt-in for each source."
+
+□ All actions generate idempotency keys
+  └─> Format: UUID v4 (crypto.randomUUID())
+
+REQUIRED FIELDS:
+• contact_id (string)
+• email (string)
+• phone (string, optional)
+• provenance_source (string: "Form" | "Phone" | "In-person" | "Imported")
+• provenance_method (string)
+• provenance_timestamp (ISO8601)
+• consent_flag (boolean)
+• consent_method (string, conditional)
+• consent_timestamp (ISO8601, conditional)
+• consent_ip (string, optional)
+• owner_confirmation (boolean)
+• owner_confirmation_reason (string, conditional)
+• suppression_flag (boolean)
+
+API ENDPOINTS:
+• GET /api/consent/provenance?search_id={searchId}
+• POST /api/ledger/events
+• POST /api/consent/mark-opted-in
+• POST /api/campaigns/confirmation
+
+═══════════════════════════════════════════════════════════════════════════════
+2. PRE-SYNC MARKETING MODAL
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPONENT: PreSyncMarketingModal
+FILE: /components/consent/PreSyncMarketingModal.tsx
+INTEGRATION: CreateAutomationModal (Tier C approval flow)
+
+✓ ACCEPTANCE CRITERIA:
+
+□ Modal opens when user clicks "Approve" for Tier C destinations
+  └─> Tier C: Mailchimp, ActiveCampaign, SendGrid, etc.
+  └─> Does NOT open for Tier A (Sheets, Webhook) or Tier B (Salesforce, HubSpot)
+
+□ Modal title: "Confirm Marketing Setup"
+
+□ Summary text (bold): "Only send marketing to contacts who asked to hear from you."
+
+□ Displays consent statistics:
+  ├─> Total contacts
+  ├─> Consent percentage
+  └─> Suppressed count
+
+□ Sample table shows max 5 contacts
+  └─> Fields: email, provenance_source, consent_flag, consent_method
+
+□ Required checkbox with exact text:
+  └─> "Confirm contacts that have explicitly opted in to receive marketing."
+
+□ Two-option radio selection (choose one):
+  ├─> Option 1: "Mark as opted in now"
+  │   └─> If consent < 80%: Requires reason input (max 200 chars)
+  │   └─> If consent ≥ 80%: No reason required
+  └─> Option 2: "Send confirmations first"
+      └─> Shows delivery estimate: "Within 10 minutes"
+      └─> Shows expected response rate: "65%"
+
+□ BLOCKING LOGIC (consent < 80%):
+  └─> Button stays DISABLED until:
+      ├─> Checkbox is checked AND
+      ├─> Option is selected AND
+      └─> If Option 1: Reason is provided (min 10 chars)
+
+□ ALLOWING LOGIC (consent ≥ 80%):
+  └─> Button ENABLED when:
+      ├─> Checkbox is checked AND
+      └─> Option is selected
+
+□ "Confirm & Proceed" button executes selected action:
+  ├─> Option 1: POST /api/consent/mark-opted-in
+  └─> Option 2: POST /api/campaigns/confirmation
+
+□ All actions logged to consent ledger:
+  └─> API: POST /api/ledger/events
+  └─> Fields: event_type, action, contact_ids, owner_id, reason, timestamp,
+      ip, idempotency_key
+
+□ Toast notifications on success/error
+
+REQUIRED FIELDS:
+• destination_name (string)
+• destination_type (string)
+• risk_tier ("high")
+• consent_percentage (number)
+• total_contacts (number)
+• verified_count (number)
+• missing_count (number)
+• suppressed_count (number)
+• owner_id (string)
+• reason (string, conditional - required if consent < 80% and Option 1)
+
+API ENDPOINTS:
+• POST /api/ledger/validate (pre-check)
+• POST /api/ledger/events (log action)
+• POST /api/consent/mark-opted-in (Option 1)
+• POST /api/campaigns/confirmation (Option 2)
+
+═══════════════════════════════════════════════════════════════════════════════
+3. CONSENT LEDGER TABLE
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPONENT: ConsentLedgerTable
+FILE: /components/ConsentLedgerTable.tsx (to be built)
+ROUTE: /settings/consent-ledger
+
+✓ ACCEPTANCE CRITERIA:
+
+□ Table displays all consent records from ledger
+  └─> API: GET /api/ledger/records?owner_id={ownerId}
+
+□ Columns:
+  ├─> Contact (email)
+  ├─> Source (provenance_source)
+  ├─> Method (provenance_method)
+  ├─> Captured (provenance_timestamp)
+  ├─> Consent Status (consent_flag with badge)
+  ├─> Consent Method (consent_method)
+  ├─> Confirmed (consent_timestamp)
+  └─> Actions (view details, export)
+
+□ Row click opens detailed drawer with full record:
+  └─> All fields from ConsentRecord schema
+  └─> Provenance timeline
+  └─> Owner actions history
+  └─> API: GET /api/ledger/records/{contact_id}
+
+□ Export functionality:
+  ├─> Export filtered results to CSV
+  ├─> Export all records to CSV
+  └─> API: GET /api/ledger/export?format=csv&filter={...}
+
+□ Filters:
+  ├─> Provenance source (Form, Phone, In-person, Imported)
+  ├─> Consent status (Opted In, Missing Consent, Suppressed)
+  ├─> Date range (provenance_timestamp or consent_timestamp)
+  └─> Search by email
+
+□ Pagination (50 records per page)
+
+□ Sort by: Captured date, Consent date, Email, Source
+
+REQUIRED FIELDS (all from ConsentRecord schema):
+• contact_id, email, phone, provenance_source, provenance_method,
+  provenance_timestamp, consent_flag, consent_method, consent_timestamp,
+  consent_ip, owner_confirmation, owner_confirmation_reason, suppression_flag
+
+API ENDPOINTS:
+• GET /api/ledger/records?owner_id={ownerId}&page={page}&limit={limit}
+• GET /api/ledger/records/{contact_id}
+• GET /api/ledger/export?format=csv&filter={...}
+
+═══════════════════════════════════════════════════════════════════════════════
+4. RECENT PUSHES PANEL
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPONENT: RecentPushesPanel
+FILE: /components/RecentPushesPanel.tsx (to be built)
+INTEGRATION: Dashboard or Automations page
+
+✓ ACCEPTANCE CRITERIA:
+
+□ Displays recent push events (last 10)
+  └─> API: GET /api/pushes/recent?owner_id={ownerId}&limit=10
+
+□ Each push event shows:
+  ├─> Automation name
+  ├─> Destination (e.g., "Mailchimp", "HubSpot")
+  ├─> Push timestamp
+  ├─> Status (success, failed, in_progress)
+  ├─> Contacts synced count
+  ├─> Consent percentage at push time
+  └─> Rollback button (if eligible)
+
+□ Push event details on click:
+  └─> API: GET /api/pushes/{push_id}
+  └─> Shows: Full contact list, field mappings, consent breakdown, errors
+
+□ Rollback functionality:
+  ├─> Enabled for pushes within last 24 hours
+  ├─> Confirmation modal before rollback
+  ├─> API: POST /api/pushes/{push_id}/rollback
+  └─> Rollback creates reverse event in ledger
+
+□ Rollback action logs to ledger:
+  └─> API: POST /api/ledger/events
+  └─> event_type: "rollback", push_id, contact_ids, owner_id, timestamp,
+      idempotency_key
+
+□ Status badges:
+  ├─> Success (green): All contacts synced
+  ├─> Failed (red): Push failed, no contacts synced
+  ├─> Partial (yellow): Some contacts synced, some failed
+  └─> In Progress (blue): Currently syncing
+
+□ Filter by:
+  ├─> Automation
+  ├─> Destination
+  ├─> Status
+  └─> Date range
+
+REQUIRED FIELDS:
+• push_id (string)
+• automation_id (string)
+• automation_name (string)
+• destination_type (string)
+• destination_name (string)
+• push_timestamp (ISO8601)
+• status ("success" | "failed" | "partial" | "in_progress")
+• contacts_synced (number)
+• contacts_failed (number)
+• consent_percentage (number)
+• rollback_eligible (boolean)
+• rollback_deadline (ISO8601, optional)
+
+API ENDPOINTS:
+• GET /api/pushes/recent?owner_id={ownerId}&limit={limit}
+• GET /api/pushes/{push_id}
+• POST /api/pushes/{push_id}/rollback
+• POST /api/ledger/events (rollback logging)
+
+═══════════════════════════════════════════════════════════════════════════════
+5. COMPONENT ANNOTATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ ALL COMPONENTS MUST INCLUDE:
+
+□ Dev notes with exact field names from schema
+  └─> Reference: /CONSENT_LEDGER_SCHEMA.md or /FIGMA_DEV_NOTES.txt
+
+□ API endpoint annotations in Figma
+  └─> Format: "API: METHOD /endpoint?params"
+  └─> Include request/response schema
+
+□ Data type specifications
+  └─> Use TypeScript interface names: ConsentRecord, ConsentSummary,
+      OwnerActionEvent, etc.
+
+□ Conditional field logic documented
+  └─> Example: "consent_method required if consent_flag = true"
+
+□ Validation rules noted
+  └─> Example: "owner_confirmation_reason max 200 chars"
+
+□ Idempotency key generation documented
+  └─> All POST requests include: idempotency_key (UUID v4)
+
+□ Exact microcopy text included
+  └─> Reference: /MICROCOPY_PACK.md
+  └─> All 6 required lines must match exactly
+
+ANNOTATION CHECKLIST PER COMPONENT:
+├─> Component name and file path
+├─> Integration point (where it's used)
+├─> Trigger condition (when it appears)
+├─> API endpoints with full paths
+├─> Field bindings (schema field → UI element)
+├─> Exact microcopy text
+├─> Validation rules
+├─> Error states
+└─> Success states
+
+═══════════════════════════════════════════════════════════════════════════════
+6. INTEGRATION VERIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ END-TO-END FLOW TESTS:
+
+□ TEST 1: High Consent (≥90%)
+  ├─> Create automation with Tier C destination
+  ├─> ConsentProvenancePanel shows green status
+  ├─> All badges green (≥90% consent)
+  ├─> PreSyncMarketingModal allows immediate proceed
+  ├─> Checkbox + option selection enables button
+  └─> PASS if automation created successfully
+
+□ TEST 2: Medium Consent (80-90%)
+  ├─> Create automation with Tier C destination
+  ├─> ConsentProvenancePanel shows yellow warning
+  ├─> Some badges yellow (80-90% consent)
+  ├─> PreSyncMarketingModal shows warning
+  ├─> Checkbox + option selection enables button
+  └─> PASS if automation created successfully
+
+□ TEST 3: Low Consent (<80%) - BLOCKING
+  ├─> Create automation with Tier C destination
+  ├─> ConsentProvenancePanel shows red error
+  ├─> Red badges (<80% consent)
+  ├─> Concierge CTA displayed
+  ├─> PreSyncMarketingModal blocks proceed
+  ├─> Option 1: Requires reason input (min 10 chars)
+  ├─> Option 2: Allows immediate proceed
+  └─> PASS if button disabled until requirements met
+
+□ TEST 4: Badge Bulk Actions
+  ├─> Click badge menu (⋯)
+  ├─> Select "Mark Opted In"
+  ├─> Confirm action
+  ├─> API call logged to /api/ledger/events
+  ├─> Toast notification displayed
+  └─> PASS if consent summary updates
+
+□ TEST 5: Per-Row Actions
+  ├─> Expand sample table
+  ├─> Click row action (Mark as Opted In)
+  ├─> Confirm action
+  ├─> API call logged to /api/ledger/events
+  ├─> Toast notification displayed
+  └─> PASS if row updates
+
+□ TEST 6: PreSync Option 1 (Mark Opted In)
+  ├─> Select Option 1 in modal
+  ├─> Provide reason (if <80%)
+  ├─> Click "Confirm & Proceed"
+  ├─> API: POST /api/consent/mark-opted-in
+  ├─> API: POST /api/ledger/events
+  └─> PASS if automation created with confirmation data
+
+□ TEST 7: PreSync Option 2 (Send Confirmations)
+  ├─> Select Option 2 in modal
+  ├─> Click "Confirm & Proceed"
+  ├─> API: POST /api/campaigns/confirmation
+  ├─> API: POST /api/ledger/events
+  └─> PASS if confirmation campaign queued
+
+□ TEST 8: Tier A/B Bypass
+  ├─> Create automation with Tier A destination (Google Sheets)
+  ├─> ConsentProvenancePanel displays
+  ├─> Click "Approve" → No modal, immediate approval
+  └─> PASS if automation created without PreSyncMarketingModal
+
+□ TEST 9: Idempotency
+  ├─> Perform any owner action
+  ├─> Duplicate API call with same idempotency_key
+  ├─> Backend should reject duplicate
+  └─> PASS if second call returns 409 Conflict or idempotent success
+
+□ TEST 10: Rollback
+  ├─> Create and run automation
+  ├─> Push completes successfully
+  ├─> Navigate to RecentPushesPanel
+  ├─> Click "Rollback" on recent push
+  ├─> Confirm rollback
+  ├─> API: POST /api/pushes/{push_id}/rollback
+  └─> PASS if rollback event logged to ledger
+
+═══════════════════════════════════════════════════════════════════════════════
+7. MICROCOPY REQUIREMENTS (6 EXACT LINES)
+═══════════════════════════════════════════════════════════════════════════════
+
+□ LINE 1 (Top Instruction):
+  "Only sync contacts who asked to hear from you. Choose how to confirm 
+  opt-in for each source."
+  └─> Location: CreateAutomationModal Step 3 (above ConsentProvenancePanel)
+
+□ LINE 2 (Badge Tooltip):
+  "Provenance shows where the contact came from and whether they already 
+  confirmed permission. This protects you from legal issues and ensures 
+  compliance with CAN-SPAM, GDPR, and CASL."
+  └─> Location: ConsentProvenancePanel (badge tooltip)
+
+□ LINE 3 (Warning):
+  "Less than 80% of these contacts have verified opt-in. Sending marketing 
+  may violate laws and platform rules."
+  └─> Location: ConsentProvenancePanel (conditional warning banner)
+
+□ LINE 4 (Modal Title):
+  "Confirm Marketing Setup"
+  └─> Location: PreSyncMarketingModal (title)
+
+□ LINE 5 (Modal Summary):
+  "Only send marketing to contacts who asked to hear from you."
+  └─> Location: PreSyncMarketingModal (summary text, bold)
+
+□ LINE 6 (Modal Checkbox):
+  "Confirm contacts that have explicitly opted in to receive marketing."
+  └─> Location: PreSyncMarketingModal (checkbox label)
+
+BONUS LINE (Concierge CTA):
+  "Need help? We'll set this up for you — one call, we do the rest."
+  └─> Location: ConsentProvenancePanel (shows when consent < 80%)
+
+REFERENCE: /MICROCOPY_PACK.md
+
+═══════════════════════════════════════════════════════════════════════════════
+8. API SCHEMA REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+□ All API requests/responses match documented schema
+  └─> Reference: /CONSENT_LEDGER_SCHEMA.md
+
+□ All timestamps in ISO 8601 format
+  └─> Example: "2024-12-06T10:30:00Z"
+
+□ All POST requests include idempotency_key
+  └─> Format: UUID v4
+  └─> Generation: crypto.randomUUID()
+
+□ All owner actions logged to /api/ledger/events
+  └─> Fields: event_type, action, contact_ids, owner_id, reason, timestamp,
+      ip, idempotency_key
+
+□ Conditional fields properly validated:
+  ├─> consent_method required if consent_flag = true
+  ├─> consent_timestamp required if consent_flag = true
+  └─> owner_confirmation_reason required if owner_confirmation = true
+
+□ Field length limits enforced:
+  └─> owner_confirmation_reason: max 200 characters
+
+□ Email/phone validation:
+  ├─> email: valid email format
+  └─> phone: E.164 format (if provided)
+
+CORE SCHEMA (JSON):
+{
+  "contact_id": "string",
+  "email": "string",
+  "phone": "string",
+  "provenance_source": "string",
+  "provenance_method": "string",
+  "provenance_timestamp": "ISO8601",
+  "consent_flag": true,
+  "consent_method": "string",
+  "consent_timestamp": "ISO8601",
+  "consent_ip": "string",
+  "owner_confirmation": true,
+  "owner_confirmation_reason": "string",
+  "suppression_flag": false
+}
+
+═══════════════════════════════════════════════════════════════════════════════
+9. DOCUMENTATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+□ All components documented in /CONSENT_COMPONENT_INTEGRATION.md
+□ All microcopy documented in /MICROCOPY_PACK.md
+□ All schema documented in /CONSENT_LEDGER_SCHEMA.md
+□ Figma dev notes provided in /FIGMA_DEV_NOTES.txt
+□ Complete summary provided in /COMPLETE_INTEGRATION_SUMMARY.md
+□ TypeScript interfaces defined for all data structures
+□ API endpoints documented with request/response examples
+□ User flow diagrams included
+□ Test scenarios documented
+□ Error handling documented
+
+═══════════════════════════════════════════════════════════════════════════════
+10. SIGN-OFF CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+DESIGN REVIEW:
+□ All components match Figma designs
+□ Microcopy matches exactly (all 6 required lines)
+□ Colors: #FFD447 (primary), #342E37 (secondary), white backgrounds
+□ Typography: Work Sans font family
+□ Borderless design system applied
+□ Mobile responsive
+
+DEVELOPMENT REVIEW:
+□ All components built and integrated
+□ All API calls properly structured
+□ All fields match schema exactly
+□ Idempotency implemented
+□ Error handling implemented
+□ Toast notifications working
+□ Loading states working
+
+PRODUCT REVIEW:
+□ User flow matches requirements
+□ Blocking logic works correctly
+□ Consent validation enforced
+□ Compliance requirements met
+□ Documentation complete
+
+QA REVIEW:
+□ All 10 test scenarios passing
+□ Edge cases handled
+□ Error states tested
+□ Mobile tested
+□ Browser compatibility tested
+
+STAKEHOLDER SIGN-OFF:
+□ Design Lead: _________________ Date: _______
+□ Engineering Lead: ____________ Date: _______
+□ Product Manager: _____________ Date: _______
+□ Compliance Officer: __________ Date: _______
+
+═══════════════════════════════════════════════════════════════════════════════
+STATUS: ✅ READY FOR IMPLEMENTATION
+NOTES: All acceptance criteria documented and ready for dev handoff
+REFERENCE: See /COMPLETE_INTEGRATION_SUMMARY.md for detailed implementation guide
+═══════════════════════════════════════════════════════════════════════════════

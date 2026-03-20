@@ -1,0 +1,559 @@
+import { useState } from 'react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
+import { Eye, EyeOff, Chrome, Apple, Phone, CheckCircle2, ArrowRight, ArrowLeft, Edit2, Loader2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
+import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
+
+interface SignUpPageProps {
+  onSignUp: () => void;
+  onNavigateToLogin?: () => void;
+  onNavigateToHelp?: () => void;
+}
+
+type SignUpStep = 'details' | 'phone-entry' | 'phone-verification';
+
+export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: SignUpPageProps) {
+  const [step, setStep] = useState<SignUpStep>('details');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isResendingCode, setIsResendingCode] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [signupMethod, setSignupMethod] = useState<'email' | 'google' | 'apple' | 'facebook'>('email');
+
+  const handleDetailsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+
+    // Move to phone entry step
+    setSignupMethod('email');
+    setStep('phone-entry');
+  };
+
+  const handleSocialSignUp = (provider: 'google' | 'apple' | 'facebook') => {
+    // Mock social sign up - in real app this would use OAuth
+    // After OAuth, user would enter phone for 2FA
+    
+    setSignupMethod(provider);
+    const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+    toast.success(`Signed in with ${providerName}. Please verify your phone number.`);
+    setStep('phone-entry');
+  };
+
+  const handlePhoneSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!phone.trim()) {
+      toast.error('Phone number is required');
+      return;
+    }
+
+    // Simulate sending verification code
+    setIsSendingCode(true);
+    
+    setTimeout(() => {
+      toast.success(`Verification code sent to ${phone}`);
+      setIsSendingCode(false);
+      setStep('phone-verification');
+    }, 1000);
+  };
+
+  const handlePhoneVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!verificationCode.trim()) {
+      setVerificationError('Please enter the verification code');
+      return;
+    }
+
+    if (verificationCode.length !== 6) {
+      setVerificationError('Code must be 6 digits');
+      return;
+    }
+
+    // Clear any previous errors
+    setVerificationError('');
+    setIsVerifying(true);
+
+    // Simulate API call with animation (1.5 seconds)
+    setTimeout(() => {
+      // Mock verification check - accepts "123456" or any 6-digit code for demo
+      if (verificationCode === '123456' || verificationCode.length === 6) {
+        toast.success('Phone verified successfully! 🎉');
+        setIsVerifying(false);
+        // Complete signup and trigger walkthrough
+        setTimeout(() => {
+          onSignUp();
+        }, 500);
+      } else {
+        setIsVerifying(false);
+        setVerificationError('Invalid verification code. Please try again.');
+        toast.error('Invalid verification code');
+      }
+    }, 1500);
+  };
+
+  const handleResendCode = () => {
+    if (resendCooldown > 0) return;
+    
+    setIsResendingCode(true);
+    setVerificationCode('');
+    setVerificationError('');
+    toast.success(`New code sent to ${phone}`);
+    setResendCooldown(60); // 60 second cooldown
+    
+    const countdown = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdown);
+          setIsResendingCode(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleEditPhoneNumber = () => {
+    setStep('phone-entry');
+    setVerificationCode('');
+    setVerificationError('');
+    setResendCooldown(0);
+    toast.info('You can update your phone number');
+  };
+
+  // Progress Indicator
+  const getStepNumber = () => {
+    switch (step) {
+      case 'details': return 1;
+      case 'phone-entry': return 2;
+      case 'phone-verification': return 3;
+      default: return 1;
+    }
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] px-4 pt-8 pb-12 md:pt-0 md:pb-0 md:flex md:items-center md:justify-center relative">
+      {/* Background Pattern - Light Mode */}
+      <div 
+        className="absolute inset-0 opacity-[0.24] dark:opacity-0 pointer-events-none"
+        style={{
+          backgroundImage: `url(${patternBgLight})`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '600px'
+        }}
+      />
+      
+      {/* Background Pattern - Dark Mode */}
+      <div 
+        className="absolute inset-0 opacity-0 dark:opacity-[0.24] pointer-events-none"
+        style={{
+          backgroundImage: `url(${patternBgDark})`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '600px'
+        }}
+      />
+      
+      <div className="max-w-md md:max-w-lg mx-auto w-full relative z-10">
+        <Card className="w-full">
+          <CardHeader>
+            <div className="flex items-center justify-between mb-2">
+              {step !== 'details' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (step === 'phone-verification') {
+                      setStep('phone-entry');
+                    } else if (step === 'phone-entry') {
+                      // Only go back to details if user signed up with email
+                      if (signupMethod === 'email') {
+                        setStep('details');
+                      } else {
+                        // For OAuth users, go back to details but clear OAuth state
+                        setStep('details');
+                        setSignupMethod('email');
+                        toast.info('Switched to email signup');
+                      }
+                    }
+                  }}
+                  className="text-gray-600"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Back
+                </Button>
+              )}
+              <CardTitle className="text-3xl font-bold text-center flex-1">Create Account</CardTitle>
+            </div>
+
+            {/* Progress Steps - Only show after step 1 */}
+            {step !== 'details' && (
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`flex items-center gap-2 ${getStepNumber() >= 1 ? 'text-[#342e37]' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${getStepNumber() >= 1 ? 'bg-[#FFD447]' : 'bg-gray-200'}`}>
+                    {getStepNumber() > 1 ? <CheckCircle2 className="w-5 h-5" /> : '1'}
+                  </div>
+                  <span className="text-xs font-medium hidden sm:inline">Details</span>
+                </div>
+                <div className="flex-1 h-1 bg-gray-200 rounded">
+                  <div className={`h-full rounded transition-all ${getStepNumber() >= 2 ? 'bg-[#FFD447] w-full' : 'w-0'}`}></div>
+                </div>
+                <div className={`flex items-center gap-2 ${getStepNumber() >= 2 ? 'text-[#342e37]' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${getStepNumber() >= 2 ? 'bg-[#FFD447]' : 'bg-gray-200'}`}>
+                    {getStepNumber() > 2 ? <CheckCircle2 className="w-5 h-5" /> : '2'}
+                  </div>
+                  <span className="text-xs font-medium hidden sm:inline">Phone</span>
+                </div>
+                <div className="flex-1 h-1 bg-gray-200 rounded">
+                  <div className={`h-full rounded transition-all ${getStepNumber() >= 3 ? 'bg-[#FFD447] w-full' : 'w-0'}`}></div>
+                </div>
+                <div className={`flex items-center gap-2 ${getStepNumber() >= 3 ? 'text-[#342e37]' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${getStepNumber() >= 3 ? 'bg-[#FFD447]' : 'bg-gray-200'}`}>
+                    {getStepNumber() > 3 ? <CheckCircle2 className="w-5 h-5" /> : '3'}
+                  </div>
+                  <span className="text-xs font-medium hidden sm:inline">Verify</span>
+                </div>
+              </div>
+            )}
+
+            <CardDescription className="text-center">
+              {step === 'phone-verification' && 'Verify your phone number for account security'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* STEP 1: Account Details */}
+            {step === 'details' && (
+              <>
+                {/* Social Sign Up Buttons */}
+                <div className="space-y-3 mb-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-3 h-11"
+                    onClick={() => handleSocialSignUp('Google')}
+                  >
+                    <Chrome className="w-5 h-5" />
+                    Continue with Google
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-3 h-11 bg-black text-white hover:bg-gray-800 hover:text-white border-black"
+                    onClick={() => handleSocialSignUp('Apple')}
+                  >
+                    <Apple className="w-5 h-5" />
+                    Continue with Apple
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-3 h-11 bg-[#1877F2] text-white hover:bg-[#1565C0] hover:text-white border-[#1877F2]"
+                    onClick={() => handleSocialSignUp('Facebook')}
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Continue with Facebook
+                  </Button>
+                </div>
+
+                {/* Divider */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300 dark:border-white/10"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white dark:bg-[#0F1115] text-gray-500 dark:text-[#EBF2FA]">Or continue with email</span>
+                  </div>
+                </div>
+
+                {/* Email Sign Up Form */}
+                <form onSubmit={handleDetailsSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-600">Must be at least 8 characters</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Sign Up
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </form>
+              </>
+            )}
+
+            {/* STEP 2: Phone Entry */}
+            {step === 'phone-entry' && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-[14px] text-[#342e37] mb-1">
+                        Enter Your Phone Number
+                      </h3>
+                      <p className="text-[13px] text-gray-700">
+                        We'll send a 6-digit code to this number for verification.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+1 (555) 123-4567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      📱 Required for account verification and security
+                    </p>
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full relative" 
+                    disabled={isSendingCode}
+                  >
+                    {isSendingCode ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        Send Verification Code
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </div>
+            )}
+
+            {/* STEP 3: Phone Verification */}
+            {step === 'phone-verification' && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Phone className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-bold text-[14px] text-[#342e37] mb-1">
+                            Verification Code Sent
+                          </h3>
+                          <p className="text-[13px] text-gray-700">
+                            We sent a 6-digit code to <strong>{phone}</strong>
+                          </p>
+                          <p className="text-[12px] text-gray-600 mt-2">
+                            Check your text messages and enter the code below.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleEditPhoneNumber}
+                          className="text-blue-600 hover:text-blue-700 p-1 rounded-lg hover:bg-blue-100 transition-colors"
+                          title="Edit phone number"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {verificationError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="font-bold text-[14px] text-red-900 mb-1">
+                          Verification Failed
+                        </h3>
+                        <p className="text-[13px] text-red-700">
+                          {verificationError}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handlePhoneVerification} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="verificationCode">Verification Code</Label>
+                    <Input
+                      id="verificationCode"
+                      type="text"
+                      placeholder="123456"
+                      value={verificationCode}
+                      onChange={(e) => {
+                        setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                        setVerificationError(''); // Clear error on input change
+                      }}
+                      maxLength={6}
+                      className={`text-center text-2xl tracking-widest font-bold ${
+                        verificationError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''
+                      }`}
+                      required
+                      autoFocus
+                      disabled={isVerifying}
+                    />
+                    <p className="text-xs text-gray-600 text-center">
+                      Enter the 6-digit code from your SMS
+                    </p>
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full relative" 
+                    disabled={isVerifying || verificationCode.length !== 6}
+                  >
+                    {isVerifying ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        Verify Phone Number
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Resend Code */}
+                  <div className="text-center space-y-2">
+                    <button
+                      type="button"
+                      className={`text-sm font-medium ${
+                        resendCooldown > 0 || isVerifying
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-[#342e37] hover:underline'
+                      }`}
+                      onClick={handleResendCode}
+                      disabled={resendCooldown > 0 || isVerifying}
+                    >
+                      {resendCooldown > 0 
+                        ? `Resend code in ${resendCooldown}s` 
+                        : 'Didn\'t receive the code? Resend'}
+                    </button>
+                    
+                    {/* Edit Phone Number Link */}
+                    <div>
+                      <button
+                        type="button"
+                        className="text-sm text-gray-600 hover:text-[#342e37] hover:underline flex items-center gap-1 mx-auto"
+                        onClick={handleEditPhoneNumber}
+                        disabled={isVerifying}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Wrong number? Edit phone number
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="mt-6 text-center text-sm text-gray-600">
+              Already have an account?{' '}
+              <button className="font-medium hover:underline text-[#ffffff]" onClick={onNavigateToLogin}>
+                Sign in
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Help Section - Bottom Center */}
+        {onNavigateToHelp && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-[#b5bdca]">
+              Need help?{' '}
+              <button className="hover:underline font-medium text-[#ffffff]" onClick={onNavigateToHelp}>
+                Contact Support
+              </button>
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
