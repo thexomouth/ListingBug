@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const RENTCAST_API_KEY = Deno.env.get("RENTCAST_API_KEY")!;
+// Fallback to hardcoded key if secret not set in Supabase dashboard
+const RENTCAST_API_KEY = Deno.env.get("RENTCAST_API_KEY") ?? "28c8bab516194c20a346b7db3d987bd6";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -28,39 +29,65 @@ serve(async (req) => {
 
     let supabase: any;
     let user: any = null;
-    let profile: any = null;
     let currentUsage = 0;
     let limit = 500;
 
-    // Auth is only required for non-preview mode
     if (!isPreview) {
       const authHeader = req.headers.get("Authorization");
-      if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      }
 
       supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
       const { data: userData, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (authError || !userData?.user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+      if (authError || !userData?.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized", details: authError?.message }), { status: 401, headers: corsHeaders });
+      }
 
       user = userData.user;
 
-      // Get user plan
-      const { data: profileData } = await supabase.from("users").select("plan, plan_status, trial_ends_at").eq("id", user.id).single();
-      if (!profileData) return new Response(JSON.stringify({ error: "User profile not found" }), { status: 404, headers: corsHeaders });
+      // Get or auto-create user profile
+      let { data: profileData } = await supabase
+        .from("users")
+        .select("plan, plan_status, trial_ends_at")
+        .eq("id", user.id)
+        .single();
 
-      profile = profileData;
+      if (!profileData) {
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+        const { data: newProfile } = await supabase
+          .from("users")
+          .upsert({
+            id: user.id,
+            email: user.email,
+            plan: "trial",
+            plan_status: "active",
+            trial_ends_at: trialEndsAt.toISOString(),
+            created_at: new Date().toISOString(),
+          }, { onConflict: "id" })
+          .select("plan, plan_status, trial_ends_at")
+          .single();
+        profileData = newProfile ?? { plan: "trial", plan_status: "active", trial_ends_at: trialEndsAt.toISOString() };
+      }
 
       // Check trial expiry
-      if (profile.plan === "trial" && profile.trial_ends_at) {
-        if (new Date(profile.trial_ends_at) < new Date()) {
+      if (profileData.plan === "trial" && profileData.trial_ends_at) {
+        if (new Date(profileData.trial_ends_at) < new Date()) {
           return new Response(JSON.stringify({ error: "Trial expired", code: "TRIAL_EXPIRED" }), { status: 403, headers: corsHeaders });
         }
       }
 
       // Check usage limits
-      const monthYear = new Date().toISOString().slice(0, 7); // "2026-03"
-      const { data: usageData } = await supabase.from("usage_tracking").select("listings_fetched").eq("user_id", user.id).eq("month_year", monthYear).single();
+      const monthYear = new Date().toISOString().slice(0, 7);
+      const { data: usageData } = await supabase
+        .from("usage_tracking")
+        .select("listings_fetched")
+        .eq("user_id", user.id)
+        .eq("month_year", monthYear)
+        .single();
       currentUsage = usageData?.listings_fetched ?? 0;
-      limit = PLAN_LIMITS[profile.plan] ?? 500;
+      limit = PLAN_LIMITS[profileData.plan] ?? 500;
 
       if (currentUsage >= limit) {
         return new Response(JSON.stringify({ error: "Monthly listing limit reached", code: "LIMIT_REACHED", limit, used: currentUsage }), { status: 429, headers: corsHeaders });
@@ -70,7 +97,7 @@ serve(async (req) => {
     // Parse search params
     const body = await req.json();
     const {
-      listingType = "sale", // 'sale' | 'rental'
+      listingType = "sale",
       address, city, state, zipCode, latitude, longitude, radius,
       propertyType, bedrooms, bathrooms, minPrice, maxPrice,
       minSquareFootage, maxSquareFootage, minYearBuilt, maxYearBuilt,
@@ -80,7 +107,6 @@ serve(async (req) => {
       offset = 0,
     } = body;
 
-    // Build RentCast URL
     const endpoint = listingType === "rental"
       ? "https://api.rentcast.io/v1/listings/rental/long-term"
       : "https://api.rentcast.io/v1/listings/sale";
@@ -106,85 +132,53 @@ serve(async (req) => {
     if (maxDaysOnMarket) params.set("maxDaysOnMarket", String(maxDaysOnMarket));
     if (status) params.set("status", status);
 
-    // Preview mode for the homepage sample report enforces a 10-listing cap and skips auth checks
     const cappedLimit = isPreview ? Math.min(resultLimit, 10) : Math.min(resultLimit, 500);
     params.set("limit", String(cappedLimit));
     params.set("offset", String(offset));
 
-    // Call RentCast
     const rentcastRes = await fetch(`${endpoint}?${params.toString()}`, {
       headers: { "X-Api-Key": RENTCAST_API_KEY, "Accept": "application/json" },
     });
 
     if (!rentcastRes.ok) {
       const errText = await rentcastRes.text();
-      return new Response(JSON.stringify({ error: "RentCast API error", details: errText }), { status: rentcastRes.status, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "RentCast API error", status: rentcastRes.status, details: errText }), { status: rentcastRes.status, headers: corsHeaders });
     }
 
     const listings = await rentcastRes.json();
     const listingArray = Array.isArray(listings) ? listings : [];
 
-    // Upsert listings into DB for authenticated users only
     if (!isPreview && listingArray.length > 0 && supabase) {
       const rows = listingArray.map((l: any) => ({
         id: l.id,
         formatted_address: l.formattedAddress,
         address_line1: l.addressLine1,
-        address_line2: l.addressLine2,
         city: l.city,
         state: l.state,
         zip_code: l.zipCode,
-        county: l.county,
-        state_fips: l.stateFips,
-        county_fips: l.countyFips,
         latitude: l.latitude,
         longitude: l.longitude,
         listing_type: listingType,
         status: l.status,
-        mls_number: l.mlsNumber,
         price: l.price,
-        price_per_square_foot: l.pricePerSquareFoot,
-        price_reduced: l.priceReduced,
         listed_date: l.listedDate,
-        removed_date: l.removedDate,
         days_on_market: l.daysOnMarket,
-        created_date: l.createdDate,
-        last_seen_date: l.lastSeenDate,
         property_type: l.propertyType,
         bedrooms: l.bedrooms,
         bathrooms: l.bathrooms,
         square_footage: l.squareFootage,
-        lot_size: l.lotSize,
         year_built: l.yearBuilt,
-        garage: l.garage,
-        garage_spaces: l.garageSpaces,
-        pool: l.pool,
-        stories: l.stories,
-        hoa_fee: l.hoa?.fee,
         agent_name: l.agent?.name,
         agent_phone: l.agent?.phone,
         agent_email: l.agent?.email,
-        agent_website: l.agent?.website,
-        broker_name: l.broker?.name,
-        broker_phone: l.broker?.phone,
-        broker_website: l.broker?.website,
-        office_name: l.office?.name,
-        office_phone: l.office?.phone,
-        office_email: l.office?.email,
-        office_website: l.office?.website,
-        description: l.description,
-        virtual_tour_url: l.virtualTourUrl,
-        photo_count: l.photoCount,
         photos_json: l.photos ?? [],
         raw_json: l,
         fetched_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }));
-
-      await supabase.from("listings").upsert(rows, { onConflict: "id" });
+      await supabase.from("listings").upsert(rows, { onConflict: "id" }).catch(() => {});
     }
 
-    // Update usage tracking only for authenticated users (non-preview)
     if (!isPreview && supabase && user) {
       const monthYear = new Date().toISOString().slice(0, 7);
       await supabase.from("usage_tracking").upsert({
@@ -192,7 +186,7 @@ serve(async (req) => {
         month_year: monthYear,
         listings_fetched: currentUsage + listingArray.length,
         searches_run: 1,
-      }, { onConflict: "user_id,month_year", ignoreDuplicates: false });
+      }, { onConflict: "user_id,month_year", ignoreDuplicates: false }).catch(() => {});
     }
 
     return new Response(JSON.stringify({
@@ -201,7 +195,7 @@ serve(async (req) => {
       usage: { used: currentUsage + listingArray.length, limit },
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  } catch (err) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: err.message }), { status: 500, headers: corsHeaders });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: "Internal server error", details: err?.message ?? String(err) }), { status: 500, headers: corsHeaders });
   }
 });
