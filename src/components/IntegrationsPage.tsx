@@ -152,15 +152,15 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     setConnectionModalIntegration(null);
   };
 
-  const integrations: Integration[] = [
+  const [integrations, setIntegrations] = useState<Integration[]>([
     // Connected (only Mailchimp for returning users)
     { 
       id: 'mailchimp', 
       name: 'Mailchimp', 
       icon: Mail, 
-      connected: true, 
+      connected: false,
       description: 'Sync contacts and trigger campaigns',
-      category: 'connected'
+      category: 'available'
     },
 
     // Available Integrations - 9 Confirmed
@@ -331,7 +331,12 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
 
   const handleDisconnect = () => {
     if (selectedIntegration) {
-      toast.success(`${selectedIntegration.name} disconnected`);
+      setIntegrations(prev => prev.map(i =>
+        i.id === selectedIntegration.id
+          ? { ...i, connected: false, category: 'available' as const }
+          : i
+      ));
+      toast.success(`\ disconnected`);
       setDisconnectOpen(false);
       setSelectedIntegration(null);
     }
@@ -580,7 +585,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                         <Input
                           id="api-key"
                           type={showApiKey ? 'text' : 'password'}
-                          value="mc_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                          value=""
                           readOnly
                           className="pr-20"
                         />
@@ -599,7 +604,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText('mc_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6');
+                              navigator.clipboard.writeText('');
                               setCopiedKey(true);
                               setTimeout(() => setCopiedKey(false), 2000);
                               toast.success('API key copied to clipboard');
@@ -627,7 +632,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                     <Label htmlFor="audience-id">Primary Audience ID</Label>
                     <Input
                       id="audience-id"
-                      value="a1b2c3d4e5"
+                      value=""
                       readOnly
                       className="bg-gray-50 dark:bg-[#1a1a1a]"
                     />
@@ -642,7 +647,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                   <Label htmlFor="account-email">Connected Account</Label>
                   <Input
                     id="account-email"
-                    value="sarah@realestatepros.com"
+                    value=""
                     readOnly
                     className="bg-gray-50 dark:bg-[#1a1a1a]"
                   />
@@ -1029,7 +1034,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Account</span>
-                  <span className="font-medium text-[#342e37] dark:text-white">sarah@realestatepros.com</span>
+                  <span className="font-medium text-[#342e37] dark:text-white">Not connected</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Connected</span>
