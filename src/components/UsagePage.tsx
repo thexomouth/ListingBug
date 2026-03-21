@@ -278,7 +278,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
               </div>
 
               {/* Progress Bar */}
-              {CURRENT_PLAN !== 'enterprise' && (
+              {planState.planKey !== 'enterprise' && (
                 <div className="mb-3">
                   <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                     <div 
@@ -314,7 +314,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                 </Alert>
               )}
 
-              {!isNearingCap && CURRENT_PLAN !== 'enterprise' && (
+              {!isNearingCap && planState.planKey !== 'enterprise' && (
                 <Alert className="border-green-200 bg-green-50">
                   <CheckCircle className="w-4 h-4 text-green-600" />
                   <AlertDescription className="text-green-900 text-[13px]">
@@ -323,7 +323,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                 </Alert>
               )}
 
-              {CURRENT_PLAN === 'enterprise' && (
+              {planState.planKey === 'enterprise' && (
                 <Alert className="border-blue-200 bg-blue-50">
                   <CheckCircle className="w-4 h-4 text-blue-600" />
                   <AlertDescription className="text-blue-900 text-[13px]">
@@ -336,7 +336,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
             <Separator />
 
             {/* Projected Usage Section - Mobile Optimized */}
-            {CURRENT_PLAN !== 'enterprise' && (
+            {planState.planKey !== 'enterprise' && (
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
                   <TrendingUp className="w-5 h-5 text-[#342e37] dark:text-white flex-shrink-0 mt-0.5" />
@@ -442,16 +442,16 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
         </Card>
 
         {/* Plan Upgrade CTA - Only show if nearing/over cap */}
-        {(isNearingCap || isOverCap) && CURRENT_PLAN !== 'enterprise' && (
+        {(isNearingCap || isOverCap) && planState.planKey !== 'enterprise' && (
           <Card className="mt-4 border-2 border-[#FFD447] bg-gradient-to-br from-[#FFD447]/10 to-white">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex-1">
                   <h4 className="font-bold text-[#342E37] text-[15px] mb-1">
-                    Upgrade to {CURRENT_PLAN === 'starter' ? 'Pro' : 'Enterprise'}
+                    Upgrade to {planState.planKey === 'starter' ? 'Pro' : 'Enterprise'}
                   </h4>
                   <p className="text-[13px] text-gray-700">
-                    {CURRENT_PLAN === 'starter' 
+                    {planState.planKey === 'starter' 
                       ? 'Get 2,000 listings/month and save on overages'
                       : 'Get unlimited listings and premium features'
                     }
