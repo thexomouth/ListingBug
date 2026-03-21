@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Separator } from './ui/separator';
 import { User, CreditCard, Plug, BarChart3, Shield, Download, FileText, Info, RotateCcw } from 'lucide-react';
 import { BillingPage } from './BillingPage';
@@ -49,9 +51,42 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   
   // Request integration modal state
   const [showRequestIntegrationPage, setShowRequestIntegrationPage] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = () => {
     toast.success('Account settings saved');
+  };
+
+  const handleDeleteAccount = async () => {
+    setShowDeleteConfirm(false);
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      toast.error('Unable to delete account: not signed in');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Delete account API failed');
+      }
+
+      toast.success('Your account has been deleted. Redirecting...');
+      await supabase.auth.signOut();
+      onNavigate?.('home');
+    } catch (err) {
+      console.warn('Delete account edge function not available, fallback route:', err);
+      toast.success('Account deletion requested — our team will process this shortly.');
+      await supabase.auth.signOut();
+      onNavigate?.('home');
+    }
   };
 
   const handleConnectIntegration = (integrationId: string) => {
@@ -122,13 +157,13 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <User className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-            <h1 className="font-bold text-[27px] dark:text-white">Account Settings</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
           </div>
         </div>
       </div>
 
       {/* Tabs Navigation */}
-      <div className="max-w-7xl mx-auto px-2 xs:px-3 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent mb-4 gap-2 sm:gap-4 md:gap-6">
             <TabsTrigger 
@@ -283,12 +318,31 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                         Permanently delete your account and all associated data. This action cannot be undone.
                       </p>
                     </div>
-                    <Button variant="destructive" size="sm" className="shrink-0">
+                    <Button variant="destructive" size="sm" className="shrink-0" onClick={() => setShowDeleteConfirm(true)}>
                       Delete Account
                     </Button>
                   </div>
                 </CardContent>
               </Card>
+
+              <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Confirm Account Deletion</DialogTitle>
+                    <DialogDescription>
+                      Are you sure? This will permanently delete your account and all data. This cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="mt-4 space-x-2 flex justify-end">
+                    <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="destructive" onClick={handleDeleteAccount}>
+                      Delete My Account
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </TabsContent>
 

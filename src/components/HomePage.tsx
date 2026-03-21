@@ -10,7 +10,6 @@ import { TrialCTASection } from './home/TrialCTASection';
 import { BottomCTASection } from './home/BottomCTASection';
 import { SampleReportModal } from './SampleReportModal';
 import { SampleReportLoading } from './SampleReportLoading';
-import { generateSampleListingsByZip } from '../utils/listingGenerator';
 import { SampleListing } from '../types/listing';
 import { useState, useEffect } from 'react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from './ui/collapsible';
@@ -22,6 +21,7 @@ interface HomePageProps {
   page: 'home' | 'data-sets' | 'use-cases' | 'pricing';
   onNavigate?: (page: string) => void;
   onSampleReportGenerated?: (zipcode: string, listings: SampleListing[]) => void;
+  onSampleReportLoading?: (loading: boolean) => void;
 }
 
 export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePageProps) {
@@ -29,6 +29,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
   const [showSampleReport, setShowSampleReport] = useState(false);
   const [sampleZipcode, setSampleZipcode] = useState('');
   const [sampleListings, setSampleListings] = useState<SampleListing[]>([]);
+  const [sampleError, setSampleError] = useState<string | null>(null);
   const [loadingTimeout, setLoadingTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Handle scroll locking for loading animation
@@ -47,28 +48,102 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
     }
   }, [isLoadingReport]);
 
-  const handleGenerateSample = (zipcode: string) => {
+  const handleGenerateSample = async (zipcode: string) => {
     setSampleZipcode(zipcode);
+    setSampleError(null);
     setIsLoadingReport(true);
-    
-    // Simulate API call with loading animation
-    const timeout = setTimeout(() => {
-      const listings = generateSampleListingsByZip(zipcode);
-      setSampleListings(listings);
-      setIsLoadingReport(false);
-      
-      // Navigate to the new page instead of showing modal
+    onSampleReportLoading?.(true);
+
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      setLoadingTimeout(null);
+    }
+
+    try {
+      const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/search-listings?preview=true', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          listingType: 'sale',
+          status: 'Active',
+          zipCode: zipcode,
+          limit: 10,
+          offset: 0,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !Array.isArray(data?.listings)) {
+        const message = data?.error || 'No listings found for that ZIP code. Try another.';
+        setSampleError(message);
+        setSampleListings([]);
+
+        if (onSampleReportGenerated) {
+          onSampleReportGenerated(zipcode, []);
+        }
+
+        return;
+      }
+
+      const fetchedListings = (data.listings || []).slice(0, 10).map((l: any, index: number) => ({
+        id: l.id || index,
+        formattedAddress: l.formattedAddress || l.addressLine1 || '',
+        addressLine1: l.addressLine1 || '',
+        city: l.city || '',
+        state: l.state || '',
+        zipCode: l.zipCode || '',
+        county: l.county || '',
+        latitude: l.latitude || 0,
+        longitude: l.longitude || 0,
+        propertyType: l.propertyType || 'Single Family',
+        bedrooms: l.bedrooms || 0,
+        bathrooms: l.bathrooms || 0,
+        squareFeet: l.squareFootage || l.squareFeet || 0,
+        lotSize: l.lotSize || 0,
+        yearBuilt: l.yearBuilt || 0,
+        price: l.price || 0,
+        status: l.status || 'Active',
+        daysOnMarket: l.daysOnMarket || 0,
+        listingDate: l.listedDate || '',
+        lastSeenDate: l.lastSeenDate || '',
+        removedDate: l.removedDate || null,
+        createdDate: l.createdDate || '',
+        agentName: l.agent?.name || l.agentName || 'Unknown',
+        agentWebsite: l.agent?.website || '',
+        officeName: l.office?.name || l.officeName || '',
+        officeWebsite: l.office?.website || '',
+        brokerName: l.broker?.name || l.brokerName || '',
+        mlsNumber: l.mlsNumber || '',
+        mlsName: l.mlsName || '',
+        builderName: l.builderName || '',
+      }));
+
+      if (fetchedListings.length === 0) {
+        setSampleError('No listings found for that ZIP code. Try another.');
+      }
+
+      setSampleListings(fetchedListings);
+
       if (onSampleReportGenerated) {
-        onSampleReportGenerated(zipcode, listings);
+        onSampleReportGenerated(zipcode, fetchedListings);
       } else {
-        // Fallback to modal for backwards compatibility
         setShowSampleReport(true);
       }
-      
+
+    } catch (error: any) {
+      setSampleError('No listings found for that ZIP code. Try another.');
+      setSampleListings([]);
+      if (onSampleReportGenerated) {
+        onSampleReportGenerated(zipcode, []);
+      }
+    } finally {
+      setIsLoadingReport(false);
+      onSampleReportLoading?.(false);
       setLoadingTimeout(null);
-    }, 2500); // 2.5 seconds to show loading animation
-    
-    setLoadingTimeout(timeout);
+    }
   };
 
   const handleCancelLoading = () => {

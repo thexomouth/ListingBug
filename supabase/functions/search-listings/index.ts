@@ -23,33 +23,48 @@ serve(async (req) => {
   }
 
   try {
-    // Auth
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    const url = new URL(req.url);
+    const isPreview = url.searchParams.get("preview") === "true";
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-    if (authError || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+    let supabase: any;
+    let user: any = null;
+    let profile: any = null;
+    let currentUsage = 0;
+    let limit = 500;
 
-    // Get user plan
-    const { data: profile } = await supabase.from("users").select("plan, plan_status, trial_ends_at").eq("id", user.id).single();
-    if (!profile) return new Response(JSON.stringify({ error: "User profile not found" }), { status: 404, headers: corsHeaders });
+    // Auth is only required for non-preview mode
+    if (!isPreview) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
-    // Check trial expiry
-    if (profile.plan === "trial" && profile.trial_ends_at) {
-      if (new Date(profile.trial_ends_at) < new Date()) {
-        return new Response(JSON.stringify({ error: "Trial expired", code: "TRIAL_EXPIRED" }), { status: 403, headers: corsHeaders });
+      supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+      const { data: userData, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      if (authError || !userData?.user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+
+      user = userData.user;
+
+      // Get user plan
+      const { data: profileData } = await supabase.from("users").select("plan, plan_status, trial_ends_at").eq("id", user.id).single();
+      if (!profileData) return new Response(JSON.stringify({ error: "User profile not found" }), { status: 404, headers: corsHeaders });
+
+      profile = profileData;
+
+      // Check trial expiry
+      if (profile.plan === "trial" && profile.trial_ends_at) {
+        if (new Date(profile.trial_ends_at) < new Date()) {
+          return new Response(JSON.stringify({ error: "Trial expired", code: "TRIAL_EXPIRED" }), { status: 403, headers: corsHeaders });
+        }
       }
-    }
 
-    // Check usage limits
-    const monthYear = new Date().toISOString().slice(0, 7); // "2026-03"
-    const { data: usage } = await supabase.from("usage_tracking").select("listings_fetched").eq("user_id", user.id).eq("month_year", monthYear).single();
-    const currentUsage = usage?.listings_fetched ?? 0;
-    const limit = PLAN_LIMITS[profile.plan] ?? 500;
+      // Check usage limits
+      const monthYear = new Date().toISOString().slice(0, 7); // "2026-03"
+      const { data: usageData } = await supabase.from("usage_tracking").select("listings_fetched").eq("user_id", user.id).eq("month_year", monthYear).single();
+      currentUsage = usageData?.listings_fetched ?? 0;
+      limit = PLAN_LIMITS[profile.plan] ?? 500;
 
-    if (currentUsage >= limit) {
-      return new Response(JSON.stringify({ error: "Monthly listing limit reached", code: "LIMIT_REACHED", limit, used: currentUsage }), { status: 429, headers: corsHeaders });
+      if (currentUsage >= limit) {
+        return new Response(JSON.stringify({ error: "Monthly listing limit reached", code: "LIMIT_REACHED", limit, used: currentUsage }), { status: 429, headers: corsHeaders });
+      }
     }
 
     // Parse search params
@@ -90,7 +105,10 @@ serve(async (req) => {
     if (minDaysOnMarket) params.set("minDaysOnMarket", String(minDaysOnMarket));
     if (maxDaysOnMarket) params.set("maxDaysOnMarket", String(maxDaysOnMarket));
     if (status) params.set("status", status);
-    params.set("limit", String(Math.min(resultLimit, 500)));
+
+    // Preview mode for the homepage sample report enforces a 10-listing cap and skips auth checks
+    const cappedLimit = isPreview ? Math.min(resultLimit, 10) : Math.min(resultLimit, 500);
+    params.set("limit", String(cappedLimit));
     params.set("offset", String(offset));
 
     // Call RentCast
@@ -106,8 +124,8 @@ serve(async (req) => {
     const listings = await rentcastRes.json();
     const listingArray = Array.isArray(listings) ? listings : [];
 
-    // Upsert listings into DB
-    if (listingArray.length > 0) {
+    // Upsert listings into DB for authenticated users only
+    if (!isPreview && listingArray.length > 0 && supabase) {
       const rows = listingArray.map((l: any) => ({
         id: l.id,
         formatted_address: l.formattedAddress,
@@ -166,13 +184,16 @@ serve(async (req) => {
       await supabase.from("listings").upsert(rows, { onConflict: "id" });
     }
 
-    // Update usage tracking
-    await supabase.from("usage_tracking").upsert({
-      user_id: user.id,
-      month_year: monthYear,
-      listings_fetched: currentUsage + listingArray.length,
-      searches_run: 1,
-    }, { onConflict: "user_id,month_year", ignoreDuplicates: false });
+    // Update usage tracking only for authenticated users (non-preview)
+    if (!isPreview && supabase && user) {
+      const monthYear = new Date().toISOString().slice(0, 7);
+      await supabase.from("usage_tracking").upsert({
+        user_id: user.id,
+        month_year: monthYear,
+        listings_fetched: currentUsage + listingArray.length,
+        searches_run: 1,
+      }, { onConflict: "user_id,month_year", ignoreDuplicates: false });
+    }
 
     return new Response(JSON.stringify({
       listings: listingArray,

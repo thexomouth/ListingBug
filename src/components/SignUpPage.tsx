@@ -3,7 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { Eye, EyeOff, Chrome, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Chrome, ArrowRight, Loader2, AlertCircle, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
@@ -23,6 +23,9 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isVerificationStep, setIsVerificationStep] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +48,8 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
     } else {
       toast.success('Account created! Check your email to confirm your account.');
       setIsSubmitting(false);
-      onSignUp();
+      setIsVerificationStep(true);
+      setResendMessage('');
     }
   };
 
@@ -56,6 +60,57 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
     });
     if (error) toast.error(error.message);
   };
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    setResendMessage('');
+
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
+
+    if (error) {
+      setResendMessage('Failed to resend verification email. Please try again.');
+      toast.error(error.message);
+    } else {
+      setResendMessage(`Verification email resent to ${email}.`);
+      toast.success('Verification email resent.');
+    }
+
+    setIsResending(false);
+  };
+
+  if (isVerificationStep) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] px-4 pt-8 pb-12 md:pt-0 md:pb-0 md:flex md:items-center md:justify-center relative">
+        <div className="max-w-md md:max-w-lg mx-auto w-full relative z-10">
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="text-3xl font-bold text-center">Confirm your email</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-14 h-14 rounded-full bg-[#FFCE0A]/30 flex items-center justify-center mx-auto">
+                  <Mail className="w-6 h-6 text-[#342e37]" />
+                </div>
+                <p className="text-gray-700 dark:text-gray-200">
+                  We sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account.
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Didn&apos;t get it? Check your spam folder or
+                  <button onClick={handleResendVerification} className="ml-2 underline font-medium text-[#342e37] dark:text-white">
+                    Resend email
+                  </button>
+                </p>
+                {resendMessage && <p className="text-sm text-gray-600 dark:text-gray-300">{resendMessage}</p>}
+                <Button variant="outline" className="w-full" onClick={onNavigateToLogin}>
+                  Back to sign in
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-4 pt-8 pb-12 md:pt-0 md:pb-0 md:flex md:items-center md:justify-center relative">
@@ -97,7 +152,7 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                   <button type="button" className="absolute right-3 top-3 text-gray-500 hover:text-gray-700" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -107,7 +162,7 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
-                  <Input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                  <Input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirm your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
                   <button type="button" className="absolute right-3 top-3 text-gray-500 hover:text-gray-700" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>

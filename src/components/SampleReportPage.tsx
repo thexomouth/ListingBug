@@ -26,12 +26,45 @@ interface SampleReportPageProps {
   zipcode: string;
   listings: SampleListing[];
   onNavigate?: (page: string) => void;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export function SampleReportPage({ zipcode, listings, onNavigate }: SampleReportPageProps) {
+export function SampleReportPage({ zipcode, listings, onNavigate, isLoading, error }: SampleReportPageProps) {
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Loading / empty state handling
+  if (isLoading) {
+    return (
+      <div className="py-12 max-w-7xl mx-auto px-4 md:px-6 lg:px-8 text-center">
+        <div className="inline-flex items-center gap-2 rounded-lg bg-gray-100 dark:bg-gray-900 px-4 py-3">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Loading sample report...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || listings.length === 0) {
+    return (
+      <div className="py-12 max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+        <div className="bg-white dark:bg-[#0F1115] rounded-xl border border-gray-200 dark:border-white/10 p-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">No Listings Found</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            {error || 'No listings found for that ZIP code. Try another.'}
+          </p>
+          <button
+            onClick={() => onNavigate?.('home')}
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#342e37] hover:bg-[#1f1b1f]"
+          >
+            Back to home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Pagination calculations
   const totalPages = Math.ceil(listings.length / itemsPerPage);

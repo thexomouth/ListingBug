@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
-import { X, Check, Crown, Zap, Building2, TrendingUp, TrendingDown, CheckCircle, Sparkles, Info, ArrowRight } from 'lucide-react';
+import { X, Check, Crown, Zap, Building2, TrendingUp, TrendingDown, CheckCircle, Sparkles, Info, ArrowRight, ChevronLeft } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/card';
@@ -337,11 +337,20 @@ export function ChangePlanModal({
           <>
             {/* Confirmation Screen */}
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <div>
-                <h2 className="font-bold text-[#342e37]">Confirm Plan Change</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Review the details of your plan change
-                </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleBack}
+                  className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Back
+                </button>
+                <div>
+                  <h2 className="font-bold text-[#342e37]">Confirm Plan Change</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Review the details of your plan change
+                  </p>
+                </div>
               </div>
               <button
                 onClick={onClose}

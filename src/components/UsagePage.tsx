@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { BarChart3, AlertCircle, CheckCircle, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
 import { Alert, AlertDescription } from './ui/alert';
+import { supabase } from '../lib/supabase';
 
 /**
  * USAGE PAGE COMPONENT
@@ -26,57 +28,169 @@ interface UsagePageProps {
 }
 
 export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
-  // MOCK DATA - Replace with API response
-  // Simulating different plan tiers
-  const CURRENT_PLAN = 'starter'; // 'starter' | 'pro' | 'enterprise'
-  
+  const [planState, setPlanState] = useState({
+    planKey: 'starter',
+    planName: 'Starter',
+    listingsCap: 4000,
+    isTrial: true,
+    trialEndsAt: '',
+    billingPeriodStart: '',
+    billingPeriodEnd: '',
+    billingPeriodText: '',
+  });
+
   const planConfigs = {
     starter: { listingsCap: 4000, name: 'Starter' },
-    pro: { listingsCap: 10000, name: 'Professional' },
+    professional: { listingsCap: 10000, name: 'Professional' },
     enterprise: { listingsCap: Infinity, name: 'Enterprise' }
   };
 
-  const currentPlanConfig = planConfigs[CURRENT_PLAN as keyof typeof planConfigs];
+  const currentPlanConfig = planConfigs[planState.planKey as keyof typeof planConfigs] || planConfigs.starter;
 
-  const usage = {
-    // Listing-based usage
-    listingsProcessed: 3542,                  // DYNAMIC: Current listings processed this month
-    listingsLimit: currentPlanConfig.listingsCap, // DYNAMIC: Plan limit
-    projectedListings: 3850,                  // DYNAMIC: Projected end-of-month usage
-    
-    // Overage calculations
-    overageRate: 0.01,                        // $0.01 per listing
-    
-    // Billing period
-    billingPeriodStart: '2024-12-01',
-    billingPeriodEnd: '2024-12-31',
-    daysInPeriod: 31,
-    daysElapsed: 7,
-    daysRemaining: 24
-  };
+  const [usage, setUsage] = useState({
+    listingsProcessed: 0,
+    listingsLimit: currentPlanConfig.listingsCap,
+    projectedListings: 0,
+    overageRate: 0.01,
+    billingPeriodStart: '',
+    billingPeriodEnd: '',
+    daysInPeriod: 0,
+    daysElapsed: 0,
+    daysRemaining: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUsage = async () => {
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const periodStart = startOfMonth.toISOString().slice(0, 10);
+      const periodEnd = endOfMonth.toISOString().slice(0, 10);
+      const daysInPeriod = endOfMonth.getDate();
+      const daysElapsed = now.getDate();
+      const daysRemaining = daysInPeriod - daysElapsed;
+
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('plan,plan_status,trial_ends_at,stripe_subscription_start,stripe_subscription_end')
+        .eq('id', userId)
+        .single();
+
+      if (userError) {
+        console.error('Failed to load user profile:', userError);
+      } else if (userData) {
+        const isTrial = userData.plan_status?.toLowerCase() === 'trialing' || !!userData.trial_ends_at;
+        const trialEndsAt = userData.trial_ends_at;
+        const billingStart = userData.stripe_subscription_start || '';
+        const billingEnd = userData.stripe_subscription_end || '';
+
+        const planKey = userData.plan?.toLowerCase() || 'starter';
+        const planName = planConfigs[planKey]?.name || 'Starter';
+        const listingsCap = planConfigs[planKey]?.listingsCap || 4000;
+
+        let billingPeriodText = '';
+        if (isTrial) {
+          if (trialEndsAt) {
+            const end = new Date(trialEndsAt);
+            const formatEnd = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const diffDays = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+            billingPeriodText = `Trial Period | ${diffDays} days remaining (${formatEnd})`;
+          } else {
+            billingPeriodText = 'Trial Period';
+          }
+
+          setPlanState(prev => ({
+            ...prev,
+            planKey,
+            planName,
+            listingsCap,
+            isTrial: true,
+            trialEndsAt: trialEndsAt || '',
+            billingPeriodText,
+          }));
+        } else {
+          const start = billingStart ? new Date(billingStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          const end = billingEnd ? new Date(billingEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          billingPeriodText = start && end ? `Billing Period | ${start} - ${end}` : 'Billing Period';
+
+          setPlanState(prev => ({
+            ...prev,
+            planKey,
+            planName,
+            listingsCap,
+            isTrial: false,
+            billingPeriodStart: billingStart,
+            billingPeriodEnd: billingEnd,
+            billingPeriodText,
+          }));
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('usage_tracking')
+        .select('date,listings_processed')
+        .eq('user_id', userId)
+        .gte('date', periodStart)
+        .lte('date', periodEnd);
+
+      if (error) {
+        console.error('Failed to load usage tracking:', error);
+        setIsLoading(false);
+        return;
+      }
+
+      const listingsProcessed = (data || []).reduce((s: number, row: any) => s + (row.listings_processed || 0), 0);
+      const projectedListings = daysElapsed > 0 ? Math.round((listingsProcessed / daysElapsed) * daysInPeriod) : 0;
+
+      setUsage({
+        listingsProcessed,
+        listingsLimit: currentPlanConfig.listingsCap,
+        projectedListings,
+        overageRate: 0.01,
+        billingPeriodStart: periodStart,
+        billingPeriodEnd: periodEnd,
+        daysInPeriod,
+        daysElapsed,
+        daysRemaining,
+      });
+      setIsLoading(false);
+    };
+
+    loadUsage();
+  }, [currentPlanConfig.listingsCap]);
 
   // Calculate percentages and overages
-  const listingsPercentage = CURRENT_PLAN === 'enterprise' 
+  const isEnterprise = planState.planKey === 'enterprise';
+
+  const listingsPercentage = isEnterprise 
     ? 0 
     : (usage.listingsProcessed / usage.listingsLimit) * 100;
   
-  const projectedPercentage = CURRENT_PLAN === 'enterprise'
+  const projectedPercentage = isEnterprise
     ? 0
     : (usage.projectedListings / usage.listingsLimit) * 100;
 
-  const currentOverage = CURRENT_PLAN === 'enterprise'
+  const currentOverage = isEnterprise
     ? 0
     : Math.max(0, usage.listingsProcessed - usage.listingsLimit);
   
-  const projectedOverage = CURRENT_PLAN === 'enterprise'
+  const projectedOverage = isEnterprise
     ? 0
     : Math.max(0, usage.projectedListings - usage.listingsLimit);
 
   const currentOverageFee = currentOverage * usage.overageRate;
   const projectedOverageFee = projectedOverage * usage.overageRate;
 
-  const isNearingCap = listingsPercentage >= 90 && CURRENT_PLAN !== 'enterprise';
-  const isOverCap = listingsPercentage >= 100 && CURRENT_PLAN !== 'enterprise';
+  const isNearingCap = !isEnterprise && listingsPercentage >= 90;
+  const isOverCap = !isEnterprise && listingsPercentage >= 100;
 
   return (
     <div className={embeddedInTabs ? '' : 'min-h-screen bg-white'}>
@@ -104,16 +218,21 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
             <div>
               <h3 className="font-bold text-[#342E37] text-[16px]">{currentPlanConfig.name} Plan</h3>
               <p className="text-[13px] text-[#342E37]/80">
-                {CURRENT_PLAN === 'enterprise' 
+                {isEnterprise
                   ? 'Unlimited listings per month'
                   : `${currentPlanConfig.listingsCap.toLocaleString()} listings per month`
                 }
               </p>
             </div>
             <div className="text-left sm:text-right">
-              <div className="text-[13px] text-[#342E37]/80">Billing Period</div>
+              <div className="text-[13px] text-[#342E37]/80">{planState.isTrial ? 'Trial Period' : 'Billing Period'}</div>
               <div className="font-bold text-[#342E37]">
-                Dec 1 - Dec 31, 2024
+                {planState.isTrial
+                  ? planState.trialEndsAt ? new Date(planState.trialEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+                  : planState.billingPeriodStart && planState.billingPeriodEnd
+                    ? `${new Date(planState.billingPeriodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(planState.billingPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                    : 'N/A'
+                }
               </div>
             </div>
           </div>
@@ -140,7 +259,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                     Listings Synced This Month
                   </h4>
                   <p className="text-[13px] text-gray-600">
-                    {CURRENT_PLAN === 'enterprise' 
+                    {isEnterprise
                       ? 'Unlimited listings on your plan'
                       : `${usage.listingsProcessed.toLocaleString()} of ${usage.listingsLimit.toLocaleString()} listings used`
                     }
@@ -150,7 +269,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                   <div className="text-3xl sm:text-4xl font-bold text-[#342e37] dark:text-white">
                     {usage.listingsProcessed.toLocaleString()}
                   </div>
-                  {CURRENT_PLAN !== 'enterprise' && (
+                  {!isEnterprise && (
                     <div className="text-[13px] text-gray-500 mt-1">
                       {(100 - listingsPercentage).toFixed(0)}% remaining
                     </div>
@@ -268,10 +387,11 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                 <div className="">
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
-                      <p className="text-[13px] text-[#ffffff]">
-                        <span className="font-bold">Daily Average:</span> {Math.round(usage.listingsProcessed / usage.daysElapsed)} listings/day
+                      <p className="text-[13px] text-gray-900 dark:text-white">
+                        <span className="font-bold">Daily Average:</span>{' '}
+                        {usage.daysElapsed > 0 ? `${(usage.listingsProcessed / usage.daysElapsed).toFixed(1)} listings/day` : '0 listings/day'}
                       </p>
-                      <p className="text-[12px] mt-1 text-[#4a5565]">
+                      <p className="text-[12px] mt-1 text-gray-500 dark:text-gray-400">
                         {usage.daysRemaining} days remaining in billing period
                       </p>
                     </div>
@@ -284,12 +404,12 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
 
             {/* Overage Billing Info - Mobile Optimized */}
             <div className="space-y-3">
-              <h4 className="font-bold text-[15px] text-[#ffffff]">Overage Billing</h4>
+              <h4 className="font-bold text-[15px] text-gray-900 dark:text-white">Overage Billing</h4>
               
               <div className="space-y-2">
                 <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 py-2 border-b">
                   <span className="text-[13px] text-gray-600">Overage Rate</span>
-                  <span className="text-[13px] font-bold text-[#ffffff]">
+                  <span className="text-[13px] font-bold text-gray-900 dark:text-white">
                     ${usage.overageRate.toFixed(2)} per listing
                   </span>
                 </div>

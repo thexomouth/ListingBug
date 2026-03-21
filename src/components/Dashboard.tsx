@@ -331,7 +331,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 pb-6 px-[16px] pt-[18px]">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
         
         {/* ============================================================ */}
         {/* 1. LISTINGS SECTION */}
@@ -342,7 +342,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
               <div>
                 <div className="flex items-center gap-2">
                   <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-white" />
-                  <h2 className="font-bold text-[27px] text-[#342e37] dark:text-white mb-1">Dashboard</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h2>
                 </div>
                 <p className="text-sm text-gray-600">Track your monthly listing usage and market activity</p>
               </div>
@@ -370,7 +370,10 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             {/* Listings Exported */}
             <Card 
               className="cursor-pointer transition-all border-2 border-green-200 dark:border-green-900 hover:border-green-300 dark:hover:border-green-700 flex-1"
-              onClick={() => onNavigate?.('automations')}
+              onClick={() => {
+                sessionStorage.setItem('listingbug_automations_tab', 'history');
+                onNavigate?.('automations');
+              }}
             >
               <CardContent className="p-3 md:p-4 flex flex-col items-center">
                 <div className="flex items-center gap-2 mb-2">

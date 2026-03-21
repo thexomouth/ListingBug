@@ -4,6 +4,7 @@ import { X, Key, ExternalLink, ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { supabase } from '../lib/supabase';
 
 /**
  * INTEGRATION CONNECTION MODAL
@@ -52,23 +53,35 @@ export function IntegrationConnectionModal({
     setIsConnecting(true);
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/integrations/${integration.id}/oauth/authorize`, {
-      //   method: 'POST',
-      // });
-      // const data = await response.json();
-      // window.location.href = data.authorizationUrl;
+      const providerMap: { [key: string]: string } = {
+        mailchimp: 'https://auth.example.com/mailchimp',
+        hubspot: 'https://auth.example.com/hubspot',
+        salesforce: 'https://auth.example.com/salesforce',
+        'constant-contact': 'https://auth.example.com/constant-contact',
+        'zoho-crm': 'https://auth.example.com/zoho-crm',
+      };
 
-      // MOCK: Simulate OAuth redirect
-      console.log(`Redirecting to ${integration.name} OAuth...`);
-      
-      setTimeout(() => {
-        onConnect(integration.id);
-        setIsConnecting(false);
-      }, 1500);
+      const oauthUrl = providerMap[integration.id];
+
+      if (!oauthUrl) {
+        throw new Error('OAuth URL not configured');
+      }
+
+      // If real Supabase OAuth provider is configured, use it.
+      const providerForSupabase = integration.id === 'constant-contact' ? 'google' : integration.id;
+      if (['google', 'github', 'facebook', 'gitlab', 'bitbucket'].includes(providerForSupabase)) {
+        await supabase.auth.signInWithOAuth({ provider: providerForSupabase as any });
+      } else {
+        window.open(oauthUrl, '_blank');
+      }
+
+      toast.success(`Opening ${integration.name} authorization flow...`);
     } catch (err) {
       console.error('OAuth connection failed:', err);
+      toast.error('OAuth connection failed. Please try again.');
+    } finally {
       setIsConnecting(false);
+      onClose();
     }
   };
 

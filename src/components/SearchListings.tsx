@@ -1,5 +1,6 @@
 ﻿import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { supabase } from '../lib/supabase';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
 import { LBCard, LBCardHeader, LBCardTitle, LBCardContent } from './design-system/LBCard';
 import { LBInput } from './design-system/LBInput';
@@ -27,6 +28,7 @@ import {
 } from './ui/dialog';
 import { useWalkthrough } from './WalkthroughContext';
 import { InteractiveWalkthroughOverlay } from './InteractiveWalkthroughOverlay';
+import { createNotification } from '../lib/notifications';
 import { TableColumnCustomizer, ColumnConfig } from './TableColumnCustomizer';
 import { ExportDropdown } from './ExportDropdown';
 import { SearchResultsTableHeader } from './SearchResultsTableHeader';
@@ -128,6 +130,60 @@ interface SearchListingsProps {
   onNavigate?: (page: string) => void;
 }
 
+const US_STATES = [
+  { value: '', label: 'Select state' },
+  { value: 'AL', label: 'Alabama' },
+  { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' },
+  { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' },
+  { value: 'DE', label: 'Delaware' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' },
+  { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' },
+  { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' },
+  { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' },
+  { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' },
+  { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' },
+  { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' },
+  { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' },
+  { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' },
+  { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' },
+  { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' },
+  { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' },
+  { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' },
+  { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' },
+  { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' },
+  { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' },
+  { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' },
+  { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' },
+  { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' }
+];
+
 export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsProps = {}) {
   const [activeTab, setActiveTab] = useState<'search' | 'saved' | 'listings' | 'history'>('search');
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
@@ -142,6 +198,12 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
   // Track if search has been performed for Step 4 trigger  
   const [searchPerformed, setSearchPerformed] = useState(false);
   
+  useEffect(() => {
+    if (cityInputRef.current) {
+      cityInputRef.current.focus();
+    }
+  }, []);
+
   // Check if we should open saved listings tab (from dashboard navigation)
   useEffect(() => {
     const shouldOpenSaved = sessionStorage.getItem('listingbug_open_saved_tab');
@@ -183,6 +245,48 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
       completeStep(3);
     }
   }, [searchPerformed, isStepActive]);
+
+  // Load subscription / plan info for reset text
+  useEffect(() => {
+    const fetchBillingInfo = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) return;
+
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('plan,plan_status,trial_ends_at,stripe_subscription_start,stripe_subscription_end')
+        .eq('id', userId)
+        .single();
+
+      if (error || !user) {
+        console.error('Failed to load billing info', error);
+        return;
+      }
+
+      if (user?.plan) {
+        if (user.plan.toLowerCase() === 'starter') setListingsCap(4000);
+        if (user.plan.toLowerCase() === 'professional') setListingsCap(10000);
+        if (user.plan.toLowerCase() === 'enterprise') setListingsCap(999999);
+      }
+
+      if (user.plan_status?.toLowerCase() === 'trialing' || user.trial_ends_at) {
+        setIsTrialUser(true);
+        const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
+        if (trialEnd) {
+          const formatted = trialEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          setResetLabel(`Trial ends ${formatted}`);
+        } else {
+          setResetLabel('Trial ends soon');
+        }
+      } else if (user.stripe_subscription_end) {
+        const end = new Date(user.stripe_subscription_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        setResetLabel(`Resets ${end}`);
+      }
+    };
+
+    fetchBillingInfo();
+  }, []);
   
   // Saved searches state - load from localStorage
   const [savedSearches, setSavedSearches] = useState<any[]>(() => {
@@ -341,6 +445,9 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
   const [results, setResults] = useState<any[]>([]);
   const [resultsPerPage, setResultsPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+  const [fieldErrors, setFieldErrors] = useState<{ city?: string; state?: string; zip?: string; general?: string }>({});
+  const [isCappedAtMax, setIsCappedAtMax] = useState(false);
+  const cityInputRef = useRef<HTMLInputElement | null>(null);
   const [includeIncompleteData, setIncludeIncompleteData] = useState(false);
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -349,9 +456,10 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
   const resultsRef = useRef<HTMLDivElement>(null);
   
   // Listings synced tracking
-  const [listingsSynced, setListingsSynced] = useState(3542);
-  const [listingsCap] = useState(4000);
-  const resetDate = '04/27/25';
+  const [listingsSynced, setListingsSynced] = useState(0);
+  const [listingsCap, setListingsCap] = useState(4000);
+  const [resetLabel, setResetLabel] = useState('Resets 04/27/25');
+  const [isTrialUser, setIsTrialUser] = useState(false);
   
   // Sorting state
   type SortColumn = 'address' | 'city' | 'price' | 'yearBuilt' | 'agentName' | 'daysListed' | 'status';
@@ -432,10 +540,30 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
   }, [isLoading]);
 
   const handleSearch = async () => {
+    const errors: { city?: string; state?: string; zip?: string; general?: string } = {};
+
+    if (!criteria.city && !criteria.zip) {
+      errors.general = 'Please enter a city or ZIP code';
+    }
+
+    if (criteria.city && !criteria.state) {
+      errors.state = 'Please select a state';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      if (errors.general) {
+        toast.error(errors.general);
+      }
+      return;
+    }
+
+    setFieldErrors({});
     setSearchPerformed(true);
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.body.style.overflow = 'hidden';
     setIsLoading(true);
+    setIsCappedAtMax(false);
 
     try {
       const { supabase } = await import('../lib/supabase');
@@ -445,7 +573,8 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
       const body: Record<string, any> = {
         listingType: 'sale',
         status: 'Active',
-        limit: 50,
+        limit: 500,
+        offset: 0,
       };
       if (criteria.city) body.city = criteria.city;
       if (criteria.state) body.state = criteria.state;
@@ -475,13 +604,14 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'Search failed. Please try again.');
+        toast.error('Search unavailable right now. Please try again in a moment.');
         setIsLoading(false);
         document.body.style.overflow = 'unset';
         return;
       }
 
-      const finalResults = (data.listings || []).map((l: any, i: number) => ({
+      const fetchedResults = (data.listings || []).slice(0, 500);
+      const finalResults = fetchedResults.map((l: any, i: number) => ({
         id: l.id || i,
         address: l.addressLine1 || l.formattedAddress || '',
         city: l.city || '',
@@ -513,6 +643,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
       }));
 
       setResults(finalResults);
+      setIsCappedAtMax(fetchedResults.length >= 500);
       setHasSearched(true);
       setIsLoading(false);
       setCurrentPage(1);
@@ -650,7 +781,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     setShowSaveSearchModal(true);
   };
 
-  const handleConfirmSaveSearch = () => {
+  const handleConfirmSaveSearch = async () => {
     if (!saveSearchName.trim()) {
       toast.error('Please enter a search name');
       return;
@@ -683,6 +814,17 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     setShowSaveSearchModal(false);
     setSaveSearchName('');
     toast.success(`Search "${saveSearchName}" saved successfully!`);
+
+    // Create notification for search save with results count
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await createNotification({
+        userId: user.id,
+        type: 'success',
+        title: 'Search Saved',
+        message: `your search "${saveSearchName}" for ${location} with ${results.length} listings`,
+      });
+    }
     
     // Complete walkthrough step 2 if active (Save Search step)
     if (isStepActive(2)) {
@@ -949,7 +1091,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
       {/* Header - Compact */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-0.5">
@@ -1041,13 +1183,17 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
                   onChange={(e) => updateCriteria('city', e.target.value)}
                   onBlur={() => setLocationFieldBlurred(true)}
                   placeholder="Los Angeles"
+                  ref={cityInputRef}
+                  error={fieldErrors.city}
                 />
-                <LBInput
+                <LBSelect
                   label="State"
                   value={criteria.state}
-                  onChange={(e) => updateCriteria('state', e.target.value)}
+                  onChange={(value) => updateCriteria('state', value)}
                   onBlur={() => setLocationFieldBlurred(true)}
-                  placeholder="CA"
+                  options={US_STATES}
+                  placeholder="Select state"
+                  error={fieldErrors.state}
                 />
                 <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
                   label="ZIP Code"
@@ -1055,6 +1201,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
                   onChange={(e) => updateCriteria('zip', e.target.value)}
                   onBlur={() => setLocationFieldBlurred(true)}
                   placeholder="90001"
+                  error={fieldErrors.zip}
                 />
                 <LBInput
                   label="Search Radius (mi)"
@@ -1299,8 +1446,13 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
                 </div>
                 {/* Listings synced footnote */}
                 <p className="text-[11px] text-gray-500 text-center">
-                  {listingsSynced.toLocaleString()} / {listingsCap.toLocaleString()} listings. Resets {resetDate}.
+                  {listingsSynced.toLocaleString()} / {listingsCap.toLocaleString()} listings. {resetLabel}
                 </p>
+                {isCappedAtMax && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 text-center mt-1">
+                    Showing up to 500 listings
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1472,6 +1624,13 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
             </div>
           </LBCardContent>
         </LBCard>
+      )}
+
+      {!isLoading && searchPerformed && results.length === 0 && (
+        <div className="text-center py-12 border border-dashed border-gray-300 dark:border-white/20 rounded-lg mt-4">
+          <p className="text-lg font-semibold text-gray-900 dark:text-white">No listings found for that location.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Try a nearby city or different ZIP code.</p>
+        </div>
       )}
 
         </>

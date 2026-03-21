@@ -2,8 +2,10 @@ import { Menu, User, X, Bell, ChevronLeft, CheckCircle2, AlertCircle, Info, Tras
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import headerLogoFull from 'figma:asset/507fab16b51ccf6be96c685cf4c76a6b2a4bb7b0.png';
 import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LBToggle } from './design-system/LBToggle';
+import { fetchUserNotifications, deleteNotification, markNotificationAsRead } from '../lib/notifications';
+import { supabase } from '../lib/supabase';
 
 type Page = 'home' | 'how-it-works' | 'data-sets' | 'use-cases' | 'integrations' | 'pricing' | 'login' | 'dashboard' | 'search-listings' | 'automations' | 'my-listings' | 'my-reports' | 'account' | 'design-system' | 'saved-searches' | 'saved-listings' | 'listing-history' | 'create-automation' | 'my-automations' | 'automation-history';
 
@@ -23,52 +25,14 @@ interface Notification {
   id: string;
   type: 'success' | 'error' | 'info' | 'warning';
   title: string;
-  message: string;
-  timestamp: string;
-  isRead: boolean;
+  message: string | null;
+  created_at: string;
+  read: boolean;
 }
 
 // Initialize default notifications in localStorage
 const initializeNotifications = (): Notification[] => {
-  const stored = localStorage.getItem('listingbug_notifications');
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch (e) {
-      // If parsing fails, return default notifications
-    }
-  }
-  
-  // Default notifications for new users
-  const defaultNotifications: Notification[] = [
-    {
-      id: 'notif-1',
-      type: 'success',
-      title: 'Valuation Complete',
-      message: '2847 Riverside Drive - Estimated $675k',
-      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1h ago
-      isRead: false
-    },
-    {
-      id: 'notif-2',
-      type: 'error',
-      title: 'Export Failed',
-      message: 'Mailchimp integration disconnected',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3h ago
-      isRead: false
-    },
-    {
-      id: 'notif-3',
-      type: 'info',
-      title: 'Import Successful',
-      message: '147 new listings imported',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5h ago
-      isRead: false
-    }
-  ];
-  
-  localStorage.setItem('listingbug_notifications', JSON.stringify(defaultNotifications));
-  return defaultNotifications;
+  return [];
 };
 
 export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccountTabChange, onOpenNotifications, onToggleDarkMode, isDarkMode }: HeaderProps) {
@@ -79,19 +43,46 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
   const [mobileListingsExpanded, setMobileListingsExpanded] = useState(false);
   const [mobileAutomationsExpanded, setMobileAutomationsExpanded] = useState(false);
 
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
   // Load notifications on mount
   useEffect(() => {
     if (isLoggedIn) {
-      setNotifications(initializeNotifications());
+      const loadNotifications = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const notifs = await fetchUserNotifications(user.id);
+          setNotifications(notifs);
+        }
+      };
+      
+      loadNotifications();
+      
+      // Set up real-time subscription to notifications table
+      const subscription = supabase
+        .channel('notifications')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications' },
+          (payload) => {
+            // Reload notifications when changes occur
+            loadNotifications();
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [isLoggedIn]);
 
   // Calculate unread count
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Save notifications to localStorage
+  // Save notifications to Supabase (mark all as read and update locally)
   const saveNotifications = (updatedNotifications: Notification[]) => {
-    localStorage.setItem('listingbug_notifications', JSON.stringify(updatedNotifications));
     setNotifications(updatedNotifications);
     // Dispatch event to update dashboard and other components
     window.dispatchEvent(new Event('notificationsChanged'));
@@ -99,20 +90,29 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
 
   // Mark all as read when opening notifications panel
   const markAllAsRead = () => {
-    const updated = notifications.map(n => ({ ...n, isRead: true }));
+    const updated = notifications.map(n => ({ ...n, read: true }));
     saveNotifications(updated);
+    // Update read status in database for each notification
+    updated.forEach(n => {
+      markNotificationAsRead(n.id).catch(err => console.error('Failed to mark as read:', err));
+    });
   };
 
   // Dismiss individual notification
   const dismissNotification = (id: string) => {
     const updated = notifications.filter(n => n.id !== id);
     saveNotifications(updated);
+    deleteNotification(id).catch(err => console.error('Failed to delete notification:', err));
   };
 
   // Clear all read notifications
   const clearAllRead = () => {
-    const updated = notifications.filter(n => !n.isRead);
+    const updated = notifications.filter(n => !n.read);
     saveNotifications(updated);
+    // Delete read notifications from database
+    notifications.filter(n => n.read).forEach(n => {
+      deleteNotification(n.id).catch(err => console.error('Failed to delete notification:', err));
+    });
   };
 
   // Format timestamp
@@ -197,6 +197,25 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
     setShowNotifications(false);
   };
 
+  // Close nav menus when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const clickedElement = event.target as Node;
+
+      if (isMenuOpen && menuRef.current && !menuRef.current.contains(clickedElement)) {
+        setIsMenuOpen(false);
+      }
+
+      if (isAccountMenuOpen && accountMenuRef.current && !accountMenuRef.current.contains(clickedElement)) {
+        setIsAccountMenuOpen(false);
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isMenuOpen, isAccountMenuOpen]);
+
   // Keyboard navigation: Close menus on Escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -238,7 +257,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   setIsMenuOpen(true);
                   setIsAccountMenuOpen(false);
                 }}
-                className="md:hidden w-12 h-12 flex items-center justify-center transition-colors group font-bold font-normal"
+                className="md:hidden w-12 h-12 flex items-center justify-center transition-colors group font-bold"
                 aria-label="Open navigation menu"
                 aria-expanded={isMenuOpen}
               >
@@ -388,7 +407,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
 
                 {/* Integrations */}
                 <button
-                  onClick={() => handleNavigate('account', 'integrations')}
+                  onClick={() => handleNavigate('integrations')}
                   className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
                 >
                   Integrations
@@ -426,7 +445,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
       {isMenuOpen && (
         <>
           {/* Sidebar */}
-          <div className="fixed top-0 left-0 h-full w-64 bg-[#252525] z-50 shadow-xl md:hidden transform transition-transform duration-300 ease-out">
+          <div ref={menuRef} className="fixed top-0 left-0 h-full w-64 bg-[#252525] z-50 shadow-xl md:hidden transform transition-transform duration-300 ease-out">
             {/* Sidebar Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <button
@@ -449,7 +468,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             </div>
 
             {/* Sidebar Navigation */}
-            <nav className="flex flex-col p-4 p-[9px]">
+            <nav className="flex flex-col p-4">
               {!isLoggedIn ? (
                 <>
                   {/* TEMPORARILY REMOVED - Holding for potential re-addition
@@ -468,8 +487,8 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('data-sets')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'data-sets'
-                        ? 'bg-[#342e37]/10 text-[#342e37]'
-                        : 'text-[#342e37] hover:bg-gray-100'
+                        ? 'bg-white/10 text-white'
+                        : 'text-white hover:text-white/80'
                     }`}
                   >
                     Listing Data
@@ -478,8 +497,8 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('integrations')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'integrations'
-                        ? 'bg-[#342e37]/10 text-[#342e37]'
-                        : 'text-[#342e37] hover:bg-gray-100'
+                        ? 'bg-white/10 text-white'
+                        : 'text-white hover:text-white/80'
                     }`}
                   >
                     Integrations
@@ -488,8 +507,8 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('use-cases')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'use-cases'
-                        ? 'bg-[#342e37]/10 text-[#342e37]'
-                        : 'text-[#342e37] hover:bg-gray-100'
+                        ? 'bg-white/10 text-white'
+                        : 'text-white hover:text-white/80'
                     }`}
                   >
                     Use Cases
@@ -498,8 +517,8 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('pricing')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'pricing'
-                        ? 'bg-[#342e37]/10 text-[#342e37]'
-                        : 'text-[#342e37] hover:bg-gray-100'
+                        ? 'bg-white/10 text-white'
+                        : 'text-white hover:text-white/80'
                     }`}
                   >
                     Pricing
@@ -509,7 +528,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   
                   <button
                     onClick={() => handleNavigate('login')}
-                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] hover:bg-gray-100 transition-colors"
+                    className="text-left py-3 px-4 rounded-lg font-bold text-white hover:text-white/80 transition-colors"
                   >
                     Login / Sign Up
                   </button>
@@ -554,7 +573,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
       {isAccountMenuOpen && isLoggedIn && (
         <>
           {/* Account Sidebar */}
-          <div className="fixed top-0 right-0 h-full w-[85vw] max-w-[256px] bg-white dark:bg-[#252525] z-50 shadow-xl transform transition-transform duration-300 ease-out overflow-y-auto">
+          <div ref={accountMenuRef} className="fixed top-0 right-0 h-full w-[85vw] max-w-[256px] bg-white dark:bg-[#252525] z-50 shadow-xl transform transition-transform duration-300 ease-out overflow-y-auto">
             {!showNotifications ? (
               <>
                 {/* Sidebar Header */}
@@ -607,7 +626,12 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   >
                     Billing
                   </button>
-                  
+                  <button
+                    onClick={() => handleNavigate('account', 'integrations')}
+                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    API & Integrations
+                  </button>
                   {/* Divider */}
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
                   
@@ -646,7 +670,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 {/* Notifications List */}
                 <div className="flex flex-col p-4 gap-3">
                   {/* Clear All Button */}
-                  {notifications.length > 0 && notifications.some(n => n.isRead) && (
+                  {notifications.length > 0 && notifications.some(n => n.read) && (
                     <button
                       onClick={clearAllRead}
                       className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-bold text-[#342e37]"
@@ -656,59 +680,61 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     </button>
                   )}
 
-                  {/* Notifications */}
-                  {notifications.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="font-bold text-gray-600">All caught up!</p>
-                      <p className="text-sm text-gray-500 mt-1">No notifications to show</p>
-                    </div>
-                  ) : (
-                    notifications.map(notif => {
-                      const style = getNotificationStyle(notif.type, notif.isRead);
-                      const Icon = style.icon;
-                      
-                      return (
-                        <div 
-                          key={notif.id} 
-                          className={`relative p-3 border rounded-lg transition-all ${style.bg} ${style.border} ${notif.isRead ? 'opacity-70' : ''}`}
-                        >
-                          <div className="flex items-start gap-2 mb-1">
-                            {!notif.isRead && (
-                              <div className={`w-2 h-2 rounded-full ${style.dot} mt-1.5 flex-shrink-0`} />
-                            )}
-                            {notif.isRead && (
-                              <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-bold text-sm ${notif.isRead ? 'text-gray-600' : 'text-[#342e37]'}`}>
-                                {notif.title}
-                              </p>
-                              <p className={`text-xs mt-1 ${notif.isRead ? 'text-gray-500' : 'text-gray-600'}`}>
+                {/* Notifications */}
+                {notifications.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="font-bold text-gray-600">No notifications yet</p>
+                    <p className="text-sm text-gray-500 mt-1">You'll get notifications when your searches and automations run</p>
+                  </div>
+                ) : (
+                  notifications.map(notif => {
+                    const style = getNotificationStyle(notif.type, notif.read);
+                    const Icon = style.icon;
+                    
+                    return (
+                      <div 
+                        key={notif.id} 
+                        className={`relative p-3 border rounded-lg transition-all ${style.bg} ${style.border} ${notif.read ? 'opacity-70' : ''}`}
+                      >
+                        <div className="flex items-start gap-2 mb-1">
+                          {!notif.read && (
+                            <div className={`w-2 h-2 rounded-full ${style.dot} mt-1.5 flex-shrink-0`} />
+                          )}
+                          {notif.read && (
+                            <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-bold text-sm ${notif.read ? 'text-gray-600' : 'text-[#342e37]'}`}>
+                              {notif.title}
+                            </p>
+                            {notif.message && (
+                              <p className={`text-xs mt-1 ${notif.read ? 'text-gray-500' : 'text-gray-600'}`}>
                                 {notif.message}
                               </p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Icon className={`w-3 h-3 ${notif.isRead ? 'text-gray-400' : 'text-gray-500'}`} />
-                                <p className={`text-xs ${notif.isRead ? 'text-gray-400' : 'text-gray-500'}`}>
-                                  {formatTimestamp(notif.timestamp)}
-                                </p>
-                              </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <Icon className={`w-3 h-3 ${notif.read ? 'text-gray-400' : 'text-gray-500'}`} />
+                              <p className={`text-xs ${notif.read ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {formatTimestamp(notif.created_at)}
+                              </p>
                             </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                dismissNotification(notif.id);
-                              }}
-                              className="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center transition-colors flex-shrink-0"
-                              aria-label="Dismiss notification"
-                            >
-                              <X className="w-4 h-4 text-gray-500" />
-                            </button>
                           </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dismissNotification(notif.id);
+                            }}
+                            className="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center transition-colors flex-shrink-0"
+                            aria-label="Dismiss notification"
+                          >
+                            <X className="w-4 h-4 text-gray-500" />
+                          </button>
                         </div>
-                      );
-                    })
-                  )}
+                      </div>
+                    );
+                  })
+                )}
                 </div>
               </>
             )}

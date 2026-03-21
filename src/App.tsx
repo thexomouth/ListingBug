@@ -146,6 +146,8 @@ export default function App() {
   // Sample report page state
   const [sampleReportZipcode, setSampleReportZipcode] = useState('');
   const [sampleReportListings, setSampleReportListings] = useState<any[]>([]);
+  const [sampleReportError, setSampleReportError] = useState<string | null>(null);
+  const [sampleReportLoading, setSampleReportLoading] = useState(false);
 
   // Initialize dark mode based on system preference or saved preference
   useEffect(() => {
@@ -323,8 +325,11 @@ export default function App() {
           onSampleReportGenerated={(zipcode, listings) => {
             setSampleReportZipcode(zipcode);
             setSampleReportListings(listings);
+            setSampleReportError(listings.length === 0 ? 'No listings found for that ZIP code. Try another.' : null);
+            setSampleReportLoading(false);
             navigateWithLoading('sample-report-results');
           }}
+          onSampleReportLoading={(loading) => setSampleReportLoading(loading)}
         />;
       case "data-sets":
         return <DataSetsPage onNavigate={handleSmartNavigate} />;
@@ -509,6 +514,8 @@ export default function App() {
         return <SampleReportPage 
           zipcode={sampleReportZipcode}
           listings={sampleReportListings}
+          isLoading={sampleReportLoading}
+          error={sampleReportError}
           onNavigate={handleSmartNavigate}
         />;
       case "request-integration":

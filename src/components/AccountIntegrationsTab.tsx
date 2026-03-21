@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LBButton } from './design-system/LBButton';
+import { supabase } from '../lib/supabase';
 import { 
   CheckCircle,
   Settings,
@@ -75,6 +76,8 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState<'success' | 'failed' | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState('2 hours ago');
+  const [connectedIntegrationIds, setConnectedIntegrationIds] = useState<string[]>([]);
+  const [loadingIntegrations, setLoadingIntegrations] = useState(false);
 
   // Settings modal states
   const [showApiKey, setShowApiKey] = useState(false);
@@ -88,18 +91,46 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
   const [emailOnError, setEmailOnError] = useState(true);
   const [webhookNotifications, setWebhookNotifications] = useState(false);
 
-  const integrations: Integration[] = [
-    // Connected (only Mailchimp for returning users)
+  useEffect(() => {
+    const loadConnectedIntegrations = async () => {
+      setLoadingIntegrations(true);
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        setConnectedIntegrationIds([]);
+        setLoadingIntegrations(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('integration_connections')
+        .select('integration_id')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Failed to load integrations:', error);
+        toast.error('Unable to load your integrations');
+        setConnectedIntegrationIds([]);
+      } else {
+        setConnectedIntegrationIds((data || []).map((row: any) => row.integration_id));
+      }
+
+      setLoadingIntegrations(false);
+    };
+
+    loadConnectedIntegrations();
+  }, []);
+
+  const allIntegrations: Integration[] = [
     { 
       id: 'mailchimp', 
       name: 'Mailchimp', 
       icon: Mail, 
-      connected: true, 
+      connected: false, 
       description: 'Sync contacts and trigger campaigns',
-      category: 'connected'
+      category: 'available'
     },
 
-    // Available Integrations
     { 
       id: 'salesforce', 
       name: 'Salesforce', 
@@ -224,8 +255,13 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
     }
   ];
 
-  const connectedIntegrations = integrations.filter(i => i.category === 'connected');
-  const availableIntegrations = integrations.filter(i => i.category === 'available');
+  const integrations = allIntegrations.map((integration) => ({
+    ...integration,
+    connected: connectedIntegrationIds.includes(integration.id),
+  }));
+
+  const connectedIntegrations = integrations.filter(i => i.connected);
+  const availableIntegrations = integrations.filter(i => !i.connected && i.category === 'available');
   const futureIntegrations = integrations.filter(i => i.category === 'future');
 
   const handleOpenSettings = (integration: Integration) => {
@@ -238,12 +274,35 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
     setDisconnectOpen(true);
   };
 
-  const handleDisconnect = () => {
-    if (selectedIntegration) {
-      toast.success(`${selectedIntegration.name} disconnected`);
-      setDisconnectOpen(false);
-      setSelectedIntegration(null);
+  const handleDisconnect = async () => {
+    if (!selectedIntegration) {
+      return;
     }
+
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      toast.error('Unable to disconnect integration: not signed in');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('integration_connections')
+      .delete()
+      .eq('user_id', userId)
+      .eq('integration_id', selectedIntegration.id);
+
+    if (error) {
+      console.error('Failed to disconnect integration:', error);
+      toast.error('Unable to disconnect integration');
+      return;
+    }
+
+    setConnectedIntegrationIds((prev) => prev.filter((id) => id !== selectedIntegration.id));
+    toast.success(`${selectedIntegration.name} disconnected`);
+    setDisconnectOpen(false);
+    setSelectedIntegration(null);
   };
 
   const IntegrationCard = ({ integration }: { integration: Integration }) => {
@@ -353,21 +412,40 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
       </div>
 
       {/* Connected Integrations */}
-      {connectedIntegrations.length > 0 && (
-        <div>
-          <h3 className="font-bold text-[16px] text-[#342e37] dark:text-white mb-3">
-            Connected Integrations ({connectedIntegrations.length})
-          </h3>
+      <div>
+        <h3 className="font-bold text-[16px] text-[#342e37] dark:text-white mb-3">
+          Connected Integrations ({connectedIntegrations.length})
+        </h3>
+        {loadingIntegrations ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading integrations...</p>
+        ) : connectedIntegrations.length === 0 ? (
+          <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+            <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="font-bold text-gray-600 dark:text-[#EBF2FA]">No integrations connected yet</p>
+            <p className="text-sm text-gray-500 dark:text-[#EBF2FA]/60 mt-1">Connect an integration to automate your workflow.</p>
+            <Button
+              onClick={() => {
+                const container = document.getElementById('integration-available-section');
+                if (container) {
+                  container.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="mt-4"
+            >
+              Browse Integrations
+            </Button>
+          </div>
+        ) : (
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {connectedIntegrations.map((integration) => (
               <IntegrationCard key={integration.id} integration={integration} />
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Available Integrations */}
-      <div>
+      <div id="integration-available-section">
         <h3 className="font-bold text-[16px] text-[#342e37] dark:text-white mb-3">
           Available Integrations ({availableIntegrations.length})
         </h3>
@@ -398,7 +476,7 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h3 className="font-bold text-[16px] dark:text-white mb-1 text-[#252525]">
+              <h3 className="font-bold text-[16px] text-gray-900 dark:text-white mb-1">
                 Don't see what you need?
               </h3>
               <p className="text-[13px] text-gray-600">

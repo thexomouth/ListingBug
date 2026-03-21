@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -13,6 +13,7 @@ import {
 } from './ui/dialog';
 import { Key, Copy, Trash2, Eye, EyeOff, Plus, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { supabase } from '../lib/supabase';
 
 interface APIKey {
   id: string;
@@ -28,16 +29,8 @@ interface APIKeysSectionProps {
 }
 
 export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
-  const [apiKeys, setApiKeys] = useState<APIKey[]>([
-    {
-      id: 'key-1',
-      name: 'My Zapier Connection',
-      keyPreview: 'lb_live_a7f2b4c1...',
-      createdAt: '2024-11-15T10:30:00Z',
-      lastUsed: '2024-12-06T08:15:00Z',
-    },
-  ]);
-
+  const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
+  const [loadingKeys, setLoadingKeys] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showRevokeModal, setShowRevokeModal] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -53,6 +46,43 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  useEffect(() => {
+    const loadApiKeys = async () => {
+      setLoadingKeys(true);
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        setApiKeys([]);
+        setLoadingKeys(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load API keys:', error);
+        toast.error('Unable to load API keys');
+        setApiKeys([]);
+      } else {
+        setApiKeys(
+          (data || []).map((item: any) => ({
+            id: item.id,
+            name: item.name || 'Untitled key',
+            keyPreview: item.key ? `${item.key.substring(0, 16)}...` : '—',
+            createdAt: item.created_at,
+            lastUsed: item.last_used || null,
+          }))
+        );
+      }
+      setLoadingKeys(false);
+    };
+
+    loadApiKeys();
+  }, []);
+
   const generateRandomKey = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let key = 'lb_live_';
@@ -62,7 +92,7 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
     return key;
   };
 
-  const handleGenerateKey = () => {
+  const handleGenerateKey = async () => {
     if (!newKeyName.trim()) {
       toast.error('Please enter a name for your API key');
       return;
@@ -74,17 +104,41 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
     }
 
     const fullKey = generateRandomKey();
-    const newKey: APIKey = {
-      id: `key-${Date.now()}`,
-      name: newKeyName.trim(),
-      keyPreview: fullKey.substring(0, 16) + '...',
-      fullKey: fullKey,
-      createdAt: new Date().toISOString(),
-      lastUsed: null,
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+      toast.error('Unable to generate API key: not signed in');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('api_keys')
+      .insert({
+        user_id: userId,
+        name: newKeyName.trim(),
+        key: fullKey,
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error('Failed to insert API key:', error);
+      toast.error('Unable to generate API key');
+      return;
+    }
+
+    const createdKey: APIKey = {
+      id: data.id,
+      name: data.name,
+      keyPreview: `${fullKey.substring(0, 16)}...`,
+      fullKey,
+      createdAt: data.created_at,
+      lastUsed: data.last_used || null,
     };
 
-    setApiKeys([...apiKeys, newKey]);
-    setNewlyGeneratedKey(newKey);
+    setApiKeys([createdKey, ...apiKeys]);
+    setNewlyGeneratedKey(createdKey);
     setShowGenerateModal(false);
     setShowKeyModal(true);
     setNewKeyName('');
@@ -140,13 +194,24 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
     }
   };
 
-  const handleRevokeKey = () => {
-    if (selectedKeyForRevoke) {
-      setApiKeys(apiKeys.filter(k => k.id !== selectedKeyForRevoke.id));
-      toast.success(`API key "${selectedKeyForRevoke.name}" revoked`);
-      setShowRevokeModal(false);
-      setSelectedKeyForRevoke(null);
+  const handleRevokeKey = async () => {
+    if (!selectedKeyForRevoke) return;
+
+    const { error } = await supabase
+      .from('api_keys')
+      .delete()
+      .eq('id', selectedKeyForRevoke.id);
+
+    if (error) {
+      console.error('Failed to revoke API key:', error);
+      toast.error('Unable to revoke API key');
+      return;
     }
+
+    setApiKeys((prev) => prev.filter((k) => k.id !== selectedKeyForRevoke.id));
+    toast.success(`API key "${selectedKeyForRevoke.name}" revoked`);
+    setShowRevokeModal(false);
+    setSelectedKeyForRevoke(null);
   };
 
   const handleCloseKeyModal = () => {

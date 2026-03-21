@@ -442,10 +442,10 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
       {/* Page Header */}
       <div className="bg-white dark:bg-[#0F1115] border-b border-gray-200 dark:border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
           <div className="flex items-center gap-3 mb-2">
             <Zap className="w-7 h-7 text-[#342e37] dark:text-[#FFCE0A]" />
-            <h1 className="font-bold text-[27px] text-[#342e37] dark:text-white">Integrations</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Integrations</h1>
           </div>
           <p className="text-[14px] text-gray-600 dark:text-[#EBF2FA]">
             Set it and forget it - Let ListingBug transfer data to the tools you use most totally on autopilot.

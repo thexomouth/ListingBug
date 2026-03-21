@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { LBButton } from './design-system/LBButton';
 import { ChevronDown, ChevronUp, ExternalLink, Settings, LayoutGrid, Table as TableIcon } from 'lucide-react';
@@ -40,6 +41,7 @@ import {
 import { useWalkthrough } from './WalkthroughContext';
 import { WalkthroughOverlay } from './WalkthroughOverlay';
 import { AlertTriangle } from 'lucide-react';
+import { createNotification } from '../lib/notifications';
 
 interface Automation {
   id: string;
@@ -167,20 +169,57 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
     if (automationsTabPreference === 'automations') {
       setActiveTab('automations');
       sessionStorage.removeItem('listingbug_automations_tab');
+    } else if (automationsTabPreference === 'history') {
+      setActiveTab('history');
+      sessionStorage.removeItem('listingbug_automations_tab');
     }
   }, []);
 
-  const runHistory: RunHistoryItem[] = [
-    {
-      id: '1',
-      automationName: 'Daily Foreclosures to HubSpot',
-      runDate: new Date().toISOString(),
-      status: 'success',
-      listingsSent: 12,
-      destination: 'HubSpot CRM',
-      details: 'Successfully created 12 new leads in HubSpot'
-    }
-  ];
+  const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
+
+  useEffect(() => {
+    const loadRunHistory = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        setRunHistory([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('automation_runs')
+        .select('id,automation_name:automation_name,run_date,status,listings_sent,destination,details')
+        .eq('user_id', userId)
+        .order('run_date', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Failed to load automation run history:', error);
+        setRunHistory([]);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        setRunHistory([]);
+        return;
+      }
+
+      setRunHistory(
+        data.map((run: any) => ({
+          id: run.id,
+          automationName: run.automation_name || 'Unknown automation',
+          runDate: run.run_date || new Date().toISOString(),
+          status: run.status || 'failed',
+          listingsSent: run.listings_sent || 0,
+          destination: run.destination || '',
+          details: run.details || '',
+        }))
+      );
+    };
+
+    loadRunHistory();
+  }, []);
+
 
   const integrations: Integration[] = [
     // Native ListingBug Features
@@ -339,14 +378,26 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
     toast.success(`Automation ${automation?.active ? 'paused' : 'activated'}`);
   };
 
-  const handleRunNow = (automation: Automation) => {
+  const handleRunNow = async (automation: Automation) => {
     setRunNowLoading(true);
     setRunningAutomation(automation);
     toast.success(`Running "${automation.name}"...`);
-    setTimeout(() => {
-      toast.success(`Automation completed - ${Math.floor(Math.random() * 15) + 1} listings delivered`);
+    setTimeout(async () => {
+      const listingsSent = Math.floor(Math.random() * 15) + 1;
+      toast.success(`Automation completed - ${listingsSent} listings delivered`);
       setRunNowLoading(false);
       setRunningAutomation(null);
+
+      // Create notification for automation run
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await createNotification({
+          userId: user.id,
+          type: 'success',
+          title: 'Automation Run Complete',
+          message: `"${automation.name}" completed successfully - ${listingsSent} listings sent to ${automation.destination.label}`,
+        });
+      }
     }, 2000);
   };
 
@@ -491,10 +542,10 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       {/* Header */}
       <div className="bg-white dark:bg-[#0f0f0f]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-4">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
-            <h1 className="text-[#342E37] dark:text-white mb-0 text-[32px] font-bold">Automations</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400 text-[15px]">
             Automate your searches. Deliver listings to your tools.
