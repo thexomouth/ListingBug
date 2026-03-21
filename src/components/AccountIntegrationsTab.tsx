@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { IntegrationConnectionModal, INTEGRATION_CONFIGS } from './IntegrationConnectionModal';
 import { LBButton } from './design-system/LBButton';
 import { supabase } from '../lib/supabase';
 import { 
@@ -68,6 +69,8 @@ interface AccountIntegrationsTabProps {
 export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegration }: AccountIntegrationsTabProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [connectionModalOpen, setConnectionModalOpen] = useState(false);
+  const [connectionModalIntegration, setConnectionModalIntegration] = useState<string | null>(null);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   
@@ -1123,6 +1126,32 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Integration Connection Modal */}
+      {connectionModalOpen && connectionModalIntegration && (() => {
+        const integ = integrations.find(i => i.id === connectionModalIntegration);
+        const config = INTEGRATION_CONFIGS[connectionModalIntegration] || {};
+        if (!integ) return null;
+        return (
+          <IntegrationConnectionModal
+            integration={{
+              id: connectionModalIntegration,
+              name: integ.name,
+              authType: (config.authType || "oauth") as "oauth" | "api-key",
+              logo: "??",
+              description: config.description || integ.description,
+            }}
+            isOpen={connectionModalOpen}
+            onClose={() => { setConnectionModalOpen(false); setConnectionModalIntegration(null); }}
+            onConnect={(id) => {
+              setConnectedIntegrationIds(prev => [...prev, id]);
+              onConnect?.(id);
+              setConnectionModalOpen(false);
+              setConnectionModalIntegration(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
