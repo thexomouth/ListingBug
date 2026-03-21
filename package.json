@@ -31,6 +31,7 @@
     "@radix-ui/react-toggle-group": "^1.1.2",
     "@radix-ui/react-tooltip": "*",
     "@radix-ui/react-visually-hidden": "^1.1.1",
+    "@supabase/supabase-js": "^2.99.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "*",
     "cmdk": "^1.1.1",
@@ -63,6 +64,3 @@
     "build": "node ./node_modules/vite/bin/vite.js build"
   }
 }
-
-
-
