@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
@@ -218,7 +218,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     const savedStep = parseInt(localStorage.getItem('listingbug_walkthrough_step') || '0');
     const completed = localStorage.getItem('listingbug_walkthrough_completed') === 'true';
     
-    console.log('ðŸ” SearchListings mounted - Walkthrough state:', { 
+    console.log('🔍 SearchListings mounted - Walkthrough state:', { 
       walkthroughActive, 
       currentStep, 
       savedStep,
@@ -227,7 +227,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     
     // If user just navigated here from Dashboard (step 1), advance to step 2
     if (!completed && currentStep === 1 && walkthroughActive) {
-      console.log('âœ… Advancing from Step 1 â†’ Step 2 (user navigated to Search Listings)');
+      console.log('✅ Advancing from Step 1 → Step 2 (user navigated to Search Listings)');
       completeStep(1); // This will set currentStep to 2 and show step 2 overlay
     }
   }, [walkthroughActive, currentStep, completeStep]);
@@ -483,7 +483,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
 
   // Sample preview data (shown before first search) - Single row with hyphens until results load
   const samplePreviewData = [
-    { id: 'sample-preview', address: 'â€”', city: 'â€”', price: 0, yearBuilt: 'â€”', agentName: 'â€”', daysListed: 'â€”', reList: false, priceDrop: false, status: 'â€”' },
+    { id: 'sample-preview', address: '—', city: '—', price: 0, yearBuilt: '—', agentName: '—', daysListed: '—', reList: false, priceDrop: false, status: '—' },
   ];
 
   // Save to localStorage whenever they change
@@ -1179,6 +1179,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
                 <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
                   label="City"
+                  required
                   value={criteria.city}
                   onChange={(e) => updateCriteria('city', e.target.value)}
                   onBlur={() => setLocationFieldBlurred(true)}
@@ -1188,6 +1189,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
                 />
                 <LBSelect
                   label="State"
+                  required
                   value={criteria.state}
                   onChange={(value) => updateCriteria('state', value)}
                   onBlur={() => setLocationFieldBlurred(true)}
@@ -1203,6 +1205,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
                   placeholder="90001"
                   error={fieldErrors.zip}
                 />
+                <p className="text-xs text-gray-400 mt-1">* Required for search</p>
                 <LBInput
                   label="Search Radius (mi)"
                   value={criteria.radius}
@@ -2199,8 +2202,8 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-[13px] text-gray-600 mb-2">Current criteria:</p>
               <p className="text-[13px] text-gray-800">
-                {[criteria.city, criteria.state].filter(Boolean).join(', ') || 'Custom search'} â€¢ 
-                {criteria.propertyType || 'All types'} â€¢ 
+                {[criteria.city, criteria.state].filter(Boolean).join(', ') || 'Custom search'} • 
+                {criteria.propertyType || 'All types'} • 
                 {criteria.minPrice || criteria.maxPrice 
                   ? `${criteria.minPrice ? '$' + criteria.minPrice : ''}${criteria.minPrice && criteria.maxPrice ? '-' : ''}${criteria.maxPrice ? '$' + criteria.maxPrice : ''}`
                   : 'Any price'}

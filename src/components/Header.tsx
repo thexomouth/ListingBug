@@ -49,6 +49,9 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
   // Load notifications on mount
   useEffect(() => {
     if (isLoggedIn) {
+      // Clear any stale localStorage notifications from old mock data
+      localStorage.removeItem('listingbug_notifications');
+
       const loadNotifications = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
