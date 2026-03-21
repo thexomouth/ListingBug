@@ -1,8 +1,7 @@
 import { useState, useEffect, lazy, Suspense, startTransition } from "react";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Toaster } from 'sonner';
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Toaster } from 'sonner';import { supabase } from './lib/supabase';import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Header } from "./components/Header";
 import { LoginHeader } from "./components/LoginHeader";
 import { PageLoader } from "./components/PageLoader";
@@ -209,6 +208,26 @@ export default function App() {
       setIsMainContentReady(true);
     }, 50);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsLoggedIn(true);
+        navigateWithLoading('dashboard');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsLoggedIn(true);
+        navigateWithLoading('dashboard');
+      } else {
+        setIsLoggedIn(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Check if user is a returning visitor
