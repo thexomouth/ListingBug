@@ -313,7 +313,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       description: 'Sales CRM',
       category: 'future'
     }
-  ];
+  ]);
 
   const connectedIntegrations = integrations.filter(i => i.category === 'connected');
   const availableIntegrations = integrations.filter(i => i.category === 'available');

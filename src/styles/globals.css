@@ -313,3 +313,26 @@ main {
 main > * {
   content-visibility: auto;
 }
+/* Prevent iOS Safari zoom on input focus — requires font-size >= 16px */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="search"],
+select,
+textarea {
+  font-size: 16px !important;
+}
+@media (min-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: inherit !important;
+  }
+}

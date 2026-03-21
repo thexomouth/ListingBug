@@ -25,7 +25,7 @@ export function Footer({ isLoggedIn, onNavigate, onAccountTabChange }: FooterPro
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Main Footer Content */}
           <div className="py-8 border-b border-gray-200 dark:border-white/10">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {/* Branding */}
               <div className="md:col-span-1">
                 <ImageWithFallback 
@@ -161,7 +161,7 @@ export function Footer({ isLoggedIn, onNavigate, onAccountTabChange }: FooterPro
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
         <div className="py-[33px] border-b border-white/10 px-[0px]">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-8">
             {/* Branding & Description */}
             <div className="lg:col-span-2">
               <ImageWithFallback 

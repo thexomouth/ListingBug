@@ -421,7 +421,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                   </div>
                 </div>
                 <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.activeAutomations}</div>
-                <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active Automations</div>
+                <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center truncate w-full max-w-[4rem] md:max-w-none">Active Auto...</div>
               </CardContent>
             </Card>
           </div>
