@@ -604,7 +604,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(Search failed: ${data?.error ?? res.status} - ${data?.details ?? 'unknown error'});
+        toast.error('Search failed: ' + (data?.error ?? res.status) + ' - ' + (data?.details ?? 'unknown'));
         setIsLoading(false);
         document.body.style.overflow = 'unset';
         return;
