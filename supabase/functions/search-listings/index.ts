@@ -41,7 +41,7 @@ serve(async (req) => {
       supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
       const { data: userData, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
       if (authError || !userData?.user) {
-        return new Response(JSON.stringify({ error: "Unauthorized", details: authError?.message }), { status: 401, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
       }
 
       user = userData.user;
@@ -141,8 +141,7 @@ serve(async (req) => {
     });
 
     if (!rentcastRes.ok) {
-      const errText = await rentcastRes.text();
-      return new Response(JSON.stringify({ error: "RentCast API error", status: rentcastRes.status, details: errText }), { status: rentcastRes.status, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Search failed. Please try again." }), { status: rentcastRes.status, headers: corsHeaders });
     }
 
     const listings = await rentcastRes.json();
@@ -196,6 +195,6 @@ serve(async (req) => {
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: err?.message ?? String(err) }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: corsHeaders });
   }
 });

@@ -60,32 +60,34 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const handleDeleteAccount = async () => {
     setShowDeleteConfirm(false);
     const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
+    const token = session?.access_token;
 
-    if (!userId) {
+    if (!token) {
       toast.error('Unable to delete account: not signed in');
       return;
     }
 
     try {
-      const response = await fetch('/api/delete-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
+      const response = await fetch(
+        'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/delete-user',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Delete account API failed');
+        throw new Error('Delete account failed');
       }
 
-      toast.success('Your account has been deleted. Redirecting...');
+      toast.success('Your account has been deleted.');
       await supabase.auth.signOut();
       onNavigate?.('home');
     } catch (err) {
-      console.warn('Delete account edge function not available, fallback route:', err);
-      toast.success('Account deletion requested — our team will process this shortly.');
-      await supabase.auth.signOut();
-      onNavigate?.('home');
+      toast.error('Failed to delete account. Please contact support.');
     }
   };
 

@@ -136,10 +136,10 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
 
       const { data, error } = await supabase
         .from('usage_tracking')
-        .select('date,listings_processed')
+        .select('listings_fetched')
         .eq('user_id', userId)
-        .gte('date', periodStart)
-        .lte('date', periodEnd);
+        .eq('month_year', new Date().toISOString().slice(0, 7))
+        ;
 
       if (error) {
         console.error('Failed to load usage tracking:', error);
@@ -147,7 +147,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
         return;
       }
 
-      const listingsProcessed = (data || []).reduce((s: number, row: any) => s + (row.listings_processed || 0), 0);
+      const listingsProcessed = (data || []).reduce((s: number, row: any) => s + (row.listings_fetched || 0), 0);
       const projectedListings = daysElapsed > 0 ? Math.round((listingsProcessed / daysElapsed) * daysInPeriod) : 0;
 
       setUsage({
