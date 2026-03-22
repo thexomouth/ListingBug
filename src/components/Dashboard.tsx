@@ -92,7 +92,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
       if (!user) return;
       const monthYear = new Date().toISOString().slice(0, 7);
 
-      // Listings imported this month
       const { data: usageData } = await supabase
         .from('usage_tracking')
         .select('listings_fetched')
@@ -104,7 +103,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         setListingsThisMonth(usageData.listings_fetched ?? 0);
       }
 
-      // Listings exported = sum of listings_sent from automation_runs this month
       const { data: runData } = await supabase
         .from('automation_runs')
         .select('listings_sent')
@@ -146,22 +144,40 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     };
   }, []);
 
-  // Load saved listings
+  // Load saved listings — Supabase is source of truth, localStorage is cache
   useEffect(() => {
     migrateSavedListings();
+
+    const loadFromSupabase = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('saved_listings')
+        .select('listing_data_json, saved_at')
+        .eq('user_id', user.id)
+        .order('saved_at', { ascending: false });
+      if (data && data.length > 0) {
+        const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
+        setSavedListings(listings);
+        localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
+        return;
+      }
+      // Fallback to localStorage if Supabase has nothing yet
+      const saved = localStorage.getItem('listingbug_saved_listings');
+      if (saved) {
+        try { setSavedListings(JSON.parse(saved)); } catch (e) { setSavedListings([]); }
+      }
+    };
+    loadFromSupabase();
+
     const updateSavedListings = () => {
       const saved = localStorage.getItem('listingbug_saved_listings');
       if (saved) {
-        try {
-          setSavedListings(JSON.parse(saved));
-        } catch (e) {
-          setSavedListings([]);
-        }
+        try { setSavedListings(JSON.parse(saved)); } catch (e) { setSavedListings([]); }
       } else {
         setSavedListings([]);
       }
     };
-    updateSavedListings();
     window.addEventListener('storage', updateSavedListings);
     window.addEventListener('savedListingsChanged', updateSavedListings);
     return () => {
@@ -219,13 +235,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         return automation;
       })
     );
-  };
-
-  const integrations = {
-    starter: [
-      { name: 'Mailchimp', status: 'disconnected' as const, category: 'Contact Tools' },
-      { name: 'Google Sheets', status: 'disconnected' as const, category: 'Contact Tools' },
-    ],
   };
 
   const overageFee = 0.01;
@@ -356,7 +365,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm text-amber-900 dark:text-amber-200 font-medium mb-1">
-                    You're at {listingsPercentage.toFixed(0)}% of your listings — upgrade to {currentPlan === 'starter' ? 'Pro' : 'Enterprise'} for more.
+                    You're at {listingsPercentage.toFixed(0)}% of your listings — upgrade for more.
                   </p>
                   <button onClick={() => onNavigate?.('pricing')} className="mt-2 text-sm font-medium text-amber-900 dark:text-amber-200 hover:text-amber-700 underline">
                     Upgrade Now →
@@ -383,13 +392,13 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
           </div>
 
           {savedListings.length === 0 ? (
-            <Card className="border-2 border-dashed border-gray-700 bg-transparent">
+            <Card className="border-2 border-dashed border-gray-300">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-[#FFCE0A]/20 flex items-center justify-center flex-shrink-0">
                   <Bookmark className="w-6 h-6 text-[#FFCE0A]" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-white mb-1">No saved listings yet</h3>
+                  <h3 className="font-bold text-lg text-gray-700 dark:text-white mb-1">No saved listings yet</h3>
                   <p className="text-sm text-gray-600">Save listings from search results to review them later</p>
                 </div>
               </CardContent>
@@ -398,23 +407,34 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             <div className="relative">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {savedListings.slice(0, 4).map((listing) => (
-                  <div key={listing.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer overflow-hidden rounded-lg" onClick={() => setSelectedListing(listing)}>
+                  <div key={listing.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-white/10" onClick={() => setSelectedListing(listing)}>
                     <div className="relative w-full aspect-[4/3] bg-gray-100">
-                      <img src={listing.listingPhoto || listing.photos?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&h=300&fit=crop'} alt={listing.address} className="w-full h-full object-cover" />
+                      {listing.photos?.[0] ? (
+                        <img
+                          src={listing.photos[0]}
+                          alt={listing.address}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                          <Bookmark className="w-8 h-8 text-gray-300" />
+                        </div>
+                      )}
                       <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${listing.status === 'Active' ? 'bg-green-100 text-green-800' : listing.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>{listing.status}</span>
                     </div>
                     <div className="p-3">
                       <div className="font-bold text-[#342e37] dark:text-white mb-1">${listing.price?.toLocaleString()}</div>
-                      <div className="text-xs text-gray-600 mb-1">{listing.bedrooms} bd • {listing.bathrooms} ba • {listing.sqft?.toLocaleString()} sf</div>
-                      <div className="text-xs text-gray-900 font-medium line-clamp-1">{listing.address}</div>
+                      <div className="text-xs text-gray-600 mb-1">{listing.bedrooms} bd · {listing.bathrooms} ba · {listing.sqft?.toLocaleString()} sf</div>
+                      <div className="text-xs text-gray-900 dark:text-gray-100 font-medium line-clamp-1">{listing.address}</div>
                       <div className="text-xs text-gray-600 line-clamp-1">{listing.city}, {listing.state}</div>
                     </div>
                   </div>
                 ))}
               </div>
               {savedListings.length > 4 && (
-                <button onClick={() => onNavigate?.('search-listings')} className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#FFCE0A] flex items-center justify-center hover:scale-110 transition-transform shadow-lg">
-                  <ArrowRight className="w-6 h-6 text-[#342e37]" strokeWidth={2.5} />
+                <button onClick={() => { sessionStorage.setItem('listingbug_open_saved_tab', 'true'); onNavigate?.('search-listings'); }} className="mt-3 text-sm font-medium text-[#342e37] dark:text-white hover:underline flex items-center gap-1">
+                  View all {savedListings.length} saved listings <ArrowRight className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -455,7 +475,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                   <div className="flex items-center justify-between gap-6">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-[#342e37] dark:text-white truncate">{automation.name}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{automation.destination?.label || automation.destination} • Last run {formatTimestamp(automation.lastRun)}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{automation.destination?.label || automation.destination} · Last run {formatTimestamp(automation.lastRun)}</p>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleAutomationStatus(automation.id); }}

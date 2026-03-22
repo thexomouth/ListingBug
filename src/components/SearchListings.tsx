@@ -300,6 +300,34 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     fetchBillingInfo();
   }, []);
 
+  // Load saved searches from Supabase on mount (cross-device sync)
+  useEffect(() => {
+    const loadSavedSearches = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('searches')
+        .select('id, name, location, filters_json, created_at, last_run_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (data && data.length > 0) {
+        const searches = data.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          location: r.location,
+          criteria: r.filters_json?.criteria || {},
+          activeFilters: r.filters_json?.activeFilters || [],
+          criteriaDescription: r.filters_json?.criteriaDescription || '',
+          createdAt: r.created_at,
+          lastUsed: r.last_run_at,
+        }));
+        setSavedSearches(searches);
+        localStorage.setItem('listingbug_saved_searches', JSON.stringify(searches));
+      }
+    };
+    loadSavedSearches();
+  }, []);
+
   // Load saved listings from Supabase on mount (cross-device sync)
   useEffect(() => {
     const loadSavedListings = async () => {
