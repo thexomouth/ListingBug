@@ -633,7 +633,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('account', 'integrations')}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    API & Integrations
+                    API
                   </button>
                   {/* Divider */}
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2" />

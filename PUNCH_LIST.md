@@ -7,30 +7,46 @@
 ## 🔴 Critical (Blocking Launch)
 
 - [ ] Stripe billing — Starter $49/mo, Professional $99/mo, checkout edge function, webhook, BillingPage wiring
-- [x] React Router — back button works, direct URLs functional
-- [x] Search working
-- [x] Fix SMTP sender/username mismatch (hello@ vs jake@ in Supabase Auth settings) — confirmed fixed by Jack
-- [ ] Email verification landing page (after SMTP confirmed working)
-- [ ] Google OAuth consent screen branding — needs Privacy + Terms URLs + Google verification (unblocked now that /privacy and /terms exist)
-- [x] Remove debug field from edge function search response before launch — stripped from all error responses, search toast cleaned up
+- [ ] Email verification landing page — re-enable email confirmations in Supabase dashboard (SMTP confirmed working, emailRedirectTo fixed)
+- [ ] Google OAuth consent screen branding — needs Google verification (unblocked now that /privacy and /terms exist)
+
+---
+
+## 🟡 Search / Data Accuracy
+
+- [ ] Password placeholder — special characters rendering on sign in / sign up pages, pick a safe character
+- [ ] Search — prefill "Single Family" property type and "Active" status and "1" days listed as defaults
+- [ ] Search — relax required field validation: city+state not always needed (address-only or lat/lng+radius are valid), show contextual "search too vague, try adding X" message instead of hard block
+- [ ] Search — listing detail modal (right-side viewer) needs all fields populated accurately from the row. Remove photo if none came from RentCast. Show photo if it did. Evaluate Google Street View as cheap fallback. This is a high-priority UX surface.
+- [ ] Search — usage/activity meter not updating when listings are received from search. Row counts need to track in Supabase and reflect in the meter.
+- [ ] Search — saved listings not syncing across devices (desktop saves not appearing on mobile). Data events should be visible everywhere the user is signed in — needs to move from localStorage to Supabase.
+- [ ] Search history — make history cards clickable only if they have results. Clicking opens a new "Search Results" page showing search info + full results table + listing viewer modal.
+- [ ] Search Results page — new page (no nav entry), accessed from search history. Shows search criteria header + results table. Listing viewer modal should open on row click with enriched data.
+
+---
+
+## 🟡 Dashboard / Usage
+
+- [ ] Dashboard — Listings Imported should count all listings received through search AND automations
+- [ ] Dashboard — Listings Exported should count all listings exported via CSV, email, or integrations
+- [ ] Dashboard — usage meter not reflecting listings received
+- [ ] Dashboard — saved listings section showing sample photos instead of RentCast photos
+- [ ] Dashboard — integrations section shows sample connected integrations (Mailchimp, Google Sheets) for new accounts — should be zero state
+- [ ] Account/Usage — not reflecting proper usage stats or projected overage
 
 ---
 
 ## 🟡 QC / UI Bugs
 
-- [ ] Search results page — verify listings are displaying correctly with all fields populated
-- [ ] Search results page — agent contact info visible and correct
+- [ ] Search results page — verify all fields populated correctly including agent contact info
 - [ ] Sample report on homepage — verify 3-day listings actually return data for common ZIP codes
-- [ ] Dashboard "Listings Exported" count should reflect real automation run history not hardcoded 89
-- [ ] Dashboard "Listings Imported" count should reflect real usage_tracking data not hardcoded 147
-- [x] Account/Usage — fixed column mismatch (was querying listings_processed, DB column is listings_fetched) — usage numbers now real
-- [ ] Account/Billing — billing history section shows sample data, needs real Stripe data (post-Stripe)
-- [ ] Account/Billing — download button on billing history doesn't work
-- [x] Account/Profile — delete account button wired to new delete-user edge function (deployed v1)
-- [ ] Automations/History — verify sample run data is fully removed and empty state shows correctly
-- [ ] Right side nav — notifications still showing sample data for some users (localStorage clear added, verify working)
-- [ ] Integrations page — disconnect button leaves card on screen (fix deployed, verify working)
-- [x] Search listings — search failed toast no longer shows raw error details
+- [ ] Account/Billing — billing history section shows sample data (post-Stripe)
+- [ ] Account/Billing — download button on billing history doesn't work (post-Stripe)
+- [ ] Automations/History — verify empty state shows correctly, no sample run data
+- [ ] Right side nav — notifications still showing sample data for some users (verify localStorage clear working)
+- [ ] Integrations page — disconnect button verify fix working
+- [ ] Right side nav — rename "API & Integrations" to just "API"
+- [ ] Automation creation — consider removing field mapping step; users expect this to be handled automatically
 
 ---
 
@@ -39,7 +55,7 @@
 - [ ] Verify dashboard automation card truncation working on iPhone 11 Pro Max
 - [ ] Verify footer 2-column layout on mobile
 - [ ] Verify input zoom fix working on iOS Safari (font-size 16px applied)
-- [ ] Left side nav — verify automations link no longer throws MIME type error (React Router + vercel.json fix deployed)
+- [ ] Left side nav — verify automations link no longer throws MIME type error
 - [ ] Search page — state dropdown verify usable on mobile
 
 ---
@@ -47,14 +63,10 @@
 ## 🔵 Polish / UX
 
 - [ ] Search results — standardize padding/margins with rest of member pages
-- [ ] Search results — show "Showing X of Y listings" count
-- [ ] Search results — loading state needs to be more descriptive (searching Denver, CO...)
-- [ ] Search form — make it clearer which fields are required vs optional (asterisk added, verify visible)
+- [ ] Search form — verify required field asterisks visible
 - [ ] Left side nav (signed out) — verify items are white not purple
-- [ ] Sign up page — verify password placeholder dots rendering correctly (not diamond/unknown chars)
 - [ ] Sign in/up — verify input box bg does not change on autofill (CSS fix deployed)
-- [ ] Change Plan modal — back button on step 2 (VS Code AI added, verify working)
-- [ ] "Don't see what you need?" section — verify text is dark on white background (fix deployed)
+- [ ] Change Plan modal — back button on step 2 (verify working)
 - [ ] Footer — verify 2-column mobile layout not breaking desktop layout
 
 ---
@@ -64,12 +76,12 @@
 - [ ] Light mode — guide at src/LIGHT_MODE_IMPLEMENTATION_GUIDE.md
 - [ ] Facebook OAuth (needs DBA registration)
 - [ ] Apple OAuth (needs $99 dev account)
-- [ ] OAuth integrations — Mailchimp, HubSpot, Salesforce etc (needs OAuth app registration per platform)
+- [ ] OAuth integrations — Mailchimp, HubSpot, Salesforce etc
 - [ ] Namecheap CNAME update to e53e829ee840f3ad.vercel-dns-017.com (recommended by Vercel)
 
 ---
 
-## ✅ Completed This Session
+## ✅ Completed
 
 - [x] Build fixed — Vercel exit 126 (vite binary permissions)
 - [x] Missing @supabase/supabase-js dependency added
@@ -82,7 +94,7 @@
 - [x] 19 VS Code AI prompts deployed (sample data zeroed, real data wiring, UI polish)
 - [x] Notifications table created in Supabase
 - [x] CURRENT_PLAN undefined error fixed in UsagePage
-- [x] IntegrationsPage build error fixed (useState array closing bracket)
+- [x] IntegrationsPage build error fixed
 - [x] MIME type error fixed (vercel.json excludes /assets/ from SPA rewrite)
 - [x] Mobile input zoom disabled (16px font-size)
 - [x] Footer 2-column on mobile
@@ -96,8 +108,12 @@
 - [x] Fake OAuth URLs replaced with honest coming-soon state
 - [x] AccountIntegrationsTab connect button uses shared IntegrationConnectionModal
 - [x] Sample API key and sample Mailchimp connection zeroed out
-- [x] search-listings edge function v12 deployed — error details stripped
+- [x] search-listings edge function v12 deployed — error details stripped from all responses
 - [x] delete-user edge function v1 deployed — account deletion live
 - [x] AccountPage delete button wired to delete-user edge function
 - [x] emailRedirectTo fixed — email verification links now land on /dashboard
 - [x] UsagePage listings_fetched column fix deployed
+- [x] Search results "Showing X–Y of Z listings" count added
+- [x] Search loading overlay now shows city/state being searched
+- [x] Autofill background fix — correct colors in light and dark mode
+- [x] Input component autofill shadow override added

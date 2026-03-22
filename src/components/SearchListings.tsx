@@ -426,15 +426,15 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     latitude: '',
     longitude: '',
     radius: '',
-    propertyType: '',
-    status: '',
+    propertyType: 'Single Family',
+    status: 'Active',
     beds: '',
     baths: '',
     minPrice: '',
     maxPrice: '',
     pricePerSqFt: '',
     yearBuilt: '',
-    daysOld: '',
+    daysOld: '1',
     reListedProperty: false,
     priceDrop: false,
     newConstruction: false,
@@ -542,12 +542,25 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
   const handleSearch = async () => {
     const errors: { city?: string; state?: string; zip?: string; general?: string } = {};
 
-    if (!criteria.city && !criteria.zip) {
-      errors.general = 'Please enter a city or ZIP code';
+    const hasAddress = !!criteria.address;
+    const hasCity = !!criteria.city;
+    const hasZip = !!criteria.zip;
+    const hasLatLng = !!criteria.latitude && !!criteria.longitude;
+    const hasRadius = !!criteria.radius;
+
+    // Need at least one locating anchor
+    if (!hasAddress && !hasCity && !hasZip && !hasLatLng) {
+      errors.general = 'Search too vague — try adding a city, ZIP code, address, or lat/lng coordinates';
     }
 
-    if (criteria.city && !criteria.state) {
-      errors.state = 'Please select a state';
+    // Lat/lng without radius is ambiguous
+    if (hasLatLng && !hasRadius && !hasCity && !hasZip && !hasAddress) {
+      errors.general = 'Search too vague — add a radius (miles) when searching by coordinates';
+    }
+
+    // City without state is ambiguous
+    if (hasCity && !criteria.state) {
+      errors.state = 'Please select a state when searching by city';
     }
 
     if (Object.keys(errors).length > 0) {
