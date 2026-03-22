@@ -184,7 +184,7 @@ const US_STATES = [
   { value: 'WY', label: 'Wyoming' }
 ];
 
-export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsProps = {}) {
+export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResults }: SearchListingsProps = {}) {
   const [activeTab, setActiveTab] = useState<'search' | 'saved' | 'listings' | 'history'>('search');
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [selectedReportType, setSelectedReportType] = useState<'valuation' | 'property-history' | null>(null);

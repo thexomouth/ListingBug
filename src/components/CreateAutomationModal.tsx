@@ -1033,7 +1033,7 @@ export function CreateAutomationModal({
             </div>
             <p className="text-[14px] text-[#342E37]/80">
               {step === 1 && 'Connect your destination and configure settings'}
-              {step === 2 && 'Review automatic field mappings'}
+              {step === 2 && 'Connect destination'}
               {step === 3 && 'Preview sample data and test your automation'}
               {step === 4 && 'Activate your automation'}
             </p>
@@ -1476,7 +1476,7 @@ export function CreateAutomationModal({
             <div className="flex gap-3 justify-between">
               <LBButton 
                 variant="outline" 
-                onClick={step === 1 ? handleClose : () => setStep(step - 1)}
+                onClick={step === 1 ? handleClose : () => setStep(step === 3 ? 1 : step - 1)}
               >
                 {step === 1 ? 'Cancel' : '← Back'}
               </LBButton>
