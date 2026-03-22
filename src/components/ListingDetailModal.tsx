@@ -991,6 +991,31 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </div>
                 </div>
 
+                {/* Homeowner Data — PropertyRadar */}
+                <div className="bg-[#342e37] rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <User className="w-4 h-4 text-[#FFCE0A]" />
+                        <h3 className="font-bold text-[16px] text-white">Homeowner Data</h3>
+                        <span className="text-[10px] bg-[#FFCE0A] text-[#342e37] font-bold px-2 py-0.5 rounded">COMING SOON</span>
+                      </div>
+                      <p className="text-[13px] text-gray-300 leading-relaxed">
+                        Owner name, mailing address, equity estimate, loan info, and direct contact data — powered by PropertyRadar.
+                      </p>
+                    </div>
+                  </div>
+                  <LBButton
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full border-[#FFCE0A]/40 text-[#FFCE0A] hover:bg-[#FFCE0A]/10 opacity-60 cursor-not-allowed"
+                    disabled
+                  >
+                    <User className="w-3.5 h-3.5 mr-2" />
+                    Get Homeowner Data — 1 credit
+                  </LBButton>
+                </div>
+
                 {/* Investment Analysis Preview (Coming Soon) */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
