@@ -363,3 +363,15 @@ textarea {
     font-size: inherit !important;
   }
 }
+
+/* ── Gray placeholder text site-wide ── */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+/* Brave/iOS: color the select placeholder too */
+select:invalid,
+select option[value=""] {
+  color: #9ca3af;
+}

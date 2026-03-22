@@ -44,6 +44,7 @@
 
 - [ ] PropertyRadar homeowner data enrichment — full implementation post-launch
 - [ ] Google Street View API key — drop real key into ListingDetailModal.tsx (AIzaSyD-placeholder)
+- [ ] swap order of appearance of items 'integrations' and 'use cases' in the signed out top/left nav menu
 
 ---
 

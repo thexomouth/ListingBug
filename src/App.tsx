@@ -55,85 +55,31 @@ const SampleReportPage = lazy(() => import("./components/SampleReportPage").then
 const SearchResultsPage = lazy(() => import("./components/SearchResultsPage").then(m => ({ default: m.SearchResultsPage })));
 
 type Page =
-  | "home"
-  | "how-it-works"
-  | "data-sets"
-  | "use-cases"
-  | "integrations"
-  | "automation"
-  | "pricing"
-  | "login"
-  | "signup"
-  | "forgot-password"
-  | "reset-password"
-  | "welcome"
-  | "quick-start-guide"
-  | "dashboard"
-  | "search-listings"
-  | "search-results"
-  | "automations"
-  | "automation-detail"
-  | "saved-listings"
-  | "account"
-  | "design-system"
-  | "api-documentation"
-  | "api-setup"
-  | "help-center"
-  | "blog"
-  | "changelog"
-  | "about"
-  | "careers"
-  | "contact"
-  | "contact-support"
-  | "privacy"
-  | "terms"
-  | "billing"
-  | "microcopy-pack"
-  | "consent-panel-demo"
-  | "consent-modal-demo"
-  | "sample-report-results"
-  | "request-integration";
+  | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
+  | "automation" | "pricing" | "login" | "signup" | "forgot-password"
+  | "reset-password" | "welcome" | "quick-start-guide" | "dashboard"
+  | "search-listings" | "search-results" | "automations" | "automation-detail"
+  | "saved-listings" | "account" | "design-system" | "api-documentation"
+  | "api-setup" | "help-center" | "blog" | "changelog" | "about" | "careers"
+  | "contact" | "contact-support" | "privacy" | "terms" | "billing"
+  | "microcopy-pack" | "consent-panel-demo" | "consent-modal-demo"
+  | "sample-report-results" | "request-integration";
 
-// Bidirectional URL <-> Page mapping
 const PAGE_TO_PATH: Record<Page, string> = {
-  "home": "/",
-  "pricing": "/pricing",
-  "how-it-works": "/how-it-works",
-  "data-sets": "/data-sets",
-  "use-cases": "/use-cases",
-  "integrations": "/integrations",
-  "automation": "/automation",
-  "login": "/login",
-  "signup": "/signup",
-  "forgot-password": "/forgot-password",
-  "reset-password": "/reset-password",
-  "welcome": "/welcome",
-  "quick-start-guide": "/quick-start",
-  "dashboard": "/dashboard",
-  "search-listings": "/listings",
-  "search-results": "/listings/results",
-  "automations": "/automations",
-  "automation-detail": "/automations/detail",
-  "saved-listings": "/saved",
-  "account": "/account",
-  "design-system": "/design-system",
-  "api-documentation": "/api-docs",
-  "api-setup": "/api-setup",
-  "help-center": "/help",
-  "blog": "/blog",
-  "changelog": "/changelog",
-  "about": "/about",
-  "careers": "/careers",
-  "contact": "/contact",
-  "contact-support": "/support",
-  "privacy": "/privacy",
-  "terms": "/terms",
-  "billing": "/billing",
-  "microcopy-pack": "/microcopy-pack",
-  "consent-panel-demo": "/consent-panel",
-  "consent-modal-demo": "/consent-modal",
-  "sample-report-results": "/sample-report",
-  "request-integration": "/request-integration",
+  "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
+  "data-sets": "/data-sets", "use-cases": "/use-cases", "integrations": "/integrations",
+  "automation": "/automation", "login": "/login", "signup": "/signup",
+  "forgot-password": "/forgot-password", "reset-password": "/reset-password",
+  "welcome": "/welcome", "quick-start-guide": "/quick-start", "dashboard": "/dashboard",
+  "search-listings": "/listings", "search-results": "/listings/results",
+  "automations": "/automations", "automation-detail": "/automations/detail",
+  "saved-listings": "/saved", "account": "/account", "design-system": "/design-system",
+  "api-documentation": "/api-docs", "api-setup": "/api-setup", "help-center": "/help",
+  "blog": "/blog", "changelog": "/changelog", "about": "/about", "careers": "/careers",
+  "contact": "/contact", "contact-support": "/support", "privacy": "/privacy",
+  "terms": "/terms", "billing": "/billing", "microcopy-pack": "/microcopy-pack",
+  "consent-panel-demo": "/consent-panel", "consent-modal-demo": "/consent-modal",
+  "sample-report-results": "/sample-report", "request-integration": "/request-integration",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -153,36 +99,26 @@ export default function App() {
   const location = useLocation();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [accountDefaultTab, setAccountDefaultTab] = useState<'profile' | 'billing' | 'integrations' | 'compliance'>('profile');
+  // FIX: include 'usage' so Header nav to usage tab doesn't cause chunk load error
+  const [accountDefaultTab, setAccountDefaultTab] = useState<'profile' | 'usage' | 'billing' | 'integrations' | 'compliance'>('profile');
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [isMainContentReady, setIsMainContentReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Global modal state
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultTab, setModalDefaultTab] = useState<'preferences' | 'history'>('preferences');
   const [showFromNewReport, setShowFromNewReport] = useState(false);
-
-  // Automation detail page state
   const [selectedAutomation, setSelectedAutomation] = useState<any>(null);
-
-  // Automations page initial tab state
   const [automationsInitialTab, setAutomationsInitialTab] = useState<'create' | 'automations' | 'history'>('create');
-
-  // Search results page state (from history)
   const [selectedSearchRun, setSelectedSearchRun] = useState<any | null>(null);
-
-  // Sample report page state
   const [sampleReportZipcode, setSampleReportZipcode] = useState('');
   const [sampleReportListings, setSampleReportListings] = useState<any[]>([]);
   const [sampleReportError, setSampleReportError] = useState<string | null>(null);
   const [sampleReportLoading, setSampleReportLoading] = useState(false);
 
-  // Derive currentPage from URL
   const currentPage = pathToPage(location.pathname);
 
-  // Initialize dark mode
   useEffect(() => {
     const savedTheme = localStorage.getItem('listingbug_theme');
     if (savedTheme === 'dark' || savedTheme === 'light') {
@@ -219,7 +155,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Supabase auth state listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -230,7 +165,6 @@ export default function App() {
         }
       }
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsLoggedIn(true);
@@ -242,12 +176,13 @@ export default function App() {
         setIsLoggedIn(false);
       }
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
+  // FIX: force scroll to top on every route change — works on mobile Brave/Safari
   useEffect(() => {
-    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [location.pathname]);
 
   const navigateWithLoading = (page: Page) => {
@@ -309,235 +244,64 @@ export default function App() {
     setShowFromNewReport(false);
   };
 
-  const handleSaveReport = (updatedReport: any) => {
-    setSelectedReport(updatedReport);
-  };
-
-  const handleAddToMyReports = (reportData: any) => {
-    console.log("Search saved:", reportData);
-  };
+  const handleSaveReport = (updatedReport: any) => { setSelectedReport(updatedReport); };
+  const handleAddToMyReports = (reportData: any) => { console.log("Search saved:", reportData); };
 
   const isAuthPage = currentPage === 'login' || currentPage === 'signup';
   const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup'].includes(currentPage);
 
   const renderPage = () => {
     switch (currentPage) {
-      case "home":
-      case "pricing":
-        return (
-          <HomePage
-            page={currentPage}
-            onNavigate={handleSmartNavigate}
-            onSampleReportGenerated={(zipcode, listings) => {
-              setSampleReportZipcode(zipcode);
-              setSampleReportListings(listings);
-              setSampleReportError(listings.length === 0 ? 'No listings found for that ZIP code. Try another.' : null);
-              setSampleReportLoading(false);
-              navigateWithLoading('sample-report-results');
-            }}
-            onSampleReportLoading={(loading) => setSampleReportLoading(loading)}
-          />
-        );
-      case "data-sets":
-        return <DataSetsPage onNavigate={handleSmartNavigate} />;
-      case "use-cases":
-        return <UseCasesPage onNavigate={handleSmartNavigate} />;
-      case "how-it-works":
-        return <HowItWorksPage onNavigate={navigateWithLoading} />;
-      case "login":
-        return (
-          <LoginPage
-            onLogin={handleLogin}
-            onNavigateToSignUp={() => navigateWithLoading('signup')}
-            onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')}
-            onNavigateToHelp={() => navigateWithLoading('help-center')}
-          />
-        );
-      case "signup":
-        return (
-          <SignUpPage
-            onSignUp={() => {
-              setIsLoggedIn(true);
-              localStorage.removeItem('listingbug_returning_user');
-              localStorage.setItem('listingbug_saved_searches', JSON.stringify([]));
-              localStorage.setItem('listingbug_saved_listings', JSON.stringify([]));
-              localStorage.setItem('listingbug_automations', JSON.stringify([]));
-              localStorage.setItem('listingbug_integrations', JSON.stringify([]));
-              localStorage.setItem('listingbug_walkthrough_step', '1');
-              localStorage.removeItem('listingbug_walkthrough_completed');
-              navigateWithLoading('dashboard');
-            }}
-            onNavigateToLogin={() => navigateWithLoading('login')}
-            onNavigateToHelp={() => navigateWithLoading('help-center')}
-          />
-        );
-      case "forgot-password":
-        return (
-          <ForgotPasswordPage
-            onNavigateToLogin={() => navigateWithLoading('login')}
-            onNavigateToContactSupport={() => navigateWithLoading('contact-support')}
-          />
-        );
-      case "reset-password":
-        return (
-          <ResetPasswordPage
-            token={undefined}
-            onNavigateToLogin={() => navigateWithLoading('login')}
-            onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')}
-          />
-        );
-      case "welcome":
-        return (
-          <WelcomePage
-            userName="User"
-            onContinue={() => navigateWithLoading('quick-start-guide')}
-            onSkipToReport={() => navigateWithLoading('search-listings')}
-          />
-        );
-      case "quick-start-guide":
-        return (
-          <QuickStartGuidePage
-            onComplete={() => navigateWithLoading('search-listings')}
-            onSkip={() => navigateWithLoading('search-listings')}
-          />
-        );
-      case "dashboard":
-        return isLoggedIn ? (
-          <Dashboard
-            onNavigate={navigateWithLoading}
-            onOpenReport={handleOpenReport}
-            onAccountTabChange={setAccountDefaultTab}
-            onViewAutomationDetail={handleViewAutomationDetail}
-            onSetAutomationsTab={setAutomationsInitialTab}
-          />
-        ) : (
-          <LoginPage onLogin={handleLogin} />
-        );
-      case "search-listings":
-        return isLoggedIn ? (
-          <SearchListings
-            onAddToMyReports={handleAddToMyReports}
-            onNavigate={handleSmartNavigate}
-            onViewSearchResults={handleViewSearchResults}
-          />
-        ) : (
-          <LoginPage onLogin={handleLogin} />
-        );
-      case "search-results":
-        return isLoggedIn && selectedSearchRun ? (
-          <SearchResultsPage
-            searchRun={selectedSearchRun}
-            onBack={() => navigateWithLoading('search-listings')}
-          />
-        ) : (
-          <LoginPage onLogin={handleLogin} />
-        );
-      case "automations":
-        return isLoggedIn ? (
-          <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} />
-        ) : (
-          <LoginPage onLogin={handleLogin} />
-        );
-      case "automation-detail":
-        return isLoggedIn && selectedAutomation ? (
-          <AutomationDetailPage
-            automation={selectedAutomation}
-            onBack={handleBackToAutomations}
-            onDelete={(id) => {
-              const stored = localStorage.getItem('listingbug_automations');
-              if (stored) {
-                try {
-                  const automations = JSON.parse(stored);
-                  localStorage.setItem('listingbug_automations', JSON.stringify(automations.filter((a: any) => a.id !== id)));
-                } catch (e) { console.error(e); }
-              }
-            }}
-            onToggleActive={(id, active) => {
-              const stored = localStorage.getItem('listingbug_automations');
-              if (stored) {
-                try {
-                  const automations = JSON.parse(stored);
-                  localStorage.setItem('listingbug_automations', JSON.stringify(automations.map((a: any) => a.id === id ? { ...a, active } : a)));
-                  setSelectedAutomation({ ...selectedAutomation, active });
-                } catch (e) { console.error(e); }
-              }
-            }}
-            onEdit={(automation) => {
-              setSelectedAutomation(automation);
-              handleBackToAutomations();
-            }}
-          />
-        ) : (
-          <LoginPage onLogin={handleLogin} />
-        );
-      case "saved-listings":
-        return isLoggedIn ? <SavedListingsPage /> : <LoginPage onLogin={handleLogin} />;
-      case "account":
-        return isLoggedIn ? (
-          <AccountPage
-            onLogout={handleLogout}
-            defaultTab={accountDefaultTab}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={toggleDarkMode}
-            onNavigate={navigateWithLoading}
-          />
-        ) : (
-          <LoginPage onLogin={handleLogin} />
-        );
-      case "integrations":
-        return isLoggedIn ? (
-          <IntegrationsPage onNavigate={navigateWithLoading} />
-        ) : (
-          <IntegrationsMarketingPage onNavigate={navigateWithLoading} />
-        );
-      case "billing":
-        return <BillingPage />;
-      case "privacy":
-        return <PrivacyPolicyPage />;
-      case "terms":
-        return <TermsOfServicePage />;
-      case "about":
-        return <AboutPage />;
-      case "blog":
-        return <BlogPage />;
-      case "changelog":
-        return <ChangelogPage />;
-      case "help-center":
-        return <HelpCenterPage onNavigateToContactSupport={() => navigateWithLoading('contact-support')} />;
-      case "contact":
-        return <ContactPage />;
-      case "contact-support":
-        return <ContactSupportPage />;
-      case "careers":
-        return <CareersPage />;
-      case "api-documentation":
-        return <APIDocumentationPage />;
-      case "api-setup":
-        return <APISetupPage />;
-      case "design-system":
-        return <DesignSystemDemo />;
-      case "automation":
-        return <AutomationPage onNavigate={navigateWithLoading} />;
-      case "microcopy-pack":
-        return <ConsentMicrocopyPack />;
-      case "consent-panel-demo":
-        return <ConsentProvenancePanelDemo />;
-      case "consent-modal-demo":
-        return <PreSyncMarketingModalDemo />;
-      case "sample-report-results":
-        return (
-          <SampleReportPage
-            zipcode={sampleReportZipcode}
-            listings={sampleReportListings}
-            isLoading={sampleReportLoading}
-            error={sampleReportError}
-            onNavigate={handleSmartNavigate}
-          />
-        );
-      case "request-integration":
-        return <RequestIntegrationPage onBack={() => navigateWithLoading('integrations')} isMember={false} />;
-      default:
-        return <HomePage page="home" onNavigate={handleSmartNavigate} />;
+      case "home": case "pricing":
+        return <HomePage page={currentPage} onNavigate={handleSmartNavigate}
+          onSampleReportGenerated={(zipcode, listings) => {
+            setSampleReportZipcode(zipcode); setSampleReportListings(listings);
+            setSampleReportError(listings.length === 0 ? 'No listings found for that ZIP code. Try another.' : null);
+            setSampleReportLoading(false); navigateWithLoading('sample-report-results');
+          }}
+          onSampleReportLoading={(loading) => setSampleReportLoading(loading)} />;
+      case "data-sets": return <DataSetsPage onNavigate={handleSmartNavigate} />;
+      case "use-cases": return <UseCasesPage onNavigate={handleSmartNavigate} />;
+      case "how-it-works": return <HowItWorksPage onNavigate={navigateWithLoading} />;
+      case "login": return <LoginPage onLogin={handleLogin} onNavigateToSignUp={() => navigateWithLoading('signup')} onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
+      case "signup": return <SignUpPage onSignUp={() => { setIsLoggedIn(true); localStorage.removeItem('listingbug_returning_user'); localStorage.setItem('listingbug_saved_searches', JSON.stringify([])); localStorage.setItem('listingbug_saved_listings', JSON.stringify([])); localStorage.setItem('listingbug_automations', JSON.stringify([])); localStorage.setItem('listingbug_integrations', JSON.stringify([])); localStorage.setItem('listingbug_walkthrough_step', '1'); localStorage.removeItem('listingbug_walkthrough_completed'); navigateWithLoading('dashboard'); }} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
+      case "forgot-password": return <ForgotPasswordPage onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToContactSupport={() => navigateWithLoading('contact-support')} />;
+      case "reset-password": return <ResetPasswordPage token={undefined} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')} />;
+      case "welcome": return <WelcomePage userName="User" onContinue={() => navigateWithLoading('quick-start-guide')} onSkipToReport={() => navigateWithLoading('search-listings')} />;
+      case "quick-start-guide": return <QuickStartGuidePage onComplete={() => navigateWithLoading('search-listings')} onSkip={() => navigateWithLoading('search-listings')} />;
+      case "dashboard": return isLoggedIn ? <Dashboard onNavigate={navigateWithLoading} onOpenReport={handleOpenReport} onAccountTabChange={setAccountDefaultTab} onViewAutomationDetail={handleViewAutomationDetail} onSetAutomationsTab={setAutomationsInitialTab} /> : <LoginPage onLogin={handleLogin} />;
+      case "search-listings": return isLoggedIn ? <SearchListings onAddToMyReports={handleAddToMyReports} onNavigate={handleSmartNavigate} onViewSearchResults={handleViewSearchResults} /> : <LoginPage onLogin={handleLogin} />;
+      case "search-results": return isLoggedIn && selectedSearchRun ? <SearchResultsPage searchRun={selectedSearchRun} onBack={() => navigateWithLoading('search-listings')} /> : <LoginPage onLogin={handleLogin} />;
+      case "automations": return isLoggedIn ? <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} /> : <LoginPage onLogin={handleLogin} />;
+      case "automation-detail": return isLoggedIn && selectedAutomation ? (
+        <AutomationDetailPage automation={selectedAutomation} onBack={handleBackToAutomations}
+          onDelete={(id) => { const stored = localStorage.getItem('listingbug_automations'); if (stored) { try { const a = JSON.parse(stored); localStorage.setItem('listingbug_automations', JSON.stringify(a.filter((x: any) => x.id !== id))); } catch (e) {} } }}
+          onToggleActive={(id, active) => { const stored = localStorage.getItem('listingbug_automations'); if (stored) { try { const a = JSON.parse(stored); localStorage.setItem('listingbug_automations', JSON.stringify(a.map((x: any) => x.id === id ? { ...x, active } : x))); setSelectedAutomation({ ...selectedAutomation, active }); } catch (e) {} } }}
+          onEdit={(automation) => { setSelectedAutomation(automation); handleBackToAutomations(); }} />
+      ) : <LoginPage onLogin={handleLogin} />;
+      case "saved-listings": return isLoggedIn ? <SavedListingsPage /> : <LoginPage onLogin={handleLogin} />;
+      case "account": return isLoggedIn ? <AccountPage onLogout={handleLogout} defaultTab={accountDefaultTab} isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
+      case "integrations": return isLoggedIn ? <IntegrationsPage onNavigate={navigateWithLoading} /> : <IntegrationsMarketingPage onNavigate={navigateWithLoading} />;
+      case "billing": return <BillingPage />;
+      case "privacy": return <PrivacyPolicyPage />;
+      case "terms": return <TermsOfServicePage />;
+      case "about": return <AboutPage />;
+      case "blog": return <BlogPage />;
+      case "changelog": return <ChangelogPage />;
+      case "help-center": return <HelpCenterPage onNavigateToContactSupport={() => navigateWithLoading('contact-support')} />;
+      case "contact": return <ContactPage />;
+      case "contact-support": return <ContactSupportPage />;
+      case "careers": return <CareersPage />;
+      case "api-documentation": return <APIDocumentationPage />;
+      case "api-setup": return <APISetupPage />;
+      case "design-system": return <DesignSystemDemo />;
+      case "automation": return <AutomationPage onNavigate={navigateWithLoading} />;
+      case "microcopy-pack": return <ConsentMicrocopyPack />;
+      case "consent-panel-demo": return <ConsentProvenancePanelDemo />;
+      case "consent-modal-demo": return <PreSyncMarketingModalDemo />;
+      case "sample-report-results": return <SampleReportPage zipcode={sampleReportZipcode} listings={sampleReportListings} isLoading={sampleReportLoading} error={sampleReportError} onNavigate={handleSmartNavigate} />;
+      case "request-integration": return <RequestIntegrationPage onBack={() => navigateWithLoading('integrations')} isMember={false} />;
+      default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
 
@@ -546,51 +310,15 @@ export default function App() {
       <WalkthroughProvider>
         <div className="min-h-screen bg-background flex flex-col">
           <PageLoader isLoading={isPageLoading} />
-
-          {isAuthPage && (
-            <LoginHeader
-              onNavigateToHome={() => navigate('/')}
-              onNavigateToHelp={() => navigateWithLoading('help-center')}
-            />
-          )}
-
-          {!isMinimalPage && (
-            <Header
-              currentPage={currentPage}
-              isLoggedIn={isLoggedIn}
-              onNavigate={navigateWithLoading}
-              onSignOut={handleLogout}
-              onAccountTabChange={setAccountDefaultTab}
-              onToggleDarkMode={toggleDarkMode}
-              isDarkMode={isDarkMode}
-            />
-          )}
-
+          {isAuthPage && <LoginHeader onNavigateToHome={() => navigate('/')} onNavigateToHelp={() => navigateWithLoading('help-center')} />}
+          {!isMinimalPage && <Header currentPage={currentPage} isLoggedIn={isLoggedIn} onNavigate={navigateWithLoading} onSignOut={handleLogout} onAccountTabChange={setAccountDefaultTab} onToggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
           <main className={`flex-1 bg-white dark:bg-[#0f0f0f] ${isMainContentReady ? 'loaded' : 'loading'}`}>
             <Suspense fallback={<PageLoader isLoading={true} />}>
               {isMainContentReady ? renderPage() : <PageLoader isLoading={true} />}
             </Suspense>
           </main>
-
-          {!isMinimalPage && (
-            <Suspense fallback={null}>
-              <Footer isLoggedIn={isLoggedIn} onNavigate={navigateWithLoading} onAccountTabChange={setAccountDefaultTab} />
-            </Suspense>
-          )}
-
-          {isModalOpen && (
-            <Suspense fallback={null}>
-              <ReportDetailsModal
-                report={selectedReport}
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
-                onSave={handleSaveReport}
-                showFromNewReport={showFromNewReport}
-                defaultTab={modalDefaultTab}
-              />
-            </Suspense>
-          )}
-
+          {!isMinimalPage && <Suspense fallback={null}><Footer isLoggedIn={isLoggedIn} onNavigate={navigateWithLoading} onAccountTabChange={setAccountDefaultTab} /></Suspense>}
+          {isModalOpen && <Suspense fallback={null}><ReportDetailsModal report={selectedReport} isOpen={isModalOpen} onClose={handleCloseModal} onSave={handleSaveReport} showFromNewReport={showFromNewReport} defaultTab={modalDefaultTab} /></Suspense>}
           <ToastContainer />
           <Toaster position="top-right" richColors />
         </div>
