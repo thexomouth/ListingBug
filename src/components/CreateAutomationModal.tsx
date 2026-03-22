@@ -235,6 +235,16 @@ export function CreateAutomationModal({
       connected: true, 
       requiresSetup: false
     },
+    {
+      id: 'csv-email',
+      name: 'CSV — Email Delivery',
+      icon: Mail,
+      connected: true,
+      requiresSetup: true,
+      setupFields: [
+        { key: 'delivery_email', label: 'Deliver CSV to email', placeholder: 'you@example.com', type: 'email' }
+      ]
+    },
     // CRM
     { 
       id: 'salesforce', 
@@ -1148,6 +1158,14 @@ export function CreateAutomationModal({
                     <p className="text-xs text-blue-800 mt-2">
                       <strong>Will run:</strong> {syncFrequency} time(s) each {syncRateOptions.find(r => r.value === syncRate)?.label.toLowerCase()} at {timeOptions().find(t => t.value === scheduleTime)?.label}
                     </p>
+                  )}
+                  {(Number(syncFrequency) > 1 && syncRate === 'day') && (
+                    <div className="flex items-start gap-2 mt-2 p-2 bg-amber-50 border border-amber-300 rounded-lg">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-800">
+                        <strong>Heads up:</strong> Automations are designed for daily updates — running more than once per day can lead to listing overages on your plan.
+                      </p>
+                    </div>
                   )}
                 </div>
 
