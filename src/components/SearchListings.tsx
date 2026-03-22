@@ -283,9 +283,68 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
         const end = new Date(user.stripe_subscription_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         setResetLabel(`Resets ${end}`);
       }
+
+      // Load real usage count from Supabase so meter starts at correct value
+      const monthYear = new Date().toISOString().slice(0, 7);
+      const { data: usageData } = await supabase
+        .from('usage_tracking')
+        .select('listings_fetched')
+        .eq('user_id', userId)
+        .eq('month_year', monthYear)
+        .single();
+      if (usageData?.listings_fetched !== undefined) {
+        setListingsSynced(usageData.listings_fetched);
+      }
     };
 
     fetchBillingInfo();
+  }, []);
+
+  // Load saved listings from Supabase on mount (cross-device sync)
+  useEffect(() => {
+    const loadSavedListings = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('saved_listings')
+        .select('listing_data_json, saved_at')
+        .eq('user_id', user.id)
+        .order('saved_at', { ascending: false });
+      if (data && data.length > 0) {
+        const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
+        setSavedListings(listings);
+        localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
+      }
+    };
+    loadSavedListings();
+  }, []);
+
+  // Load saved searches from Supabase on mount (cross-device sync)
+  useEffect(() => {
+    const loadSavedSearches = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('searches')
+        .select('id, name, location, filters_json, created_at, last_run_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (data && data.length > 0) {
+        const searches = data.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          location: r.location,
+          criteria: r.filters_json?.criteria || {},
+          activeFilters: r.filters_json?.activeFilters || [],
+          criteriaDescription: r.filters_json?.criteriaDescription || '',
+          createdAt: r.created_at,
+          lastUsed: r.last_run_at,
+        }));
+        setSavedSearches(searches);
+        localStorage.setItem('listingbug_saved_searches', JSON.stringify(searches));
+      }
+    };
+    loadSavedSearches();
   }, []);
   
   // Saved searches state - load from localStorage
@@ -660,7 +719,13 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
       setHasSearched(true);
       setIsLoading(false);
       setCurrentPage(1);
-      setListingsSynced(prev => Math.min(prev + finalResults.length, listingsCap));
+      // Use the authoritative usage count returned by the edge function
+      if (data.usage?.used !== undefined) {
+        setListingsSynced(data.usage.used);
+      }
+      if (data.usage?.limit !== undefined) {
+        setListingsCap(data.usage.limit);
+      }
       document.body.style.overflow = 'unset';
 
       const locationParts = [criteria.city, criteria.state].filter(Boolean);
@@ -813,7 +878,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     ].filter(Boolean).join(', ') || 'Various criteria';
 
     const newSearch = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name: saveSearchName,
       criteria: { ...criteria },
       activeFilters: [...(activeFilters || [])],
@@ -828,9 +893,20 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     setSaveSearchName('');
     toast.success(`Search "${saveSearchName}" saved successfully!`);
 
-    // Create notification for search save with results count
+    // Sync to Supabase for cross-device access
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      await supabase.from('searches').upsert({
+        id: newSearch.id,
+        user_id: user.id,
+        name: newSearch.name,
+        location: newSearch.location,
+        filters_json: { criteria: newSearch.criteria, activeFilters: newSearch.activeFilters, criteriaDescription: newSearch.criteriaDescription },
+        created_at: newSearch.createdAt,
+        last_run_at: newSearch.lastUsed,
+        status: 'active',
+      }, { onConflict: 'id' });
+
       await createNotification({
         userId: user.id,
         type: 'success',
@@ -864,10 +940,15 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     ));
   };
 
-  const handleDeleteSavedSearch = (id: string) => {
+  const handleDeleteSavedSearch = async (id: string) => {
     const search = savedSearches.find(s => s.id === id);
     setSavedSearches(prev => prev.filter(s => s.id !== id));
     toast.success(`Deleted search "${search?.name}"`);
+    // Sync deletion to Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('searches').delete().eq('id', id).eq('user_id', user.id);
+    }
   };
 
   const handleCreateAutomation = (search?: any) => {
@@ -982,21 +1063,32 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
     localStorage.setItem('listingbug_automations', JSON.stringify(automations));
   };
 
-  const handleSaveListing = (listing: any) => {
+  const handleSaveListing = async (listing: any) => {
     const isAlreadySaved = savedListings.some(l => l.id === listing.id);
-    
+    const { data: { user } } = await supabase.auth.getUser();
+
     if (isAlreadySaved) {
-      // Remove from saved
       setSavedListings(prev => prev.filter(l => l.id !== listing.id));
       toast.success('Listing removed from saved');
+      // Remove from Supabase
+      if (user) {
+        await supabase.from('saved_listings').delete()
+          .eq('user_id', user.id)
+          .eq('listing_id', String(listing.id));
+      }
     } else {
-      // Add to saved
-      const savedListing = {
-        ...listing,
-        savedAt: new Date().toISOString()
-      };
+      const savedListing = { ...listing, savedAt: new Date().toISOString() };
       setSavedListings(prev => [savedListing, ...prev]);
       toast.success('Listing saved successfully!');
+      // Sync to Supabase
+      if (user) {
+        await supabase.from('saved_listings').upsert({
+          user_id: user.id,
+          listing_id: String(listing.id),
+          listing_data_json: savedListing,
+          saved_at: savedListing.savedAt,
+        }, { onConflict: 'user_id,listing_id' });
+      }
     }
   };
 

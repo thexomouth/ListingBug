@@ -860,11 +860,11 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     </div>
                     <div>
                       <p className="text-gray-600 mb-1">MLS Number</p>
-                      <p className="font-medium">{listing.mlsNumber}</p>
+                      <p className="font-medium">{listing.mlsNumber || <span className="text-gray-400">—</span>}</p>
                     </div>
                     <div>
                       <p className="text-gray-600 mb-1">MLS Source</p>
-                      <p className="font-medium">{listing.mlsSource}</p>
+                      <p className="font-medium">{listing.mlsSource || <span className="text-gray-400">—</span>}</p>
                     </div>
                     {listing.priceDrop && (
                       <div>
@@ -956,29 +956,37 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   <div className="space-y-3 text-[14px]">
                     <div>
                       <p className="text-gray-600 mb-1">Listing Agent</p>
-                      <p className="font-medium">{listing.agentName}</p>
+                      <p className="font-medium">{listing.agentName || <span className="text-gray-400 italic">Not provided</span>}</p>
                     </div>
                     <div>
                       <p className="text-gray-600 mb-1">Brokerage</p>
-                      <p className="font-medium">{listing.brokerage}</p>
+                      <p className="font-medium">{listing.brokerage || <span className="text-gray-400 italic">Not provided</span>}</p>
                     </div>
                     <div>
                       <p className="text-gray-600 mb-1">Agent Phone</p>
-                      <a 
-                        href={`tel:${listing.agentPhone}`}
-                        className="font-medium text-[#342e37] hover:underline"
-                      >
-                        {listing.agentPhone}
-                      </a>
+                      {listing.agentPhone ? (
+                        <a
+                          href={`tel:${listing.agentPhone}`}
+                          className="font-medium text-[#342e37] dark:text-white hover:underline"
+                        >
+                          {listing.agentPhone}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 italic">Not provided</span>
+                      )}
                     </div>
                     <div>
                       <p className="text-gray-600 mb-1">Agent Email</p>
-                      <a 
-                        href={`mailto:${listing.agentEmail}`}
-                        className="font-medium text-[#342e37] hover:underline"
-                      >
-                        {listing.agentEmail}
-                      </a>
+                      {listing.agentEmail ? (
+                        <a
+                          href={`mailto:${listing.agentEmail}`}
+                          className="font-medium text-[#342e37] dark:text-white hover:underline"
+                        >
+                          {listing.agentEmail}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 italic">Not provided</span>
+                      )}
                     </div>
                   </div>
                 </div>
