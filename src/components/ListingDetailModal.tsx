@@ -707,7 +707,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   const hasPhoto = listing.photos && listing.photos.length > 0 && listing.photos[0];
                   const hasLatLng = listing.latitude && listing.longitude;
                   const streetViewUrl = hasLatLng
-                    ? `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=AIzaSyD-placeholder`
+                    ? `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`
                     : null;
                   const photoSrc = hasPhoto ? listing.photos[0] : null;
 
@@ -733,7 +733,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                       ) : hasLatLng ? (
                         <div className="w-full h-64 bg-gray-100 flex items-center justify-center relative overflow-hidden">
                           <img
-                            src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=AIzaSyD-placeholder`}
+                            src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`}
                             alt={`Street view of ${listing.address}`}
                             className="w-full h-64 object-cover"
                             onError={(e) => {
