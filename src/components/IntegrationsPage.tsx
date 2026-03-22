@@ -79,7 +79,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [connectionModalIntegration, setConnectionModalIntegration] = useState<string | null>(null);
   
   // Collapsible section states
-  const [availableExpanded, setAvailableExpanded] = useState(false);
+  const [availableExpanded, setAvailableExpanded] = useState(true);
   const [futureExpanded, setFutureExpanded] = useState(false);
   
   // Quick action states

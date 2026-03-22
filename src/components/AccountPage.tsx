@@ -194,7 +194,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#FFCE0A] data-[state=active]:text-[#342e37] dark:data-[state=active]:text-white data-[state=active]:bg-transparent px-3 sm:px-6 md:px-8 py-2.5 text-[14px] md:text-[15px] flex flex-col items-center gap-1 flex-1 min-w-0 dark:text-[#EBF2FA]"
             >
               <Plug className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-              <span className="truncate w-full text-center font-bold">API & Integrations</span>
+              <span className="truncate w-full text-center font-bold">API</span>
             </TabsTrigger>
           </TabsList>
 

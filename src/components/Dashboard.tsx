@@ -324,7 +324,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                   <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.activeAutomations}</div>
-                <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center truncate w-full max-w-[4rem] md:max-w-none">Active Auto...</div>
+                <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center w-full max-w-[4rem] md:max-w-none">Active<br />Automations</div>
               </CardContent>
             </Card>
           </div>
@@ -433,7 +433,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 ))}
               </div>
               {savedListings.length > 4 && (
-                <button onClick={() => { sessionStorage.setItem('listingbug_open_saved_tab', 'true'); onNavigate?.('search-listings'); }} className="mt-3 text-sm font-medium text-[#342e37] dark:text-white hover:underline flex items-center gap-1">
+                <button onClick={() => { sessionStorage.setItem('listingbug_open_saved_tab', 'listings'); onNavigate?.('search-listings'); }} className="mt-3 text-sm font-medium text-[#342e37] dark:text-white hover:underline flex items-center gap-1">
                   View all {savedListings.length} saved listings <ArrowRight className="w-4 h-4" />
                 </button>
               )}

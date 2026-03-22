@@ -220,6 +220,16 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, [isMenuOpen, isAccountMenuOpen]);
 
+  // Lock page scroll when either nav menu is open
+  useEffect(() => {
+    if (isMenuOpen || isAccountMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isMenuOpen, isAccountMenuOpen]);
+
   // Keyboard navigation: Close menus on Escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -457,7 +467,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 className="flex items-center hover:opacity-80 transition-opacity"
               >
                 <ImageWithFallback 
-                  src={isLoggedIn ? headerLogoSimplified : headerLogoWhite} 
+                  src={headerLogoWhite} 
                   alt="ListingBug" 
                   className={isLoggedIn ? "h-10 w-10 object-contain" : "h-12 w-auto object-contain"}
                 />

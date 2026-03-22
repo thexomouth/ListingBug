@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { LBButton } from './design-system/LBButton';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
 import { LBCard, LBCardHeader, LBCardTitle, LBCardDescription, LBCardContent } from './design-system/LBCard';
@@ -31,16 +32,29 @@ export function SavedListingsPage() {
     { id: 'actions', label: 'Actions', visible: true, required: true },
   ]);
 
-  // Load saved listings from localStorage
+  // Load saved listings from Supabase (with localStorage fallback)
   useEffect(() => {
-    const stored = localStorage.getItem('listingbug_saved_listings');
-    if (stored) {
-      try {
-        setSavedListings(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to parse saved listings:', e);
+    const loadListings = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('saved_listings')
+          .select('listing_data_json, saved_at')
+          .eq('user_id', user.id)
+          .order('saved_at', { ascending: false });
+        if (data && data.length > 0) {
+          const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
+          setSavedListings(listings);
+          localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
+          return;
+        }
       }
-    }
+      const stored = localStorage.getItem('listingbug_saved_listings');
+      if (stored) {
+        try { setSavedListings(JSON.parse(stored)); } catch (e) {}
+      }
+    };
+    loadListings();
   }, []);
 
   // Save to localStorage whenever changed and dispatch event to update dashboard

@@ -186,6 +186,12 @@ const US_STATES = [
 
 export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResults }: SearchListingsProps = {}) {
   const [activeTab, setActiveTab] = useState<'search' | 'saved' | 'listings' | 'history'>('search');
+
+  // Reset scroll lock on tab change — prevents blackout on mobile
+  useEffect(() => {
+    document.body.style.overflow = 'unset';
+    document.documentElement.style.overflow = '';
+  }, [activeTab]);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [selectedReportType, setSelectedReportType] = useState<'valuation' | 'property-history' | null>(null);
   
@@ -1409,7 +1415,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   placeholder="90001"
                   error={fieldErrors.zip}
                 />
-                <p className="text-xs text-gray-400 mt-1">* Required for search</p>
                 <LBInput
                   label="Search Radius (mi)"
                   value={criteria.radius}
@@ -1655,6 +1660,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                 <p className="text-[11px] text-gray-500 text-center">
                   {listingsSynced.toLocaleString()} / {listingsCap.toLocaleString()} listings. {resetLabel}
                 </p>
+                <div className="pb-[50px]" />
                 {isCappedAtMax && (
                   <p className="text-[11px] text-amber-700 dark:text-amber-300 text-center mt-1">
                     Showing up to 500 listings
@@ -2594,7 +2600,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   >
                     <step.icon className="w-6 h-6 text-[#342E37]" />
                   </motion.div>
-                  <div className="flex-1">\n                    <p className="text-[14px] font-medium text-gray-900">{step.label}</p>
+                  <div className="flex-1">
+                    <p className="text-[14px] font-medium text-gray-900">{step.label}</p>
                   </div>
                   <motion.div
                     initial={{ scale: 0 }}
