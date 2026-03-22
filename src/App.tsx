@@ -52,6 +52,7 @@ const IntegrationsPage = lazy(() => import("./components/IntegrationsPage").then
 const IntegrationsMarketingPage = lazy(() => import("./components/IntegrationsMarketingPage").then(m => ({ default: m.IntegrationsMarketingPage })));
 const AutomationDetailPage = lazy(() => import("./components/AutomationDetailPage").then(m => ({ default: m.AutomationDetailPage })));
 const SampleReportPage = lazy(() => import("./components/SampleReportPage").then(m => ({ default: m.SampleReportPage })));
+const SearchResultsPage = lazy(() => import("./components/SearchResultsPage").then(m => ({ default: m.SearchResultsPage })));
 
 type Page =
   | "home"
@@ -69,6 +70,7 @@ type Page =
   | "quick-start-guide"
   | "dashboard"
   | "search-listings"
+  | "search-results"
   | "automations"
   | "automation-detail"
   | "saved-listings"
@@ -109,6 +111,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "quick-start-guide": "/quick-start",
   "dashboard": "/dashboard",
   "search-listings": "/listings",
+  "search-results": "/listings/results",
   "automations": "/automations",
   "automation-detail": "/automations/detail",
   "saved-listings": "/saved",
@@ -138,10 +141,9 @@ const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
 );
 
 function pathToPage(pathname: string): Page {
-  // Exact match first
   if (PATH_TO_PAGE[pathname]) return PATH_TO_PAGE[pathname];
-  // Prefix match for dynamic segments
   if (pathname.startsWith('/automations/')) return 'automation-detail';
+  if (pathname.startsWith('/listings/')) return 'search-results';
   if (pathname.startsWith('/account')) return 'account';
   return 'home';
 }
@@ -167,6 +169,9 @@ export default function App() {
 
   // Automations page initial tab state
   const [automationsInitialTab, setAutomationsInitialTab] = useState<'create' | 'automations' | 'history'>('create');
+
+  // Search results page state (from history)
+  const [selectedSearchRun, setSelectedSearchRun] = useState<any | null>(null);
 
   // Sample report page state
   const [sampleReportZipcode, setSampleReportZipcode] = useState('');
@@ -209,7 +214,6 @@ export default function App() {
     localStorage.setItem('listingbug_theme', newDarkMode ? 'dark' : 'light');
   };
 
-  // Main content ready timer
   useEffect(() => {
     const timer = setTimeout(() => setIsMainContentReady(true), 50);
     return () => clearTimeout(timer);
@@ -220,7 +224,6 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setIsLoggedIn(true);
-        // Only redirect to dashboard if on an auth page
         const authPages = ['/login', '/signup', '/'];
         if (authPages.includes(location.pathname) || location.pathname === '/') {
           navigateWithLoading('dashboard');
@@ -231,7 +234,6 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsLoggedIn(true);
-        // On sign in event, go to dashboard if on public page
         const publicPages = ['/login', '/signup', '/forgot-password'];
         if (publicPages.includes(location.pathname)) {
           navigateWithLoading('dashboard');
@@ -244,19 +246,15 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // Navigation — updates URL, which drives page rendering
   const navigateWithLoading = (page: Page) => {
     const path = PAGE_TO_PATH[page] || '/';
     setIsPageLoading(true);
     setTimeout(() => {
-      startTransition(() => {
-        navigate(path);
-      });
+      startTransition(() => { navigate(path); });
       setTimeout(() => setIsPageLoading(false), 300);
     }, 100);
   };
@@ -291,6 +289,11 @@ export default function App() {
   const handleBackToAutomations = () => {
     setSelectedAutomation(null);
     navigateWithLoading('automations');
+  };
+
+  const handleViewSearchResults = (searchRun: any) => {
+    setSelectedSearchRun(searchRun);
+    navigateWithLoading('search-results');
   };
 
   const handleOpenReport = (report: any, tab: 'preferences' | 'history' = 'preferences', fromNewReport: boolean = false) => {
@@ -412,7 +415,20 @@ export default function App() {
         );
       case "search-listings":
         return isLoggedIn ? (
-          <SearchListings onAddToMyReports={handleAddToMyReports} onNavigate={handleSmartNavigate} />
+          <SearchListings
+            onAddToMyReports={handleAddToMyReports}
+            onNavigate={handleSmartNavigate}
+            onViewSearchResults={handleViewSearchResults}
+          />
+        ) : (
+          <LoginPage onLogin={handleLogin} />
+        );
+      case "search-results":
+        return isLoggedIn && selectedSearchRun ? (
+          <SearchResultsPage
+            searchRun={selectedSearchRun}
+            onBack={() => navigateWithLoading('search-listings')}
+          />
         ) : (
           <LoginPage onLogin={handleLogin} />
         );
