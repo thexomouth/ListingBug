@@ -87,7 +87,7 @@ export function ChangePlanModal({
     {
       id: 'starter',
       name: 'Starter',
-      price: 49,
+      price: 19,
       interval: 'month',
       features: [
         '4,000 listings/month',
@@ -106,7 +106,7 @@ export function ChangePlanModal({
     {
       id: 'professional',
       name: 'Professional',
-      price: 99,
+      price: 49,
       interval: 'month',
       features: [
         '10,000 listings/month',
@@ -173,21 +173,24 @@ export function ChangePlanModal({
 
   const handleConfirmChange = async () => {
     if (!selectedPlan) return;
-    
     setIsProcessing(true);
-    
-    // TODO: Replace with actual API call
-    // await fetch('/api/billing/change-plan', {
-    //   method: 'POST',
-    //   body: JSON.stringify({ newPlan: selectedPlan })
-    // });
-    
-    setTimeout(() => {
-      onChangePlan(selectedPlan);
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+      const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ plan: selectedPlan }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+      else { throw new Error(data.error || 'Failed to start checkout'); }
+    } catch (err) {
+      console.error(err);
+      alert('Could not start checkout. Please try again.');
       setIsProcessing(false);
-      setShowConfirmation(false);
-      onClose();
-    }, 1500);
+    }
   };
 
   const handleBack = () => {

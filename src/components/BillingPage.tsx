@@ -1,10 +1,12 @@
+import React from 'react';
 import { CreditCard, Download, Receipt, TrendingUp, Calendar, AlertCircle, CheckCircle, Crown, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { Alert, AlertDescription } from './ui/alert';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { ChangePlanModal } from './ChangePlanModal';
 import { CancelSubscriptionModal } from './CancelSubscriptionModal';
 import { toast } from 'react-toastify';
@@ -80,29 +82,50 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
   // };
   // ============================================================================
 
-  // MOCK DATA - Replace with API response
-  const subscription = {
-    plan: 'Professional',                    // DYNAMIC: Billing_Display_PlanName
-    status: 'Active',                        // DYNAMIC: Billing_Display_Status
-    price: 99,                               // DYNAMIC: Billing_Display_Price (monthly)
-    billingCycle: 'Monthly',                 // DYNAMIC: Billing_Display_Cycle
-    nextBillingDate: '2024-12-23',          // DYNAMIC: Billing_Display_NextBilling
-    reportsLimit: 10000,                     // DYNAMIC: Billing_Display_ReportsLimit (listings/month)
-    reportsUsed: 4823,                       // DYNAMIC: Billing_Display_ReportsUsed
-    dataPointsLimit: 100000,                 // DYNAMIC: Billing_Display_DataPointsLimit
-    dataPointsUsed: 45320,                   // DYNAMIC: Billing_Display_DataPointsUsed
-    trialEndsAt: null,                       // DYNAMIC: null if not on trial
-    cancelAtPeriodEnd: false,                // DYNAMIC: true if cancellation scheduled
-    // Projected usage data
-    projectedReports: 9200,                  // DYNAMIC: Billing_Display_ProjectedReports
-    projectedDataPoints: 92500,              // DYNAMIC: Billing_Display_ProjectedDataPoints
-    // Overage data
-    overageReports: 0,                       // DYNAMIC: Billing_Display_OverageReports (negative = within limit)
-    overageDataPoints: 0,                    // DYNAMIC: Billing_Display_OverageDataPoints (negative = within limit)
-    overageRateReports: 0.01,                // DYNAMIC: Billing_Display_OverageRateReports (per listing - $0.01)
-    overageRateDataPoints: 0.0001,           // DYNAMIC: Billing_Display_OverageRateDataPoints (per data point)
-    overageFee: 0,                           // DYNAMIC: Billing_Display_OverageFee (total calculated overage)
-  };
+  const [subscription, setSubscription] = React.useState({
+    plan: 'Starter',
+    status: 'Active',
+    price: 19,
+    billingCycle: 'Monthly',
+    nextBillingDate: '—',
+    reportsLimit: 4000,
+    reportsUsed: 0,
+    dataPointsLimit: 40000,
+    dataPointsUsed: 0,
+    trialEndsAt: null,
+    cancelAtPeriodEnd: false,
+    projectedReports: 0,
+    projectedDataPoints: 0,
+    overageReports: 0,
+    overageDataPoints: 0,
+    overageRateReports: 0.01,
+    overageRateDataPoints: 0.0001,
+    overageFee: 0,
+  });
+
+  React.useEffect(() => {
+    const fetchBillingData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('users')
+        .select('plan, plan_status, trial_ends_at, stripe_subscription_end')
+        .eq('id', user.id).single();
+      if (data) {
+        const planName = data.plan === 'professional' ? 'Professional' : data.plan === 'enterprise' ? 'Enterprise' : 'Starter';
+        const price = data.plan === 'professional' ? 49 : data.plan === 'enterprise' ? 0 : 19;
+        const limit = data.plan === 'professional' ? 10000 : data.plan === 'enterprise' ? 999999 : 4000;
+        const isTrialing = data.plan_status === 'trialing' || !!data.trial_ends_at;
+        setSubscription(prev => ({
+          ...prev,
+          plan: planName, price, reportsLimit: limit,
+          status: isTrialing ? 'Trial' : data.plan_status === 'active' ? 'Active' : data.plan_status || 'Active',
+          trialEndsAt: data.trial_ends_at ?? null,
+          nextBillingDate: data.stripe_subscription_end ? new Date(data.stripe_subscription_end).toLocaleDateString() : '—',
+        }));
+      }
+    };
+    fetchBillingData();
+  }, []);
 
   const paymentMethod = {
     type: 'card',                            // DYNAMIC: Billing_PaymentMethod_Type
@@ -145,22 +168,23 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
   // Frontend: Redirect to Stripe portal
   const handleManageSubscription = async () => {
     setIsLoadingPortal(true);
-    
-    // PRODUCTION: Replace with actual API call
-    // try {
-    //   const response = await fetch('/api/billing/portal', { method: 'POST' });
-    //   const data = await response.json();
-    //   window.location.href = data.portalUrl;
-    // } catch (error) {
-    //   toast.error('Failed to open billing portal. Please try again.');
-    //   console.error('Failed to open billing portal:', error);
-    // }
-    
-    // DEMO: Simulate loading then show toast notification
-    setTimeout(() => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+      const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/stripe-portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ returnUrl: window.location.href }),
+      });
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; }
+      else { toast.info('No billing account found. Please subscribe first.'); }
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not open billing portal. Please try again.');
+    } finally {
       setIsLoadingPortal(false);
-      toast.info('Demo Mode: In production, this would redirect you to the Stripe Customer Portal to manage your payment method, invoices, and subscription.');
-    }, 1000);
+    }
   };
 
   // WORKFLOW: Change plan (upgrade/downgrade)
