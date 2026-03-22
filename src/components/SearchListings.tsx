@@ -764,7 +764,11 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data?.error ?? 'Search failed. Please try again.');
+        if (data?.code === 'TRIAL_EXPIRED' || data?.code === 'SUBSCRIPTION_INACTIVE') {
+          toast.error('Your subscription is inactive. Please upgrade to continue.', { autoClose: 6000 });
+        } else {
+          toast.error(data?.error ?? 'Search failed. Please try again.');
+        }
         setIsLoading(false);
         document.body.style.overflow = 'unset';
         return;
@@ -891,6 +895,22 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     window.URL.revokeObjectURL(url);
     
     toast.success('CSV downloaded successfully');
+
+    // Track CSV export in automation_runs for dashboard count
+    try {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          supabase.from('automation_runs').insert({
+            user_id: user.id,
+            automation_name: 'CSV Export',
+            run_date: new Date().toISOString(),
+            status: 'success',
+            listings_sent: results.length,
+            destination: 'csv',
+          }).catch(() => {});
+        }
+      });
+    } catch {}
   };
 
   const handleViewPrintCSV = () => {

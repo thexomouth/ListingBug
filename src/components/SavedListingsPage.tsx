@@ -103,22 +103,6 @@ export function SavedListingsPage() {
         <p className="text-gray-600 text-[13px] md:text-sm">
           Your saved listings for quick access
         </p>
-        {/* DEBUG TEST BUTTON */}
-        <LBButton 
-          onClick={() => {
-            console.log('TEST BUTTON CLICKED');
-            console.log('savedListings:', savedListings);
-            if (savedListings.length > 0) {
-              console.log('Setting first listing as selected');
-              setSelectedListing(savedListings[0]);
-            }
-          }}
-          className="mt-2"
-          size="sm"
-          variant="outline"
-        >
-          TEST: Click First Listing
-        </LBButton>
       </div>
 
       {/* Content */}

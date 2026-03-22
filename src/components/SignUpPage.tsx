@@ -46,6 +46,13 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
       setError(error.message);
       setIsSubmitting(false);
     } else {
+      // Store browser fingerprint to detect trial abuse
+      try {
+        const fp = [navigator.userAgent, navigator.language, screen.width + 'x' + screen.height, Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.hardwareConcurrency].join('|');
+        const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(fp));
+        const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        await supabase.from('signup_fingerprints').insert({ user_id: data?.user?.id, fingerprint_hash: hash });
+      } catch {}
       toast.success('Account created! Check your email to confirm your account.');
       setIsSubmitting(false);
       setIsVerificationStep(true);

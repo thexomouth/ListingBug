@@ -84,7 +84,7 @@ export function PlanComparisonModal({
     {
       id: 'starter',
       name: 'Starter',
-      price: 49,
+      price: 19,
       billingCycle: 'monthly',
       description: 'For local businesses in one city',
       features: [
