@@ -1443,7 +1443,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
                   </LBButton>
                   {results.length > 0 && (
                     <span className="text-xs text-gray-600 hidden md:inline">
-                      Results: {results.length} listings
+                      Showing {((currentPage-1)*resultsPerPage)+1}–{Math.min(currentPage*resultsPerPage, results.length)} of {results.length} listings
                     </span>
                   )}
                 </div>
@@ -1468,7 +1468,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
           <LBCardHeader className="pb-3">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <LBCardTitle className="text-base md:text-lg">
-                Results: {results.length} listings
+                Showing {((currentPage-1)*resultsPerPage)+1}–{Math.min(currentPage*resultsPerPage, results.length)} of {results.length} listings
               </LBCardTitle>
               <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                 <LBButton 
@@ -2414,7 +2414,7 @@ export function SearchListings({ onAddToMyReports, onNavigate }: SearchListingsP
                 />
               </div>
               <p className="text-center text-[12px] text-gray-600 mt-3">
-                Searching for listings...
+                Searching {criteria.city ? `${criteria.city}${criteria.state ? `, ${criteria.state}` : ""}...` : "listings..."}
               </p>
             </div>
           </div>

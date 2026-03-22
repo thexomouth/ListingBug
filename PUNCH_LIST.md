@@ -7,12 +7,12 @@
 ## 🔴 Critical (Blocking Launch)
 
 - [ ] Stripe billing — Starter $49/mo, Professional $99/mo, checkout edge function, webhook, BillingPage wiring
-- [ ] React Router — back button works, direct URLs functional ✅ DONE
-- [ ] Search working ✅ DONE
-- [ ] Fix SMTP sender/username mismatch (hello@ vs jake@ in Supabase Auth settings) — manual fix in Supabase dashboard
+- [x] React Router — back button works, direct URLs functional
+- [x] Search working
+- [x] Fix SMTP sender/username mismatch (hello@ vs jake@ in Supabase Auth settings) — confirmed fixed by Jack
 - [ ] Email verification landing page (after SMTP confirmed working)
 - [ ] Google OAuth consent screen branding — needs Privacy + Terms URLs + Google verification (unblocked now that /privacy and /terms exist)
-- [ ] Remove debug field from edge function search response before launch
+- [x] Remove debug field from edge function search response before launch — stripped from all error responses, search toast cleaned up
 
 ---
 
@@ -23,14 +23,14 @@
 - [ ] Sample report on homepage — verify 3-day listings actually return data for common ZIP codes
 - [ ] Dashboard "Listings Exported" count should reflect real automation run history not hardcoded 89
 - [ ] Dashboard "Listings Imported" count should reflect real usage_tracking data not hardcoded 147
-- [ ] Account/Usage — projected total still showing false numbers, needs real calculation or stay at 0
+- [x] Account/Usage — fixed column mismatch (was querying listings_processed, DB column is listings_fetched) — usage numbers now real
 - [ ] Account/Billing — billing history section shows sample data, needs real Stripe data (post-Stripe)
 - [ ] Account/Billing — download button on billing history doesn't work
-- [ ] Account/Profile — delete account button needs edge function (delete-user) to be created and deployed
+- [x] Account/Profile — delete account button wired to new delete-user edge function (deployed v1)
 - [ ] Automations/History — verify sample run data is fully removed and empty state shows correctly
 - [ ] Right side nav — notifications still showing sample data for some users (localStorage clear added, verify working)
 - [ ] Integrations page — disconnect button leaves card on screen (fix deployed, verify working)
-- [ ] Search listings — "search failed" toast now shows real error details (good for dev, remove details before launch)
+- [x] Search listings — search failed toast no longer shows raw error details
 
 ---
 
@@ -96,3 +96,8 @@
 - [x] Fake OAuth URLs replaced with honest coming-soon state
 - [x] AccountIntegrationsTab connect button uses shared IntegrationConnectionModal
 - [x] Sample API key and sample Mailchimp connection zeroed out
+- [x] search-listings edge function v12 deployed — error details stripped
+- [x] delete-user edge function v1 deployed — account deletion live
+- [x] AccountPage delete button wired to delete-user edge function
+- [x] emailRedirectTo fixed — email verification links now land on /dashboard
+- [x] UsagePage listings_fetched column fix deployed
