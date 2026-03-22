@@ -2,6 +2,7 @@ import { Menu, User, X, Bell, ChevronLeft, CheckCircle2, AlertCircle, Info, Tras
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import headerLogoFull from 'figma:asset/507fab16b51ccf6be96c685cf4c76a6b2a4bb7b0.png';
 import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
+import headerLogoWhite from 'figma:asset/ac9d14a9fc5e2f8315c311b8dec3220da367a867.png';
 import { useState, useEffect, useRef } from 'react';
 import { LBToggle } from './design-system/LBToggle';
 import { fetchUserNotifications, deleteNotification, markNotificationAsRead } from '../lib/notifications';
@@ -456,7 +457,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 className="flex items-center hover:opacity-80 transition-opacity"
               >
                 <ImageWithFallback 
-                  src={isLoggedIn ? headerLogoSimplified : headerLogoFull} 
+                  src={isLoggedIn ? headerLogoSimplified : headerLogoWhite} 
                   alt="ListingBug" 
                   className={isLoggedIn ? "h-10 w-10 object-contain" : "h-12 w-auto object-contain"}
                 />
@@ -466,7 +467,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
                 aria-label="Close menu"
               >
-                <X className="w-5 h-5 text-[#342e37]" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 

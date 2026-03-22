@@ -147,7 +147,7 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" className="placeholder:text-gray-400" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <Input id="email" type="email" name="email" autoComplete="email" placeholder="you@example.com" className="placeholder:text-gray-400" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>

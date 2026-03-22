@@ -341,10 +341,7 @@ export function ChangePlanModal({
                 <button
                   onClick={handleBack}
                   className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Back
-                </button>
+                ><ChevronLeft className="w-6 h-6" /></button>
                 <div>
                   <h2 className="font-bold text-[#342e37]">Confirm Plan Change</h2>
                   <p className="text-sm text-gray-600 mt-1">

@@ -299,7 +299,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             <Card
               className="cursor-pointer transition-all border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-700 flex-1"
               onClick={() => {
-                sessionStorage.setItem('listingbug_open_saved_tab', 'true');
+                sessionStorage.setItem('listingbug_open_saved_tab', 'listings');
                 onNavigate?.('search-listings');
               }}
             >
