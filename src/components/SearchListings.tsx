@@ -403,6 +403,32 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     loadSavedSearches();
   }, []);
   
+
+  // Load search history from Supabase on mount
+  useEffect(() => {
+    const loadSearchHistory = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('search_runs')
+        .select('id, location, criteria_description, criteria_json, results_count, searched_at')
+        .eq('user_id', user.id)
+        .order('searched_at', { ascending: false })
+        .limit(50);
+      if (data && data.length > 0) {
+        setSearchHistory(data.map((r: any) => ({
+          id: r.id,
+          location: r.location,
+          criteriaDescription: r.criteria_description,
+          criteria: r.criteria_json,
+          resultsCount: r.results_count,
+          searchDate: r.searched_at,
+        })));
+      }
+    };
+    loadSearchHistory();
+  }, []);
+
   // Saved searches state - load from localStorage
   const [savedSearches, setSavedSearches] = useState<any[]>(() => {
     const stored = localStorage.getItem('listingbug_saved_searches');
@@ -804,6 +830,23 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         resultsCount: finalResults.length,
         searchDate: new Date().toISOString(),
       };
+      // Save run to Supabase (stores results for later viewing — no re-fetch needed)
+      const runId = historyEntry.id;
+      try {
+        const { data: { user: runUser } } = await supabase.auth.getUser();
+        if (runUser) {
+          await supabase.from('search_runs').insert({
+            id: runId,
+            user_id: runUser.id,
+            location: historyEntry.location,
+            criteria_description: historyEntry.criteriaDescription,
+            criteria_json: historyEntry.criteria,
+            results_json: finalResults,
+            results_count: finalResults.length,
+            searched_at: historyEntry.searchDate,
+          });
+        }
+      } catch (e) { console.error('Failed to save search run:', e); }
       setSearchHistory(prev => [historyEntry, ...prev.slice(0, 49)]);
 
       setTimeout(() => {

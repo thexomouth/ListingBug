@@ -14,9 +14,9 @@
 
 ## 🟡 Search / Data Accuracy
 
-- [ ] Search — listing detail modal (right-side viewer) — Google Street View fallback needs real API key (free tier, drop into placeholder in ListingDetailModal.tsx)
-- [ ] Search history — make history cards clickable only if they have results. Clicking opens a new "Search Results" page showing search info + full results table + listing viewer modal
-- [ ] Search Results page — new page (no nav entry), accessed from search history. Shows search criteria header + results table. Listing viewer modal on row click
+- [ ] Search — Google Street View fallback needs real API key — drop into ListingDetailModal.tsx where it says AIzaSyD-placeholder
+- [ ] Search history — note: history cards now clickable when resultsCount > 0, opens SearchResultsPage ✅ DONE
+- [ ] Search Results page — new page accessible from history ✅ DONE — verify listing viewer modal opens correctly on row click
 
 ---
 
@@ -36,7 +36,6 @@
 - [ ] Automations/History — verify empty state shows correctly, no sample run data
 - [ ] Right side nav — notifications still showing sample data for some users (verify localStorage clear working)
 - [ ] Integrations page — disconnect button verify fix working
-- [ ] Automation creation — consider removing field mapping step
 
 ---
 
@@ -107,14 +106,18 @@
 - [x] Autofill background fix — correct colors in light and dark mode
 - [x] Input component autofill shadow override added
 - [x] Search defaults prefilled — Single Family, Active, 1 day listed
-- [x] Search validation relaxed — accepts address, lat/lng+radius, or zip alone; contextual error messages
+- [x] Search validation relaxed — accepts address, lat/lng+radius, or zip alone
 - [x] Password placeholder special char fix (iOS Safari)
 - [x] Right side nav "API & Integrations" renamed to "API"
-- [x] Agent field mapping fixed — RentCast nested l.agent.name/phone/email now correctly read
-- [x] Listing modal photo — no fake Unsplash fallback; hidden if no photo; Street View option ready (needs API key)
-- [x] Listing modal agent section — "Not provided" fallbacks, no empty tel:/mailto: links, MLS shows "—"
-- [x] Usage meter — loads real value from Supabase on mount, updates from edge function response after each search
-- [x] Cross-device sync — saved listings write to Supabase on save, load from Supabase on mount in both SearchListings and Dashboard
-- [x] Dashboard saved listings section — real RentCast photos, no fake Unsplash, proper empty state
-- [x] Dashboard integrations section — permanent zero state, no hardcoded Mailchimp/Google Sheets
+- [x] Agent field mapping fixed — RentCast nested l.agent.name/phone/email correctly read
+- [x] Listing modal photo — no fake Unsplash fallback, Street View option ready (needs API key)
+- [x] Listing modal agent section — "Not provided" fallbacks, no empty tel:/mailto: links
+- [x] Usage meter — loads real value from Supabase on mount, updates from edge function after search
+- [x] Cross-device sync — saved listings + searches write to Supabase, load from Supabase on mount
+- [x] Dashboard saved listings — real RentCast photos, proper empty state
+- [x] Dashboard integrations section — permanent zero state
 - [x] SMTP sender/username mismatch confirmed fixed by Jack
+- [x] SearchResultsPage created — new page accessed from search history
+- [x] Search history cards clickable when resultsCount > 0, navigates to SearchResultsPage
+- [x] search-results route added to App.tsx
+- [x] Automation wizard field mapping step removed — goes 1→3→4 directly
