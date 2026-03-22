@@ -94,6 +94,30 @@ function pathToPage(pathname: string): Page {
   return 'home';
 }
 
+// Inline — no separate import to avoid TDZ crash
+function SubscriptionGate({ planStatus, trialEndsAt, onUpgrade }: { planStatus: string; trialEndsAt: string | null; onUpgrade: () => void }) {
+  const isExpired = planStatus === 'canceled' || planStatus === 'incomplete_expired';
+  const isPastDue = planStatus === 'past_due' || planStatus === 'unpaid';
+  const isTrialExpired = planStatus === 'trialing' && !!trialEndsAt && new Date(trialEndsAt) < new Date();
+  if (!isExpired && !isPastDue && !isTrialExpired) return null;
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ background: 'white', borderRadius: '12px', maxWidth: '420px', width: '100%', padding: '2rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>👑</div>
+        <h2 style={{ color: '#342E37', marginBottom: '0.5rem', fontSize: '1.4rem', fontWeight: 700 }}>
+          {isPastDue ? 'Payment issue' : 'Your subscription has ended'}
+        </h2>
+        <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          {isPastDue ? "We couldn't process your last payment. Update your billing to stay active." : 'Upgrade to keep searching listings and running automations.'}
+        </p>
+        <button onClick={onUpgrade} style={{ background: '#FFD447', color: '#342E37', border: 'none', borderRadius: '8px', padding: '0.75rem 2rem', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', width: '100%' }}>
+          {isPastDue ? 'Update Billing' : 'Choose a Plan — from $19/mo'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -104,6 +128,8 @@ export default function App() {
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [isMainContentReady, setIsMainContentReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [planStatus, setPlanStatus] = useState<string>('active');
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
 
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -156,13 +182,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         setIsLoggedIn(true);
         const authPages = ['/login', '/signup', '/'];
         if (authPages.includes(location.pathname) || location.pathname === '/') {
           navigateWithLoading('dashboard');
         }
+        const { data } = await supabase.from('users').select('plan_status, trial_ends_at').eq('id', session.user.id).single();
+        if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); }
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -312,6 +340,7 @@ export default function App() {
           <PageLoader isLoading={isPageLoading} />
           {isAuthPage && <LoginHeader onNavigateToHome={() => navigate('/')} onNavigateToHelp={() => navigateWithLoading('help-center')} />}
           {!isMinimalPage && <Header currentPage={currentPage} isLoggedIn={isLoggedIn} onNavigate={navigateWithLoading} onSignOut={handleLogout} onAccountTabChange={setAccountDefaultTab} onToggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
+          {isLoggedIn && <SubscriptionGate planStatus={planStatus} trialEndsAt={trialEndsAt} onUpgrade={() => { setCurrentPage('account'); setAccountDefaultTab('billing'); }} />}
           <main className={`flex-1 bg-white dark:bg-[#0f0f0f] ${isMainContentReady ? 'loaded' : 'loading'}`}>
             <Suspense fallback={<PageLoader isLoading={true} />}>
               {isMainContentReady ? renderPage() : <PageLoader isLoading={true} />}
