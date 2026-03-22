@@ -165,7 +165,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
       </div>
 
       {/* Tabs Navigation */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent mb-4 gap-2 sm:gap-4 md:gap-6">
             <TabsTrigger 

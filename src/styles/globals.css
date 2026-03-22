@@ -289,6 +289,14 @@ html {
   font-family: var(--font-family);
 }
 
+/* Gray placeholder text site-wide */
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
 /* Hide scrollbar for horizontal scroll areas */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */
