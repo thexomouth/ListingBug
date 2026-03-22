@@ -702,14 +702,50 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
               </div>
             ) : (
               <div className="px-3 md:px-6 py-6 space-y-6">
-                {/* Property Photo - Always show with fallback */}
-                <div className="rounded-lg overflow-hidden">
-                  <ImageWithFallback 
-                    src={listing.photos && listing.photos[0] ? listing.photos[0] : 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBob3VzZSUyMGV4dGVyaW9yfGVufDF8fHx8MTc2NDEwMzA0N3ww&ixlib=rb-4.1.0&q=80&w=1080'} 
-                    alt={listing.address}
-                    className="w-full h-64 object-cover"
-                  />
-                </div>
+                {/* Property Photo - Only show if we have a real photo or can generate Street View */}
+                {(() => {
+                  const hasPhoto = listing.photos && listing.photos.length > 0 && listing.photos[0];
+                  const hasLatLng = listing.latitude && listing.longitude;
+                  const streetViewUrl = hasLatLng
+                    ? `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=AIzaSyD-placeholder`
+                    : null;
+                  const photoSrc = hasPhoto ? listing.photos[0] : null;
+
+                  if (!photoSrc && !hasLatLng) return null;
+
+                  return (
+                    <div className="rounded-lg overflow-hidden">
+                      {photoSrc ? (
+                        <img
+                          src={photoSrc}
+                          alt={listing.address}
+                          className="w-full h-64 object-cover"
+                          onError={(e) => {
+                            // If RentCast photo fails to load, try Street View or hide
+                            const target = e.currentTarget;
+                            if (hasLatLng && streetViewUrl) {
+                              target.src = streetViewUrl;
+                            } else {
+                              target.parentElement!.style.display = 'none';
+                            }
+                          }}
+                        />
+                      ) : hasLatLng ? (
+                        <div className="w-full h-64 bg-gray-100 flex items-center justify-center relative overflow-hidden">
+                          <img
+                            src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=AIzaSyD-placeholder`}
+                            alt={`Street view of ${listing.address}`}
+                            className="w-full h-64 object-cover"
+                            onError={(e) => {
+                              e.currentTarget.parentElement!.style.display = 'none';
+                            }}
+                          />
+                          <span className="absolute bottom-2 right-2 text-[10px] bg-black/50 text-white px-1.5 py-0.5 rounded">Street View</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
 
                 {/* Description - Moved to top */}
                 {listing.description && (
