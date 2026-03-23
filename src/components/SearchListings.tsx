@@ -580,7 +580,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     latitude: '',
     longitude: '',
     radius: '',
-    propertyType: 'Single Family',
+    propertyType: 'All Types',
     status: 'Active',
     beds: '',
     baths: '',
@@ -588,7 +588,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     maxPrice: '',
     pricePerSqFt: '',
     yearBuilt: '',
-    daysOld: '1',
+    daysOld: '',
     reListedProperty: false,
     priceDrop: false,
     newConstruction: false,
@@ -763,7 +763,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       if (criteria.state) body.state = criteria.state;
       if (criteria.zip) body.zipCode = criteria.zip;
       if (criteria.address) body.address = criteria.address;
-      if (criteria.propertyType) body.propertyType = criteria.propertyType;
+      // Only send propertyType if user explicitly chose something other than the broad default
+      if (criteria.propertyType && criteria.propertyType !== 'All Types') body.propertyType = criteria.propertyType;
       if (criteria.beds) body.bedrooms = criteria.beds;
       if (criteria.baths) body.bathrooms = criteria.baths;
       if (criteria.minPrice) body.minPrice = Number(criteria.minPrice);
@@ -771,6 +772,12 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       if (criteria.radius) body.radius = Number(criteria.radius);
       if (criteria.latitude) body.latitude = Number(criteria.latitude);
       if (criteria.longitude) body.longitude = Number(criteria.longitude);
+      // Forward daysOld filter — RentCast uses this to filter by listing recency
+      if (criteria.daysOld && criteria.daysOld !== '' && criteria.daysOld !== '0') body.daysOld = Number(criteria.daysOld);
+      // Forward any additional active filters that map to RentCast params
+      if (activeFilters.includes('squareFootage') && criteria.squareFootage) body.squareFootage = criteria.squareFootage;
+      if (activeFilters.includes('lotSize') && criteria.lotSize) body.lotSize = criteria.lotSize;
+      if (activeFilters.includes('yearBuilt') && criteria.yearBuilt) body.yearBuilt = criteria.yearBuilt;
 
       console.log('[handleSearch] posting to edge function, body:', JSON.stringify(body));
 
