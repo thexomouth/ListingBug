@@ -125,7 +125,7 @@ export function ChangePlanModal({
     },
   ];
 
-  const currentPlanData = plans.find(p => p.id === currentPlan.toLowerCase());
+  const currentPlanData = plans.find(p => p.id === currentPlan.toLowerCase() || (currentPlan.toLowerCase() === 'trial' && p.id === 'starter'));
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   const isUpgrade = selectedPlanData && currentPlanData && selectedPlanData.price > currentPlanData.price;
@@ -213,7 +213,7 @@ export function ChangePlanModal({
             <div className="p-6">
               <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                 {plans.map((plan) => {
-                  const isCurrent = plan.id === currentPlan.toLowerCase();
+                  const isCurrent = plan.id === currentPlan.toLowerCase() && currentPlan.toLowerCase() !== 'trial';
                   const isSelected = plan.id === selectedPlan;
 
                   return (

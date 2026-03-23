@@ -293,10 +293,9 @@ export function CancelSubscriptionModal({
                 <AlertDescription>
                   <p className="font-medium mb-1">Before you cancel, here's what you'll lose:</p>
                   <ul className="list-disc list-inside text-sm space-y-1 mt-2">
-                    <li>Access to all your saved searches</li>
-                    <li>Automated search scheduling</li>
-                    <li>Historical data and analytics</li>
-                    <li>CRM and email integrations</li>
+                    <li>Access to search</li>
+                    <li>All automated imports and exports</li>
+                    <li>Email delivery and integrations</li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -304,8 +303,8 @@ export function CancelSubscriptionModal({
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h3 className="font-medium text-[#342e37] mb-2">Your Current Plan</h3>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-700">{currentPlan} Plan</span>
-                  <span className="font-bold text-[#342e37]">Active until Dec 15, 2024</span>
+                  <span className="text-gray-700">{currentPlan === 'Trial' ? 'Trial' : `${currentPlan} Plan`}</span>
+                  <span className="font-bold text-[#342e37]">{currentPlan === 'Trial' ? 'Active (Free)' : 'Active until Dec 15, 2024'}</span>
                 </div>
               </div>
 

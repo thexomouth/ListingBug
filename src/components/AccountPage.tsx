@@ -28,9 +28,12 @@ interface AccountPageProps {
 }
 
 export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = false, onToggleDarkMode, onNavigate }: AccountPageProps) {
-  const [name, setName] = useState('Sarah Martinez');
-  const [email, setEmail] = useState('sarah.martinez@realestatepros.com');
-  const [company, setCompany] = useState('Martinez Realty Group');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [company, setCompany] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   // Controlled tab state
   const [activeTab, setActiveTab] = useState<'profile' | 'usage' | 'billing' | 'integrations' | 'compliance'>(defaultTab);
@@ -54,8 +57,40 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = () => {
+    if (!name.trim() || !email.trim() || !company.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
     toast.success('Account settings saved');
   };
+
+  const handleUpdatePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Please fill in all password fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters');
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success('Password updated successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update password');
+    }
+  };
+
+  const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
+  const isProfileFormValid = name.trim() && email.trim() && company.trim();
 
   const handleDeleteAccount = async () => {
     setShowDeleteConfirm(false);
@@ -211,8 +246,10 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                     <Label htmlFor="name">Full Name</Label>
                     <Input
                       id="name"
+                      placeholder="Enter your full name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      className="placeholder:text-gray-400"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -220,19 +257,23 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                     <Input
                       id="email"
                       type="email"
+                      placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      className="placeholder:text-gray-400"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="company">Company</Label>
                     <Input
                       id="company"
+                      placeholder="Enter your company"
                       value={company}
                       onChange={(e) => setCompany(e.target.value)}
+                      className="placeholder:text-gray-400"
                     />
                   </div>
-                  <Button onClick={handleSave} className="mt-1">Save Changes</Button>
+                  <Button onClick={handleSave} disabled={!isProfileFormValid} className="mt-1">Save Changes</Button>
                 </CardContent>
               </Card>
 
@@ -244,17 +285,41 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="current-password">Current Password</Label>
-                    <Input id="current-password" type="password" />
+                    <Input 
+                      id="current-password" 
+                      type="password"
+                      placeholder="Enter current password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="placeholder:text-gray-400"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="new-password">New Password</Label>
-                    <Input id="new-password" type="password" />
+                    <Input 
+                      id="new-password" 
+                      type="password"
+                      placeholder="Enter new password (min. 8 characters)"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="placeholder:text-gray-400"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="confirm-password">Confirm New Password</Label>
-                    <Input id="confirm-password" type="password" />
+                    <Input 
+                      id="confirm-password" 
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="placeholder:text-gray-400"
+                    />
                   </div>
-                  <Button className="mt-1">Update Password</Button>
+                  {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-sm text-red-500">Passwords do not match</p>
+                  )}
+                  <Button onClick={handleUpdatePassword} disabled={!isPasswordFormValid} className="mt-1">Update Password</Button>
                 </CardContent>
               </Card>
 
