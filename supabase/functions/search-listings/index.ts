@@ -141,7 +141,8 @@ serve(async (req) => {
     });
 
     if (!rentcastRes.ok) {
-      return new Response(JSON.stringify({ error: "Search failed. Please try again." }), { status: rentcastRes.status, headers: corsHeaders });
+      const errorText = await rentcastRes.text();
+      return new Response(JSON.stringify({ error: `Rentcast API error: ${errorText}` }), { status: rentcastRes.status, headers: corsHeaders });
     }
 
     const listings = await rentcastRes.json();
@@ -195,6 +196,6 @@ serve(async (req) => {
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), { status: 500, headers: corsHeaders });
   }
 });
