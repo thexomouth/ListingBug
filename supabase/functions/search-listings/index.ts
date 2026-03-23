@@ -7,7 +7,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const PLAN_LIMITS: Record<string, number> = {
-  trial: 500,
+  trial: 4000,
   starter: 4000,
   professional: 10000,
   enterprise: 999999,
@@ -186,11 +186,23 @@ serve(async (req) => {
 
     if (!isPreview && supabase && user) {
       const monthYear = new Date().toISOString().slice(0, 7);
+      const newTotal = currentUsage + listingArray.length;
+
+      const { data: existingUsage } = await supabase
+        .from("usage_tracking")
+        .select("searches_run")
+        .eq("user_id", user.id)
+        .eq("month_year", monthYear)
+        .single();
+
+      const newSearchCount = (existingUsage?.searches_run ?? 0) + 1;
+
       await supabase.from("usage_tracking").upsert({
         user_id: user.id,
         month_year: monthYear,
-        listings_fetched: currentUsage + listingArray.length,
-        searches_run: 1,
+        listings_fetched: newTotal,
+        searches_run: newSearchCount,
+        updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,month_year", ignoreDuplicates: false }).catch(() => {});
     }
 

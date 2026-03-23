@@ -2,16 +2,37 @@
 **Last updated:** March 22, 2026
 **How to use:** Jack adds items anytime. Claude reads this at the start of every session.
 
+## notes & considerations for jake (human developer)
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+
+
 ---
 
-## 🔴 Critical (Human Action Required)
+## 🔴 Critical 
+
+- [ ] on listings/search, move input field 'state' up to the same row as city to display from left to right 'city then state' for mobile and desktop
+- [ ] on listings/search, make the toggles appear on one row instead of two rowss by two columns.
+- [ ] on listings/search, remove 'new construction' and 'foreclosure status' from the additional filter dropdown
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
 
 - [x] **Email verification** — Supabase → Auth → Email → Enable email confirmations. Code ready. this is working but we need to circle back later to write more thorough and specific, custom emails
 - [ ] **Google OAuth consent screen** — submit at console.cloud.google.com. /privacy and /terms live.
-- [ ] **Stripe checkout** — verify working end-to-end on test account. Was failing with "Could not start checkout." STRIPE_SECRET_KEY should be set in Supabase → Edge Functions → Secrets. exists in supa - still failing
+- [ ] **Stripe checkout** — verify working end-to-end on test account. Was failing with "Could not start checkout." STRIPE_SECRET_KEY is set in Supabase → Edge Functions → Secrets. exists in supa - still failing
 - [ ] the usage stats on dashboard do not match usage stats in account/usage or listings/search. there was logic to use local storage when the search resulting in the 500 was run and that's been changed to use supa... but i'm wanting you to investigate why they don't match now and if they will match as it's written for other new accounts that search for listings
-- [ ] the search form simplification is not complete
-- [x] the search function in listings/search is not working returning toast error: 'Internal server error' please diagnose and fix — FIXED: Updated edge function to properly verify user token with user-scoped Supabase client
+- [ ] the listings/search form simplification is not complete. i want to remove input fields lat, long, search radius, bedroom, bathroom, and price per square foot from the static input fields and add them to the 'additional filters' dropdown to be selected and added to that section
+- [] the search function in listings/search is not working returning toast error: 'Internal server error' please diagnose and fix 
 - [x] there is sample data in the account/profile page in the profile information section. introduce standard placeholders with grey color until input is given, then text color is white — FIXED: Added placeholder text from database, read-only email field, profile data loads/persists
 - [ ] in account/usage theree's a section with 'Projected End-of-Month Usage' which is also not up to date with accurate usage. this could be due to the known previous issue with using localstorage rather than supa which has been changed. investigate and determine if the usage will be tracked as is going forward or if this needs fixing bc the dashboard reflects usage but this doesn't. it's a calculation as well so be sure logic is written that enables it to work
 - [ ] stripe checkout fails to initialize when upgrading from starter to pro "Could not start checkout. Please try again."
@@ -129,7 +150,7 @@ Request an Integration"
 - [ ] **Search history zero state** — verify empty state message updated - not complete still showing black screen
 - [x] **Automation history zero state** — verify green background removed, yes but you put a white background and i want a black background on the table with white and grey text and icon
 - [ ] **Create Automation: Manual sync** — verify removed from frequency options - no, not done
-- [ ] **Create Automation: Field Mappings** — this is not done
+- [ ] **Create Automation: Field Mappings** — when a destination is chosen, a section called field mapping comes up. looks awful and complicates everything. remove the section entirely. create a note that after creating integrations, we need to also create intentional field mappings for each integration. later we can try to implement customer user field mappings. let me know if it will be absolutely necessary and create a note for consideration to revisit. this is not done
 - [ ] trying to upgrade my account in Confirm plan change' from starter to pro does not launch stripe it says "Could not start checkout. Please try again."
 ---
 

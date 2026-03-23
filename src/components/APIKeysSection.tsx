@@ -49,8 +49,8 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
   useEffect(() => {
     const loadApiKeys = async () => {
       setLoadingKeys(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userId = currentUser?.id;
       if (!userId) {
         setApiKeys([]);
         setLoadingKeys(false);
@@ -104,8 +104,8 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
     }
 
     const fullKey = generateRandomKey();
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const userId = currentUser?.id;
 
     if (!userId) {
       toast.error('Unable to generate API key: not signed in');
