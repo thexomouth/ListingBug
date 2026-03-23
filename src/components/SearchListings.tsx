@@ -7,6 +7,7 @@ import { LBInput } from './design-system/LBInput';
 import { LBSelect } from './design-system/LBSelect';
 import { LBButton } from './design-system/LBButton';
 import { LBToggle } from './design-system/LBToggle';
+import { CityAutocomplete } from './CityAutocomplete';
 import { Download, Plus, X, MapPin, DollarSign, Home, Eye, Save, Search, Filter, Sliders, ArrowUpDown, ArrowUp, ArrowDown, Check, Calendar, Clock, Loader2, FileText, Database, CheckCircle, Zap, Edit2, Trash2, Play, TrendingUp, History, BarChart3, Share2, ExternalLink } from 'lucide-react';
 import {
   DropdownMenu,
@@ -704,17 +705,17 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
 
     // Need at least one locating anchor
     if (!hasAddress && !hasCity && !hasZip && !hasLatLng) {
-      errors.general = 'Search too vague — try adding a city, ZIP code, address, or lat/lng coordinates';
+      errors.general = 'Please select a city from the dropdown, or enter a ZIP code or address';
     }
 
     // Lat/lng without radius is ambiguous
     if (hasLatLng && !hasRadius && !hasCity && !hasZip && !hasAddress) {
-      errors.general = 'Search too vague — add a radius (miles) when searching by coordinates';
+      errors.general = 'Add a radius (miles) when searching by coordinates';
     }
 
-    // City without state is ambiguous
+    // City must have been selected from dropdown (will have state auto-filled)
     if (hasCity && !criteria.state) {
-      errors.state = 'Please select a state when searching by city';
+      errors.state = 'Please select a city from the dropdown list';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -1468,31 +1469,17 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                 <MapPin className="w-4 h-4 text-primary" />
                 <h3 className="text-[24px] font-bold">Location</h3>
               </div>
-              
-              {/* City - First Row */}
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mb-2">
-                <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
-                  label="City"
-                  required
+
+              {/* City + State — single autocomplete, state auto-fills from selection */}
+              <div className="mb-2">
+                <CityAutocomplete
                   value={criteria.city}
-                  onChange={(e) => updateCriteria('city', e.target.value)}
+                  stateValue={criteria.state}
+                  onSelect={(city, state) => {
+                    updateCriteria('city', city);
+                    updateCriteria('state', state);
+                  }}
                   onBlur={() => setLocationFieldBlurred(true)}
-                  placeholder="Los Angeles"
-                  ref={cityInputRef}
-                  error={fieldErrors.city}
-                />
-              </div>
-              
-              {/* State - Second Row */}
-              <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
-                <LBSelect
-                  label="State"
-                  required
-                  value={criteria.state}
-                  onChange={(value) => updateCriteria('state', value)}
-                  onBlur={() => setLocationFieldBlurred(true)}
-                  options={US_STATES}
-                  placeholder="Select state"
                   error={fieldErrors.state}
                 />
               </div>
