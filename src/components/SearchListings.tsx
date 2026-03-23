@@ -856,7 +856,9 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
             searched_at: historyEntry.searchDate,
           });
         }
-      } catch (e) { console.error('Failed to save search run:', e); }
+      } catch (e: any) { 
+        console.error('Failed to save search run:', e.message || e);
+      }
       setSearchHistory(prev => [historyEntry, ...prev.slice(0, 49)]);
 
       setTimeout(() => {

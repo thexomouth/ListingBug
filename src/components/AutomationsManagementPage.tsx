@@ -783,49 +783,51 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
 
             {/* Desktop Table View */}
             <div className="hidden lg:block">
-              <LBTable>
-                <LBTableHeader>
-                  <LBTableRow>
-                    <LBTableHead>Date & Time</LBTableHead>
-                    <LBTableHead>Automation</LBTableHead>
-                    <LBTableHead>Destination</LBTableHead>
-                    <LBTableHead>Status</LBTableHead>
-                    <LBTableHead className="text-right">Listings Sent</LBTableHead>
-                    <LBTableHead>Details</LBTableHead>
-                  </LBTableRow>
-                </LBTableHeader>
-                <LBTableBody>
-                  {runHistory.map((run) => (
-                    <LBTableRow key={run.id}>
-                      <LBTableCell className="font-medium">
-                        {new Date(run.runDate).toLocaleString()}
-                      </LBTableCell>
-                      <LBTableCell>{run.automationName}</LBTableCell>
-                      <LBTableCell>{run.destination}</LBTableCell>
-                      <LBTableCell>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
-                          run.status === 'success'
-                            ? ' text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {run.status === 'success' ? (
-                            <CheckCircle className="w-3 h-3" />
-                          ) : (
-                            <XCircle className="w-3 h-3" />
-                          )}
-                          {run.status === 'success' ? 'Success' : 'Failed'}
-                        </span>
-                      </LBTableCell>
-                      <LBTableCell className="text-right font-medium">
-                        {run.listingsSent}
-                      </LBTableCell>
-                      <LBTableCell className="text-[13px] text-gray-600">
-                        {run.details || '-'}
-                      </LBTableCell>
+              <div className="w-full overflow-auto rounded-lg border border-white/10 bg-[#1a1a1a]">
+                <LBTable className="bg-[#1a1a1a]">
+                  <LBTableHeader className="bg-[#252525] border-b border-white/10">
+                    <LBTableRow>
+                      <LBTableHead className="text-gray-300">Date & Time</LBTableHead>
+                      <LBTableHead className="text-gray-300">Automation</LBTableHead>
+                      <LBTableHead className="text-gray-300">Destination</LBTableHead>
+                      <LBTableHead className="text-gray-300">Status</LBTableHead>
+                      <LBTableHead className="text-right text-gray-300">Listings Sent</LBTableHead>
+                      <LBTableHead className="text-gray-300">Details</LBTableHead>
                     </LBTableRow>
-                  ))}
-                </LBTableBody>
-              </LBTable>
+                  </LBTableHeader>
+                  <LBTableBody>
+                    {runHistory.map((run) => (
+                      <LBTableRow key={run.id} className="border-b border-white/5 hover:bg-white/5">
+                        <LBTableCell className="font-medium text-white">
+                          {new Date(run.runDate).toLocaleString()}
+                        </LBTableCell>
+                        <LBTableCell className="text-white">{run.automationName}</LBTableCell>
+                        <LBTableCell className="text-gray-300">{run.destination}</LBTableCell>
+                        <LBTableCell>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                            run.status === 'success'
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'bg-red-500/20 text-red-400'
+                          }`}>
+                            {run.status === 'success' ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : (
+                              <XCircle className="w-3 h-3" />
+                            )}
+                            {run.status === 'success' ? 'Success' : 'Failed'}
+                          </span>
+                        </LBTableCell>
+                        <LBTableCell className="text-right font-medium text-white">
+                          {run.listingsSent}
+                        </LBTableCell>
+                        <LBTableCell className="text-[13px] text-gray-400">
+                          {run.details || '-'}
+                        </LBTableCell>
+                      </LBTableRow>
+                    ))}
+                  </LBTableBody>
+                </LBTable>
+              </div>
               
               {runHistory.length === 0 && (
                 <div className="text-center py-12 bg-[#1a1a1a] rounded-lg border border-white/10">

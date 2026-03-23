@@ -448,60 +448,10 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
       </div>
 
       {/* Available Integrations */}
-      <div id="integration-available-section">
-        <h3 className="font-bold text-[16px] text-[#342e37] dark:text-white mb-3">
-          Available Integrations ({availableIntegrations.length})
-        </h3>
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {availableIntegrations.map((integration) => (
-            <IntegrationCard key={integration.id} integration={integration} />
-          ))}
-        </div>
-      </div>
+      {/* REMOVED - Users should browse integrations from the Integrations page */}
 
       {/* Future Integrations */}
-      <div>
-        <h3 className="font-bold text-[16px] text-[#342e37] dark:text-white mb-3">
-          Future Integrations ({futureIntegrations.length})
-        </h3>
-        <p className="text-[13px] text-gray-600 mb-3">
-          These integrations are planned for future releases. Vote for your favorites!
-        </p>
-        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {futureIntegrations.map((integration) => (
-            <IntegrationCard key={integration.id} integration={integration} />
-          ))}
-        </div>
-      </div>
-
-      {/* Request Integration CTA */}
-      <div className="pt-4 border-t border-gray-200">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h3 className="font-bold text-[16px] text-gray-900 dark:text-white mb-1">
-                Don't see what you need?
-              </h3>
-              <p className="text-[13px] text-gray-600">
-                Request a custom integration and we'll prioritize it in our roadmap.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                if (onRequestIntegration) {
-                  onRequestIntegration();
-                } else {
-                  window.open('mailto:integrations@listingbug.com?subject=Integration Request', '_blank', 'noopener,noreferrer');
-                }
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFD447] text-[#342E37] rounded-lg font-bold text-sm hover:bg-[#FFD447]/90 transition-colors whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              Request an Integration
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* REMOVED - Users should browse integrations from the Integrations page */}
 
       {/* Settings Modal */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>

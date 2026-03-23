@@ -167,7 +167,6 @@ export function CreateAutomationPage({
   ];
 
   const frequencyOptions = [
-    { value: 'manual', label: 'Manual' },
     { value: 'daily', label: 'Daily' },
     { value: 'weekly', label: 'Weekly' },
   ];
