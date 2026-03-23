@@ -179,7 +179,22 @@ export function ChangePlanModal({
       try { data = await res.json(); } catch (_) {}
 
       if (data.url) {
-        window.location.href = data.url;
+        // Open Stripe checkout in a new tab so our app stays open
+        const stripeTab = window.open(data.url, '_blank');
+
+        // Poll for when the user closes/returns from the Stripe tab, then reload
+        if (stripeTab) {
+          const pollInterval = setInterval(() => {
+            if (stripeTab.closed) {
+              clearInterval(pollInterval);
+              // Reload the page so billing state reflects any changes
+              window.location.reload();
+            }
+          }, 1000);
+        }
+
+        onClose();
+        setIsProcessing(false);
       } else {
         const msg = data.error || data.detail || `Checkout failed (${res.status})`;
         throw new Error(msg);
