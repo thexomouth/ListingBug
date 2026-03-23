@@ -337,13 +337,20 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
             <div className="space-y-6">
               {/* API Keys Section */}
               <APIKeysSection onNavigate={onNavigate} />
-              
-              {/* OAuth Integrations Section */}
-              <AccountIntegrationsTab
-                onConnect={handleConnectIntegration}
-                onManage={handleManageIntegration}
-                onRequestIntegration={() => setShowRequestIntegrationPage(true)}
-              />
+
+              {/* Browse Integrations */}
+              <div className="flex items-center justify-between pt-2">
+                <div>
+                  <h3 className="font-bold text-[16px] text-[#342e37] dark:text-white">Integrations</h3>
+                  <p className="text-sm text-gray-500 dark:text-[#EBF2FA]/70 mt-0.5">Connect ListingBug to your CRM, email platform, and automation tools.</p>
+                </div>
+                <button
+                  onClick={() => onNavigate?.('integrations')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] font-bold text-sm transition-colors"
+                >
+                  Browse Integrations
+                </button>
+              </div>
             </div>
           </TabsContent>
 

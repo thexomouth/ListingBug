@@ -773,10 +773,10 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
               ))}
               
               {runHistory.length === 0 && (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                  <Clock className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                  <p className="text-gray-600 font-medium">No run history yet</p>
-                  <p className="text-[13px] text-gray-500 mt-1">Your automation runs will appear here</p>
+                <div className="text-center py-12 bg-[#1a1a1a] rounded-lg border border-white/10">
+                  <Clock className="w-12 h-12 mx-auto mb-3 text-gray-500" />
+                  <p className="text-white font-medium">No run history yet</p>
+                  <p className="text-[13px] text-gray-400 mt-1">Your automation runs will appear here</p>
                 </div>
               )}
             </div>
@@ -828,10 +828,10 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
               </LBTable>
               
               {runHistory.length === 0 && (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                  <Clock className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                  <p className="text-gray-600 font-medium">No run history yet</p>
-                  <p className="text-[13px] text-gray-500 mt-1">Your automation runs will appear here</p>
+                <div className="text-center py-12 bg-[#1a1a1a] rounded-lg border border-white/10">
+                  <Clock className="w-12 h-12 mx-auto mb-3 text-gray-500" />
+                  <p className="text-white font-medium">No run history yet</p>
+                  <p className="text-[13px] text-gray-400 mt-1">Your automation runs will appear here</p>
                 </div>
               )}
             </div>

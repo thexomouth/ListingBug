@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { CreditCard, Download, Receipt, TrendingUp, Calendar, AlertCircle, CheckCircle, Crown, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -300,10 +300,16 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
               {/* Billing Info */}
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-[#EBF2FA]">
                 <Calendar className="w-4 h-4" />
-                {/* Billing_Display_NextBilling - DYNAMIC: {subscription.status === 'Trial' ? 'Trial ends' : 'Next billing date'} */}
                 <span>
-                  {subscription.status === 'Trial' ? 'Trial ends' : 'Next billing date'}: <span className="font-medium text-[#342e37] dark:text-white">
-                    {new Date(subscription.nextBillingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  {subscription.status === 'Trial' ? 'Trial ends' : 'Next billing date'}:{' '}
+                  <span className="font-medium text-[#342e37] dark:text-white">
+                    {(() => {
+                      const d = subscription.trialEndsAt || subscription.nextBillingDate;
+                      if (!d || d === '\u2014' || d === '-') return '\u2014';
+                      const parsed = new Date(d);
+                      return isNaN(parsed.getTime()) ? '\u2014' : parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                    })()
+                    }
                   </span>
                 </span>
               </div>

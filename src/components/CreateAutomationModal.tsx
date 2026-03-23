@@ -930,7 +930,8 @@ export function CreateAutomationModal({
     (!selectedIntegration?.requiresSetup || 
       (selectedIntegration.setupFields?.every(f => destinationConfig[f.key]?.trim())));
   
-  const canProceedToStep3 = canProceedToStep2 && mappingsAccepted;
+  // Field mapping step is hidden — step 1 jumps directly to step 3
+  const canProceedToStep3 = canProceedToStep2;
 
   const getRiskBadge = () => {
     if (!selectedIntegration) return null;
@@ -1043,7 +1044,6 @@ export function CreateAutomationModal({
             </div>
             <p className="text-[14px] text-[#342E37]/80">
               {step === 1 && 'Connect your destination and configure settings'}
-              {step === 2 && 'Connect destination'}
               {step === 3 && 'Preview sample data and test your automation'}
               {step === 4 && 'Activate your automation'}
             </p>
@@ -1052,7 +1052,6 @@ export function CreateAutomationModal({
             <div className="flex items-center justify-between mt-4 px-2">
             {[
               { num: 1, label: 'Connect' },
-              { num: 2, label: 'Map' },
               { num: 3, label: 'Preview' },
               { num: 4, label: 'Activate' }
             ].map((s, idx) => (
@@ -1063,7 +1062,7 @@ export function CreateAutomationModal({
                       ? 'bg-[#FFD447] border-[#FFD447] text-[#342E37]' 
                       : 'bg-white border-gray-300 text-gray-400'
                   } font-bold text-sm transition-all`}>
-                    {s.num}
+                    {idx + 1}
                   </div>
                   <span className={`text-xs mt-1 font-medium ${
                     step >= s.num ? 'text-[#342E37]' : 'text-gray-400'
@@ -1071,7 +1070,7 @@ export function CreateAutomationModal({
                     {s.label}
                   </span>
                 </div>
-                {idx < 3 && (
+                {idx < 2 && (
                   <div className={`h-0.5 flex-1 mx-2 ${
                     step > s.num ? 'bg-[#FFD447]' : 'bg-gray-300'
                   }`} />
@@ -1503,9 +1502,9 @@ export function CreateAutomationModal({
                 {step < 4 && (
                   <LBButton 
                     variant="primary"
-                    onClick={() => setStep(step + 1)}
+                    onClick={() => setStep(step === 1 ? 3 : step + 1)}
                     disabled={
-                      (step === 1 && !canProceedToStep2) ||
+                      (step === 1 && !canProceedToStep3) ||
                       (step === 2 && !canProceedToStep3)
                     }
                   >

@@ -211,7 +211,7 @@ export function ChangePlanModal({
 
             {/* Plans Grid */}
             <div className="p-6">
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                 {plans.map((plan) => {
                   const isCurrent = plan.id === currentPlan.toLowerCase();
                   const isSelected = plan.id === selectedPlan;
@@ -309,7 +309,7 @@ export function ChangePlanModal({
               <Alert className="mt-6">
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  <strong> Downgrades</strong> take effect at the end of your current billing period.
+                  <strong>Upgrades</strong> take effect immediately. <strong>Downgrades</strong> take effect at the end of your current billing period.
                 </AlertDescription>
               </Alert>
             </div>

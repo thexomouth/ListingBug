@@ -6,50 +6,132 @@
 
 ## 🔴 Critical (Human Action Required)
 
-- [ ] **Email verification** — Supabase → Auth → Email → Enable email confirmations. Code ready.
+- [x] **Email verification** — Supabase → Auth → Email → Enable email confirmations. Code ready. this is working but we need to circle back later to write more thorough and specific, custom emails
 - [ ] **Google OAuth consent screen** — submit at console.cloud.google.com. /privacy and /terms live.
-- [ ] **Stripe checkout** — verify working end-to-end on test account. Was failing with "Could not start checkout." STRIPE_SECRET_KEY should be set in Supabase → Edge Functions → Secrets.
+- [ ] **Stripe checkout** — verify working end-to-end on test account. Was failing with "Could not start checkout." STRIPE_SECRET_KEY should be set in Supabase → Edge Functions → Secrets. exists in supa - still failing
+
+
+
+
+
 
 ---
 
 ## 🔴 Bugs (Needs QC)
 
-- [ ] **Stripe checkout** — test upgrade flow on trial account to confirm it works
-- [ ] **Search history empty** — verify after running a new search that history tab populates
-- [ ] **Saved listings empty** — verify new saves persist to Supabase and show on reload
+- [ ] **Stripe checkout** — test upgrade flow on trial account to confirm it works - no it doesn't ""Could not start checkout. Please try again."
+- [ ] **Search history empty** — verify after running a new search that history tab populates - nothing
+- [ ] **Saved listings empty** — verify new saves persist to Supabase and show on reload - still empty
 
 ---
 
 ## 🔴 UI Cleanup (Needs QC After Latest Deploy)
 
-- [ ] **Search form simplification** — move zip, radius, lat, lng, beds, baths, price/sqft to Additional Filters. On desktop: City and State join Address row (columns 3+4). Remove static beds/baths from Property Details.
-- [ ] **Account/Profile subscription block** — verify removed
-- [ ] **Account/Billing payment method** — verify shows zero state (no fake Visa 4242)
-- [ ] **Account/Billing history** — verify shows empty state (no sample invoices)
-- [ ] **Account/Billing trial date** — verify shows "Trial ends: MM/DD/YY" not "Invalid Date"
-- [ ] **ChangePlanModal** — verify no proration language, no Enterprise option, shows clean confirmation
-- [ ] **Account/API integrations section** — verify removed, only API keys + Browse Integrations button remains
-- [ ] **Account/Usage plan info block** — verify "Starter Plan / Trial Period / N/A" removed
-- [ ] **Search history zero state** — verify empty state message updated
-- [ ] **Automation history zero state** — verify green background removed
-- [ ] **Create Automation: Manual sync** — verify removed from frequency options
-- [ ] **Create Automation: Field Mappings** — verify hidden section removed
+- [ ] **Search form simplification** — move zip, radius, lat, long, price/sqft to Additional Filters. On desktop: City and State join Address row (columns 3+4). Remove static beds/baths from Property Details as this already exists in additional filters and we're slimming down. this is not complete or even begun
+- [x] **Account/Profile subscription block** — verify removed
+- [x] **Account/Billing payment method** — verify shows zero state (no fake Visa 4242)
+- [x] **Account/Billing history** — verify shows empty state (no sample invoices)
+- [ ] **Account/Billing trial date** — verify shows "Trial ends: MM/DD/YY" not "Invalid Date" it shows "Trial ends: Invalid Date" so it's not loading or formatting the date it loads correctly. it should display trial end date, calculated automatically at sign up by account creation date plus trial period
+- [ ] **ChangePlanModal** — verify no proration language, no Enterprise option, shows clean confirmation. YOU removed the entrprise option, but still need to center the two remaining options within the section as there's some ambigous blank space on the right where something used to be. there was text before "downgrades" about "upgrades take effect immediately", but you removed the full line 'upgrades to effect immediately AT A PRORATED AMOUNT' instead of editting the line to match the situation
+- [ ] **Account/API integrations section** — verify removed, only API keys + Browse Integrations button remains m- not done. remove all of this "Available Integrations (10)
+Mailchimp
+Sync contacts and trigger campaigns
 
+Connect
+Salesforce
+Enterprise CRM integration
+
+Connect
+HubSpot
+All-in-one CRM platform
+
+Connect
+Constant Contact
+Email marketing made easy
+
+Connect
+Google Sheets
+Spreadsheet automation
+
+Connect
+Airtable
+Visual database platform
+
+Connect
+Twilio
+SMS notifications
+
+Connect
+Zapier
+Connect 5,000+ apps
+
+Connect
+Make
+Advanced automation
+
+Connect
+Webhooks
+Custom API endpoints
+
+Connect
+Future Integrations (6)
+These integrations are planned for future releases. Vote for your favorites!
+
+Slack
+Coming Soon
+Team notifications
+
+Not Available
+Notion
+Coming Soon
+All-in-one workspace
+
+Not Available
+Monday.com
+Coming Soon
+Work management
+
+Not Available
+Asana
+Coming Soon
+Project management
+
+Not Available
+Trello
+Coming Soon
+Visual task boards
+
+Not Available
+Pipedrive
+Coming Soon
+Sales CRM
+
+Not Available
+Don't see what you need?
+Request a custom integration and we'll prioritize it in our roadmap.
+
+Request an Integration"
+- [x] **Account/Usage plan info block** — verify "Starter Plan / Trial Period / N/A" removed
+- [ ] **Search history zero state** — verify empty state message updated - not complete still showing black screen
+- [ ] **Automation history zero state** — verify green background removed, yes but you put a white background and i want a black background on the table with white and grey text and icon
+- [ ] **Create Automation: Manual sync** — verify removed from frequency options - no, not done
+- [ ] **Create Automation: Field Mappings** — this is not done
+- [ ] trying to upgrade my account in Confirm plan change' from starter to pro does not launch stripe it says "Could not start checkout. Please try again."
 ---
 
 ## 🟡 Needs Live Verification
 
-- [ ] **Usage cap** — trial should now allow 4,000 listings (was incorrectly capped at 500). Test after running a search.
-- [ ] **API key generation** — test generating a key on account/api. Fixed getSession destructuring bug.
-- [ ] **Search history View Results** — verify button opens SearchResultsPage with full table + clickable rows + listing modal
+- [ ] **Usage cap** — trial should now allow 4,000 listings (was incorrectly capped at 500). Test after running a search. 'it might but search isn't working right now'
+- [ ] **API key generation** — test generating a key on account/api. Fixed getSession destructuring bug. not working 'Unable to generate API key: not signed in'
+- [ ] **Search history View Results** — verify button opens SearchResultsPage with full table + clickable rows + listing modal i can't because search history has no items in it and no zero item state, it's a black empty page
 - [ ] **Street View** — verify loads in listing modal on a property with lat/lng
-- [ ] **Favicon** — public/favicon.png placed. Verify shows in browser tab.
-- [ ] **OG image** — public/og-image.png placed. Verify shows when link shared.
-- [ ] **Page title** — verify browser tab shows "ListingBug"
+- [x] **Favicon** — public/favicon.png placed. Verify shows in browser tab.
+- [x] **OG image** — public/og-image.png placed. Verify shows when link shared.
+- [x] **Page title** — verify browser tab shows "ListingBug"
 
 ---
 
-## 🟡 Post-Stripe
+## 🟡 Post-Stripe ( we need to create a test account with a paid plan and some figurative billing history for this)
 
 - [ ] Billing history — real Stripe invoice data (currently empty state)
 - [ ] Download invoice button
@@ -59,8 +141,8 @@
 
 ## 🟡 Future / High Value
 
-- [ ] PropertyRadar homeowner data — full implementation (teaser live)
-- [ ] CSV Email Delivery backend execution
+- [ ] PropertyRadar homeowner data — full implementation (teaser live) waiting on search functionality to return to check the teaser
+- [ ] CSV Email formatting and Delivery backend execution
 - [ ] Automation runner backend (scheduled execution)
 - [ ] Integrations true status from Supabase
 
@@ -70,7 +152,7 @@
 
 - [ ] Light mode
 - [ ] Facebook/Apple OAuth
-- [ ] OAuth integrations — Mailchimp, HubSpot, Salesforce
+- [ ] OAuth integrations — Mailchimp, HubSpot, Salesforce ( this is launch critical please move it up)
 - [ ] Namecheap CNAME → e53e829ee840f3ad.vercel-dns-017.com
 - [ ] Search run history retention policy
 - [ ] Saved listings photo grid view
