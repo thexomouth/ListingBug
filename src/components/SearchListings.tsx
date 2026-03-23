@@ -733,9 +733,24 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     setIsCappedAtMax(false);
 
     try {
-      const { supabase } = await import('../lib/supabase');
+      // Use top-level supabase import — dynamic import was causing failures
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        toast.error('You must be signed in to search listings.');
+        setIsLoading(false);
+        document.body.style.overflow = 'unset';
+        return;
+      }
+
+      // getSession gives us the JWT we need to pass to the edge function
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      if (!token) {
+        toast.error('Session expired — please sign in again.');
+        setIsLoading(false);
+        document.body.style.overflow = 'unset';
+        return;
+      }
 
       const body: Record<string, any> = {
         listingType: 'sale',
@@ -756,25 +771,49 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       if (criteria.latitude) body.latitude = Number(criteria.latitude);
       if (criteria.longitude) body.longitude = Number(criteria.longitude);
 
-      const res = await fetch(
-        'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/search-listings',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      console.log('[handleSearch] posting to edge function, body:', JSON.stringify(body));
 
-      const data = await res.json();
+      let res: Response;
+      try {
+        res = await fetch(
+          'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/search-listings',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          }
+        );
+      } catch (fetchErr: any) {
+        console.error('[handleSearch] fetch threw:', fetchErr.message);
+        toast.error(`Network error: ${fetchErr.message}`);
+        setIsLoading(false);
+        document.body.style.overflow = 'unset';
+        return;
+      }
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (jsonErr: any) {
+        console.error('[handleSearch] JSON parse failed, status:', res.status);
+        toast.error(`Server error (${res.status}) — could not parse response`);
+        setIsLoading(false);
+        document.body.style.overflow = 'unset';
+        return;
+      }
+
+      console.log('[handleSearch] edge function response:', res.status, JSON.stringify(data).slice(0, 300));
 
       if (!res.ok) {
         if (data?.code === 'TRIAL_EXPIRED' || data?.code === 'SUBSCRIPTION_INACTIVE') {
           toast.error('Your subscription is inactive. Please upgrade to continue.', { autoClose: 6000 });
         } else {
-          toast.error(data?.error ?? 'Search failed. Please try again.');
+          // Show the REAL error from the edge function
+          const msg = data?.error || data?.detail || `Search failed (${res.status})`;
+          toast.error(msg, { autoClose: 8000 });
         }
         setIsLoading(false);
         document.body.style.overflow = 'unset';
@@ -873,7 +912,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       }, 100);
 
     } catch (err: any) {
-      toast.error('Search failed. Please try again.');
+      console.error('[handleSearch] unhandled exception:', err.message, err.stack);
+      toast.error(`Search error: ${err.message || 'Unknown error'}`, { autoClose: 8000 });
       setIsLoading(false);
       document.body.style.overflow = 'unset';
     }
