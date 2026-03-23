@@ -580,7 +580,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     latitude: '',
     longitude: '',
     radius: '',
-    propertyType: 'All Types',
+    propertyType: 'Single Family',
     status: 'Active',
     beds: '',
     baths: '',
@@ -755,29 +755,47 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
 
       const body: Record<string, any> = {
         listingType: 'sale',
-        status: 'Active',
+        status: criteria.status || 'Active',
         limit: 500,
         offset: 0,
       };
+
+      // ── Location ──────────────────────────────────────────────────────────
       if (criteria.city) body.city = criteria.city;
       if (criteria.state) body.state = criteria.state;
       if (criteria.zip) body.zipCode = criteria.zip;
       if (criteria.address) body.address = criteria.address;
-      // Only send propertyType if user explicitly chose something other than the broad default
-      if (criteria.propertyType && criteria.propertyType !== 'All Types') body.propertyType = criteria.propertyType;
-      if (criteria.beds) body.bedrooms = criteria.beds;
-      if (criteria.baths) body.bathrooms = criteria.baths;
-      if (criteria.minPrice) body.minPrice = Number(criteria.minPrice);
-      if (criteria.maxPrice) body.maxPrice = Number(criteria.maxPrice);
-      if (criteria.radius) body.radius = Number(criteria.radius);
       if (criteria.latitude) body.latitude = Number(criteria.latitude);
       if (criteria.longitude) body.longitude = Number(criteria.longitude);
-      // Forward daysOld filter — RentCast uses this to filter by listing recency
-      if (criteria.daysOld && criteria.daysOld !== '' && criteria.daysOld !== '0') body.daysOld = Number(criteria.daysOld);
-      // Forward any additional active filters that map to RentCast params
-      if (activeFilters.includes('squareFootage') && criteria.squareFootage) body.squareFootage = criteria.squareFootage;
-      if (activeFilters.includes('lotSize') && criteria.lotSize) body.lotSize = criteria.lotSize;
-      if (activeFilters.includes('yearBuilt') && criteria.yearBuilt) body.yearBuilt = criteria.yearBuilt;
+      if (criteria.radius) body.radius = Number(criteria.radius);
+
+      // ── Property type — always send, Single Family is intentional default ─
+      if (criteria.propertyType && criteria.propertyType !== 'All Types') {
+        body.propertyType = criteria.propertyType;
+      }
+
+      // ── Property basics ───────────────────────────────────────────────────
+      if (criteria.beds) body.bedrooms = criteria.beds;
+      if (criteria.baths) body.bathrooms = criteria.baths;
+
+      // ── Price ─────────────────────────────────────────────────────────────
+      if (criteria.minPrice) body.minPrice = Number(criteria.minPrice);
+      if (criteria.maxPrice) body.maxPrice = Number(criteria.maxPrice);
+
+      // ── Days on market (RentCast: daysOld) ────────────────────────────────
+      if (criteria.daysOld && criteria.daysOld !== '') body.daysOld = Number(criteria.daysOld);
+
+      // ── Additional filters (from activeFilters panel) ─────────────────────
+      // These map directly to RentCast-supported query params
+      const af = criteria; // alias for brevity
+      if (activeFilters.includes('squareFootage') && af.squareFootage) body.squareFootage = af.squareFootage;
+      if (activeFilters.includes('lotSize') && af.lotSize) body.lotSize = af.lotSize;
+      if (activeFilters.includes('yearBuilt') && af.yearBuilt) body.yearBuilt = af.yearBuilt;
+      if (activeFilters.includes('latitude') && af.latitude && !body.latitude) body.latitude = Number(af.latitude);
+      if (activeFilters.includes('longitude') && af.longitude && !body.longitude) body.longitude = Number(af.longitude);
+      if (activeFilters.includes('radius') && af.radius && !body.radius) body.radius = Number(af.radius);
+      if (activeFilters.includes('bedrooms') && af.beds && !body.bedrooms) body.bedrooms = af.beds;
+      if (activeFilters.includes('bathrooms') && af.baths && !body.bathrooms) body.bathrooms = af.baths;
 
       console.log('[handleSearch] posting to edge function, body:', JSON.stringify(body));
 
