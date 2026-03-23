@@ -125,7 +125,10 @@ export function ChangePlanModal({
     },
   ];
 
-  const currentPlanData = plans.find(p => p.id === currentPlan.toLowerCase() || (currentPlan.toLowerCase() === 'trial' && p.id === 'starter'));
+  // For trial users, we map them to Starter plan pricing but keep "Trial" as display name
+  const isTrialUser = currentPlan.toLowerCase() === 'trial';
+  const currentPlanId = isTrialUser ? 'starter' : currentPlan.toLowerCase();
+  const currentPlanData = plans.find(p => p.id === currentPlanId);
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   const isUpgrade = selectedPlanData && currentPlanData && selectedPlanData.price > currentPlanData.price;
@@ -145,7 +148,7 @@ export function ChangePlanModal({
   };
 
   const handleSelectPlan = (planId: string) => {
-    if (planId === currentPlan.toLowerCase()) return;
+    if (planId === currentPlanId) return;
     setSelectedPlan(planId);
     setShowConfirmation(true);
   };
@@ -213,7 +216,7 @@ export function ChangePlanModal({
             <div className="p-6">
               <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                 {plans.map((plan) => {
-                  const isCurrent = plan.id === currentPlan.toLowerCase() && currentPlan.toLowerCase() !== 'trial';
+                  const isCurrent = plan.id === currentPlanId;
                   const isSelected = plan.id === selectedPlan;
 
                   return (

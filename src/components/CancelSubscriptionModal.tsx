@@ -32,6 +32,7 @@ interface CancelSubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentPlan: string;
+  trialEndsAt?: string | null;
   onCancel: (reason: string, feedback?: string) => void;
   onPause?: () => void;
   onDowngrade?: () => void;
@@ -51,6 +52,7 @@ export function CancelSubscriptionModal({
   isOpen,
   onClose,
   currentPlan,
+  trialEndsAt,
   onCancel,
   onPause,
   onDowngrade,
@@ -304,7 +306,14 @@ export function CancelSubscriptionModal({
                 <h3 className="font-medium text-[#342e37] mb-2">Your Current Plan</h3>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-700">{currentPlan === 'Trial' ? 'Trial' : `${currentPlan} Plan`}</span>
-                  <span className="font-bold text-[#342e37]">{currentPlan === 'Trial' ? 'Active (Free)' : 'Active until Dec 15, 2024'}</span>
+                  <span className="font-bold text-[#342e37]">
+                    {currentPlan === 'Trial' 
+                      ? trialEndsAt 
+                        ? `Active until ${new Date(trialEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                        : 'Active (Free)'
+                      : 'Active'
+                    }
+                  </span>
                 </div>
               </div>
 
