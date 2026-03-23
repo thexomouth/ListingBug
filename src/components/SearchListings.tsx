@@ -72,6 +72,7 @@ interface AdditionalFilter {
 
 const availableFilters: AdditionalFilter[] = [
   // Location Filters
+  { key: 'address', label: 'Address', placeholder: '123 Main St', type: 'text', category: 'Location' },
   { key: 'zip', label: 'ZIP Code', placeholder: '90001', type: 'text', category: 'Location' },
   { key: 'latitude', label: 'Latitude', placeholder: '34.0522', type: 'text', category: 'Location' },
   { key: 'longitude', label: 'Longitude', placeholder: '-118.2437', type: 'text', category: 'Location' },
@@ -1402,15 +1403,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                 <h3 className="text-[24px] font-bold">Location</h3>
               </div>
               
-              {/* Address, City, State - Same Row */}
+              {/* City - First Row */}
               <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mb-2">
-                <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
-                  label="Address"
-                  value={criteria.address}
-                  onChange={(e) => updateCriteria('address', e.target.value)}
-                  onBlur={() => setLocationFieldBlurred(true)}
-                  placeholder="123 Main St"
-                />
                 <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
                   label="City"
                   required
