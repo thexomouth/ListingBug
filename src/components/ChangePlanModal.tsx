@@ -123,7 +123,6 @@ export function ChangePlanModal({
       },
       popular: true,
     },
-    },
   ];
 
   const currentPlanData = plans.find(p => p.id === currentPlan.toLowerCase());
