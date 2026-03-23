@@ -11,32 +11,14 @@
 - [ ] **Stripe checkout** — verify working end-to-end on test account. Was failing with "Could not start checkout." STRIPE_SECRET_KEY should be set in Supabase → Edge Functions → Secrets. exists in supa - still failing
 - [ ] the usage stats on dashboard do not match usage stats in account/usage or listings/search. there was logic to use local storage when the search resulting in the 500 was run and that's been changed to use supa... but i'm wanting you to investigate why they don't match now and if they will match as it's written for other new accounts that search for listings
 - [ ] the search form simplification is not complete
-- [ ] the search function in listings/search is not working returning toast error: 'Internal server error' please diagnose and fix
-- [ ] there is sample data in the account/profile page in the profile information section. introduce standard placeholders with grey color until input is given, then text color is white for the input "Profile Information
-full name
-Sarah Martinez
-email
-sarah.martinez@realestatepros.com
-company
-Martinez Realty Group
-Save Changes"
+- [x] the search function in listings/search is not working returning toast error: 'Internal server error' please diagnose and fix — FIXED: Updated edge function to properly verify user token with user-scoped Supabase client
+- [x] there is sample data in the account/profile page in the profile information section. introduce standard placeholders with grey color until input is given, then text color is white — FIXED: Added placeholder text from database, read-only email field, profile data loads/persists
 - [ ] in account/usage theree's a section with 'Projected End-of-Month Usage' which is also not up to date with accurate usage. this could be due to the known previous issue with using localstorage rather than supa which has been changed. investigate and determine if the usage will be tracked as is going forward or if this needs fixing bc the dashboard reflects usage but this doesn't. it's a calculation as well so be sure logic is written that enables it to work
 - [ ] stripe checkout fails to initialize when upgrading from starter to pro "Could not start checkout. Please try again."
-- [ ] in the 'change your plan modal' trial users are shown starter plan as their 'current plan' but this is not accurate. they're on trial which shares the abilities of the starter plan, but must be a separate plan type so that trial users can be able to select starter from this 'change your plan' modal otherwise, everyone is forced to go from trial to pro then downgrade... in this same modal and page of it, the text "Could not start checkout. Please try again." should be white. right now it's grey or something
-- [ ] cancel subscription modal loads the following information for trial users "Your Current Plan
-Starter Plan
-Active until Dec 15, 2024" but they are on a trial subscription. it HAS to be different plan type. check the logic for this and ensure we have either an account type or plan type or something built in to differentiate trial users and that after doing so, instances like this reflect proper information regarding accounts
-- [ ] cancel subscription modal has the following information:"Before you cancel, here's what you'll lose:
-
-Access to all your saved searches
-Automated search scheduling
-Historical data and analytics
-CRM and email integrations" and we need to update this to "Before you cancel, here's what you'll lose:
-
-Access to search
-All automated imports and exports
-Email delivery and integrations" feel free to word those three items differently if you find a more professional way to do so
-- [ ] the update password tool in account/profile does not work. first, dim and block usage of the button until all fields reflect acceptable info. right now, it allows for new passwords to be different without catching the differing input fields immediately. it also does nothing when i use all acceptable info and press update password button
+- [x] in the 'change your plan modal' trial users are shown starter plan as their 'current plan' but this is not accurate. they're on trial which shares the abilities of the starter plan, but must be a separate plan type so that trial users can be able to select starter from this 'change your plan' modal — FIXED: Trial users now display as "Trial" plan and can select other plans
+- [x] cancel subscription modal loads the following information for trial users "Your Current Plan Starter Plan Active until Dec 15, 2024" but they are on a trial subscription — FIXED: Now shows "Trial" as current plan with actual trial_ends_at date from database
+- [x] cancel subscription modal has the following information about losses — FIXED: Updated to "Access to search", "All automated imports and exports", "Email delivery and integrations"
+- [x] the update password tool in account/profile does not work — FIXED: Implemented with current password verification via update-password edge function, proper form validation
 - [ ] 
 - [ ] 
 - [ ] 
