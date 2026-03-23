@@ -104,6 +104,17 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
     }
 
     const fullKey = generateRandomKey();
+
+    // Use getSession for the JWT + getUser for the verified user id
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      if (!refreshData.session) {
+        toast.error('Unable to generate API key: not signed in');
+        return;
+      }
+    }
+
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     const userId = currentUser?.id;
 
@@ -111,6 +122,8 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
       toast.error('Unable to generate API key: not signed in');
       return;
     }
+
+    console.log('[APIKeys] inserting for user:', userId);
 
     const { data, error } = await supabase
       .from('api_keys')
@@ -123,8 +136,8 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
       .single();
 
     if (error || !data) {
-      console.error('Failed to insert API key:', error);
-      toast.error('Unable to generate API key');
+      console.error('[APIKeys] insert failed:', error?.message, error?.code, error?.details);
+      toast.error(`Unable to generate API key: ${error?.message || 'unknown error'}`);
       return;
     }
 
