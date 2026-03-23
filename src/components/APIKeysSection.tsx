@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { Key, Copy, Trash2, Eye, EyeOff, Plus, Check, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'react-toastify';
 import { supabase } from '../lib/supabase';
 
 interface APIKey {
