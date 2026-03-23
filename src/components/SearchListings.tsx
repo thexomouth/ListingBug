@@ -589,7 +589,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     maxPrice: '',
     pricePerSqFt: '',
     yearBuilt: '',
-    daysOld: '',
+    daysOld: '1',
     reListedProperty: false,
     priceDrop: false,
     newConstruction: false,

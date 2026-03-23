@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { X, Check, Crown, Zap, Building2, TrendingUp, TrendingDown, CheckCircle, Sparkles, Info, ArrowRight, ChevronLeft } from 'lucide-react';
 import { Badge } from './ui/badge';
@@ -157,20 +158,35 @@ export function ChangePlanModal({
     if (!selectedPlan) return;
     setIsProcessing(true);
     try {
-      const { supabase } = await import('../lib/supabase');
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Not authenticated');
+      // Get session — refresh if needed to guarantee a valid token
+      let session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData.session;
+      }
+      if (!session?.access_token) throw new Error('Not authenticated — please sign in again');
+
       const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ plan: selectedPlan }),
       });
-      const data = await res.json();
-      if (data.url) { window.location.href = data.url; }
-      else { throw new Error(data.error || 'Failed to start checkout'); }
-    } catch (err) {
-      console.error(err);
-      alert('Could not start checkout. Please try again.');
+
+      let data: any = {};
+      try { data = await res.json(); } catch (_) {}
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        const msg = data.error || data.detail || `Checkout failed (${res.status})`;
+        throw new Error(msg);
+      }
+    } catch (err: any) {
+      console.error('Checkout error:', err.message);
+      alert(`Could not start checkout: ${err.message}`);
       setIsProcessing(false);
     }
   };
