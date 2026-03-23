@@ -71,6 +71,12 @@ interface AdditionalFilter {
 }
 
 const availableFilters: AdditionalFilter[] = [
+  // Location Filters
+  { key: 'zip', label: 'ZIP Code', placeholder: '90001', type: 'text', category: 'Location' },
+  { key: 'latitude', label: 'Latitude', placeholder: '34.0522', type: 'text', category: 'Location' },
+  { key: 'longitude', label: 'Longitude', placeholder: '-118.2437', type: 'text', category: 'Location' },
+  { key: 'radius', label: 'Search Radius (mi)', placeholder: '5', type: 'text', category: 'Location' },
+  
   // Property Basics
   { key: 'bedrooms', label: 'Bedrooms', placeholder: '3 or 3-4', type: 'text', category: 'Property' },
   { key: 'bathrooms', label: 'Bathrooms', placeholder: '2 or 2.5-3', type: 'text', category: 'Property' },
@@ -1396,19 +1402,15 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                 <h3 className="text-[24px] font-bold">Location</h3>
               </div>
               
-              {/* Address - Full Width Row */}
-              <div className="mb-2">
+              {/* Address, City, State - Same Row */}
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mb-2">
                 <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
                   label="Address"
                   value={criteria.address}
                   onChange={(e) => updateCriteria('address', e.target.value)}
                   onBlur={() => setLocationFieldBlurred(true)}
-                  placeholder="123 Main St, City, State ZIP"
+                  placeholder="123 Main St"
                 />
-              </div>
-              
-              {/* City, State, ZIP, Search Radius - Below Address */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
                 <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
                   label="City"
                   required
@@ -1419,6 +1421,10 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   ref={cityInputRef}
                   error={fieldErrors.city}
                 />
+              </div>
+              
+              {/* State - Second Row */}
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
                 <LBSelect
                   label="State"
                   required
@@ -1428,37 +1434,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   options={US_STATES}
                   placeholder="Select state"
                   error={fieldErrors.state}
-                />
-                <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
-                  label="ZIP Code"
-                  value={criteria.zip}
-                  onChange={(e) => updateCriteria('zip', e.target.value)}
-                  onBlur={() => setLocationFieldBlurred(true)}
-                  placeholder="90001"
-                  error={fieldErrors.zip}
-                />
-                <LBInput
-                  label="Search Radius (mi)"
-                  value={criteria.radius}
-                  onChange={(e) => updateCriteria('radius', e.target.value)}
-                  onBlur={() => setLocationFieldBlurred(true)}
-                  placeholder="5"
-                />
-              </div>
-              
-              {/* Latitude, Longitude - Always Visible */}
-              <div className="grid grid-cols-2 gap-2">
-                <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
-                  label="Latitude"
-                  value={criteria.latitude}
-                  onChange={(e) => updateCriteria('latitude', e.target.value)}
-                  placeholder="34.0522"
-                />
-                <LBInput
-                  label="Longitude"
-                  value={criteria.longitude}
-                  onChange={(e) => updateCriteria('longitude', e.target.value)}
-                  placeholder="-118.2437"
                 />
               </div>
             </div>
@@ -1499,20 +1474,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                       ]}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
-                      label="Bedrooms"
-                      value={criteria.beds}
-                      onChange={(e) => updateCriteria('beds', e.target.value)}
-                      placeholder="3 or 3-5"
-                    />
-                    <LBInput
-                      label="Bathrooms"
-                      value={criteria.baths}
-                      onChange={(e) => updateCriteria('baths', e.target.value)}
-                      placeholder="2 or 2-3"
-                    />
-                  </div>
+
                 </div>
               </div>
 
@@ -1538,12 +1500,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                       placeholder="1000000"
                     />
                   </div>
-                  <LBInput className="mx-[0px] mt-[0px] mb-[12px]"
-                    label="Price per Sq Ft"
-                    value={criteria.pricePerSqFt}
-                    onChange={(e) => updateCriteria('pricePerSqFt', e.target.value)}
-                    placeholder="200-400"
-                  />
                 </div>
               </div>
 
