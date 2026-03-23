@@ -27,7 +27,7 @@ serve(async (req) => {
     const url = new URL(req.url);
     const isPreview = url.searchParams.get("preview") === "true";
 
-    let supabase: any;
+    let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     let user: any = null;
     let currentUsage = 0;
     let limit = 500;
@@ -38,13 +38,18 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
       }
 
-      supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-      const { data: userData, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      if (authError || !userData?.user) {
+      // Extract token and verify it
+      const token = authHeader.replace("Bearer ", "");
+      
+      // Create a client with the user's token to get their info
+      const userClient = createClient(SUPABASE_URL, token);
+      const { data: { user: authUser }, error: authError } = await userClient.auth.getUser();
+      
+      if (authError || !authUser) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
       }
 
-      user = userData.user;
+      user = authUser;
 
       // Get or auto-create user profile
       let { data: profileData } = await supabase

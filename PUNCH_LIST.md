@@ -9,9 +9,41 @@
 - [x] **Email verification** — Supabase → Auth → Email → Enable email confirmations. Code ready. this is working but we need to circle back later to write more thorough and specific, custom emails
 - [ ] **Google OAuth consent screen** — submit at console.cloud.google.com. /privacy and /terms live.
 - [ ] **Stripe checkout** — verify working end-to-end on test account. Was failing with "Could not start checkout." STRIPE_SECRET_KEY should be set in Supabase → Edge Functions → Secrets. exists in supa - still failing
+- [ ] the usage stats on dashboard do not match usage stats in account/usage or listings/search. there was logic to use local storage when the search resulting in the 500 was run and that's been changed to use supa... but i'm wanting you to investigate why they don't match now and if they will match as it's written for other new accounts that search for listings
+- [ ] the search form simplification is not complete
+- [ ] the search function in listings/search is not working returning toast error: 'Internal server error' please diagnose and fix
+- [ ] there is sample data in the account/profile page in the profile information section. introduce standard placeholders with grey color until input is given, then text color is white for the input "Profile Information
+full name
+Sarah Martinez
+email
+sarah.martinez@realestatepros.com
+company
+Martinez Realty Group
+Save Changes"
+- [ ] in account/usage theree's a section with 'Projected End-of-Month Usage' which is also not up to date with accurate usage. this could be due to the known previous issue with using localstorage rather than supa which has been changed. investigate and determine if the usage will be tracked as is going forward or if this needs fixing bc the dashboard reflects usage but this doesn't. it's a calculation as well so be sure logic is written that enables it to work
+- [ ] stripe checkout fails to initialize when upgrading from starter to pro "Could not start checkout. Please try again."
+- [ ] in the 'change your plan modal' trial users are shown starter plan as their 'current plan' but this is not accurate. they're on trial which shares the abilities of the starter plan, but must be a separate plan type so that trial users can be able to select starter from this 'change your plan' modal otherwise, everyone is forced to go from trial to pro then downgrade... in this same modal and page of it, the text "Could not start checkout. Please try again." should be white. right now it's grey or something
+- [ ] cancel subscription modal loads the following information for trial users "Your Current Plan
+Starter Plan
+Active until Dec 15, 2024" but they are on a trial subscription. it HAS to be different plan type. check the logic for this and ensure we have either an account type or plan type or something built in to differentiate trial users and that after doing so, instances like this reflect proper information regarding accounts
+- [ ] cancel subscription modal has the following information:"Before you cancel, here's what you'll lose:
 
+Access to all your saved searches
+Automated search scheduling
+Historical data and analytics
+CRM and email integrations" and we need to update this to "Before you cancel, here's what you'll lose:
 
-
+Access to search
+All automated imports and exports
+Email delivery and integrations" feel free to word those three items differently if you find a more professional way to do so
+- [ ] the update password tool in account/profile does not work. first, dim and block usage of the button until all fields reflect acceptable info. right now, it allows for new passwords to be different without catching the differing input fields immediately. it also does nothing when i use all acceptable info and press update password button
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
 
 
 
@@ -31,9 +63,9 @@
 - [x] **Account/Profile subscription block** — verify removed
 - [x] **Account/Billing payment method** — verify shows zero state (no fake Visa 4242)
 - [x] **Account/Billing history** — verify shows empty state (no sample invoices)
-- [ ] **Account/Billing trial date** — verify shows "Trial ends: MM/DD/YY" not "Invalid Date" it shows "Trial ends: Invalid Date" so it's not loading or formatting the date it loads correctly. it should display trial end date, calculated automatically at sign up by account creation date plus trial period
-- [ ] **ChangePlanModal** — verify no proration language, no Enterprise option, shows clean confirmation. YOU removed the entrprise option, but still need to center the two remaining options within the section as there's some ambigous blank space on the right where something used to be. there was text before "downgrades" about "upgrades take effect immediately", but you removed the full line 'upgrades to effect immediately AT A PRORATED AMOUNT' instead of editting the line to match the situation
-- [ ] **Account/API integrations section** — verify removed, only API keys + Browse Integrations button remains m- not done. remove all of this "Available Integrations (10)
+- [x] **Account/Billing trial date** — verify shows "Trial ends: MM/DD/YY" not "Invalid Date" it shows "Trial ends: Invalid Date" so it's not loading or formatting the date it loads correctly. it should display trial end date, calculated automatically at sign up by account creation date plus trial period
+- [x] **ChangePlanModal** — verify no proration language, no Enterprise option, shows clean confirmation. YOU removed the entrprise option, but still need to center the two remaining options within the section as there's some ambigous blank space on the right where something used to be. there was text before "downgrades" about "upgrades take effect immediately", but you removed the full line 'upgrades to effect immediately AT A PRORATED AMOUNT' instead of editting the line to match the situation
+- [x] **Account/API integrations section** — verify removed, only API keys + Browse Integrations button remains m- not done. remove all of this "Available Integrations (10)
 Mailchimp
 Sync contacts and trigger campaigns
 
@@ -113,7 +145,7 @@ Request a custom integration and we'll prioritize it in our roadmap.
 Request an Integration"
 - [x] **Account/Usage plan info block** — verify "Starter Plan / Trial Period / N/A" removed
 - [ ] **Search history zero state** — verify empty state message updated - not complete still showing black screen
-- [ ] **Automation history zero state** — verify green background removed, yes but you put a white background and i want a black background on the table with white and grey text and icon
+- [x] **Automation history zero state** — verify green background removed, yes but you put a white background and i want a black background on the table with white and grey text and icon
 - [ ] **Create Automation: Manual sync** — verify removed from frequency options - no, not done
 - [ ] **Create Automation: Field Mappings** — this is not done
 - [ ] trying to upgrade my account in Confirm plan change' from starter to pro does not launch stripe it says "Could not start checkout. Please try again."

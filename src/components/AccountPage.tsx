@@ -30,13 +30,48 @@ interface AccountPageProps {
 export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = false, onToggleDarkMode, onNavigate }: AccountPageProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [emailPlaceholder, setEmailPlaceholder] = useState('');
   const [company, setCompany] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   // Controlled tab state
   const [activeTab, setActiveTab] = useState<'profile' | 'usage' | 'billing' | 'integrations' | 'compliance'>(defaultTab);
+  
+  // Load user profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          setEmailPlaceholder(user.email);
+          setEmail(user.email);
+        }
+        
+        // Load profile data from users table
+        if (user?.id) {
+          const { data: profileData } = await supabase
+            .from('users')
+            .select('full_name, company')
+            .eq('id', user.id)
+            .single();
+          
+          if (profileData) {
+            if (profileData.full_name) setName(profileData.full_name);
+            if (profileData.company) setCompany(profileData.company);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+    
+    loadProfile();
+  }, []);
   
   // Update active tab when defaultTab prop changes
   useEffect(() => {
@@ -56,12 +91,30 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [showRequestIntegrationPage, setShowRequestIntegrationPage] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const handleSave = () => {
-    if (!name.trim() || !email.trim() || !company.trim()) {
+  const handleSave = async () => {
+    if (!name.trim() || !company.trim()) {
       toast.error('Please fill in all fields');
       return;
     }
-    toast.success('Account settings saved');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          full_name: name.trim(),
+          company: company.trim(),
+          updated_at: new Date().toISOString(),
+        });
+      
+      if (error) throw error;
+      toast.success('Account settings saved successfully');
+    } catch (err: any) {
+      console.error('Save failed:', err);
+      toast.error(err.message || 'Failed to save settings');
+    }
   };
 
   const handleUpdatePassword = async () => {
@@ -77,20 +130,39 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
       toast.error('New password must be at least 8 characters');
       return;
     }
+    
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      // Call edge function to verify current password and update
+      const response = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to update password');
+      
       toast.success('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
+      console.error('Password update failed:', err);
       toast.error(err.message || 'Failed to update password');
     }
   };
 
   const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
-  const isProfileFormValid = name.trim() && email.trim() && company.trim();
+  const isProfileFormValid = name.trim() && company.trim();
 
   const handleDeleteAccount = async () => {
     setShowDeleteConfirm(false);
@@ -257,11 +329,12 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                     <Input
                       id="email"
                       type="email"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="placeholder:text-gray-400"
+                      placeholder={emailPlaceholder || "Loading email..."}
+                      value=""
+                      disabled
+                      className="placeholder:text-gray-600 bg-gray-50 dark:bg-gray-900 cursor-not-allowed"
                     />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Email cannot be changed. It is the identity linked to your account.</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="company">Company</Label>
