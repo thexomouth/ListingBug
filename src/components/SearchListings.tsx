@@ -733,20 +733,21 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     setIsCappedAtMax(false);
 
     try {
-      // Use top-level supabase import — dynamic import was causing failures
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
-        toast.error('You must be signed in to search listings.');
-        setIsLoading(false);
-        document.body.style.overflow = 'unset';
-        return;
+      // getSession is the authoritative source for the JWT token.
+      // We call refreshSession first to ensure the token is fresh,
+      // then fall back to getSession if already valid.
+      let session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        // Try to refresh — handles cases where session expired or wasn't cached
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData.session;
       }
 
-      // getSession gives us the JWT we need to pass to the edge function
-      const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      if (!token) {
-        toast.error('Session expired — please sign in again.');
+      const currentUser = session?.user;
+
+      if (!currentUser || !token) {
+        toast.error('You must be signed in to search. Please refresh and sign in again.');
         setIsLoading(false);
         document.body.style.overflow = 'unset';
         return;
