@@ -4,6 +4,7 @@ import {
   CheckCircle,
   Settings,
   Zap,
+  Key,
   Mail,
   Database,
   FileSpreadsheet,
@@ -448,9 +449,21 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       {/* Page Header */}
       <div className="bg-white dark:bg-[#0F1115] border-b border-gray-200 dark:border-white/10">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Zap className="w-7 h-7 text-[#342e37] dark:text-[#FFCE0A]" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Integrations</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Zap className="w-7 h-7 text-[#342e37] dark:text-[#FFCE0A]" />
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Integrations</h1>
+            </div>
+            <button
+              onClick={() => {
+                sessionStorage.setItem('account_default_tab', 'integrations');
+                if (onNavigate) onNavigate('account');
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
+            >
+              <Key className="w-4 h-4" />
+              Get API Key
+            </button>
           </div>
           <p className="text-[14px] text-gray-600 dark:text-[#EBF2FA]">
             Set it and forget it - Let ListingBug transfer data to the tools you use most totally on autopilot.
