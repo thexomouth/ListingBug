@@ -236,32 +236,6 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                 </CardContent>
               </Card>
 
-              {/* Subscription */}
-              <Card className="m-[0px]">
-                <CardHeader className="pb-[0px] pt-[18px] pr-[24px] pl-[24px]">
-                  <CardTitle className="text-[18px] font-bold">Subscription</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="mb-0.5">Professional Plan</div>
-                        <p className="text-sm text-gray-600">10,000 listings per month</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="mb-0.5">$99/month</div>
-                        <p className="text-sm text-gray-600">Renews on Dec 1, 2025</p>
-                      </div>
-                    </div>
-                    <Separator />
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">Change Plan</Button>
-                      <Button variant="outline" size="sm">Cancel Subscription</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Password */}
               <Card>
                 <CardHeader className="pb-3">

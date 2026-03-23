@@ -127,41 +127,9 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
     fetchBillingData();
   }, []);
 
-  const paymentMethod = {
-    type: 'card',                            // DYNAMIC: Billing_PaymentMethod_Type
-    brand: 'Visa',                           // DYNAMIC: Billing_PaymentMethod_Brand
-    last4: '4242',                           // DYNAMIC: Billing_PaymentMethod_Last4
-    expiryMonth: 12,                         // DYNAMIC: Billing_PaymentMethod_ExpMonth
-    expiryYear: 2025,                        // DYNAMIC: Billing_PaymentMethod_ExpYear
-    isDefault: true,                         // DYNAMIC: Billing_PaymentMethod_IsDefault
-  };
+  const paymentMethod = null; // Populated from Stripe after user subscribes
 
-  const invoices = [
-    {
-      id: 'inv_001',                         // DYNAMIC: Invoice ID for download
-      date: '2024-11-23',                    // DYNAMIC: Billing_Invoice_Date
-      amount: 99,                            // DYNAMIC: Billing_Invoice_Amount
-      status: 'Paid',                        // DYNAMIC: Billing_Invoice_Status
-      pdfUrl: '#',                           // DYNAMIC: Billing_Invoice_DownloadUrl
-      description: 'Professional Plan - Monthly', // DYNAMIC: Billing_Invoice_Description
-    },
-    {
-      id: 'inv_002',
-      date: '2024-10-23',
-      amount: 99,
-      status: 'Paid',
-      pdfUrl: '#',
-      description: 'Professional Plan - Monthly',
-    },
-    {
-      id: 'inv_003',
-      date: '2024-09-23',
-      amount: 99,
-      status: 'Paid',
-      pdfUrl: '#',
-      description: 'Professional Plan - Monthly',
-    },
-  ];
+  const invoices: any[] = []; // Will be populated from Stripe
 
   // WORKFLOW: Manage subscription via Stripe portal
   // BACKEND: POST /api/billing/portal → Returns Stripe portal URL
@@ -332,9 +300,9 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
               {/* Billing Info */}
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-[#EBF2FA]">
                 <Calendar className="w-4 h-4" />
-                {/* Billing_Display_NextBilling - DYNAMIC: Next billing date */}
+                {/* Billing_Display_NextBilling - DYNAMIC: {subscription.status === 'Trial' ? 'Trial ends' : 'Next billing date'} */}
                 <span>
-                  Next billing date: <span className="font-medium text-[#342e37] dark:text-white">
+                  {subscription.status === 'Trial' ? 'Trial ends' : 'Next billing date'}: <span className="font-medium text-[#342e37] dark:text-white">
                     {new Date(subscription.nextBillingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   </span>
                 </span>

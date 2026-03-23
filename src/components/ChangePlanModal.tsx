@@ -15,7 +15,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
  * - Show all available plans
  * - Highlight current plan
  * - Show upgrade vs downgrade differences
- * - Calculate prorated amounts
+ * - Calculate  amounts
  * - Confirm plan change
  * 
  * BACKEND INTEGRATION:
@@ -123,26 +123,6 @@ export function ChangePlanModal({
       },
       popular: true,
     },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: 0,
-      interval: 'month',
-      features: [
-        'Unlimited listings',
-        'Property valuations',
-        'Relisted property alerts',
-        'Team collaboration (10 users)',
-        'Dedicated account manager',
-        'All 9 integrations',
-        'API access',
-        'Custom workflows',
-      ],
-      limits: {
-        reports: 'Unlimited',
-        dataPoints: Infinity,
-        users: 10,
-      },
     },
   ];
 
@@ -152,7 +132,7 @@ export function ChangePlanModal({
   const isUpgrade = selectedPlanData && currentPlanData && selectedPlanData.price > currentPlanData.price;
   const isDowngrade = selectedPlanData && currentPlanData && selectedPlanData.price < currentPlanData.price;
 
-  const calculateProration = () => {
+  const calculate = () => {
     if (!selectedPlanData || !currentPlanData) return 0;
     
     // Mock calculation - in real app, this comes from backend
@@ -330,7 +310,7 @@ export function ChangePlanModal({
               <Alert className="mt-6">
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Upgrades</strong> take effect immediately with prorated billing. 
+                  <strong> 
                   <strong> Downgrades</strong> take effect at the end of your current billing period.
                 </AlertDescription>
               </Alert>
@@ -387,7 +367,7 @@ export function ChangePlanModal({
                     <AlertDescription>
                       <p className="font-medium text-blue-900 mb-1">Upgrading Your Plan</p>
                       <p className="text-sm text-blue-800">
-                        You'll be charged a prorated amount of <strong>${Math.abs(calculateProration()).toFixed(2)}</strong> today. 
+                        You'll be charged a  amount of <strong>${Math.abs(calculate()).toFixed(2)}</strong> today. 
                         Your next full billing cycle starts on your renewal date.
                       </p>
                     </AlertDescription>
@@ -444,8 +424,8 @@ export function ChangePlanModal({
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                   <h4 className="font-medium text-green-900 mb-2">Today's Charge</h4>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-green-800">Prorated amount for upgrade</span>
-                    <span className="font-bold text-green-900">${Math.abs(calculateProration()).toFixed(2)}</span>
+                    <span className="text-sm text-green-800"> amount for upgrade</span>
+                    <span className="font-bold text-green-900">${Math.abs(calculate()).toFixed(2)}</span>
                   </div>
                   <p className="text-xs text-green-700 mt-2">
                     Starting December 15, 2024, you'll be charged ${selectedPlanData?.price}/month
@@ -500,7 +480,7 @@ export function ChangePlanModal({
  *     "fromPlan": "Starter",
  *     "toPlan": "Professional",
  *     "effectiveDate": "2024-11-23T10:30:00Z",
- *     "prorationAmount": 15.50,
+ *     "": 15.50,
  *     "nextBillingDate": "2024-12-15T00:00:00Z",
  *     "nextBillingAmount": 49.00
  *   }

@@ -212,32 +212,6 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
       {/* Main Content */}
       <div className={embeddedInTabs ? 'py-4' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'}>
         
-        {/* Current Plan Info - Mobile Optimized */}
-        <div className="bg-gradient-to-r from-[#FFD447] to-[#FFD447]/80 rounded-lg p-4 mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <h3 className="font-bold text-[#342E37] text-[16px]">{currentPlanConfig.name} Plan</h3>
-              <p className="text-[13px] text-[#342E37]/80">
-                {isEnterprise
-                  ? 'Unlimited listings per month'
-                  : `${currentPlanConfig.listingsCap.toLocaleString()} listings per month`
-                }
-              </p>
-            </div>
-            <div className="text-left sm:text-right">
-              <div className="text-[13px] text-[#342E37]/80">{planState.isTrial ? 'Trial Period' : 'Billing Period'}</div>
-              <div className="font-bold text-[#342E37]">
-                {planState.isTrial
-                  ? planState.trialEndsAt ? new Date(planState.trialEndsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-                  : planState.billingPeriodStart && planState.billingPeriodEnd
-                    ? `${new Date(planState.billingPeriodStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(planState.billingPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                    : 'N/A'
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Main Usage Card */}
         <Card className="border-2 border-gray-200">
           <CardHeader className="pb-3">

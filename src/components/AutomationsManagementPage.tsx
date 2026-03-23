@@ -726,7 +726,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
       <div className="flex items-center gap-2 mb-1">
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium ${
           run.status === 'success'
-            ? 'bg-green-100 text-green-800'
+            ? ' text-green-800'
             : 'bg-red-100 text-red-800'
         }`}>
           {run.status === 'success' ? (
@@ -805,7 +805,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                       <LBTableCell>
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
                           run.status === 'success'
-                            ? 'bg-green-100 text-green-800'
+                            ? ' text-green-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
                           {run.status === 'success' ? (
