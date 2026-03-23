@@ -2079,7 +2079,10 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                     {searchHistory.map((search) => (
                       <div
                         key={search.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer"
+                        onClick={() => {
+                          if (onViewSearchResults) onViewSearchResults(search);
+                        }}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
@@ -2096,9 +2099,21 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                           </div>
                           <div className="flex items-center gap-2">
                             <LBButton
+                              variant="primary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onViewSearchResults) onViewSearchResults(search);
+                              }}
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1.5" />
+                              View Results
+                            </LBButton>
+                            <LBButton
                               variant="outline"
                               size="sm"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setCriteria(search.criteria);
                                 setActiveFilters(search.activeFilters || []);
                                 setActiveTab('search');
@@ -2111,7 +2126,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                             <LBButton
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSearchHistory(prev => prev.filter(s => s.id !== search.id));
                                 toast.success('Removed from history');
                               }}
