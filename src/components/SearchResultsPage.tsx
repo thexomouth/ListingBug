@@ -373,6 +373,8 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
         <ListingDetailModal
           listing={selectedListing}
           onClose={() => setSelectedListing(null)}
+          onSaveListing={handleSaveListing}
+          isSaved={savedListingIds.has(selectedListing?.id)}
         />
       )}
 
