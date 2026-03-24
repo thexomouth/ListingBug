@@ -64,7 +64,7 @@ type Page =
   | "api-setup" | "help-center" | "blog" | "changelog" | "about" | "careers"
   | "contact" | "contact-support" | "privacy" | "terms" | "billing"
   | "microcopy-pack" | "consent-panel-demo" | "consent-modal-demo"
-  | "sample-report-results" | "request-integration" | "agents";
+  | "sample-report-results" | "request-integration";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -82,7 +82,6 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "terms": "/terms", "billing": "/billing", "microcopy-pack": "/microcopy-pack",
   "consent-panel-demo": "/consent-panel", "consent-modal-demo": "/consent-modal",
   "sample-report-results": "/sample-report", "request-integration": "/request-integration",
-  "agents": "/agents",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -348,7 +347,6 @@ export default function App() {
       case "consent-panel-demo": return <ConsentProvenancePanelDemo />;
       case "consent-modal-demo": return <PreSyncMarketingModalDemo />;
       case "sample-report-results": return <SampleReportPage zipcode={sampleReportZipcode} listings={sampleReportListings} isLoading={sampleReportLoading} error={sampleReportError} onNavigate={handleSmartNavigate} />;
-      case "agents": return isLoggedIn ? <AgentsPage onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
       case "request-integration": return <RequestIntegrationPage onBack={() => navigateWithLoading('integrations')} isMember={false} />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
