@@ -29,14 +29,63 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
   useEffect(() => {
     const loadResults = async () => {
       setIsLoading(true);
+
+      // Primary: load from results_json stored in search_runs
       const { data, error } = await supabase
         .from('search_runs')
-        .select('results_json')
+        .select('results_json, criteria_json, location')
         .eq('id', searchRun.id)
         .single();
-      if (data?.results_json) {
-        setResults(Array.isArray(data.results_json) ? data.results_json : []);
+
+      if (data?.results_json && Array.isArray(data.results_json) && data.results_json.length > 0) {
+        setResults(data.results_json);
+        setIsLoading(false);
+        return;
       }
+
+      // Fallback: if results_json is empty/null, pull from listings table
+      // using city/state from the criteria or location string
+      console.warn('[SearchResultsPage] results_json empty, falling back to listings table');
+      const city = data?.criteria_json?.city || searchRun.criteria?.city;
+      const state = data?.criteria_json?.state || searchRun.criteria?.state;
+
+      if (city && state) {
+        const { data: listingsData } = await supabase
+          .from('listings')
+          .select('*')
+          .eq('city', city)
+          .eq('state', state)
+          .order('fetched_at', { ascending: false })
+          .limit(500);
+
+        if (listingsData && listingsData.length > 0) {
+          // Map listings table schema back to frontend format
+          const mapped = listingsData.map((l: any) => ({
+            id: l.id,
+            address: l.address_line1 || l.formatted_address || '',
+            city: l.city || '',
+            state: l.state || '',
+            zip: l.zip_code || '',
+            propertyType: l.property_type || '',
+            bedrooms: l.bedrooms || 0,
+            bathrooms: l.bathrooms || 0,
+            sqft: l.square_footage || 0,
+            lotSize: l.lot_size || 0,
+            yearBuilt: l.year_built || 0,
+            status: l.status || 'Active',
+            price: l.price || 0,
+            daysListed: l.days_on_market || 0,
+            agentName: l.agent_name || '',
+            agentPhone: l.agent_phone || '',
+            agentEmail: l.agent_email || '',
+            brokerage: l.office_name || '',
+            latitude: l.latitude || 0,
+            longitude: l.longitude || 0,
+          }));
+          setResults(mapped);
+        }
+      }
+
       setIsLoading(false);
     };
     loadResults();

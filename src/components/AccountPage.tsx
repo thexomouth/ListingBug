@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Separator } from './ui/separator';
-import { User, CreditCard, Plug, BarChart3, Shield, Download, FileText, Info, RotateCcw, Key } from 'lucide-react';
+import { User, CreditCard, Plug, BarChart3, Shield, Download, FileText, Info, RotateCcw, Key, Lock, LogOut, Trash2 } from 'lucide-react';
 import { BillingPage } from './BillingPage';
 import { AccountIntegrationsTab } from './AccountIntegrationsTab';
 import { APIKeysSection } from './APIKeysSection';
@@ -299,18 +299,18 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
               <span className="truncate w-full text-center font-bold">Usage</span>
             </TabsTrigger>
             <TabsTrigger 
-              value="integrations" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#FFCE0A] data-[state=active]:text-[#342e37] dark:data-[state=active]:text-white data-[state=active]:bg-transparent px-3 sm:px-6 md:px-8 py-2.5 text-[14px] md:text-[15px] flex flex-col items-center gap-1 flex-1 min-w-0 dark:text-[#EBF2FA]"
-            >
-              <Key className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-              <span className="truncate w-full text-center font-bold">API</span>
-            </TabsTrigger>
-            <TabsTrigger 
               value="billing" 
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#FFCE0A] data-[state=active]:text-[#342e37] dark:data-[state=active]:text-white data-[state=active]:bg-transparent px-3 sm:px-6 md:px-8 py-2.5 text-[14px] md:text-[15px] flex flex-col items-center gap-1 flex-1 min-w-0 dark:text-[#EBF2FA]"
             >
               <CreditCard className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
               <span className="truncate w-full text-center font-bold">Billing</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="integrations" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#FFCE0A] data-[state=active]:text-[#342e37] dark:data-[state=active]:text-white data-[state=active]:bg-transparent px-3 sm:px-6 md:px-8 py-2.5 text-[14px] md:text-[15px] flex flex-col items-center gap-1 flex-1 min-w-0 dark:text-[#EBF2FA]"
+            >
+              <Key className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+              <span className="truncate w-full text-center font-bold">API</span>
             </TabsTrigger>
           </TabsList>
 
@@ -318,9 +318,15 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
           <TabsContent value="profile" className="mt-0 py-4">
             <div className="space-y-3">
               {/* Profile Information */}
-              <Card className="mt-[0px] mr-[0px] mb-[9px] ml-[0px]">
-                <CardHeader className="pb-[0px] pt-[18px] pr-[24px] pl-[24px]">
-                  <CardTitle className="font-bold text-[18px]">Profile Information</CardTitle>
+              <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 font-bold text-[18px] text-[#342e37] dark:text-white">
+                    <User className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
+                    Profile Information
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 dark:text-[#EBF2FA]">
+                    Manage your personal details
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5">
@@ -355,14 +361,23 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                       className="placeholder:text-gray-400"
                     />
                   </div>
-                  <Button onClick={handleSave} disabled={!isProfileFormValid} className="mt-1">Save Changes</Button>
+                  
+                  <Separator className="dark:bg-white/10" />
+                  
+                  <Button onClick={handleSave} disabled={!isProfileFormValid} className="mt-1 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Save Changes</Button>
                 </CardContent>
               </Card>
 
               {/* Password */}
-              <Card>
+              <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-[18px] font-bold">Password</CardTitle>
+                  <CardTitle className="flex items-center gap-2 font-bold text-[18px] text-[#342e37] dark:text-white">
+                    <Lock className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
+                    Password
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 dark:text-[#EBF2FA]">
+                    Update your password
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5">
@@ -398,10 +413,13 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                       className="placeholder:text-gray-400"
                     />
                   </div>
+                  
+                  <Separator className="dark:bg-white/10" />
+                  
                   {newPassword && confirmPassword && newPassword !== confirmPassword && (
                     <p className="text-sm text-red-500">Passwords do not match</p>
                   )}
-                  <Button onClick={handleUpdatePassword} disabled={!isPasswordFormValid} className="mt-1">Update Password</Button>
+                  <Button onClick={handleUpdatePassword} disabled={!isPasswordFormValid} className="mt-1 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Update Password</Button>
                 </CardContent>
               </Card>
 
@@ -409,19 +427,24 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
               
 
               {/* Sign Out Section */}
-              <Card className="border-gray-200">
+              <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-[18px] font-bold">Sign Out</CardTitle>
+                  <CardTitle className="flex items-center gap-2 font-bold text-[18px] text-[#342e37] dark:text-white">
+                    <LogOut className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
+                    Sign Out
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 dark:text-[#EBF2FA]">
+                    Sign out of your account on this device
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      
-                      <p className="text-[13px] text-gray-600">
-                        Sign out of your account on this device.
+                      <p className="text-[13px] text-gray-600 dark:text-[#EBF2FA]">
+                        You'll need to sign in again to access your account.
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={onLogout} className="shrink-0">
+                    <Button variant="outline" size="sm" onClick={onLogout} className="shrink-0 border-gray-200 dark:border-white/20 dark:text-white dark:hover:bg-white/10">
                       Sign Out
                     </Button>
                   </div>
@@ -429,15 +452,21 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
               </Card>
 
               {/* Danger Zone */}
-              <Card className="border-red-200 bg-red-50/30">
+              <Card className="border-red-200 bg-red-50 dark:border-red-500/30 dark:bg-red-500/10">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-red-600 text-[18px] font-bold">Delete Account</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400 text-[18px] font-bold">
+                    <Trash2 className="w-5 h-5" />
+                    Delete Account
+                  </CardTitle>
+                  <CardDescription className="text-red-600 dark:text-red-400">
+                    Permanently delete your account and all data
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h4 className="font-bold text-[14px] text-gray-900 mb-1">Delete Account</h4>
-                      <p className="text-[13px] text-[#acacac]">
+                      <h4 className="font-bold text-[14px] text-red-600 dark:text-red-400 mb-1">Delete Account</h4>
+                      <p className="text-[13px] text-red-600 dark:text-red-400">
                         Permanently delete your account and all associated data. This action cannot be undone.
                       </p>
                     </div>

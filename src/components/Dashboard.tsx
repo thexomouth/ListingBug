@@ -269,7 +269,10 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
           <div className="flex gap-2 md:gap-3 mb-4">
             <Card
               className="cursor-pointer transition-all border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700 flex-1"
-              onClick={() => onNavigate?.('search-listings')}
+              onClick={() => {
+                sessionStorage.setItem('listingbug_open_tab', 'history');
+                onNavigate?.('search-listings');
+              }}
             >
               <CardContent className="p-3 md:p-4 flex flex-col items-center">
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center mb-2">

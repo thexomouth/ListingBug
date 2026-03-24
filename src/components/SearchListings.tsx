@@ -221,9 +221,14 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   // Check if we should open saved listings tab (from dashboard navigation)
   useEffect(() => {
     const shouldOpenSaved = sessionStorage.getItem('listingbug_open_saved_tab');
+    const tabToOpen = sessionStorage.getItem('listingbug_open_tab');
+    
     if (shouldOpenSaved === 'true') {
       setActiveTab('saved');
       sessionStorage.removeItem('listingbug_open_saved_tab');
+    } else if (tabToOpen) {
+      setActiveTab(tabToOpen as 'search' | 'saved' | 'listings' | 'history');
+      sessionStorage.removeItem('listingbug_open_tab');
     }
   }, []);
   

@@ -213,13 +213,13 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
       <div className={embeddedInTabs ? 'py-4' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'}>
         
         {/* Main Usage Card */}
-        <Card className="border-2 border-gray-200">
+        <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 font-bold text-[18px]">
-              <BarChart3 className="w-5 h-5 text-[#342e37] dark:text-white" />
+            <CardTitle className="flex items-center gap-2 font-bold text-[18px] text-[#342e37] dark:text-white">
+              <BarChart3 className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
               Listings Usage
             </CardTitle>
-            <CardDescription className="text-[13px]">
+            <CardDescription className="text-[13px] text-gray-600 dark:text-[#EBF2FA]">
               Track your listing processing and overage charges
             </CardDescription>
           </CardHeader>

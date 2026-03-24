@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Separator } from './ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -234,17 +235,22 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
   };
 
   return (
-    <Card>
+    <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Key className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
-            <CardTitle className="text-[18px]">API Keys</CardTitle>
+          <div>
+            <CardTitle className="flex items-center gap-2 font-bold text-[18px] text-[#342e37] dark:text-white">
+              <Key className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
+              API Keys
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-[#EBF2FA]">
+              Generate API keys for Zapier, Make.com, and n8n integrations
+            </CardDescription>
           </div>
           <Button
             onClick={() => setShowGenerateModal(true)}
             disabled={apiKeys.length >= 10}
-            className="gap-2"
+            className="gap-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
             Generate New Key
@@ -256,6 +262,8 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
           Generate API keys for Zapier, Make.com, and n8n integrations. Each key can be revoked independently.
           Maximum 10 keys allowed.
         </p>
+
+        <Separator className="dark:bg-white/10 mb-4" />
 
         {apiKeys.length === 0 ? (
           <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-lg">
