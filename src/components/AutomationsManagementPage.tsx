@@ -596,10 +596,12 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
           /* Create Tab - Check automation limits */
           automationUsage.isAtLimit && !walkthroughStep3Active ? (
             // Show limit reached message instead of create form
-            <div className="text-center py-12 border border-dashed border-amber-300 bg-amber-50/30 rounded-lg">
-              <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-amber-600" />
-              <p className="text-gray-900 text-[18px] font-bold mb-2">Automation Limit Reached</p>
-              <p className="text-gray-600 text-[14px] mb-6">
+            <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-amber-200 dark:border-amber-500/30 rounded-lg">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+                <AlertTriangle className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+              </div>
+              <p className="text-gray-900 dark:text-white text-[18px] font-bold mb-2">Automation Limit Reached</p>
+              <p className="text-gray-600 dark:text-[#EBF2FA] text-[14px] mb-6">
                 You've used {automationUsage.current} of {automationUsage.max} automation slots on your {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan.
               </p>
               <div className="flex items-center justify-center gap-3">
@@ -642,10 +644,12 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
             </div>
 
             {automations.length === 0 ? (
-              <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
-                <Zap className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-600 text-[18px] mb-2">No automations yet</p>
-                <p className="text-gray-500 text-[14px] mb-6">
+              <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+                  <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+                </div>
+                <p className="text-gray-600 dark:text-white text-[18px] mb-2 font-bold">No automations yet</p>
+                <p className="text-gray-500 dark:text-[#EBF2FA] text-[14px] mb-6">
                   Automate a search to deliver listings to your CRM, email lists, or other tools
                 </p>
                 <LBButton onClick={() => setActiveTab('create')}>
@@ -773,10 +777,12 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
               ))}
               
               {runHistory.length === 0 && (
-                <div className="text-center py-12 bg-[#1a1a1a] rounded-lg border border-white/10">
-                  <Clock className="w-12 h-12 mx-auto mb-3 text-gray-500" />
-                  <p className="text-white font-medium">No run history yet</p>
-                  <p className="text-[13px] text-gray-400 mt-1">Your automation runs will appear here</p>
+                <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-white dark:bg-[#0F1115]">
+                    <Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+                  </div>
+                  <p className="text-gray-600 dark:text-white font-medium">No run history yet</p>
+                  <p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p>
                 </div>
               )}
             </div>
@@ -830,10 +836,12 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
               </div>
               
               {runHistory.length === 0 && (
-                <div className="text-center py-12 bg-[#1a1a1a] rounded-lg border border-white/10">
-                  <Clock className="w-12 h-12 mx-auto mb-3 text-gray-500" />
-                  <p className="text-white font-medium">No run history yet</p>
-                  <p className="text-[13px] text-gray-400 mt-1">Your automation runs will appear here</p>
+                <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-white dark:bg-[#0F1115]">
+                    <Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+                  </div>
+                  <p className="text-gray-600 dark:text-white font-medium">No run history yet</p>
+                  <p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p>
                 </div>
               )}
             </div>

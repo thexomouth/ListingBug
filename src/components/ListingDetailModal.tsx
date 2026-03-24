@@ -1,4 +1,4 @@
-﻿import { X, MapPin, Home, TrendingUp, TrendingDown, Phone, Mail, Building2, FileText, DollarSign, Calendar, Ruler, Bed, Bath, Target, Sparkles, Save, ChevronLeft, Shield, AlertTriangle, CheckCircle2, Clock, Activity, BarChart3, User, Globe, Key, Hash, History, Tag, Layers } from 'lucide-react';
+import { X, MapPin, Home, TrendingUp, TrendingDown, Phone, Mail, Building2, FileText, DollarSign, Calendar, Ruler, Bed, Bath, Target, Sparkles, Save, ChevronLeft, Shield, AlertTriangle, CheckCircle2, Clock, Activity, BarChart3, User, Globe, Key, Hash, History, Tag, Layers } from 'lucide-react';
 import { LBButton } from './design-system/LBButton';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -702,8 +702,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
               </div>
             ) : (
               <div className="px-3 md:px-6 py-6 space-y-6">
-
-                {/* â”€â”€ PHOTO / STREET VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* PHOTO / STREET VIEW */}
                 {(() => {
                   const hasPhoto = listing.photos && listing.photos.length > 0 && listing.photos[0];
                   const hasLatLng = listing.latitude && listing.longitude;
@@ -729,40 +728,38 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   );
                 })()}
 
-                {/* â”€â”€ AGENT CONTACT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* AGENT & BROKERAGE CONTACT */}
                 <div className="bg-[#342e37] rounded-xl p-4 space-y-3">
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-4 h-4 text-[#FFCE0A]" />
                     <h3 className="font-bold text-[16px] text-white">Listing Agent</h3>
                   </div>
-                  <div className="grid grid-cols-1 gap-2 text-[14px]">
-                    {listing.agentName ? (
-                      <p className="text-white font-semibold text-[15px]">{listing.agentName}</p>
-                    ) : <p className="text-white/50 italic text-[13px]">Agent name not provided</p>}
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {listing.agentPhone ? (
-                        <a href={`tel:${listing.agentPhone}`} className="flex items-center gap-1.5 bg-[#FFCE0A] text-[#342e37] font-bold px-3 py-1.5 rounded-lg text-[13px] hover:bg-[#FFCE0A]/90 transition-colors">
-                          <Phone className="w-3.5 h-3.5" />{listing.agentPhone}
-                        </a>
-                      ) : <span className="text-white/40 text-[12px] italic">No phone</span>}
-                      {listing.agentEmail ? (
-                        <a href={`mailto:${listing.agentEmail}`} className="flex items-center gap-1.5 bg-white/10 text-white px-3 py-1.5 rounded-lg text-[13px] hover:bg-white/20 transition-colors">
-                          <Mail className="w-3.5 h-3.5" />{listing.agentEmail}
-                        </a>
-                      ) : <span className="text-white/40 text-[12px] italic">No email</span>}
-                      {listing.agentWebsite && (
-                        <a href={listing.agentWebsite} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-white/10 text-white px-3 py-1.5 rounded-lg text-[13px] hover:bg-white/20 transition-colors">
-                          <Globe className="w-3.5 h-3.5" />Website
-                        </a>
-                      )}
-                    </div>
+                  {listing.agentName
+                    ? <p className="text-white font-semibold text-[15px]">{listing.agentName}</p>
+                    : <p className="text-white/50 italic text-[13px]">Agent name not provided</p>
+                  }
+                  <div className="flex flex-wrap gap-2">
+                    {listing.agentPhone ? (
+                      <a href={`tel:${listing.agentPhone}`} className="flex items-center gap-1.5 bg-[#FFCE0A] text-[#342e37] font-bold px-3 py-1.5 rounded-lg text-[13px] hover:bg-[#FFCE0A]/90 transition-colors">
+                        <Phone className="w-3.5 h-3.5" />{listing.agentPhone}
+                      </a>
+                    ) : <span className="text-white/40 text-[12px] italic">No phone</span>}
+                    {listing.agentEmail ? (
+                      <a href={`mailto:${listing.agentEmail}`} className="flex items-center gap-1.5 bg-white/10 text-white px-3 py-1.5 rounded-lg text-[13px] hover:bg-white/20 transition-colors">
+                        <Mail className="w-3.5 h-3.5" />{listing.agentEmail}
+                      </a>
+                    ) : <span className="text-white/40 text-[12px] italic">No email</span>}
+                    {listing.agentWebsite && (
+                      <a href={listing.agentWebsite} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-white/10 text-white px-3 py-1.5 rounded-lg text-[13px] hover:bg-white/20 transition-colors">
+                        <Globe className="w-3.5 h-3.5" />Agent Website
+                      </a>
+                    )}
                   </div>
-                  {/* Brokerage */}
                   {(listing.brokerage || listing.officeName) && (
-                    <div className="border-t border-white/10 pt-3">
-                      <p className="text-white/60 text-[11px] uppercase tracking-wide mb-1">Brokerage</p>
+                    <div className="border-t border-white/10 pt-3 space-y-1">
+                      <p className="text-white/60 text-[11px] uppercase tracking-wide">Brokerage</p>
                       <p className="text-white font-medium text-[14px]">{listing.brokerage || listing.officeName}</p>
-                      <div className="flex flex-wrap gap-2 mt-1.5">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                         {listing.officePhone && (
                           <a href={`tel:${listing.officePhone}`} className="flex items-center gap-1 text-white/70 text-[12px] hover:text-white">
                             <Phone className="w-3 h-3" />{listing.officePhone}
@@ -775,7 +772,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                         )}
                         {listing.officeWebsite && (
                           <a href={listing.officeWebsite} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-white/70 text-[12px] hover:text-white">
-                            <Globe className="w-3 h-3" />Website
+                            <Globe className="w-3 h-3" />Office Website
                           </a>
                         )}
                       </div>
@@ -783,7 +780,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   )}
                 </div>
 
-                {/* â”€â”€ PRICE & LISTING STATUS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* PRICE & LISTING */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <DollarSign className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
@@ -796,39 +793,42 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">Price / Sq Ft</p>
-                      <p className="font-bold text-[18px] dark:text-white">
-                        {listing.sqft > 0 ? `$${Math.round(listing.price / listing.sqft).toLocaleString()}` : 'â€”'}
-                      </p>
+                      <p className="font-bold text-[18px] dark:text-white">{listing.sqft > 0 ? `$${Math.round(listing.price / listing.sqft).toLocaleString()}` : '--'}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">Status</p>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        listing.status === 'Active' ? 'bg-green-100 text-green-800' :
-                        listing.status === 'Pending' ? 'bg-amber-100 text-amber-800' :
-                        'bg-gray-100 text-gray-700'}`}>{listing.status}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${listing.status === 'Active' ? 'bg-green-100 text-green-800' : listing.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{listing.status}</span>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">Days on Market</p>
-                      <p className={`font-semibold ${listing.daysListed > 30 ? 'text-orange-600' : listing.daysListed > 14 ? 'text-amber-600' : 'dark:text-white'}`}>
-                        {listing.daysListed}d
-                      </p>
+                      <p className={`font-semibold ${listing.daysListed > 30 ? 'text-orange-600' : listing.daysListed > 14 ? 'text-amber-600' : 'dark:text-white'}`}>{listing.daysListed}d</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">Listed Date</p>
-                      <p className="font-medium dark:text-white">{listing.listedDate ? new Date(listing.listedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'â€”'}</p>
+                      <p className="font-medium dark:text-white">{listing.listedDate ? new Date(listing.listedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-0.5">Last Seen</p>
+                      <p className="font-medium dark:text-white">{listing.lastSeenDate ? new Date(listing.lastSeenDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">Listing Type</p>
-                      <p className="font-medium dark:text-white">{listing.listingType || listing.listingTypeDetail || 'â€”'}</p>
+                      <p className="font-medium dark:text-white">{listing.listingType || listing.listingTypeDetail || '--'}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">MLS Number</p>
-                      <p className="font-medium font-mono text-[13px] dark:text-white">{listing.mlsNumber || 'â€”'}</p>
+                      <p className="font-medium font-mono text-[13px] dark:text-white">{listing.mlsNumber || '--'}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">MLS Name</p>
-                      <p className="font-medium text-[13px] dark:text-white">{listing.mlsName || 'â€”'}</p>
+                      <p className="font-medium text-[13px] dark:text-white">{listing.mlsName || '--'}</p>
                     </div>
+                    {listing.removedDate && (
+                      <div>
+                        <p className="text-gray-500 mb-0.5">Removed Date</p>
+                        <p className="font-medium dark:text-white">{new Date(listing.removedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      </div>
+                    )}
                     {listing.priceDrop && (
                       <div className="col-span-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                         <TrendingDown className="w-4 h-4 text-red-600 flex-shrink-0" />
@@ -837,48 +837,42 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     )}
                     {listing.virtualTourUrl && (
                       <div className="col-span-2">
-                        <a href={listing.virtualTourUrl} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
-                          <Globe className="w-4 h-4" />Virtual Tour Available â†’
+                        <a href={listing.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
+                          <Globe className="w-4 h-4" />Virtual Tour Available
                         </a>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* â”€â”€ PROPERTY DETAILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* PROPERTY DETAILS */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Home className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
                     <h3 className="font-bold text-[18px] dark:text-white">Property Details</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-[14px]">
-                    <div><p className="text-gray-500 mb-0.5">Property Type</p><p className="font-medium dark:text-white">{listing.propertyType || 'â€”'}</p></div>
-                    <div><p className="text-gray-500 mb-0.5">Year Built</p><p className="font-medium dark:text-white">{listing.yearBuilt || 'â€”'}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Property Type</p><p className="font-medium dark:text-white">{listing.propertyType || '--'}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Year Built</p><p className="font-medium dark:text-white">{listing.yearBuilt || '--'}</p></div>
                     <div><p className="text-gray-500 mb-0.5">Bedrooms</p><p className="font-semibold text-[16px] dark:text-white">{listing.bedrooms}</p></div>
                     <div><p className="text-gray-500 mb-0.5">Bathrooms</p><p className="font-semibold text-[16px] dark:text-white">{listing.bathrooms}</p></div>
-                    <div><p className="text-gray-500 mb-0.5">Living Area</p><p className="font-medium dark:text-white">{listing.sqft > 0 ? `${listing.sqft.toLocaleString()} sq ft` : 'â€”'}</p></div>
-                    <div><p className="text-gray-500 mb-0.5">Lot Size</p><p className="font-medium dark:text-white">{listing.lotSize > 0 ? `${listing.lotSize.toLocaleString()} sq ft` : 'â€”'}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Living Area</p><p className="font-medium dark:text-white">{listing.sqft > 0 ? `${listing.sqft.toLocaleString()} sq ft` : '--'}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Lot Size</p><p className="font-medium dark:text-white">{listing.lotSize > 0 ? `${listing.lotSize.toLocaleString()} sq ft` : '--'}</p></div>
                     {listing.stories != null && <div><p className="text-gray-500 mb-0.5">Stories</p><p className="font-medium dark:text-white">{listing.stories}</p></div>}
                     {listing.garage != null && (
                       <div>
                         <p className="text-gray-500 mb-0.5">Garage</p>
-                        <p className="font-medium dark:text-white">
-                          {listing.garage ? `Yes${listing.garageSpaces ? ` (${listing.garageSpaces} spaces)` : ''}` : 'No'}
-                        </p>
+                        <p className="font-medium dark:text-white">{listing.garage ? `Yes${listing.garageSpaces ? ` (${listing.garageSpaces} spaces)` : ''}` : 'No'}</p>
                       </div>
                     )}
                     {listing.pool != null && <div><p className="text-gray-500 mb-0.5">Pool</p><p className="font-medium dark:text-white">{listing.pool ? 'Yes' : 'No'}</p></div>}
                     {listing.hoaFee != null && (
-                      <div>
-                        <p className="text-gray-500 mb-0.5">HOA Fee</p>
-                        <p className="font-medium dark:text-white">${listing.hoaFee?.toLocaleString()}/mo</p>
-                      </div>
+                      <div><p className="text-gray-500 mb-0.5">HOA Fee</p><p className="font-medium dark:text-white">${listing.hoaFee?.toLocaleString()}/mo</p></div>
                     )}
                   </div>
                 </div>
 
-                {/* â”€â”€ LOCATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* LOCATION */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <MapPin className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
@@ -890,24 +884,24 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     <div><p className="text-gray-500 mb-0.5">State</p><p className="font-medium dark:text-white">{listing.state}</p></div>
                     <div><p className="text-gray-500 mb-0.5">ZIP Code</p><p className="font-medium dark:text-white">{listing.zip}</p></div>
                     {listing.county && <div><p className="text-gray-500 mb-0.5">County</p><p className="font-medium dark:text-white">{listing.county}</p></div>}
+                    {listing.stateFips && <div><p className="text-gray-500 mb-0.5">State FIPS</p><p className="font-mono text-[12px] dark:text-white">{listing.stateFips}</p></div>}
+                    {listing.countyFips && <div><p className="text-gray-500 mb-0.5">County FIPS</p><p className="font-mono text-[12px] dark:text-white">{listing.countyFips}</p></div>}
                     {listing.latitude && listing.longitude && (
                       <>
                         <div><p className="text-gray-500 mb-0.5">Latitude</p><p className="font-mono text-[12px] dark:text-white">{listing.latitude}</p></div>
                         <div><p className="text-gray-500 mb-0.5">Longitude</p><p className="font-mono text-[12px] dark:text-white">{listing.longitude}</p></div>
                       </>
                     )}
-                    {listing.stateFips && <div><p className="text-gray-500 mb-0.5">State FIPS</p><p className="font-mono text-[12px] dark:text-white">{listing.stateFips}</p></div>}
-                    {listing.countyFips && <div><p className="text-gray-500 mb-0.5">County FIPS</p><p className="font-mono text-[12px] dark:text-white">{listing.countyFips}</p></div>}
                   </div>
                   {listing.latitude && listing.longitude && (
                     <a href={`https://maps.google.com/?q=${listing.latitude},${listing.longitude}`} target="_blank" rel="noopener noreferrer"
                       className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
-                      <MapPin className="w-3.5 h-3.5" />View on Google Maps â†’
+                      <MapPin className="w-3.5 h-3.5" />View on Google Maps
                     </a>
                   )}
                 </div>
 
-                {/* â”€â”€ LISTING HISTORY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* LISTING HISTORY */}
                 {listing.history && Object.keys(listing.history).length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -921,7 +915,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                           <div key={date} className="flex items-start justify-between border border-gray-100 dark:border-white/10 rounded-lg px-3 py-2 text-[13px]">
                             <div>
                               <p className="font-medium dark:text-white">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                              <p className="text-gray-500 text-[12px]">{event.event || 'â€”'} {event.listingType ? `Â· ${event.listingType}` : ''}</p>
+                              <p className="text-gray-500 text-[12px]">{event.event || '--'}{event.listingType ? ` - ${event.listingType}` : ''}</p>
                             </div>
                             <div className="text-right">
                               {event.price && <p className="font-semibold dark:text-white">${Number(event.price).toLocaleString()}</p>}
@@ -933,7 +927,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </div>
                 )}
 
-                {/* â”€â”€ DESCRIPTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* DESCRIPTION */}
                 {listing.description && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -944,7 +938,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </div>
                 )}
 
-                {/* â”€â”€ OPPORTUNITY INTELLIGENCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* OPPORTUNITY INTELLIGENCE */}
                 <div className="bg-gradient-to-br from-[#FFD447]/20 to-[#FFD447]/5 border-2 border-[#FFD447] rounded-lg p-3 md:p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -957,16 +951,16 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </div>
                   <div className="space-y-2 text-[14px]">
                     {listing.daysListed > 14 && (
-                      <div className="flex items-start gap-2 text-orange-700"><span>ðŸ”¥</span><span><strong>Long market time:</strong> {listing.daysListed} days</span></div>
+                      <div className="flex items-start gap-2 text-orange-700"><span>🔥</span><span><strong>Long market time:</strong> {listing.daysListed} days</span></div>
                     )}
                     {listing.priceDrop && (
                       <div className="flex items-start gap-2 text-red-700"><TrendingDown className="w-4 h-4 mt-0.5 flex-shrink-0" /><span><strong>Price reduced</strong></span></div>
                     )}
                     {listing.reList && (
-                      <div className="flex items-start gap-2 text-orange-700"><span>ðŸ”</span><span><strong>Re-listed property</strong></span></div>
+                      <div className="flex items-start gap-2 text-orange-700"><span>🔁</span><span><strong>Re-listed property</strong></span></div>
                     )}
                     {listing.yearBuilt > 0 && listing.yearBuilt < 2000 && (
-                      <div className="flex items-start gap-2 text-blue-700"><span>ðŸšï¸</span><span><strong>Older property:</strong> Built in {listing.yearBuilt}</span></div>
+                      <div className="flex items-start gap-2 text-blue-700"><span>🏚️</span><span><strong>Older property:</strong> Built in {listing.yearBuilt}</span></div>
                     )}
                   </div>
                   <div className="mt-4 pt-4 border-t border-[#FFD447]/30">
@@ -982,7 +976,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </div>
                 </div>
 
-                {/* â”€â”€ METADATA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                {/* DATA METADATA */}
                 <div className="border-t border-gray-100 dark:border-white/10 pt-4">
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-2">Data Metadata</p>
                   <div className="grid grid-cols-2 gap-2 text-[12px] text-gray-500">
@@ -995,7 +989,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
 
                 <div className="pt-2 pb-2" />
               </div>
-            )}
           </div>
         </div>
       </div>

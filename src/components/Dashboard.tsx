@@ -395,20 +395,21 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
           </div>
 
           {savedListings.length === 0 ? (
-            <Card className="border-2 border-dashed border-gray-300">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-[#FFCE0A]/20 flex items-center justify-center flex-shrink-0">
-                  <Bookmark className="w-6 h-6 text-[#FFCE0A]" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-700 dark:text-white mb-1">No saved listings yet</h3>
-                  <p className="text-sm text-gray-600">Save listings from search results to review them later</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+                <Bookmark className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+              </div>
+              <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No saved listings yet</h3>
+              <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Save listings from search results to review them later</p>
+              <button onClick={() => onNavigate?.('search-listings')} className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37] rounded-lg font-bold transition-all">
+                <Search className="w-4 h-4" />
+                Search Listings
+              </button>
+            </div>
           ) : (
-            <div className="relative">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-6">
+              <div className="relative">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {savedListings.slice(0, 4).map((listing) => (
                   <div key={listing.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-white/10" onClick={() => setSelectedListing(listing)}>
                     <div className="relative w-full aspect-[4/3] bg-gray-100">
@@ -460,19 +461,20 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
           </div>
 
           {activeAutomations.length === 0 ? (
-            <Card className="border-2 border-dashed border-gray-300">
-              <CardContent className="p-8 text-center">
-                <Zap className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <h3 className="font-bold text-lg text-gray-700 mb-2">No Active Automations</h3>
-                <p className="text-sm text-gray-600 mb-4">Create your first automation to start receiving listing updates automatically</p>
-                <button onClick={() => onNavigate?.('automations')} className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37] rounded-lg font-bold transition-all">
-                  <Plus className="w-4 h-4" />
-                  Create First Automation
-                </button>
-              </CardContent>
-            </Card>
+            <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+                <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+              </div>
+              <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No Active Automations</h3>
+              <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Create your first automation to start receiving listing updates automatically</p>
+              <button onClick={() => onNavigate?.('automations')} className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37] rounded-lg font-bold transition-all">
+                <Plus className="w-4 h-4" />
+                Create First Automation
+              </button>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-6">
+              <div className="space-y-3">
               {activeAutomations.map((automation) => (
                 <div key={automation.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-all rounded-lg py-3" onClick={() => { setSelectedAutomation(automation); setIsAutomationDrawerOpen(true); }}>
                   <div className="flex items-center justify-between gap-6">
@@ -490,6 +492,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </div>
@@ -506,17 +509,17 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
               Connect More Tools
             </button>
           </div>
-          <Card className="border-2 border-dashed border-gray-300">
-            <CardContent className="p-8 text-center">
-              <Database className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <h3 className="font-bold text-lg text-gray-700 mb-2">No Connected Integrations</h3>
-              <p className="text-sm text-gray-600 mb-4">Connect tools like Mailchimp, Google Sheets, Salesforce, and more</p>
-              <button onClick={() => onNavigate?.('integrations')} className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37] rounded-lg font-bold transition-all">
-                <Plus className="w-4 h-4" />
-                Connect Your First Tool
-              </button>
-            </CardContent>
-          </Card>
+          <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+              <Database className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No Connected Integrations</h3>
+            <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Connect tools like Mailchimp, Google Sheets, Salesforce, and more</p>
+            <button onClick={() => onNavigate?.('integrations')} className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37] rounded-lg font-bold transition-all">
+              <Plus className="w-4 h-4" />
+              Connect Your First Tool
+            </button>
+          </div>
         </div>
       </div>
 

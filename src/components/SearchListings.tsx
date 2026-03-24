@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
 import { LBCard, LBCardHeader, LBCardTitle, LBCardContent } from './design-system/LBCard';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { LBInput } from './design-system/LBInput';
 import { LBSelect } from './design-system/LBSelect';
 import { LBButton } from './design-system/LBButton';
@@ -1980,18 +1981,20 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         </>
       ) : activeTab === 'saved' ? (
         /* Saved Searches Tab */
-        <div className="space-y-4">
+        <div className="space-y-4 pb-[100px]">
           {savedSearches.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
-              <Save className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-600 mb-2">No saved searches yet</p>
-              <p className="text-[13px] text-gray-500 mb-4">
-                Save your search criteria to quickly access them later or create automations
-              </p>
-              <LBButton onClick={() => setActiveTab('search')} size="sm">
-                Go to Search
-              </LBButton>
-            </div>
+            <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
+              <CardContent className="text-center py-12">
+                <Save className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                <p className="text-gray-900 dark:text-white font-medium mb-2">No saved searches yet</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">
+                  Save your search criteria to quickly access them later or create automations
+                </p>
+                <LBButton onClick={() => setActiveTab('search')} size="sm">
+                  Go to Search
+                </LBButton>
+              </CardContent>
+            </Card>
           ) : (
             <>
               <div className="flex items-center justify-between mb-4">
@@ -1999,48 +2002,47 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
               </div>
               <div className="grid gap-4">
                 {savedSearches.map((search) => (
-                  <div
-                    key={search.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-bold text-[16px] mb-1">{search.name}</h4>
-                        <p className="text-[13px] text-gray-600 mb-1">{search.location}</p>
-                        <p className="text-[13px] text-gray-500">{search.criteriaDescription}</p>
+                  <Card key={search.id} className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10 hover:shadow-sm transition-shadow">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-[16px] mb-1">{search.name}</h4>
+                          <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-1">{search.location}</p>
+                          <p className="text-[13px] text-gray-500 dark:text-gray-500">{search.criteriaDescription}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                      <div className="text-[12px] text-gray-500">
-                        Created: {new Date(search.createdAt).toLocaleDateString()}
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/10">
+                        <div className="text-[12px] text-gray-500 dark:text-gray-400">
+                          Created: {new Date(search.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <LBButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleLoadSavedSearch(search)}
+                          >
+                            <Play className="w-3.5 h-3.5 mr-1.5" />
+                            Load
+                          </LBButton>
+                          <LBButton
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleCreateAutomation(search)}
+                          >
+                            <Zap className="w-3.5 h-3.5 mr-1.5" />
+                            Automate
+                          </LBButton>
+                          <LBButton
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSavedSearch(search.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                          </LBButton>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <LBButton
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleLoadSavedSearch(search)}
-                        >
-                          <Play className="w-3.5 h-3.5 mr-1.5" />
-                          Load
-                        </LBButton>
-                        <LBButton
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleCreateAutomation(search)}
-                        >
-                          <Zap className="w-3.5 h-3.5 mr-1.5" />
-                          Automate
-                        </LBButton>
-                        <LBButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteSavedSearch(search.id)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                        </LBButton>
-                      </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </>
@@ -2048,125 +2050,134 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         </div>
       ) : activeTab === 'listings' ? (
         /* Saved Listings Tab */
-        <div className="space-y-4">
+        <div className="space-y-4 pb-[100px]">
           {savedListings.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
-              <Save className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-600 mb-2">No saved listings yet</p>
-              <p className="text-[13px] text-gray-500 mb-4">
-                Save listings from search results to review them later
-              </p>
-              <LBButton onClick={() => setActiveTab('search')} size="sm">
-                Go to Search
-              </LBButton>
-            </div>
+            <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
+              <CardContent className="text-center py-12">
+                <Save className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                <p className="text-gray-900 dark:text-white font-medium mb-2">No saved listings yet</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">
+                  Save listings from search results to review them later
+                </p>
+                <LBButton onClick={() => setActiveTab('search')} size="sm">
+                  Go to Search
+                </LBButton>
+              </CardContent>
+            </Card>
           ) : (
             <>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[24px]">Saved Listings ({savedListings.length})</h3>
-                <LBButton
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (window.confirm(`Are you sure you want to remove all ${savedListings.length} saved listings?`)) {
-                      setSavedListings([]);
-                      toast.success('All saved listings cleared');
-                    }
-                  }}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                  Clear All
-                </LBButton>
-              </div>
-              
-              {/* Saved Listings Table */}
-              <LBTable>
-                <LBTableHeader>
-                  <LBTableRow>
-                    <LBTableHead>Address</LBTableHead>
-                    <LBTableHead>City</LBTableHead>
-                    <LBTableHead>Price</LBTableHead>
-                    <LBTableHead>Beds/Baths</LBTableHead>
-                    <LBTableHead>Sq Ft</LBTableHead>
-                    <LBTableHead>Status</LBTableHead>
-                    <LBTableHead>Saved Date</LBTableHead>
-                    <LBTableHead className="text-right">Actions</LBTableHead>
-                  </LBTableRow>
-                </LBTableHeader>
-                <LBTableBody>
-                  {savedListings.map((listing) => (
-                    <LBTableRow 
-                      key={listing.id}
-                      className="cursor-pointer hover:bg-gray-50"
-                      onClick={() => setSelectedListing(listing)}
+              <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="font-bold text-[24px]">Saved Listings ({savedListings.length})</CardTitle>
+                    <LBButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to remove all ${savedListings.length} saved listings?`)) {
+                          setSavedListings([]);
+                          toast.success('All saved listings cleared');
+                        }
+                      }}
                     >
-                      <LBTableCell className="font-medium">{listing.address}</LBTableCell>
-                      <LBTableCell>{listing.city}</LBTableCell>
-                      <LBTableCell className="font-medium">${listing.price.toLocaleString()}</LBTableCell>
-                      <LBTableCell>{listing.bedrooms} / {listing.bathrooms}</LBTableCell>
-                      <LBTableCell>{listing.sqft.toLocaleString()} sf</LBTableCell>
-                      <LBTableCell>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
-                            listing.status === 'Active'
-                              ? 'bg-green-100 text-green-800'
-                              : listing.status === 'Pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
+                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                      Clear All
+                    </LBButton>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Saved Listings Table */}
+                  <LBTable>
+                    <LBTableHeader>
+                      <LBTableRow>
+                        <LBTableHead>Address</LBTableHead>
+                        <LBTableHead>City</LBTableHead>
+                        <LBTableHead>Price</LBTableHead>
+                        <LBTableHead>Beds/Baths</LBTableHead>
+                        <LBTableHead>Sq Ft</LBTableHead>
+                        <LBTableHead>Status</LBTableHead>
+                        <LBTableHead>Saved Date</LBTableHead>
+                        <LBTableHead className="text-right">Actions</LBTableHead>
+                      </LBTableRow>
+                    </LBTableHeader>
+                    <LBTableBody>
+                      {savedListings.map((listing) => (
+                        <LBTableRow 
+                          key={listing.id}
+                          className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                          onClick={() => setSelectedListing(listing)}
                         >
-                          {listing.status}
-                        </span>
-                      </LBTableCell>
-                      <LBTableCell className="text-[13px] text-gray-600">
-                        {new Date(listing.savedAt).toLocaleDateString()}
-                      </LBTableCell>
-                      <LBTableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <LBButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedListing(listing);
-                            }}
-                            title="View details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </LBButton>
-                          <LBButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveListing(listing);
-                            }}
-                            title="Remove from saved"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                          <LBTableCell className="font-medium">{listing.address}</LBTableCell>
+                          <LBTableCell>{listing.city}</LBTableCell>
+                          <LBTableCell className="font-medium">${listing.price.toLocaleString()}</LBTableCell>
+                          <LBTableCell>{listing.bedrooms} / {listing.bathrooms}</LBTableCell>
+                          <LBTableCell>{listing.sqft.toLocaleString()} sf</LBTableCell>
+                          <LBTableCell>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
+                                listing.status === 'Active'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300'
+                                  : listing.status === 'Pending'
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-300'
+                              }`}
+                            >
+                              {listing.status}
+                            </span>
+                          </LBTableCell>
+                          <LBTableCell className="text-[13px] text-gray-600 dark:text-gray-400">
+                            {new Date(listing.savedAt).toLocaleDateString()}
+                          </LBTableCell>
+                          <LBTableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <LBButton
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedListing(listing);
+                                }}
+                                title="View details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </LBButton>
+                              <LBButton
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSaveListing(listing);
+                                }}
+                                title="Remove from saved"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
                           </LBButton>
                         </div>
                       </LBTableCell>
                     </LBTableRow>
                   ))}
-                </LBTableBody>
-              </LBTable>
+                    </LBTableBody>
+                  </LBTable>
+                </CardContent>
+              </Card>
             </>
           )}
         </div>
       ) : activeTab === 'history' ? (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-[100px]">
           {searchHistory.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-gray-300 dark:border-white/20 rounded-lg">
-              <Clock className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
-              <p className="text-gray-600 dark:text-gray-300 mb-2 font-medium">No search history yet</p>
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4">
-                Run your first search to see your history here. Results are saved so you can view them again without re-querying.
-              </p>
-              <LBButton onClick={() => setActiveTab('search')} size="sm">
-                Go to Search
-              </LBButton>
-            </div>
+            <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10">
+              <CardContent className="text-center py-12">
+                <Clock className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                <p className="text-gray-900 dark:text-white font-medium mb-2">No search history yet</p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">
+                  Run your first search to see your history here. Results are saved so you can view them again without re-querying.
+                </p>
+                <LBButton onClick={() => setActiveTab('search')} size="sm">
+                  Go to Search
+                </LBButton>
+              </CardContent>
+            </Card>
           ) : (
             <>
               {/* Search History Section */}
@@ -2188,66 +2199,68 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   </div>
                   <div className="grid gap-4 pb-[100px]">
                     {searchHistory.map((search) => (
-                      <div
+                      <Card
                         key={search.id}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow cursor-pointer"
+                        className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10 hover:shadow-sm transition-shadow cursor-pointer"
                         onClick={() => {
                           if (onViewSearchResults) onViewSearchResults(search);
                         }}
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <p className="font-bold text-[16px] mb-1">{search.location}</p>
-                            <p className="text-[13px] text-gray-600 mb-1">{search.criteriaDescription}</p>
-                            <p className="text-[13px] text-green-600">
-                              {search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'} found
-                            </p>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <p className="font-bold text-[16px] mb-1">{search.location}</p>
+                              <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-1">{search.criteriaDescription}</p>
+                              <p className="text-[13px] text-green-600 dark:text-green-400">
+                                {search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'} found
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                          <div className="text-[12px] text-gray-500">
-                            {new Date(search.searchDate).toLocaleString()}
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/10">
+                            <div className="text-[12px] text-gray-500 dark:text-gray-400">
+                              {new Date(search.searchDate).toLocaleString()}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <LBButton
+                                variant="primary"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onViewSearchResults) onViewSearchResults(search);
+                                }}
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                View Results
+                              </LBButton>
+                              <LBButton
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCriteria(search.criteria);
+                                  setActiveFilters(search.activeFilters || []);
+                                  setActiveTab('search');
+                                  toast.success('Search criteria loaded');
+                                }}
+                              >
+                                <Play className="w-3.5 h-3.5 mr-1.5" />
+                                Re-run
+                              </LBButton>
+                              <LBButton
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSearchHistory(prev => prev.filter(s => s.id !== search.id));
+                                  toast.success('Removed from history');
+                                }}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                              </LBButton>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <LBButton
-                              variant="primary"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (onViewSearchResults) onViewSearchResults(search);
-                              }}
-                            >
-                              <Eye className="w-3.5 h-3.5 mr-1.5" />
-                              View Results
-                            </LBButton>
-                            <LBButton
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCriteria(search.criteria);
-                                setActiveFilters(search.activeFilters || []);
-                                setActiveTab('search');
-                                toast.success('Search criteria loaded');
-                              }}
-                            >
-                              <Play className="w-3.5 h-3.5 mr-1.5" />
-                              Re-run
-                            </LBButton>
-                            <LBButton
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSearchHistory(prev => prev.filter(s => s.id !== search.id));
-                                toast.success('Removed from history');
-                              }}
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                            </LBButton>
-                          </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 </div>

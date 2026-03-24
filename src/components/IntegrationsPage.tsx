@@ -357,20 +357,16 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     const isFuture = integration.category === 'future';
 
     return (
-      <div className={`border rounded-lg p-3 transition-all ${ 
-    integration.connected
-      ? 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:shadow-sm' 
-      : integration.comingSoon
-      ? 'border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] opacity-60'
-      : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:shadow-sm'
+      <div className={`bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-4 transition-all ${
+        isConnected 
+          ? 'hover:border-gray-300 dark:hover:border-white/20 hover:shadow-sm' 
+          : isFuture 
+          ? 'opacity-60'
+          : 'hover:border-gray-300 dark:hover:border-white/20 hover:shadow-sm'
       }`}>
         {/* Icon */}
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${
-          isConnected ? 'bg-green-100 dark:bg-green-900/30' : isFuture ? 'bg-gray-200 dark:bg-gray-800' : 'bg-gray-100 dark:bg-[#0F1115]'
-        }`}>
-          <Icon className={`w-5 h-5 ${
-            isConnected ? 'text-green-600 dark:text-green-500' : isFuture ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-white/80'
-          }`} />
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-2 bg-white dark:bg-[#0F1115]">
+          <Icon className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
         </div>
 
         {/* Name & Status */}
@@ -448,7 +444,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
       {/* Page Header */}
       <div className="bg-white dark:bg-[#0F1115] border-b border-gray-200 dark:border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-[50px]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <Zap className="w-7 h-7 text-[#342e37] dark:text-[#FFCE0A]" />
@@ -480,7 +476,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               <h3 className="font-bold text-[22px] text-[#342e37] dark:text-white mb-4">
                 Connected Integrations ({connectedIntegrations.length})
               </h3>
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {connectedIntegrations.map((integration) => (
                   <IntegrationCard key={integration.id} integration={integration} />
                 ))}
@@ -506,7 +502,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
             </button>
             
             {availableExpanded && (
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {availableIntegrations.map((integration) => (
                   <IntegrationCard key={integration.id} integration={integration} />
                 ))}
@@ -536,7 +532,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                 <p className="text-[13px] text-gray-600 dark:text-[#EBF2FA] mb-3">
                   These integrations are planned for future releases. Vote for your favorites!
                 </p>
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {futureIntegrations.map((integration) => (
                     <IntegrationCard key={integration.id} integration={integration} />
                   ))}
