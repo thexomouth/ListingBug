@@ -106,16 +106,6 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
 
     const fullKey = generateRandomKey();
 
-    // Use getSession for the JWT + getUser for the verified user id
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      const { data: refreshData } = await supabase.auth.refreshSession();
-      if (!refreshData.session) {
-        toast.error('Unable to generate API key: not signed in');
-        return;
-      }
-    }
-
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     const userId = currentUser?.id;
 
