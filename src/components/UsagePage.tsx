@@ -289,12 +289,12 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
               )}
 
               {!isNearingCap && planState.planKey !== 'enterprise' && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <AlertDescription className="text-green-900 text-[13px]">
+                <div className="flex items-center gap-2 py-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                  <span className="text-[13px] text-gray-600 dark:text-gray-400">
                     You're on track! No overage fees projected this month.
-                  </AlertDescription>
-                </Alert>
+                  </span>
+                </div>
               )}
 
               {planState.planKey === 'enterprise' && (
@@ -325,9 +325,9 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                 </div>
                 
                 {/* Projection Stats - Stacked on Mobile */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div className="text-[11px] text-gray-600 mb-1">PROJECTED TOTAL</div>
+                <div className="grid grid-cols-3 divide-x divide-gray-200 dark:divide-white/10">
+                  <div className="pr-3">
+                    <div className="text-[11px] text-gray-500 mb-1 uppercase tracking-wide">PROJECTED TOTAL</div>
                     <div className="font-bold text-[18px] dark:text-white text-[#00a63e]">
                       {usage.projectedListings.toLocaleString()}
                     </div>
@@ -336,8 +336,8 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div className="text-[11px] text-gray-600 mb-1">PROJECTED OVERAGE</div>
+                  <div className="px-3">
+                    <div className="text-[11px] text-gray-500 mb-1 uppercase tracking-wide">PROJECTED OVERAGE</div>
                     <div className={`font-bold text-[18px] ${projectedOverage > 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {projectedOverage > 0 ? `+${projectedOverage.toLocaleString()}` : '0'}
                     </div>
@@ -346,8 +346,8 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div className="text-[11px] text-gray-600 mb-1">PROJECTED FEE</div>
+                  <div className="pl-3">
+                    <div className="text-[11px] text-gray-500 mb-1 uppercase tracking-wide">PROJECTED FEE</div>
                     <div className={`font-bold text-[18px] ${projectedOverageFee > 0 ? 'text-red-600' : 'text-green-600'}`}>
                       ${projectedOverageFee.toFixed(2)}
                     </div>
@@ -389,15 +389,18 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                 </div>
 
                 <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 py-2 border-b">
-                  <span className="text-[13px] text-gray-600">Current Overage</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${currentOverage > 0 ? 'bg-yellow-400' : 'bg-green-500'}`} />
+                    <span className="text-[13px] text-gray-600">Current Overage</span>
+                  </div>
                   <span className={`text-[13px] font-bold ${currentOverage > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {currentOverage > 0 ? `${currentOverage.toLocaleString()} listings` : 'None'}
                   </span>
                 </div>
 
-                {/* Current Overage Fee - Highlighted */}
-                <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 py-3 px-3 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <span className="text-[14px] font-bold text-gray-900">Current Overages</span>
+                {/* Current Overage Fees */}
+                <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 py-3">
+                  <span className="text-[14px] font-bold text-gray-900 dark:text-white">Current Overage Fees</span>
                   <span className={`text-[18px] font-bold ${currentOverageFee > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     ${currentOverageFee.toFixed(2)}
                   </span>
