@@ -994,21 +994,19 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     // Results summary
     lines.push(q('── RESULTS SUMMARY ──────────────────────────────────────────────'));
     lines.push(`${q('Total Listings:')},${q(results.length)}`);
-    const prices = results.map((r: any) => r.price).filter((p: any) => p > 0);
-    if (prices.length > 0) {
-      const avg = Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length);
-      const sorted = [...prices].sort((a: number, b: number) => a - b);
-      const med = sorted[Math.floor(sorted.length / 2)];
-      lines.push(`${q('Average Price:')},${q('$' + avg.toLocaleString())}`);
-      lines.push(`${q('Median Price:')},${q('$' + med.toLocaleString())}`);
-      lines.push(`${q('Price Range:')},${q('$' + Math.min(...prices).toLocaleString() + ' – $' + Math.max(...prices).toLocaleString())}`);
-    }
-    const withDays = results.filter((r: any) => r.daysListed > 0);
-    if (withDays.length > 0) {
-      const avgDays = Math.round(withDays.reduce((a: number, r: any) => a + r.daysListed, 0) / withDays.length);
-      lines.push(`${q('Avg Days on Market:')},${q(avgDays)}`);
-    }
+    const noPhone = results.filter((r: any) => !r.agentPhone).length;
+    const noEmail = results.filter((r: any) => !r.agentEmail).length;
+    lines.push(`${q('No Agent Phone:')},${q(noPhone)}`);
+    lines.push(`${q('No Agent Email:')},${q(noEmail)}`);
     lines.push('');
+
+    // Sort: price descending; records missing both phone AND email sink to bottom
+    const sorted = [...results].sort((a: any, b: any) => {
+      const aContact = !!(a.agentPhone || a.agentEmail);
+      const bContact = !!(b.agentPhone || b.agentEmail);
+      if (aContact !== bContact) return aContact ? -1 : 1;
+      return (b.price || 0) - (a.price || 0);
+    });
 
     // Column headers
     lines.push(q('── LISTINGS ─────────────────────────────────────────────────────'));
@@ -1023,7 +1021,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     ].map(q).join(','));
 
     // Data rows
-    results.forEach((r: any) => {
+    sorted.forEach((r: any) => {
       const pricePsf = r.price && r.sqft ? Math.round(r.price / r.sqft) : '';
       const listedDate = r.listedDate ? new Date(r.listedDate).toLocaleDateString('en-US') : '';
       lines.push([

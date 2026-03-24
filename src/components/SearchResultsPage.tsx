@@ -104,23 +104,20 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
     // ── Section 3: Results Summary ─────────────────────────────────────────────
     lines.push(row('── RESULTS SUMMARY ──────────────────────────────────────────────'));
     lines.push(row('Total Listings:', results.length));
-
-    const prices = results.map((r: any) => r.price).filter((p: any) => p > 0);
-    if (prices.length > 0) {
-      const avg = Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length);
-      const med = prices.sort((a: number, b: number) => a - b)[Math.floor(prices.length / 2)];
-      lines.push(row('Average Price:', `$${avg.toLocaleString()}`));
-      lines.push(row('Median Price:', `$${med.toLocaleString()}`));
-      lines.push(row('Price Range:', `$${Math.min(...prices).toLocaleString()} – $${Math.max(...prices).toLocaleString()}`));
-    }
-    const avgDays = results.filter((r: any) => r.daysListed > 0);
-    if (avgDays.length > 0) {
-      const avg = Math.round(avgDays.reduce((a: number, r: any) => a + r.daysListed, 0) / avgDays.length);
-      lines.push(row('Avg Days on Market:', avg));
-    }
+    const noPhone = results.filter((r: any) => !r.agentPhone).length;
+    const noEmail = results.filter((r: any) => !r.agentEmail).length;
+    lines.push(row('No Agent Phone:', noPhone));
+    lines.push(row('No Agent Email:', noEmail));
     lines.push(row(''));
 
     // ── Section 4: Column Headers ──────────────────────────────────────────────
+    // Sort: price descending; records missing both phone AND email go to bottom
+    const sorted = [...results].sort((a: any, b: any) => {
+      const aContact = !!(a.agentPhone || a.agentEmail);
+      const bContact = !!(b.agentPhone || b.agentEmail);
+      if (aContact !== bContact) return aContact ? -1 : 1;
+      return (b.price || 0) - (a.price || 0);
+    });
     lines.push(row('── LISTINGS ─────────────────────────────────────────────────────'));
     lines.push([
       // Property Identity
@@ -140,7 +137,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
     ].map(q).join(','));
 
     // ── Section 5: Data Rows ───────────────────────────────────────────────────
-    results.forEach((r: any) => {
+    sorted.forEach((r: any) => {
       const pricePsf = r.price && r.sqft ? Math.round(r.price / r.sqft) : '';
       const listedDate = r.listedDate ? new Date(r.listedDate).toLocaleDateString('en-US') : '';
       lines.push([
