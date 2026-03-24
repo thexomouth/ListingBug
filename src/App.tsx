@@ -53,17 +53,18 @@ const IntegrationsMarketingPage = lazy(() => import("./components/IntegrationsMa
 const AutomationDetailPage = lazy(() => import("./components/AutomationDetailPage").then(m => ({ default: m.AutomationDetailPage })));
 const SampleReportPage = lazy(() => import("./components/SampleReportPage").then(m => ({ default: m.SampleReportPage })));
 const SearchResultsPage = lazy(() => import("./components/SearchResultsPage").then(m => ({ default: m.SearchResultsPage })));
+const AgentsPage = lazy(() => import("./components/AgentsPage").then(m => ({ default: m.AgentsPage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
   | "automation" | "pricing" | "login" | "signup" | "forgot-password"
   | "reset-password" | "welcome" | "quick-start-guide" | "dashboard"
   | "search-listings" | "search-results" | "automations" | "automation-detail"
-  | "saved-listings" | "account" | "design-system" | "api-documentation"
+  | "agents" | "saved-listings" | "account" | "design-system" | "api-documentation"
   | "api-setup" | "help-center" | "blog" | "changelog" | "about" | "careers"
   | "contact" | "contact-support" | "privacy" | "terms" | "billing"
   | "microcopy-pack" | "consent-panel-demo" | "consent-modal-demo"
-  | "sample-report-results" | "request-integration";
+  | "sample-report-results" | "request-integration" | "agents";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -73,6 +74,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "welcome": "/welcome", "quick-start-guide": "/quick-start", "dashboard": "/dashboard",
   "search-listings": "/listings", "search-results": "/listings/results",
   "automations": "/automations", "automation-detail": "/automations/detail",
+  "agents": "/agents",
   "saved-listings": "/saved", "account": "/account", "design-system": "/design-system",
   "api-documentation": "/api-docs", "api-setup": "/api-setup", "help-center": "/help",
   "blog": "/blog", "changelog": "/changelog", "about": "/about", "careers": "/careers",
@@ -80,6 +82,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "terms": "/terms", "billing": "/billing", "microcopy-pack": "/microcopy-pack",
   "consent-panel-demo": "/consent-panel", "consent-modal-demo": "/consent-modal",
   "sample-report-results": "/sample-report", "request-integration": "/request-integration",
+  "agents": "/agents",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -324,6 +327,7 @@ export default function App() {
           onEdit={(automation) => { setSelectedAutomation(automation); handleBackToAutomations(); }} />
       ) : <LoginPage onLogin={handleLogin} />;
       case "saved-listings": return isLoggedIn ? <SavedListingsPage /> : <LoginPage onLogin={handleLogin} />;
+      case "agents": return isLoggedIn ? <AgentsPage onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
       case "account": return isLoggedIn ? <AccountPage onLogout={handleLogout} defaultTab={accountDefaultTab} isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
       case "integrations": return isLoggedIn ? <IntegrationsPage onNavigate={navigateWithLoading} /> : <IntegrationsMarketingPage onNavigate={navigateWithLoading} />;
       case "billing": return <BillingPage />;
@@ -344,6 +348,7 @@ export default function App() {
       case "consent-panel-demo": return <ConsentProvenancePanelDemo />;
       case "consent-modal-demo": return <PreSyncMarketingModalDemo />;
       case "sample-report-results": return <SampleReportPage zipcode={sampleReportZipcode} listings={sampleReportListings} isLoading={sampleReportLoading} error={sampleReportError} onNavigate={handleSmartNavigate} />;
+      case "agents": return isLoggedIn ? <AgentsPage onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
       case "request-integration": return <RequestIntegrationPage onBack={() => navigateWithLoading('integrations')} isMember={false} />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }

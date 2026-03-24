@@ -8,7 +8,7 @@ import { LBToggle } from './design-system/LBToggle';
 import { fetchUserNotifications, deleteNotification, markNotificationAsRead } from '../lib/notifications';
 import { supabase } from '../lib/supabase';
 
-type Page = 'home' | 'how-it-works' | 'data-sets' | 'use-cases' | 'integrations' | 'pricing' | 'login' | 'dashboard' | 'search-listings' | 'automations' | 'my-listings' | 'my-reports' | 'account' | 'design-system' | 'saved-searches' | 'saved-listings' | 'listing-history' | 'create-automation' | 'my-automations' | 'automation-history';
+type Page = 'home' | 'how-it-works' | 'data-sets' | 'use-cases' | 'integrations' | 'pricing' | 'login' | 'dashboard' | 'search-listings' | 'automations' | 'agents' | 'my-listings' | 'my-reports' | 'account' | 'design-system' | 'saved-searches' | 'saved-listings' | 'listing-history' | 'create-automation' | 'my-automations' | 'automation-history';
 
 interface HeaderProps {
   currentPage: Page;
@@ -404,6 +404,21 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 </button>
                 <span className="text-[#342e37] font-normal">|</span>
 
+                {/* Agents */}
+                <button
+                  onClick={() => handleNavigate('agents')}
+                  className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
+                >
+                  Agents
+                  {currentPage === 'agents' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37] rounded-full" />
+                  )}
+                  {currentPage !== 'agents' && (
+                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                  )}
+                </button>
+                <span className="text-[#342e37] font-normal">|</span>
+
                 {/* Automations */}
                 <button
                   onClick={() => handleNavigate('automations')}
@@ -554,6 +569,12 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'search-listings' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
                   >
                     Listings
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('agents')}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'agents' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                  >
+                    Agents
                   </button>
                   <button
                     onClick={() => handleNavigate('automations')}

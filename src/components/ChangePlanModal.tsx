@@ -263,7 +263,6 @@ export function ChangePlanModal({
                   const isSelected = plan.id === selectedPlan;
 
                   return (
-                    {/* LIGHT MODE: Light card with gray borders | DARK MODE: dark:bg-[#1a1a2e] dark:border-white/10 */}
                     <Card
                       key={plan.id}
                       className={`relative transition-all bg-white dark:bg-[#1a1a2e] ${
