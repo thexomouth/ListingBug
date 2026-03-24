@@ -149,7 +149,8 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
       }
 
       const listingsProcessed = (data || []).reduce((s: number, row: any) => s + (row.listings_fetched || 0), 0);
-      const projectedListings = daysElapsed > 0 ? Math.round((listingsProcessed / daysElapsed) * daysInPeriod) : 0;
+      const dailyAverage = daysElapsed > 0 ? listingsProcessed / daysElapsed : 0;
+      const projectedListings = Math.round(listingsProcessed + (dailyAverage * daysRemaining));
 
       // Use the freshly fetched plan cap, not the stale state value
       const planKey = userData?.plan?.toLowerCase() || 'starter';
