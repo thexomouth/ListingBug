@@ -441,6 +441,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                   View all {savedListings.length} saved listings <ArrowRight className="w-4 h-4" />
                 </button>
               )}
+              </div>
             </div>
           )}
         </div>
