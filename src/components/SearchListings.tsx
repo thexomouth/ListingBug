@@ -917,6 +917,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         criteriaDescription,
         resultsCount: finalResults.length,
         searchDate: new Date().toISOString(),
+        listings: finalResults, // stored locally so View Results always works
       };
       // Save run to Supabase (stores results for later viewing — no re-fetch needed)
       const runId = historyEntry.id;

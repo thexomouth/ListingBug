@@ -16,6 +16,7 @@ interface SearchResultsPageProps {
     searchDate: string;
     resultsCount: number;
     criteria: any;
+    listings?: any[]; // present when coming from in-memory/localStorage history
   };
   onBack: () => void;
 }
@@ -46,9 +47,11 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
 
       if (data?.results_json && Array.isArray(data.results_json) && data.results_json.length > 0) {
         setResults(data.results_json);
+      } else if (searchRun.listings && Array.isArray(searchRun.listings) && searchRun.listings.length > 0) {
+        // Fallback: listings passed directly from in-memory/localStorage history entry
+        setResults(searchRun.listings);
       }
-      // No fallback — if results_json is empty this run predates persistent storage.
-      // Future runs always write results_json on save.
+      // If neither has data, this run predates persistent storage — show empty state.
 
       setIsLoading(false);
     };
