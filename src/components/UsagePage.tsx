@@ -62,9 +62,10 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
 
   useEffect(() => {
     const loadUsage = async () => {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
       if (!userId) {
+        console.warn('[UsagePage] no authenticated user');
         setIsLoading(false);
         return;
       }
@@ -150,9 +151,13 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
       const listingsProcessed = (data || []).reduce((s: number, row: any) => s + (row.listings_fetched || 0), 0);
       const projectedListings = daysElapsed > 0 ? Math.round((listingsProcessed / daysElapsed) * daysInPeriod) : 0;
 
+      // Use the freshly fetched plan cap, not the stale state value
+      const planKey = userData?.plan?.toLowerCase() || 'starter';
+      const resolvedCap = planConfigs[planKey as keyof typeof planConfigs]?.listingsCap || 4000;
+
       setUsage({
         listingsProcessed,
-        listingsLimit: currentPlanConfig.listingsCap,
+        listingsLimit: resolvedCap,
         projectedListings,
         overageRate: 0.01,
         billingPeriodStart: periodStart,
