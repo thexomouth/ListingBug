@@ -28,6 +28,24 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
   const [currentPage, setCurrentPage] = useState(1);
   const resultsPerPage = 25;
 
+  // Saved listings state
+  const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
+
+  const handleSaveListing = async (listing: any) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error('Sign in to save listings'); return; }
+    const alreadySaved = savedListingIds.has(listing.id);
+    if (alreadySaved) {
+      await supabase.from('saved_listings').delete().eq('user_id', user.id).eq('listing_id', listing.id);
+      setSavedListingIds(prev => { const n = new Set(prev); n.delete(listing.id); return n; });
+      toast.success('Removed from saved listings');
+    } else {
+      await supabase.from('saved_listings').upsert({ user_id: user.id, listing_id: listing.id, listing_data: listing });
+      setSavedListingIds(prev => new Set([...prev, listing.id]));
+      toast.success('Listing saved');
+    }
+  };
+
   // Save search state
   const [isSaved, setIsSaved] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);

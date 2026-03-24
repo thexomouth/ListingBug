@@ -938,44 +938,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </div>
                 )}
 
-                {/* OPPORTUNITY INTELLIGENCE */}
-                <div className="bg-gradient-to-br from-[#FFD447]/20 to-[#FFD447]/5 border-2 border-[#FFD447] rounded-lg p-3 md:p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Target className="w-5 h-5 text-[#342e37]" />
-                      <h3 className="font-bold text-[18px] text-[#342e37]">Opportunity Intelligence</h3>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full ${getScoreBgColor(opportunityScore)}`}>
-                      <span className={`font-bold ${getScoreColor(opportunityScore)}`}>{opportunityScore}/100</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-[14px]">
-                    {listing.daysListed > 14 && (
-                      <div className="flex items-start gap-2 text-orange-700"><span>🔥</span><span><strong>Long market time:</strong> {listing.daysListed} days</span></div>
-                    )}
-                    {listing.priceDrop && (
-                      <div className="flex items-start gap-2 text-red-700"><TrendingDown className="w-4 h-4 mt-0.5 flex-shrink-0" /><span><strong>Price reduced</strong></span></div>
-                    )}
-                    {listing.reList && (
-                      <div className="flex items-start gap-2 text-orange-700"><span>🔁</span><span><strong>Re-listed property</strong></span></div>
-                    )}
-                    {listing.yearBuilt > 0 && listing.yearBuilt < 2000 && (
-                      <div className="flex items-start gap-2 text-blue-700"><span>🏚️</span><span><strong>Older property:</strong> Built in {listing.yearBuilt}</span></div>
-                    )}
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-[#FFD447]/30">
-                    <p className="text-xs mb-2 text-[#342e37]/60">Get detailed reports (requires credits):</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <LBButton variant="outline" size="sm" className="whitespace-nowrap text-xs" onClick={() => handleLoadReport('property-record')}>
-                        <FileText className="w-3.5 h-3.5" />Property Record <span className="ml-1 font-bold text-[#8e8e8e]">1 credit</span>
-                      </LBButton>
-                      <LBButton variant="outline" size="sm" className="whitespace-nowrap text-xs" onClick={() => handleLoadReport('valuation')}>
-                        <DollarSign className="w-3.5 h-3.5" />Valuation <span className="ml-1 font-bold text-[#8e8e8e]">1 credit</span>
-                      </LBButton>
-                    </div>
-                  </div>
-                </div>
-
                 {/* DATA METADATA */}
                 <div className="border-t border-gray-100 dark:border-white/10 pt-4">
                   <p className="text-[11px] text-gray-400 uppercase tracking-wide mb-2">Data Metadata</p>
