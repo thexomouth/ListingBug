@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Search, Calendar, Home, DollarSign, Loader2 } from 'lucide-react';
+import { ArrowLeft, Search, Calendar, Home, DollarSign, Loader2, Save, Check, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
 import { LBButton } from './design-system/LBButton';
 import { ListingDetailModal } from './ListingDetailModal';
 import { ExportDropdown } from './ExportDropdown';
-import { toast } from 'sonner';
+import { toast } from 'react-toastify';
 
 interface SearchResultsPageProps {
   searchRun: {
@@ -25,6 +25,12 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const resultsPerPage = 25;
+
+  // Save search state
+  const [isSaved, setIsSaved] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveSearchName, setSaveSearchName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const loadResults = async () => {
@@ -113,6 +119,42 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
     toast.success('CSV exported');
   };
 
+  const handleConfirmSave = async () => {
+    if (!saveSearchName.trim()) {
+      toast.error('Please enter a name for this search');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not signed in');
+
+      const id = crypto.randomUUID();
+      await supabase.from('searches').upsert({
+        id,
+        user_id: user.id,
+        name: saveSearchName.trim(),
+        location: searchRun.location,
+        filters_json: {
+          criteria: searchRun.criteria,
+          criteriaDescription: searchRun.criteriaDescription,
+        },
+        created_at: new Date().toISOString(),
+        last_run_at: new Date().toISOString(),
+        status: 'active',
+      }, { onConflict: 'id' });
+
+      setIsSaved(true);
+      setShowSaveModal(false);
+      setSaveSearchName('');
+      toast.success(`Search "${saveSearchName.trim()}" saved!`);
+    } catch (err: any) {
+      toast.error('Failed to save search: ' + (err.message || 'unknown error'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-12">
       <div className="mb-6">
@@ -132,10 +174,25 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">{searchRun.criteriaDescription}</p>
           </div>
-          <ExportDropdown
-            onExportCSV={handleExportCSV}
-            onSendToIntegration={(integration: string) => toast.success('Sending ' + results.length + ' listings to ' + integration + '...')}
-          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { if (!isSaved) setShowSaveModal(true); }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+                isSaved
+                  ? 'bg-[#FFCE0A] border-[#FFCE0A] text-[#0F1115]'
+                  : 'bg-gray-100 border-gray-200 text-gray-800 hover:bg-gray-200 dark:bg-white/10 dark:border-white/10 dark:text-white dark:hover:bg-white/20'
+              }`}
+            >
+              {isSaved
+                ? <><Check className="w-4 h-4" />Saved</>
+                : <><Save className="w-4 h-4" />Save Search</>
+              }
+            </button>
+            <ExportDropdown
+              onExportCSV={handleExportCSV}
+              onSendToIntegration={(integration: string) => toast.success('Sending ' + results.length + ' listings to ' + integration + '...')}
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mt-3">
@@ -230,6 +287,47 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
           listing={selectedListing}
           onClose={() => setSelectedListing(null)}
         />
+      )}
+
+      {/* Save Search Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Save Search</h3>
+              <button onClick={() => { setShowSaveModal(false); setSaveSearchName(''); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Give this search a name so you can find it again later.
+            </p>
+            <input
+              type="text"
+              value={saveSearchName}
+              onChange={e => setSaveSearchName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleConfirmSave(); }}
+              placeholder={`e.g. Denver Single Family Under 500k`}
+              className="w-full px-3 py-2 border border-gray-200 dark:border-white/10 rounded-lg text-sm bg-white dark:bg-white/5 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FFCE0A] mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowSaveModal(false); setSaveSearchName(''); }}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 text-sm font-semibold text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSave}
+                disabled={isSaving || !saveSearchName.trim()}
+                className="flex-1 px-4 py-2 rounded-lg bg-[#FFCE0A] text-[#0F1115] text-sm font-semibold hover:bg-[#FFCE0A]/90 disabled:opacity-50 transition-colors"
+              >
+                {isSaving ? 'Saving...' : 'Save Search'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
