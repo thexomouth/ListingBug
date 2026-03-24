@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, Search, Calendar, Home, DollarSign, Loader2, Save, Check, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
@@ -290,8 +291,8 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       )}
 
       {/* Save Search Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      {showSaveModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg text-gray-900 dark:text-white">Save Search</h3>
@@ -328,7 +329,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
