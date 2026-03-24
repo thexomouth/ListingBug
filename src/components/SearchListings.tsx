@@ -2186,7 +2186,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                       Clear Searches
                     </LBButton>
                   </div>
-                  <div className="grid gap-4">
+                  <div className="grid gap-4 pb-[100px]">
                     {searchHistory.map((search) => (
                       <div
                         key={search.id}

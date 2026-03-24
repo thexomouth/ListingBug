@@ -1,250 +1,237 @@
 # ListingBug Punch List
-**Last updated:** March 22, 2026
+**Last updated:** March 24, 2026
 **How to use:** Jack adds items anytime. Claude reads this at the start of every session.
 
-## notes & considerations for jake (human developer)
+## notes for the developer
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+
+---
+
+## 🔴 CRITICAL — Fix Now
+
+### In Progress (Current Session)
 - [ ] 
 - [ ] 
 - [ ] 
 - [ ] 
 - [ ] 
 - [ ] 
+- [ ] 
+- [ ] 
+- [ ] Build and push ListingDetailModal rebuild + edge fn v24 field capture
+  - `./b.bat` then `git add -A && git commit -m "..." && git push`
+- [ ] Verify search_runs inserts working — run a search, check console for `[search_runs] saved <uuid>`
+- [ ] Open History tab, confirm listings appear under saved run
+
+### Search & Core Functionality
+- [x] Search function returning toast error 'Internal server error' — diagnose and fix
+- [ ] Search history empty after running a search — history tab not populating
+- [ ] Search history zero state — still showing black screen, needs empty state message
+- [ ] Search history View Results — can't verify until history populates
+- [ ] Saved listings empty — new saves not persisting to Supabase on reload
+- [ ] Usage stats mismatch — dashboard ≠ account/usage ≠ listings/search. Investigate whether they will reconcile with UUID+Supa fix or needs additional work
+
+### Stripe / Billing
+- [ ] Stripe checkout fails: "Could not start checkout. Please try again." — broken on trial→starter and starter→pro
+- [ ] Verify Stripe checkout works end-to-end on test account (STRIPE_SECRET_KEY set in Supabase secrets)
+
+### Search Form Cleanup
+- [ ] Move zip, radius, lat, long, price/sqft to Additional Filters dropdown
+- [ ] On desktop: City and State join Address row (columns 3+4)
+- [ ] Remove static beds/baths from Property Details (already in additional filters)
+- [ ] Move 'state' input up to same row as city (left: city, right: state)
+- [ ] Make toggles appear on one row (currently two rows × two columns)
+- [ ] Remove 'New Construction' and 'Foreclosure Status' from additional filters dropdown
+
+### Account / Integrations Cleanup
+- [ ] Remove all integration cards from Integrations page — delete the entire Available Integrations (10) block and Future Integrations (6) block including all connect buttons and the "Request an Integration" CTA. Keep only API keys + Browse Integrations button
+- [ ] Create Automation: remove 'Manual Sync' from frequency options
+- [ ] Create Automation: remove Field Mappings section entirely. Add note: "Field mappings will be configured per integration at implementation time."
+- [ ] Automation history table: white background → black background, white/grey text and icon
+
+### API Key Generation
+- [ ] API key generation broken — "Unable to generate API key: not signed in"
+  - getSession destructuring bug was fixed but still failing — re-investigate
+
+
+### Listing Detail Modal
+- [ ] Save listing button — added to modal, needs QC
+- [ ] Street View — verify loads in listing modal on a property with lat/lng
+
+---
+
+## 🟡 PRODUCT — AGENTS PAGE & LEADERBOARD
+
+### New "Agents" nav item
+- [ ] Add `Agents` between `Listings` and `Automations` in TopNav
+- [ ] Create `/agents` route and `AgentsPage.tsx`
+- [ ] Build filterable agent leaderboard from existing `listings` DB data (no new API calls)
+  - Aggregate by `agent_name` + `agent_phone` + `agent_email`
+  - Columns: Agent Name, Brokerage, # Listings, Avg Price, Avg DOM, Price Drops, ZIP codes
+  - Filters: ZIP code, time window (7/30/90 days), property type, min listing count
+  - Sort: by any column
+  - Each row expandable or links to agent profile view
+- [ ] Agent profile view: listing history, call/email CTA buttons, brokerage info
+- [ ] Add DB index: `listings(agent_name, listed_date)` for query performance
+
+---
+
+## 🟡 PRODUCT — STAGING COMPANY GTM PIVOT
+
+### Target audience: Home Staging Companies
+**Core insight:** Stagers need to know which agents list frequently so they can
+build relationships *before* the listing happens. The leaderboard is their killer feature.
+
+**Their workflow:**
+1. Search market → see all new listings (DOM 0–3 days)
+2. Agents tab → filter by ZIP, sort by volume
+3. Find top agents in territory not yet in their network
+4. Export CSV → name, phone, email ready for outreach
+5. Set automation alert → notified same day a new listing hits their farm area
+
+- [ ] Write one concrete staging company use case (2–3 paragraphs, real scenario)
+- [ ] Draft testimonial copy from existing local business relationship:
+      "I built an early version of this for [business]. They've been using it [X months]. Here's what changed: [outcome]."
+- [ ] Get permission to use their name and outcome on site
+
+---
+
+## 🟡 MARKETING — SIGNED-OUT PAGES OVERHAUL
+
+### Philosophy: story first, features never
+Current problem: too much text explaining concepts. Fix: one scenario a stager
+instantly recognizes, then show the product doing it.
+
+### Homepage hero rewrite
+- [ ] Headline: "New listing just hit your market. Do you know about it?"
+- [ ] Sub: "ListingBug monitors your territory and tells you the moment it happens —
+      so you can be the first stager to call."
+- [ ] CTA: "See it in action" — triggers sample search, no signup required
+
+### "Who is this for?" section
+- [ ] Persona cards (visible without login):
+  - 🏠 Home Stagers — "Be first to every new listing in your territory"
+  - 📸 Photographers — "Know which agents list most in your ZIP"
+  - 🏦 Lenders — "Find agents with consistent deal flow"
+  - 💼 Investors — "Surface price drops and distressed inventory automatically"
+  - 🏗️ Contractors — "Identify renovation-ready listings before they sell"
+
+### Demo / aha moment
+- [ ] Sample search widget on homepage (unauthenticated, limited to 5 results)
+      OR animated GIF of search → results → export flow
+- [ ] "Try a sample search" CTA before signup wall
+
+### Social proof
+- [ ] Testimonial section using local staging business case study
+- [ ] Format: name/company + 1–2 sentence outcome + time using it
 
 
 ---
 
-## 🔴 Critical 
+## 🟢 CONTENT — MARKET INTELLIGENCE REPORTS
 
-- [ ] on listings/search, move input field 'state' up to the same row as city to display from left to right 'city then state' for mobile and desktop
-- [ ] on listings/search, make the toggles appear on one row instead of two rowss by two columns.
-- [ ] on listings/search, remove 'new construction' and 'foreclosure status' from the additional filter dropdown
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-
-- [x] **Email verification** — Supabase → Auth → Email → Enable email confirmations. Code ready. this is working but we need to circle back later to write more thorough and specific, custom emails
-- [ ] **Google OAuth consent screen** — submit at console.cloud.google.com. /privacy and /terms live.
-- [ ] **Stripe checkout** — verify working end-to-end on test account. Was failing with "Could not start checkout." STRIPE_SECRET_KEY is set in Supabase → Edge Functions → Secrets. exists in supa - still failing
-- [ ] the usage stats on dashboard do not match usage stats in account/usage or listings/search. there was logic to use local storage when the search resulting in the 500 was run and that's been changed to use supa... but i'm wanting you to investigate why they don't match now and if they will match as it's written for other new accounts that search for listings
-- [ ] the listings/search form simplification is not complete. i want to remove input fields lat, long, search radius, bedroom, bathroom, and price per square foot from the static input fields and add them to the 'additional filters' dropdown to be selected and added to that section
-- [] the search function in listings/search is not working returning toast error: 'Internal server error' please diagnose and fix 
-- [x] there is sample data in the account/profile page in the profile information section. introduce standard placeholders with grey color until input is given, then text color is white — FIXED: Added placeholder text from database, read-only email field, profile data loads/persists
-- [ ] in account/usage theree's a section with 'Projected End-of-Month Usage' which is also not up to date with accurate usage. this could be due to the known previous issue with using localstorage rather than supa which has been changed. investigate and determine if the usage will be tracked as is going forward or if this needs fixing bc the dashboard reflects usage but this doesn't. it's a calculation as well so be sure logic is written that enables it to work
-- [ ] stripe checkout fails to initialize when upgrading from starter to pro "Could not start checkout. Please try again."
-- [x] in the 'change your plan modal' trial users are shown starter plan as their 'current plan' but this is not accurate. they're on trial which shares the abilities of the starter plan, but must be a separate plan type so that trial users can be able to select starter from this 'change your plan' modal — FIXED: Trial users now display as "Trial" plan and can select other plans
-- [x] cancel subscription modal loads the following information for trial users "Your Current Plan Starter Plan Active until Dec 15, 2024" but they are on a trial subscription — FIXED: Now shows "Trial" as current plan with actual trial_ends_at date from database
-- [x] cancel subscription modal has the following information about losses — FIXED: Updated to "Access to search", "All automated imports and exports", "Email delivery and integrations"
-- [x] the update password tool in account/profile does not work — FIXED: Implemented with current password verification via update-password edge function, proper form validation
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-- [ ] 
-
-
+- [ ] Weekly posts from real ListingBug data (LinkedIn / Instagram / local Facebook):
+  - "Top 10 agents listing homes in Denver this week"
+  - "Denver listings that dropped price in the last 48 hours"
+  - "New luxury listings (>$1M) this week in Metro Denver"
+- [ ] Use as proof-of-product for grant applications and investor conversations
 
 ---
 
-## 🔴 Bugs (Needs QC)
+## 🟢 MESSAGING — AUTOMATION LANGUAGE CLEANUP
 
-- [ ] **Stripe checkout** — test upgrade flow on trial account to confirm it works - no it doesn't ""Could not start checkout. Please try again."
-- [ ] **Search history empty** — verify after running a new search that history tab populates - nothing
-- [ ] **Saved listings empty** — verify new saves persist to Supabase and show on reload - still empty
-
----
-
-## 🔴 UI Cleanup (Needs QC After Latest Deploy)
-
-- [ ] **Search form simplification** — move zip, radius, lat, long, price/sqft to Additional Filters. On desktop: City and State join Address row (columns 3+4). Remove static beds/baths from Property Details as this already exists in additional filters and we're slimming down. this is not complete or even begun
-- [x] **Account/Profile subscription block** — verify removed
-- [x] **Account/Billing payment method** — verify shows zero state (no fake Visa 4242)
-- [x] **Account/Billing history** — verify shows empty state (no sample invoices)
-- [x] **Account/Billing trial date** — verify shows "Trial ends: MM/DD/YY" not "Invalid Date" it shows "Trial ends: Invalid Date" so it's not loading or formatting the date it loads correctly. it should display trial end date, calculated automatically at sign up by account creation date plus trial period
-- [x] **ChangePlanModal** — verify no proration language, no Enterprise option, shows clean confirmation. YOU removed the entrprise option, but still need to center the two remaining options within the section as there's some ambigous blank space on the right where something used to be. there was text before "downgrades" about "upgrades take effect immediately", but you removed the full line 'upgrades to effect immediately AT A PRORATED AMOUNT' instead of editting the line to match the situation
-- [x] **Account/API integrations section** — verify removed, only API keys + Browse Integrations button remains m- not done. remove all of this "Available Integrations (10)
-Mailchimp
-Sync contacts and trigger campaigns
-
-Connect
-Salesforce
-Enterprise CRM integration
-
-Connect
-HubSpot
-All-in-one CRM platform
-
-Connect
-Constant Contact
-Email marketing made easy
-
-Connect
-Google Sheets
-Spreadsheet automation
-
-Connect
-Airtable
-Visual database platform
-
-Connect
-Twilio
-SMS notifications
-
-Connect
-Zapier
-Connect 5,000+ apps
-
-Connect
-Make
-Advanced automation
-
-Connect
-Webhooks
-Custom API endpoints
-
-Connect
-Future Integrations (6)
-These integrations are planned for future releases. Vote for your favorites!
-
-Slack
-Coming Soon
-Team notifications
-
-Not Available
-Notion
-Coming Soon
-All-in-one workspace
-
-Not Available
-Monday.com
-Coming Soon
-Work management
-
-Not Available
-Asana
-Coming Soon
-Project management
-
-Not Available
-Trello
-Coming Soon
-Visual task boards
-
-Not Available
-Pipedrive
-Coming Soon
-Sales CRM
-
-Not Available
-Don't see what you need?
-Request a custom integration and we'll prioritize it in our roadmap.
-
-Request an Integration"
-- [x] **Account/Usage plan info block** — verify "Starter Plan / Trial Period / N/A" removed
-- [ ] **Search history zero state** — verify empty state message updated - not complete still showing black screen
-- [x] **Automation history zero state** — verify green background removed, yes but you put a white background and i want a black background on the table with white and grey text and icon
-- [ ] **Create Automation: Manual sync** — verify removed from frequency options - no, not done
-- [ ] **Create Automation: Field Mappings** — when a destination is chosen, a section called field mapping comes up. looks awful and complicates everything. remove the section entirely. create a note that after creating integrations, we need to also create intentional field mappings for each integration. later we can try to implement customer user field mappings. let me know if it will be absolutely necessary and create a note for consideration to revisit. this is not done
-- [ ] trying to upgrade my account in Confirm plan change' from starter to pro does not launch stripe it says "Could not start checkout. Please try again."
----
-
-## 🟡 Needs Live Verification
-
-- [ ] **Usage cap** — trial should now allow 4,000 listings (was incorrectly capped at 500). Test after running a search. 'it might but search isn't working right now'
-- [ ] **API key generation** — test generating a key on account/api. Fixed getSession destructuring bug. not working 'Unable to generate API key: not signed in'
-- [ ] **Search history View Results** — verify button opens SearchResultsPage with full table + clickable rows + listing modal i can't because search history has no items in it and no zero item state, it's a black empty page
-- [ ] **Street View** — verify loads in listing modal on a property with lat/lng
-- [x] **Favicon** — public/favicon.png placed. Verify shows in browser tab.
-- [x] **OG image** — public/og-image.png placed. Verify shows when link shared.
-- [x] **Page title** — verify browser tab shows "ListingBug"
+- [ ] Audit all automation copy in app and marketing pages
+- [ ] Replace "outreach" → "workflow"
+- [ ] Replace "contact people" → "trigger your systems"
+- [ ] Replace "send emails to" → "export to your CRM" / "alert your team"
+- Safe approved phrases:
+  - "Turn every new listing into an automated workflow"
+  - "Trigger your CRM, ads, or internal processes the moment a listing hits"
+  - "Your marketing engine, powered by live listing intelligence"
 
 ---
 
-## 🟡 Post-Stripe ( we need to create a test account with a paid plan and some figurative billing history for this)
+## 🔵 LAUNCH SEQUENCE
 
-- [ ] Billing history — real Stripe invoice data (currently empty state)
+1. **Fix current bugs** — UUID/search/history/Stripe — this week
+2. **Build Agents page + leaderboard** — highest leverage, no API cost
+3. **Rewrite homepage hero** — staging use case, 1 hour of copy
+4. **Add testimonial** — one conversation with local business
+5. **Add "Who is this for?" section** — persona cards
+6. **Add sample search CTA** — small dev lift, high conversion impact
+7. **Start Market Intelligence content** — LinkedIn, free, demonstrates product
+8. **Grant applications** — staging case study + leaderboard as proof of traction
+
+---
+
+## 🟡 NEEDS LIVE QA
+
+- [ ] Usage cap — trial should allow 4,000 listings (was 500). Test after search is fixed
+- [ ] Google OAuth consent screen — submit at console.cloud.google.com (/privacy and /terms live)
+- [ ] ChangePlanModal — center the two remaining plan options (blank space where Enterprise was)
+- [ ] ChangePlanModal — restore "Upgrades take effect immediately" line (non-proration version)
+
+---
+
+## 🟡 POST-STRIPE QA (needs test paid account)
+
+- [ ] Billing history — real Stripe invoice data
 - [ ] Download invoice button
-- [ ] Payment method display — pull real card details from Stripe post-subscription
+- [ ] Payment method — pull real card from Stripe post-subscription
+- [ ] Stripe Customer Portal link on Billing page
 
 ---
 
-## 🟡 Future / High Value
+## 📋 BACKLOG / FUTURE
 
-- [ ] PropertyRadar homeowner data — full implementation (teaser live) waiting on search functionality to return to check the teaser
-- [ ] CSV Email formatting and Delivery backend execution
+- [ ] OAuth integrations — Mailchimp, HubSpot, Salesforce (flagged as launch critical — revisit)
+- [ ] PropertyRadar homeowner data — full implementation (teaser live, waiting on search fix)
+- [ ] CSV email delivery backend
 - [ ] Automation runner backend (scheduled execution)
-- [ ] Integrations true status from Supabase
-
----
-
-## ⚪ Deferred
-
-- [ ] Light mode
-- [ ] Facebook/Apple OAuth
-- [ ] OAuth integrations — Mailchimp, HubSpot, Salesforce ( this is launch critical please move it up)
-- [ ] Namecheap CNAME → e53e829ee840f3ad.vercel-dns-017.com
+- [ ] Email notification system for automation alerts
+- [ ] Saved Listings page improvements
 - [ ] Search run history retention policy
 - [ ] Saved listings photo grid view
+- [ ] Mobile app (post-funding)
+- [ ] Facebook/Apple OAuth
+- [ ] Namecheap CNAME → e53e829ee840f3ad.vercel-dns-017.com
+- [ ] Custom email templates for Supabase auth emails (skeleton in place)
+- [ ] Light mode
 
 ---
 
-## ✅ Completed This Session (March 22, 2026)
+## ✅ COMPLETED
 
-### Stripe Billing
-- [x] Pricing: Starter $19/mo, Professional $49/mo (repriced from $49/$99)
-- [x] Edge functions: create-checkout-session, stripe-webhook v17, stripe-portal
-- [x] Webhook in Stripe Workbench, secrets in Supabase
-- [x] BillingPage reads real plan/status from Supabase
-- [x] ChangePlanModal + PlanComparisonModal wired to Stripe Checkout
-- [x] 14-day free trial on Pro, no card required
-- [x] Stripe Customer Portal configured
-- [x] stripe_customer_id, stripe_subscription_id, stripe_subscription_end on users table
-
-### Bug Fixes
-- [x] Usage cap: trial now 4,000 (was incorrectly 500) — edge function v17
-- [x] API key generation "not signed in" — fixed getSession destructuring bug
-- [x] ChangePlanModal extra brace JSX error — fixed
-- [x] ChangePlanModal proration language removed
-- [x] ChangePlanModal Enterprise option removed
-
-### Subscription Enforcement
-- [x] SubscriptionGate inlined in App.tsx (no separate import)
-- [x] Edge function v17 blocks all inactive plan states
-- [x] TRIAL_EXPIRED/SUBSCRIPTION_INACTIVE toast in SearchListings
-
-### Trial Abuse Prevention
+- [x] Email verification — Supabase auth enabled, working
+- [x] Account/Profile — placeholders with grey color until input given
+- [x] Account/Profile — update password working with edge function
+- [x] Account/Billing — trial date label fixed (was "Invalid Date")
+- [x] Account/Billing — payment method shows zero state (no fake Visa)
+- [x] Account/Billing — history shows empty state (no fake invoices)
+- [x] Account/API — integrations section removed
+- [x] Account/Usage — plan info block removed
+- [x] ChangePlanModal — trial shows as "Trial" not "Starter"
+- [x] ChangePlanModal — proration language removed
+- [x] ChangePlanModal — Enterprise option removed
+- [x] Cancel subscription modal — shows correct trial plan and dates
+- [x] Automation history — green background removed
+- [x] Create Automation — Manual Sync removed from frequency options
+- [x] search_runs — UUID fix (was Date.now() string, now crypto.randomUUID())
+- [x] search_runs — loads results_json from DB for cross-device support
+- [x] UsagePage — auth fix (getSession → getUser), projection formula corrected
+- [x] CSV export — professional format: company header, search params, 28 columns, sort + contact filter
+- [x] ListingDetailModal — rebuilt with all RentCast fields, agent contact at top
+- [x] Edge function v24 — captures all RentCast fields including garage, pool, stories, description, history
+- [x] Stripe: Starter $19/mo, Pro $49/mo
+- [x] Stripe: checkout, webhook, portal edge functions
+- [x] Stripe: 14-day free trial, no card required
 - [x] Browser fingerprinting on signup
-- [x] trial_abuse_flag column on users
-- [x] signup_fingerprints table
-
-### Critical Bug Fix
-- [x] TDZ blank screen — fixed via rollback to d41b095 + wave reintroduction
-
-### UI / Polish
-- [x] Page title → "ListingBug"
-- [x] favicon.png + og-image.png placed in public/
-- [x] OG + Twitter card meta tags in index.html
+- [x] SubscriptionGate + trial/inactive enforcement in edge function
+- [x] Favicon + OG image + page title
 - [x] Street View API key live
 - [x] Search history cards clickable + View Results button
-- [x] search_runs RLS policies
-- [x] Tab blackout fix, usage padding, required text removed
-- [x] IntegrationsPage available section expands by default
-- [x] SavedListingsPage Supabase sync, debug button removed
-- [x] CSV export tracking in automation_runs
-- [x] Account/Profile subscription block removed
-- [x] Account/Billing payment method zero state (null)
-- [x] Account/Billing history zero state (empty array)
-- [x] Account/Billing trial date label fix
-- [x] Account/API integrations section removed
-- [x] Account/Usage plan info block removed
-- [x] Search history zero state text improved
-- [x] Automation history green background removed
-- [x] Create Automation: Manual sync removed
-- [x] SignUpPage browser fingerprinting
-- [x] PlanComparisonModal Starter price $19
+- [x] SavedListingsPage Supabase sync

@@ -1000,6 +1000,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
         </div>
       </div>
     </>
+  );
 
 
   return createPortal(modalContent, document.body);
