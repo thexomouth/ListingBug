@@ -299,7 +299,11 @@ export default function App() {
       case "quick-start-guide": return <QuickStartGuidePage onComplete={() => navigateWithLoading('search-listings')} onSkip={() => navigateWithLoading('search-listings')} />;
       case "dashboard": return isLoggedIn ? <Dashboard onNavigate={navigateWithLoading} onOpenReport={handleOpenReport} onAccountTabChange={setAccountDefaultTab} onViewAutomationDetail={handleViewAutomationDetail} onSetAutomationsTab={setAutomationsInitialTab} /> : <LoginPage onLogin={handleLogin} />;
       case "search-listings": return isLoggedIn ? <SearchListings onAddToMyReports={handleAddToMyReports} onNavigate={handleSmartNavigate} onViewSearchResults={handleViewSearchResults} /> : <LoginPage onLogin={handleLogin} />;
-      case "search-results": return isLoggedIn && selectedSearchRun ? <SearchResultsPage searchRun={selectedSearchRun} onBack={() => navigateWithLoading('search-listings')} /> : <LoginPage onLogin={handleLogin} />;
+      case "search-results": return isLoggedIn
+        ? selectedSearchRun
+          ? <SearchResultsPage searchRun={selectedSearchRun} onBack={() => navigateWithLoading('search-listings')} />
+          : (() => { navigateWithLoading('search-listings'); return null; })()
+        : <LoginPage onLogin={handleLogin} />;
       case "automations": return isLoggedIn ? <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} /> : <LoginPage onLogin={handleLogin} />;
       case "automation-detail": return isLoggedIn && selectedAutomation ? (
         <AutomationDetailPage automation={selectedAutomation} onBack={handleBackToAutomations}
