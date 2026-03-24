@@ -224,19 +224,10 @@ export function CreateAutomationPage({
         {/* Combined Setup Section - Column Layout */}
         <section className="bg-transparent dark:bg-transparent">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-[#FFCE0A] flex items-center justify-center">
-              <Zap className="w-5 h-5 text-[#0F1115]" />
-            </div>
             <h2 className="text-[21px] font-bold text-[#0F1115] dark:text-white">Create Automation</h2>
           </div>
 
-          {/* Automation Tip */}
-          <div className="flex items-start gap-2 mb-6">
-            <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <p className="text-[13px] text-gray-700 dark:text-gray-300">
-              <span className="text-gray-900 dark:text-white font-medium">Automation Tip:</span> Wide search radius + long date ranges may increase listing usage. Monitor your usage meter to avoid overages.
-            </p>
-          </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Select Search */}

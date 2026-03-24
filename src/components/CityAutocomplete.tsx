@@ -753,7 +753,7 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
   return (
     <div ref={containerRef} className={`relative ${className ?? ''}`}>
       <div className="relative">
-        <label className="block text-xs font-semibold uppercase tracking-wide text-white dark:text-[#EBF2FA]/60 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-white mb-1">
           City & State <span className="text-red-500">*</span>
         </label>
         <input

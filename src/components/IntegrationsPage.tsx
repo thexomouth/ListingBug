@@ -4,6 +4,7 @@ import {
   CheckCircle,
   Settings,
   Zap,
+  Plug,
   Key,
   Mail,
   Database,
@@ -447,7 +448,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-[50px]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Zap className="w-7 h-7 text-[#342e37] dark:text-[#FFCE0A]" />
+              <Plug className="w-7 h-7 text-[#342e37] dark:text-[#FFCE0A]" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Integrations</h1>
             </div>
             <button

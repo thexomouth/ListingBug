@@ -14,6 +14,20 @@
 ## 🔴 CRITICAL — Fix Now
 
 ### In Progress (Current Session)
+- [ ] changeplanmodal indicates current plan is starter plan when my account is trial. only add current plan if user is on a paid account and be sure to add it to the right one.
+- [ ] in changeplanmodal, add an 'upgrade to starter' button for the starter plan for trial user accounts (not an option right now)
+- [ ] saved listings are not saving. saving in listingdetailmodal then closing the modal and reopening it shows unsaved icon design and the saved listing is not appearing on dashboar dor in listings/savedlistings
+- [ ] api key generator still not generating ' '
+- [ ] saved listings are not saving. leave the page, navigate back and it's reset. this needs to be saved to the user account until they remove it
+- [ ] remove all toggles except pricedrop from listings/search
+- [ ] password reset tool doesn't recognize an incorrect current password or is failing to initialize 'failed to fetch'
+- [ ] update supa schema to track full name for users "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
+- [ ] when updating profile information in the profile information section of account/profile, allow users to update any one field, don't require full section fill in order to update. for instance, if they onyl wanna update name or company it's fine - update shouldn't be dependent on all fields filled for profile information section
+- [ ] in listings/history, if the search run was from a saved search with a name or from an automation with a name, impor the name and use it for the container heading, if no name for the search or run exists, then use the current city/state for container title/heading
+- [ ] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab
+- [ ]
+- [ ] 
+- [ ]
 - [ ] 
 - [ ] 
 - [ ] 
@@ -21,18 +35,17 @@
 - [ ] 
 - [ ] 
 - [ ] 
-- [ ] 
-- [ ] Build and push ListingDetailModal rebuild + edge fn v24 field capture
+- [x] Build and push ListingDetailModal rebuild + edge fn v24 field capture
   - `./b.bat` then `git add -A && git commit -m "..." && git push`
-- [ ] Verify search_runs inserts working — run a search, check console for `[search_runs] saved <uuid>`
-- [ ] Open History tab, confirm listings appear under saved run
+- [ ] Verify usage is displayed in the text beneath the search button on listings search
+- [x] Open History tab, confirm listings appear under saved run
 
 ### Search & Core Functionality
 - [x] Search function returning toast error 'Internal server error' — diagnose and fix
-- [ ] Search history empty after running a search — history tab not populating
-- [ ] Search history zero state — still showing black screen, needs empty state message
-- [ ] Search history View Results — can't verify until history populates
-- [ ] Saved listings empty — new saves not persisting to Supabase on reload
+- [x] Search history empty after running a search — history tab not populating
+- [x] Search history zero state — still showing black screen, needs empty state message
+- [x] Search history View Results — can't verify until history populates
+- [x] Saved listings empty — new saves not persisting to Supabase on reload
 - [ ] Usage stats mismatch — dashboard ≠ account/usage ≠ listings/search. Investigate whether they will reconcile with UUID+Supa fix or needs additional work
 
 ### Stripe / Billing
@@ -40,27 +53,25 @@
 - [ ] Verify Stripe checkout works end-to-end on test account (STRIPE_SECRET_KEY set in Supabase secrets)
 
 ### Search Form Cleanup
-- [ ] Move zip, radius, lat, long, price/sqft to Additional Filters dropdown
-- [ ] On desktop: City and State join Address row (columns 3+4)
-- [ ] Remove static beds/baths from Property Details (already in additional filters)
-- [ ] Move 'state' input up to same row as city (left: city, right: state)
+- [x] Move zip, radius, lat, long, price/sqft to Additional Filters dropdown
+- [x] On desktop: City and State join Address row (columns 3+4)
+- [x] Remove static beds/baths from Property Details (already in additional filters)
+- [x] Move 'state' input up to same row as city (left: city, right: state)
 - [ ] Make toggles appear on one row (currently two rows × two columns)
 - [ ] Remove 'New Construction' and 'Foreclosure Status' from additional filters dropdown
 
 ### Account / Integrations Cleanup
-- [ ] Remove all integration cards from Integrations page — delete the entire Available Integrations (10) block and Future Integrations (6) block including all connect buttons and the "Request an Integration" CTA. Keep only API keys + Browse Integrations button
-- [ ] Create Automation: remove 'Manual Sync' from frequency options
+- [x] Create Automation: remove 'Manual Sync' from frequency options
 - [ ] Create Automation: remove Field Mappings section entirely. Add note: "Field mappings will be configured per integration at implementation time."
-- [ ] Automation history table: white background → black background, white/grey text and icon
+- [x] Automation history table: white background → black background, white/grey text and icon
 
 ### API Key Generation
-- [ ] API key generation broken — "Unable to generate API key: not signed in"
-  - getSession destructuring bug was fixed but still failing — re-investigate
+- [ ] API key generation broken — "Unable to generate API key: null value in column "key_hash" of relation "api_keys" violates not-null constraint"
 
 
 ### Listing Detail Modal
-- [ ] Save listing button — added to modal, needs QC
-- [ ] Street View — verify loads in listing modal on a property with lat/lng
+- [ ] Save listing button — add to listingdetailmodal
+- [x] Street View — verify loads in listing modal on a property with lat/lng
 
 ---
 
@@ -70,6 +81,7 @@
 - [ ] Add `Agents` between `Listings` and `Automations` in TopNav
 - [ ] Create `/agents` route and `AgentsPage.tsx`
 - [ ] Build filterable agent leaderboard from existing `listings` DB data (no new API calls)
+- [ ] don't forget the agent & office website data we get
   - Aggregate by `agent_name` + `agent_phone` + `agent_email`
   - Columns: Agent Name, Brokerage, # Listings, Avg Price, Avg DOM, Price Drops, ZIP codes
   - Filters: ZIP code, time window (7/30/90 days), property type, min listing count

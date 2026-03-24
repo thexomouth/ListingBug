@@ -259,7 +259,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         <div className="mb-8">
           <div className="mb-4">
             <div className="flex items-center gap-2">
-              <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-white" />
+              <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h2>
             </div>
             <p className="text-sm text-gray-600">Track your monthly listing usage and market activity</p>
@@ -499,7 +499,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         </div>
 
         {/* INTEGRATIONS SECTION */}
-        <div className="mb-8 pt-8 border-t-2 border-gray-200">
+        <div className="mb-8 pt-8 pb-[100px] border-t-2 border-gray-200">
           <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Integrations</h2>
