@@ -118,6 +118,12 @@ function SubscriptionGate({ planStatus, trialEndsAt, onUpgrade }: { planStatus: 
   );
 }
 
+// Proper redirect component — never calls navigation during render
+function RedirectToSearchHistory({ onRedirect }: { onRedirect: () => void }) {
+  useEffect(() => { onRedirect(); }, []);
+  return null;
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -301,8 +307,14 @@ export default function App() {
       case "search-listings": return isLoggedIn ? <SearchListings onAddToMyReports={handleAddToMyReports} onNavigate={handleSmartNavigate} onViewSearchResults={handleViewSearchResults} /> : <LoginPage onLogin={handleLogin} />;
       case "search-results": return isLoggedIn
         ? selectedSearchRun
-          ? <SearchResultsPage searchRun={selectedSearchRun} onBack={() => navigateWithLoading('search-listings')} />
-          : (() => { navigateWithLoading('search-listings'); return null; })()
+          ? <SearchResultsPage searchRun={selectedSearchRun} onBack={() => {
+              sessionStorage.setItem('listingbug_open_tab', 'history');
+              navigateWithLoading('search-listings');
+            }} />
+          : <RedirectToSearchHistory onRedirect={() => {
+              sessionStorage.setItem('listingbug_open_tab', 'history');
+              navigateWithLoading('search-listings');
+            }} />
         : <LoginPage onLogin={handleLogin} />;
       case "automations": return isLoggedIn ? <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} /> : <LoginPage onLogin={handleLogin} />;
       case "automation-detail": return isLoggedIn && selectedAutomation ? (
