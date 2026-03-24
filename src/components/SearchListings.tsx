@@ -428,12 +428,13 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     const loadSearchHistory = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
+      const { data, error: loadError } = await supabase
         .from('search_runs')
-        .select('id, location, criteria_description, criteria_json, results_count, searched_at')
+        .select('id, location, criteria_description, criteria_json, results_json, results_count, searched_at')
         .eq('user_id', user.id)
         .order('searched_at', { ascending: false })
         .limit(50);
+      if (loadError) console.error('[search_runs load]', loadError.message);
       if (data && data.length > 0) {
         setSearchHistory(data.map((r: any) => ({
           id: r.id,
@@ -442,6 +443,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
           criteria: r.criteria_json,
           resultsCount: r.results_count,
           searchDate: r.searched_at,
+          listings: r.results_json || [], // loaded from DB — works across devices
         })));
       }
     };
@@ -910,22 +912,21 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       ].filter(Boolean).join(', ') || 'All criteria';
 
       const historyEntry = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(), // must be valid UUID to match search_runs.id (uuid type)
         criteria: { ...criteria },
         activeFilters: [...(activeFilters || [])],
         location,
         criteriaDescription,
         resultsCount: finalResults.length,
         searchDate: new Date().toISOString(),
-        listings: finalResults, // stored locally so View Results always works
+        listings: finalResults,
       };
-      // Save run to Supabase (stores results for later viewing — no re-fetch needed)
-      const runId = historyEntry.id;
+      // Save run to Supabase — results stored permanently, accessible across devices
       try {
         const { data: { user: runUser } } = await supabase.auth.getUser();
         if (runUser) {
-          await supabase.from('search_runs').insert({
-            id: runId,
+          const { error: insertError } = await supabase.from('search_runs').insert({
+            id: historyEntry.id,
             user_id: runUser.id,
             location: historyEntry.location,
             criteria_description: historyEntry.criteriaDescription,
@@ -934,9 +935,14 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
             results_count: finalResults.length,
             searched_at: historyEntry.searchDate,
           });
+          if (insertError) {
+            console.error('[search_runs insert failed]', insertError.code, insertError.message, insertError.details);
+          } else {
+            console.log('[search_runs] saved', historyEntry.id, 'with', finalResults.length, 'listings');
+          }
         }
-      } catch (e: any) { 
-        console.error('Failed to save search run:', e.message || e);
+      } catch (e: any) {
+        console.error('[search_runs exception]', e.message || e);
       }
       setSearchHistory(prev => [historyEntry, ...prev.slice(0, 49)]);
 
