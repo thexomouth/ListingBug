@@ -63,21 +63,131 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
 
   const handleExportCSV = () => {
     if (results.length === 0) { toast.error('No results to export'); return; }
-    const headers = ['Address', 'City', 'State', 'ZIP', 'Price', 'Beds', 'Baths', 'Sq Ft', 'Days Listed', 'Agent', 'Agent Phone', 'Agent Email'];
-    const rows = results.map((r: any) => [
-      r.address, r.city, r.state, r.zip,
-      r.price, r.bedrooms, r.bathrooms, r.sqft,
-      r.daysListed, r.agentName || '', r.agentPhone || '', r.agentEmail || ''
-    ]);
-    const csv = [headers, ...rows].map((row: any[]) => row.map((v: any) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+
+    const q = (v: any) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const row = (...cols: any[]) => cols.map(q).join(',');
+    const blank = () => '';
+
+    const exportDate = new Date().toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const searchDate = new Date(searchRun.searchDate).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    // ── Build criteria summary ─────────────────────────────────────────────────
+    const c = searchRun.criteria || {};
+    const priceRange = c.minPrice && c.maxPrice ? `$${Number(c.minPrice).toLocaleString()} – $${Number(c.maxPrice).toLocaleString()}`
+      : c.minPrice ? `$${Number(c.minPrice).toLocaleString()}+`
+      : c.maxPrice ? `Up to $${Number(c.maxPrice).toLocaleString()}`
+      : 'Any';
+
+    const lines: string[] = [];
+
+    // ── Section 1: Company Header ──────────────────────────────────────────────
+    lines.push(row('LISTINGBUG', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''));
+    lines.push(row('Real Estate Data Intelligence', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''));
+    lines.push(row('thelistingbug.com', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''));
+    lines.push(row(''));
+    lines.push(row('Report Generated:', exportDate, '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''));
+    lines.push(row(''));
+
+    // ── Section 2: Search Parameters ──────────────────────────────────────────
+    lines.push(row('── SEARCH PARAMETERS ────────────────────────────────────────────'));
+    lines.push(row('Location:', searchRun.location));
+    lines.push(row('Search Run:', searchDate));
+    lines.push(row('Property Type:', c.propertyType || 'All'));
+    lines.push(row('Listing Status:', c.status || 'Active'));
+    lines.push(row('Price Range:', priceRange));
+    if (c.beds) lines.push(row('Min Bedrooms:', c.beds));
+    if (c.baths) lines.push(row('Min Bathrooms:', c.baths));
+    if (c.daysOld) lines.push(row('Listed Within (days):', c.daysOld));
+    if (c.minPrice || c.maxPrice) lines.push(row('Price Range:', priceRange));
+    lines.push(row(''));
+
+    // ── Section 3: Results Summary ─────────────────────────────────────────────
+    lines.push(row('── RESULTS SUMMARY ──────────────────────────────────────────────'));
+    lines.push(row('Total Listings:', results.length));
+
+    const prices = results.map((r: any) => r.price).filter((p: any) => p > 0);
+    if (prices.length > 0) {
+      const avg = Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length);
+      const med = prices.sort((a: number, b: number) => a - b)[Math.floor(prices.length / 2)];
+      lines.push(row('Average Price:', `$${avg.toLocaleString()}`));
+      lines.push(row('Median Price:', `$${med.toLocaleString()}`));
+      lines.push(row('Price Range:', `$${Math.min(...prices).toLocaleString()} – $${Math.max(...prices).toLocaleString()}`));
+    }
+    const avgDays = results.filter((r: any) => r.daysListed > 0);
+    if (avgDays.length > 0) {
+      const avg = Math.round(avgDays.reduce((a: number, r: any) => a + r.daysListed, 0) / avgDays.length);
+      lines.push(row('Avg Days on Market:', avg));
+    }
+    lines.push(row(''));
+
+    // ── Section 4: Column Headers ──────────────────────────────────────────────
+    lines.push(row('── LISTINGS ─────────────────────────────────────────────────────'));
+    lines.push([
+      // Property Identity
+      'MLS #', 'Status', 'Listed Date', 'Days on Market', 'Price Drop',
+      // Address
+      'Full Address', 'Street Address', 'City', 'State', 'ZIP', 'County',
+      // Property Details
+      'Property Type', 'Bedrooms', 'Bathrooms', 'Sq Ft', 'Lot Size (sq ft)', 'Year Built', 'HOA Fee/mo',
+      // Financials
+      'List Price', 'Price per Sq Ft',
+      // Listing Agent
+      'Agent Name', 'Agent Phone', 'Agent Email',
+      // Brokerage
+      'Brokerage', 'Brokerage Phone', 'Brokerage Email',
+      // Location Data
+      'Latitude', 'Longitude',
+    ].map(q).join(','));
+
+    // ── Section 5: Data Rows ───────────────────────────────────────────────────
+    results.forEach((r: any) => {
+      const pricePsf = r.price && r.sqft ? Math.round(r.price / r.sqft) : '';
+      const listedDate = r.listedDate ? new Date(r.listedDate).toLocaleDateString('en-US') : '';
+      lines.push([
+        q(r.mlsNumber || ''),
+        q(r.status || 'Active'),
+        q(listedDate),
+        q(r.daysListed || 0),
+        q(r.priceDrop ? 'Yes' : 'No'),
+        q(r.formattedAddress || `${r.address}, ${r.city}, ${r.state} ${r.zip}`),
+        q(r.address || ''),
+        q(r.city || ''),
+        q(r.state || ''),
+        q(r.zip || ''),
+        q(r.county || ''),
+        q(r.propertyType || ''),
+        q(r.bedrooms || ''),
+        q(r.bathrooms || ''),
+        q(r.sqft || ''),
+        q(r.lotSize || ''),
+        q(r.yearBuilt || ''),
+        q(r.hoaFee != null ? `$${r.hoaFee}` : ''),
+        q(r.price ? `$${r.price.toLocaleString()}` : ''),
+        q(pricePsf ? `$${pricePsf}` : ''),
+        q(r.agentName || ''),
+        q(r.agentPhone || ''),
+        q(r.agentEmail || ''),
+        q(r.brokerage || r.officeName || ''),
+        q(r.officePhone || ''),
+        q(r.officeEmail || ''),
+        q(r.latitude || ''),
+        q(r.longitude || ''),
+      ].join(','));
+    });
+
+    lines.push(row(''));
+    lines.push(row('── END OF REPORT ────────────────────────────────────────────────'));
+    lines.push(row('Powered by ListingBug × RentCast', '', 'Data sourced from RentCast MLS feed'));
+
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'search-' + searchRun.location.replace(/[^a-z0-9]/gi, '-') + '-' + new Date(searchRun.searchDate).toISOString().slice(0, 10) + '.csv';
+    a.download = `ListingBug-${searchRun.location.replace(/[^a-z0-9]/gi, '-')}-${new Date(searchRun.searchDate).toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('CSV exported');
+    toast.success(`Exported ${results.length} listings`);
   };
 
   const handleConfirmSave = async () => {

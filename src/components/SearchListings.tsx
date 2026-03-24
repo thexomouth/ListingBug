@@ -959,32 +959,105 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   };
 
   const handleDownloadCSV = () => {
-    // Generate CSV content
-    const headers = ['Address', 'City', 'State', 'Zip', 'Price', 'Beds', 'Baths', 'Days Listed'];
-    const rows = results.map(r => [
-      r.address, r.city, r.state, r.zipCode, 
-      `$${r.price.toLocaleString()}`, r.beds, r.baths, r.daysListed
-    ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    if (!results || results.length === 0) { toast.error('No results to export'); return; }
+
+    const q = (v: any) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const exportDate = new Date().toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const location = [criteria.city, criteria.state].filter(Boolean).join(', ') || 'Custom Search';
+    const priceRange = criteria.minPrice && criteria.maxPrice
+      ? `$${Number(criteria.minPrice).toLocaleString()} – $${Number(criteria.maxPrice).toLocaleString()}`
+      : criteria.minPrice ? `$${Number(criteria.minPrice).toLocaleString()}+`
+      : criteria.maxPrice ? `Up to $${Number(criteria.maxPrice).toLocaleString()}`
+      : 'Any';
+
+    const lines: string[] = [];
+
+    // Company header
+    lines.push(q('LISTINGBUG') + ',,,,,,,,,,,,,,,,');
+    lines.push(q('Real Estate Data Intelligence') + ',,,,,,,,,,,,,,,,');
+    lines.push(q('thelistingbug.com') + ',,,,,,,,,,,,,,,,');
+    lines.push('');
+    lines.push(`${q('Report Generated:')},${q(exportDate)}`);
+    lines.push('');
+
+    // Search parameters
+    lines.push(q('── SEARCH PARAMETERS ────────────────────────────────────────────'));
+    lines.push(`${q('Location:')},${q(location)}`);
+    lines.push(`${q('Property Type:')},${q(criteria.propertyType || 'All')}`);
+    lines.push(`${q('Listing Status:')},${q(criteria.status || 'Active')}`);
+    lines.push(`${q('Price Range:')},${q(priceRange)}`);
+    if (criteria.beds) lines.push(`${q('Min Bedrooms:')},${q(criteria.beds)}`);
+    if (criteria.baths) lines.push(`${q('Min Bathrooms:')},${q(criteria.baths)}`);
+    if (criteria.daysOld) lines.push(`${q('Listed Within (days):')},${q(criteria.daysOld)}`);
+    lines.push('');
+
+    // Results summary
+    lines.push(q('── RESULTS SUMMARY ──────────────────────────────────────────────'));
+    lines.push(`${q('Total Listings:')},${q(results.length)}`);
+    const prices = results.map((r: any) => r.price).filter((p: any) => p > 0);
+    if (prices.length > 0) {
+      const avg = Math.round(prices.reduce((a: number, b: number) => a + b, 0) / prices.length);
+      const sorted = [...prices].sort((a: number, b: number) => a - b);
+      const med = sorted[Math.floor(sorted.length / 2)];
+      lines.push(`${q('Average Price:')},${q('$' + avg.toLocaleString())}`);
+      lines.push(`${q('Median Price:')},${q('$' + med.toLocaleString())}`);
+      lines.push(`${q('Price Range:')},${q('$' + Math.min(...prices).toLocaleString() + ' – $' + Math.max(...prices).toLocaleString())}`);
+    }
+    const withDays = results.filter((r: any) => r.daysListed > 0);
+    if (withDays.length > 0) {
+      const avgDays = Math.round(withDays.reduce((a: number, r: any) => a + r.daysListed, 0) / withDays.length);
+      lines.push(`${q('Avg Days on Market:')},${q(avgDays)}`);
+    }
+    lines.push('');
+
+    // Column headers
+    lines.push(q('── LISTINGS ─────────────────────────────────────────────────────'));
+    lines.push([
+      'MLS #', 'Status', 'Listed Date', 'Days on Market', 'Price Drop',
+      'Full Address', 'Street Address', 'City', 'State', 'ZIP', 'County',
+      'Property Type', 'Bedrooms', 'Bathrooms', 'Sq Ft', 'Lot Size (sq ft)', 'Year Built', 'HOA Fee/mo',
+      'List Price', 'Price per Sq Ft',
+      'Agent Name', 'Agent Phone', 'Agent Email',
+      'Brokerage', 'Brokerage Phone', 'Brokerage Email',
+      'Latitude', 'Longitude',
+    ].map(q).join(','));
+
+    // Data rows
+    results.forEach((r: any) => {
+      const pricePsf = r.price && r.sqft ? Math.round(r.price / r.sqft) : '';
+      const listedDate = r.listedDate ? new Date(r.listedDate).toLocaleDateString('en-US') : '';
+      lines.push([
+        q(r.mlsNumber || ''), q(r.status || 'Active'), q(listedDate), q(r.daysListed || 0), q(r.priceDrop ? 'Yes' : 'No'),
+        q(r.formattedAddress || `${r.address}, ${r.city}, ${r.state} ${r.zip}`),
+        q(r.address || ''), q(r.city || ''), q(r.state || ''), q(r.zip || ''), q(r.county || ''),
+        q(r.propertyType || ''), q(r.bedrooms || ''), q(r.bathrooms || ''),
+        q(r.sqft || ''), q(r.lotSize || ''), q(r.yearBuilt || ''),
+        q(r.hoaFee != null ? `$${r.hoaFee}` : ''),
+        q(r.price ? `$${r.price.toLocaleString()}` : ''),
+        q(pricePsf ? `$${pricePsf}` : ''),
+        q(r.agentName || ''), q(r.agentPhone || ''), q(r.agentEmail || ''),
+        q(r.brokerage || r.officeName || ''), q(r.officePhone || ''), q(r.officeEmail || ''),
+        q(r.latitude || ''), q(r.longitude || ''),
+      ].join(','));
+    });
+
+    lines.push('');
+    lines.push(q('── END OF REPORT ────────────────────────────────────────────────'));
+    lines.push(`${q('Powered by ListingBug × RentCast')},${q('')},${q('Data sourced from RentCast MLS feed')}`);
+
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `listing-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `ListingBug-${location.replace(/[^a-z0-9]/gi, '-')}-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    
-    toast.success('CSV downloaded successfully');
+    toast.success(`Exported ${results.length} listings`);
 
-    // Track CSV export in automation_runs for dashboard count
+    // Track CSV export
     try {
       supabase.auth.getUser().then(({ data: { user } }) => {
         if (user) {
