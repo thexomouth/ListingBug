@@ -12,12 +12,21 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
  * 
  * PURPOSE: Allow users to upgrade or downgrade their subscription plan
  * 
+ * DESIGN MODES:
+ * - LIGHT MODE (SAVED): Original light mode design with yellow header (#ffd447), white backgrounds, dark text (#342e37)
+ * - DARK MODE (REDESIGNED): New dark mode implementation with brand yellow accents (#FFCE0A), dark containers (#2F2F2F, #1a1a2e), light text
+ * 
+ * STYLING APPROACH:
+ * All components use Tailwind's dark: prefix for dark mode compatibility
+ * Dark mode uses consistent color scheme: bg-[#2F2F2F] (main), bg-[#1a1a2e] (secondary), text-white/80 (secondary text), #FFCE0A (accents)
+ * 
  * FEATURES:
  * - Show all available plans
  * - Highlight current plan
  * - Show upgrade vs downgrade differences
  * - Calculate  amounts
  * - Confirm plan change
+ * - Full light/dark mode support
  * 
  * BACKEND INTEGRATION:
  * - POST /api/billing/change-plan
@@ -220,52 +229,57 @@ export function ChangePlanModal({
       />
 
       {/* Modal - Always centered in viewport */}
+      {/* LIGHT MODE: bg-white | DARK MODE: dark:bg-[#2F2F2F] */}
       <div 
-        className="fixed left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] w-[calc(100%-2rem)] md:w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-lg shadow-2xl z-50 animate-in zoom-in-95 duration-200"
+        className="fixed left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%] w-[calc(100%-2rem)] md:w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white dark:bg-[#2F2F2F] rounded-lg shadow-2xl z-50 animate-in zoom-in-95 duration-200"
         style={{ margin: 0 }}
       >
         
         {!showConfirmation ? (
           <>
             {/* Header */}
-            <div className="sticky top-0 bg-[#ffd447] border-b px-6 py-4 flex items-center justify-between z-10">
+            {/* LIGHT MODE: bg-[#ffd447] with dark text | DARK MODE: dark:bg-[#FFCE0A] dark:text-[#0F1115] */}
+            <div className="sticky top-0 bg-[#ffd447] dark:bg-[#FFCE0A] border-b border-gray-200 dark:border-white/10 px-6 py-4 flex items-center justify-between z-10">
               <div>
-                <h2 className="font-bold text-[#342e37]">Change Your Plan</h2>
-                <p className="text-sm text-[#342e37]/80 mt-1">
+                <h2 className="font-bold text-[#342e37] dark:text-[#0F1115]">Change Your Plan</h2>
+                <p className="text-sm text-[#342e37]/80 dark:text-white/70 mt-1">
                   Currently on <span className="font-medium">{currentPlan}</span> - ${currentPrice}/month
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg hover:bg-[#342e37]/10 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-lg hover:bg-[#342e37]/10 dark:hover:bg-white/10 flex items-center justify-center transition-colors"
               >
-                <X className="w-5 h-5 text-[#342e37]" />
+                <X className="w-5 h-5 text-[#342e37] dark:text-[#0F1115]" />
               </button>
             </div>
 
             {/* Plans Grid */}
-            <div className="p-6">
+            {/* LIGHT MODE: Light background | DARK MODE: dark:bg-[#2F2F2F] */}
+            <div className="p-6 bg-white dark:bg-[#2F2F2F]">
               <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                 {plans.map((plan) => {
                   const isCurrent = plan.id === currentPlanId;
                   const isSelected = plan.id === selectedPlan;
 
                   return (
+                    {/* LIGHT MODE: Light card with gray borders | DARK MODE: dark:bg-[#1a1a2e] dark:border-white/10 */}
                     <Card
                       key={plan.id}
-                      className={`relative transition-all ${
+                      className={`relative transition-all bg-white dark:bg-[#1a1a2e] ${
                         isCurrent
-                          ? 'border-2 border-green-400 bg-green-50/30'
+                          ? 'border-2 border-green-400 dark:border-green-500 bg-green-50/30 dark:bg-green-500/10'
                           : isSelected
-                          ? 'border-2 border-[#342e37] shadow-lg'
-                          : 'border-2 border-gray-200 hover:border-gray-300 hover:shadow-md cursor-pointer'
+                          ? 'border-2 border-[#342e37] dark:border-[#FFCE0A] shadow-lg dark:shadow-xl dark:shadow-[#FFCE0A]/20'
+                          : 'border-2 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:shadow-md dark:hover:shadow-lg cursor-pointer'
                       }`}
                       onClick={() => !isCurrent && handleSelectPlan(plan.id)}
                     >
                       {/* Popular Badge */}
+                      {/* LIGHT MODE: Yellow badge | DARK MODE: dark:bg-[#FFCE0A] dark:text-[#0F1115] */}
                       {plan.popular && !isCurrent && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                          <Badge className="bg-[#ffd447] text-[#342e37] border-2 border-white shadow-md">
+                          <Badge className="bg-[#ffd447] dark:bg-[#FFCE0A] text-[#342e37] dark:text-[#0F1115] border-2 border-white shadow-md">
                             <Sparkles className="w-3 h-3 mr-1" />
                             Most Popular
                           </Badge>
@@ -284,20 +298,22 @@ export function ChangePlanModal({
 
                       <CardContent className="p-6">
                         {/* Plan Header */}
+                        {/* LIGHT MODE: Dark text | DARK MODE: dark:text-white */}
                         <div className="text-center mb-6">
-                          <h3 className="font-bold text-xl text-[#342e37] mb-2">{plan.name}</h3>
+                          <h3 className="font-bold text-xl text-[#342e37] dark:text-white mb-2">{plan.name}</h3>
                           <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-4xl font-bold text-[#342e37]">${plan.price}</span>
-                            <span className="text-gray-600">/month</span>
+                            <span className="text-4xl font-bold text-[#342e37] dark:text-white">${plan.price}</span>
+                            <span className="text-gray-600 dark:text-white/60">/month</span>
                           </div>
                         </div>
 
                         {/* Features List */}
+                        {/* LIGHT MODE: Gray text | DARK MODE: dark:text-white/80 */}
                         <div className="space-y-3 mb-6">
                           {plan.features.map((feature, index) => (
                             <div key={index} className="flex items-start gap-2 text-sm">
-                              <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-700">{feature}</span>
+                              <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                              <span className="text-gray-700 dark:text-white/80">{feature}</span>
                             </div>
                           ))}
                         </div>
@@ -340,9 +356,10 @@ export function ChangePlanModal({
               </div>
 
               {/* Info Box */}
-              <Alert className="mt-6">
-                <Info className="h-4 w-4" />
-                <AlertDescription>
+              {/* LIGHT MODE: Light gray background | DARK MODE: dark:bg-white/5 dark:border-white/10 dark:text-white/80 */}
+              <Alert className="mt-6 bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10">
+                <Info className="h-4 w-4 text-gray-600 dark:text-white/60" />
+                <AlertDescription className="text-gray-700 dark:text-white/80">
                   <strong>Upgrades</strong> take effect immediately. <strong>Downgrades</strong> take effect at the end of your current billing period.
                 </AlertDescription>
               </Alert>
@@ -351,54 +368,57 @@ export function ChangePlanModal({
         ) : (
           <>
             {/* Confirmation Screen */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+            {/* LIGHT MODE: White background | DARK MODE: dark:bg-[#2F2F2F] dark:border-white/10 */}
+            <div className="sticky top-0 bg-white dark:bg-[#2F2F2F] border-b border-gray-200 dark:border-white/10 px-6 py-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleBack}
-                  className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                  className="text-sm text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white flex items-center gap-1"
                 ><ChevronLeft className="w-6 h-6" /></button>
                 <div>
-                  <h2 className="font-bold text-[#342e37]">Confirm Plan Change</h2>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h2 className="font-bold text-[#342e37] dark:text-white">Confirm Plan Change</h2>
+                  <p className="text-sm text-gray-600 dark:text-white/60 mt-1">
                     Review the details of your plan change
                   </p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 flex items-center justify-center transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-gray-500 dark:text-white/60" />
               </button>
             </div>
 
-            <div className="p-6 max-w-2xl mx-auto">
+            {/* LIGHT MODE: Light background | DARK MODE: dark:bg-[#1a1a2e] */}
+            <div className="p-6 max-w-2xl mx-auto bg-white dark:bg-[#2F2F2F]">
               {/* Change Summary */}
-              <div className="bg-gray-50 rounded-lg p-6 mb-6">
+              {/* LIGHT MODE: Light gray background | DARK MODE: dark:bg-[#1a1a2e] dark:border-white/10 */}
+              <div className="bg-gray-50 dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-lg p-6 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-center flex-1">
-                    <p className="text-sm text-gray-600 mb-1">Current Plan</p>
-                    <p className="font-bold text-lg text-[#342e37]">{currentPlanData?.name}</p>
-                    <p className="text-sm text-gray-600">${currentPlanData?.price}/month</p>
+                    <p className="text-sm text-gray-600 dark:text-white/60 mb-1">Current Plan</p>
+                    <p className="font-bold text-lg text-[#342e37] dark:text-white">{currentPlanData?.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-white/60">${currentPlanData?.price}/month</p>
                   </div>
 
                   <div className="px-6">
-                    <ArrowRight className="w-6 h-6 text-[#342e37]" />
+                    <ArrowRight className="w-6 h-6 text-[#342e37] dark:text-white/60" />
                   </div>
 
                   <div className="text-center flex-1">
-                    <p className="text-sm text-gray-600 mb-1">New Plan</p>
-                    <p className="font-bold text-lg text-[#342e37]">{selectedPlanData?.name}</p>
-                    <p className="text-sm text-gray-600">${selectedPlanData?.price}/month</p>
+                    <p className="text-sm text-gray-600 dark:text-white/60 mb-1">New Plan</p>
+                    <p className="font-bold text-lg text-[#342e37] dark:text-white">{selectedPlanData?.name}</p>
+                    <p className="text-sm text-gray-600 dark:text-white/60">${selectedPlanData?.price}/month</p>
                   </div>
                 </div>
 
                 {isUpgrade && (
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                  <Alert className="bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30">
+                    <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                     <AlertDescription>
-                      <p className="font-medium text-blue-900 mb-1">Upgrading Your Plan</p>
-                      <p className="text-sm text-blue-800">
+                      <p className="font-medium text-blue-900 dark:text-blue-300 mb-1">Upgrading Your Plan</p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200/80">
                         Your plan starts today. You'll be billed ${selectedPlanData?.price}/month from your first payment.
                         Your next full billing cycle starts on your renewal date.
                       </p>
@@ -407,11 +427,11 @@ export function ChangePlanModal({
                 )}
 
                 {isDowngrade && (
-                  <Alert className="bg-amber-50 border-amber-200">
-                    <TrendingDown className="h-4 w-4 text-amber-600" />
+                  <Alert className="bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
+                    <TrendingDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     <AlertDescription>
-                      <p className="font-medium text-amber-900 mb-1">Downgrading Your Plan</p>
-                      <p className="text-sm text-amber-800">
+                      <p className="font-medium text-amber-900 dark:text-amber-300 mb-1">Downgrading Your Plan</p>
+                      <p className="text-sm text-amber-800 dark:text-amber-200/80">
                         Your plan will change to <strong>{selectedPlanData?.name}</strong> at the end of your current billing period 
                         (December 15, 2024). You'll continue to have access to {currentPlanData?.name} features until then.
                       </p>
@@ -421,29 +441,30 @@ export function ChangePlanModal({
               </div>
 
               {/* What Changes */}
+              {/* LIGHT MODE: Dark text | DARK MODE: dark:text-white */}
               <div className="mb-6">
-                <h3 className="font-bold text-[#342e37] mb-4">What's Changing</h3>
+                <h3 className="font-bold text-[#342e37] dark:text-white mb-4">What's Changing</h3>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 mb-2">Current Features</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-white/60 mb-2">Current Features</p>
                     <div className="space-y-2">
                       {currentPlanData?.features.slice(0, 3).map((feature, index) => (
                         <div key={index} className="flex items-start gap-2 text-sm">
-                          <span className="text-gray-400">•</span>
-                          <span className="text-gray-600">{feature}</span>
+                          <span className="text-gray-400 dark:text-white/40">•</span>
+                          <span className="text-gray-600 dark:text-white/70">{feature}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-gray-600 mb-2">New Features</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-white/60 mb-2">New Features</p>
                     <div className="space-y-2">
                       {selectedPlanData?.features.slice(0, 3).map((feature, index) => (
                         <div key={index} className="flex items-start gap-2 text-sm">
-                          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                          <span className="text-gray-700">{feature}</span>
+                          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                          <span className="text-gray-700 dark:text-white/80">{feature}</span>
                         </div>
                       ))}
                     </div>
