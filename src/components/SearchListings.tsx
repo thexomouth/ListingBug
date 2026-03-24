@@ -9,7 +9,7 @@ import { LBSelect } from './design-system/LBSelect';
 import { LBButton } from './design-system/LBButton';
 import { LBToggle } from './design-system/LBToggle';
 import { CityAutocomplete } from './CityAutocomplete';
-import { Download, Plus, X, MapPin, DollarSign, Home, Eye, Save, Search, Filter, Sliders, ArrowUpDown, ArrowUp, ArrowDown, Check, Calendar, Clock, Loader2, FileText, Database, CheckCircle, Zap, Edit2, Trash2, Play, TrendingUp, History, BarChart3, Share2, ExternalLink } from 'lucide-react';
+import { Download, Plus, X, MapPin, DollarSign, Home, Eye, Save, Search, Filter, Sliders, ArrowUpDown, ArrowUp, ArrowDown, Check, Calendar, Clock, Loader2, FileText, Database, CheckCircle, Zap, Edit2, Trash2, Play, TrendingUp, History, BarChart3, Share2, ExternalLink, Info } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
