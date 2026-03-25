@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const RENTCAST_API_KEY = Deno.env.get("RENTCAST_API_KEY") ?? "28c8bab516194c20a346b7db3d987bd6";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const PLAN_LIMITS: Record<string, number> = {
   trial: 4000,
@@ -41,8 +42,9 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
       }
 
-      const token = authHeader.replace("Bearer ", "");
-      const userClient = createClient(SUPABASE_URL, token);
+      const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } }
+      });
       const { data: { user: authUser }, error: authError } = await userClient.auth.getUser();
 
       if (authError || !authUser) {
