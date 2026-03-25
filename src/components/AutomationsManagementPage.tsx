@@ -418,27 +418,78 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   const handleRunNow = async (automation: Automation) => {
     setRunNowLoading(true);
     setRunningAutomation(automation);
-    toast.success(`Running "${automation.name}"...`);
-    setTimeout(async () => {
-      const listingsSent = Math.floor(Math.random() * 15) + 1;
-      toast.success(`Automation completed - ${listingsSent} listings delivered`);
-      setRunNowLoading(false);
-      setRunningAutomation(null);
 
-      // Create notification for automation run
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-automation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ automation }),
+        }
+      );
+
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Automation run failed');
+
+      const { status, listings_found, listings_sent, details } = result;
+      const destLabel = automation.destination?.label ?? 'destination';
+
+      if (status === 'failed') {
+        toast.error(`"${automation.name}" failed: ${(details ?? 'Unknown error').slice(0, 120)}`);
+      } else {
+        toast.success(`"${automation.name}" complete — ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await createNotification({
           userId: user.id,
-          type: 'success',
-          title: 'Automation Run Complete',
-          message: `"${automation.name}" completed successfully - ${listingsSent} listings sent to ${automation.destination.label}`,
+          type: status === 'failed' ? 'error' : 'success',
+          title: status === 'failed'
+            ? `Automation failed: ${automation.name}`
+            : `Automation run complete: ${automation.name}`,
+          message: status === 'failed'
+            ? (details ?? 'The automation encountered an error.')
+            : listings_sent > 0
+              ? `${listings_found} listings found — ${listings_sent} sent to ${destLabel}`
+              : `${listings_found} listings found. Check destination config if 0 were sent.`,
         });
       }
-    }, 2000);
+
+      await loadRunHistory();
+
+      setAutomations(prev => prev.map(a =>
+        a.id === automation.id
+          ? { ...a, lastRun: { status: status === 'failed' ? 'failed' : 'success', date: new Date().toISOString(), listingsSent: listings_sent ?? 0, details: details ?? '' } }
+          : a
+      ));
+
+    } catch (err: any) {
+      const msg = err.message ?? 'Unknown error';
+      toast.error(`Run failed: ${msg}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await createNotification({
+          userId: user.id,
+          type: 'error',
+          title: `Automation failed: ${automation.name}`,
+          message: msg,
+        });
+      }
+    } finally {
+      setRunNowLoading(false);
+      setRunningAutomation(null);
+    }
   };
 
-  const handleDeleteAutomation = (id: string) => {
+const handleDeleteAutomation = (id: string) => {
     setAutomations(prev => prev.filter(a => a.id !== id));
     toast.success('Automation deleted');
   };
