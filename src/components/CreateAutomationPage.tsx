@@ -291,65 +291,15 @@ export function CreateAutomationPage({
           </div>
         </section>
 
-        {/* Step 3: Map Fields */}
+        {/* Step 3: Map Fields - REMOVED */}
         {selectedDestination && (
           <section className="bg-white border border-gray-200 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-8 rounded-full bg-[#FFD447] flex items-center justify-center">
                 <ArrowRight className="w-4 h-4 text-[#342E37]" />
               </div>
-              <h2 className="text-[18px] font-bold text-[#342E37]">Map Fields</h2>
+              <h2 className="text-[18px] font-bold text-[#342E37]">Field mappings will be configured per integration at implementation time.</h2>
             </div>
-
-            <p className="text-[13px] text-gray-600 mb-4">
-              Map ListingBug fields to your destination fields. We've suggested common mappings.
-            </p>
-
-            <div className="space-y-3">
-              {fieldMappings.map((mapping, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <select
-                      value={mapping.source}
-                      onChange={(e) => handleUpdateMapping(index, 'source', e.target.value)}
-                      className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#FFD447]"
-                    >
-                      <option value="">Source field...</option>
-                      {availableSourceFields.map(field => (
-                        <option key={field} value={field}>{field}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={mapping.destination}
-                      onChange={(e) => handleUpdateMapping(index, 'destination', e.target.value)}
-                      placeholder="Destination field..."
-                      className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#FFD447]"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {mapping.label === 'Suggested' && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[11px] font-medium">
-                        Suggested
-                      </span>
-                    )}
-                    {!mapping.required && (
-                      null
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={handleAddMapping}
-              className="mt-3 text-[14px] text-blue-600 hover:text-blue-700 font-medium"
-            >
-              + Add field mapping
-            </button>
           </section>
         )}
 
@@ -360,10 +310,10 @@ export function CreateAutomationPage({
               <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="text-[13px] text-[#ffffff]">
-                  <strong className="text-[#b3bdda] text-[#b8c0da] text-[#c5cde3] text-[#ffffff] text-[#ffffff]">Audit Reference:</strong> All transfers are logged in Account {'>'}  Compliance
+                  <strong className="text-[#ffffff]">Audit Reference:</strong> All transfers are logged in Account {'>'}  Compliance
                 </p>
                 <p className="text-[13px] text-[#ffffff]">
-                  <strong className="text-[#888d9d] text-[#9297a7] text-[#f5f5f5] text-[#ffffff] text-[#ffffff]">Data Controller Notice:</strong> You are the data controller; ListingBug processes data on your behalf.
+                  <strong className="text-[#ffffff]">Data Controller Notice:</strong> You are the data controller; ListingBug processes data on your behalf.
                 </p>
               </div>
             </div>

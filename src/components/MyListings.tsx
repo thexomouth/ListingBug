@@ -258,8 +258,8 @@ export function MyListings() {
                 />
               </div>
 
-              {/* Re-Listed Filter */}
-              <LBSelect
+              {/* Re-Listed Filter - HIDDEN */}
+              {/* <LBSelect
                 value={filterReList}
                 onChange={handleFilterChange(setFilterReList)}
                 options={[
@@ -267,10 +267,10 @@ export function MyListings() {
                   { value: 'yes', label: 'Re-Listed Only' },
                   { value: 'no', label: 'Not Re-Listed' },
                 ]}
-              />
+              /> */}
 
-              {/* Price Drop Filter */}
-              <LBSelect
+              {/* Price Drop Filter - HIDDEN */}
+              {/* <LBSelect
                 value={filterPriceDrop}
                 onChange={handleFilterChange(setFilterPriceDrop)}
                 options={[
@@ -278,7 +278,7 @@ export function MyListings() {
                   { value: 'yes', label: 'Price Drops' },
                   { value: 'no', label: 'No Price Change' },
                 ]}
-              />
+              /> */}
 
               {/* Year Built Filter */}
               <LBSelect
