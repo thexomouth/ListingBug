@@ -23,6 +23,22 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+
+    // Auto-reload on stale chunk errors (happens after new deploy)
+    const isChunkError =
+      error.message?.includes('Failed to fetch dynamically imported module') ||
+      error.message?.includes('Importing a module script failed') ||
+      error.message?.includes('error loading dynamically imported module') ||
+      error.name === 'ChunkLoadError';
+
+    if (isChunkError) {
+      // Avoid reload loop — only reload once per session
+      const reloaded = sessionStorage.getItem('chunk_reload');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+      }
+    }
   }
 
   private handleReset = () => {
@@ -32,6 +48,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      const isChunkError =
+        this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
+        this.state.error?.message?.includes('Importing a module script failed');
+
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="max-w-md w-full text-center">
@@ -40,18 +60,14 @@ export class ErrorBoundary extends Component<Props, State> {
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
             </div>
-            <h1 className="mb-4">Something went wrong</h1>
+            <h1 className="mb-4">
+              {isChunkError ? 'Update available' : 'Something went wrong'}
+            </h1>
             <p className="text-gray-600 mb-6 leading-relaxed">
-              We apologize for the inconvenience. An unexpected error has occurred. 
-              Please try refreshing the page or return to the homepage.
+              {isChunkError
+                ? 'ListingBug was just updated. Please refresh to load the latest version.'
+                : 'An unexpected error occurred. Please try refreshing the page or return to the homepage.'}
             </p>
-            {this.state.error && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg text-left">
-                <p className="text-sm text-gray-600 font-mono break-all">
-                  {this.state.error.message}
-                </p>
-              </div>
-            )}
             <div className="flex gap-3 justify-center">
               <Button onClick={() => window.location.reload()} variant="outline">
                 Refresh Page
