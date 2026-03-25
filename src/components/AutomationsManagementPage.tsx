@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { LBButton } from './design-system/LBButton';
@@ -176,6 +176,29 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   }, []);
 
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
+
+  const loadRunHistory = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) { setRunHistory([]); return; }
+    const { data, error } = await supabase
+      .from('automation_runs')
+      .select('id,automation_name:automation_name,run_date,status,listings_found,listings_sent,destination,details')
+      .eq('user_id', userId)
+      .order('run_date', { ascending: false })
+      .limit(20);
+    if (error || !data || data.length === 0) { setRunHistory([]); return; }
+    setRunHistory(data.map((run) => ({
+      id: run.id,
+      automationName: run.automation_name || 'Unknown',
+      runDate: run.run_date || new Date().toISOString(),
+      status: run.status || 'failed',
+      listingsFound: run.listings_found || 0,
+      listingsSent: run.listings_sent || 0,
+      destination: run.destination || '',
+      details: run.details || '',
+    })));
+  }, []);
 
   useEffect(() => {
     const loadRunHistory = async () => {
@@ -515,7 +538,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
       parts.push('Re-listed properties');
     }
     
-    return parts.length > 0 ? parts.join(' • ') : 'All listings';
+    return parts.length > 0 ? parts.join(' ï¿½ ') : 'All listings';
   };
 
   const getCategoryLabel = (category: string) => {
@@ -684,7 +707,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                       >
                         <LBTableCell>
                           <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
-                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{automation.destination?.label ?? '—'}</div>
+                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{automation.destination?.label ?? 'ï¿½'}</div>
                           {lastRun && (
                             <div className="flex items-center gap-2 mt-1 md:hidden">
                               <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded ${lastRunStatus === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -717,7 +740,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                               <span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span>
                               <span className="text-[11px] text-gray-400">listings found</span>
                             </div>
-                          ) : <span className="text-[12px] text-gray-400">—</span>}
+                          ) : <span className="text-[12px] text-gray-400">ï¿½</span>}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
                           {lastRun ? (
@@ -734,7 +757,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                                 </>
                               )}
                             </div>
-                          ) : <span className="text-[12px] text-gray-400">—</span>}
+                          ) : <span className="text-[12px] text-gray-400">ï¿½</span>}
                         </LBTableCell>
                         <LBTableCell className="text-right">
                           <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}

@@ -238,7 +238,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                   <h4 className="font-bold text-[#342e37] dark:text-white text-[15px] mb-1">
                     Listings Synced This Month
                   </h4>
-                  <p className="text-[13px] text-gray-600">
+                  <p className="text-[13px] text-white">
                     {isEnterprise
                       ? 'Unlimited listings on your plan'
                       : `${usage.listingsProcessed.toLocaleString()} of ${usage.listingsLimit.toLocaleString()} listings used`
@@ -324,7 +324,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                     <h4 className="font-bold text-[#342e37] dark:text-white text-[15px] mb-1">
                       Projected End-of-Month Usage
                     </h4>
-                    <p className="text-[13px] text-gray-600">
+                    <p className="text-[13px] text-white">
                       Based on current automation activity and daily average
                     </p>
                   </div>
@@ -388,7 +388,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
               
               <div className="space-y-2">
                 <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 py-2 border-b">
-                  <span className="text-[13px] text-gray-600">Overage Rate</span>
+                  <span className="text-[13px] text-white">Overage Rate</span>
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white">
                     ${usage.overageRate.toFixed(2)} per listing
                   </span>
@@ -397,7 +397,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
                 <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 py-2 border-b">
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${currentOverage > 0 ? 'bg-yellow-400' : 'bg-green-500'}`} />
-                    <span className="text-[13px] text-gray-600">Current Overage</span>
+                    <span className="text-[13px] text-white">Current Overage</span>
                   </div>
                   <span className={`text-[13px] font-bold ${currentOverage > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {currentOverage > 0 ? `${currentOverage.toLocaleString()} listings` : 'None'}
