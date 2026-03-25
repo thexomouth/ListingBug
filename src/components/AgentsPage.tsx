@@ -254,7 +254,7 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
                             {agent.officeName && <p className="text-[11px] text-gray-400 truncate">{agent.officeName}</p>}
                           </div>
                         </div>
-                        <div className="flex gap-3 mt-1.5 ml-9">
+                        <div className="flex flex-col md:flex-row gap-0 md:gap-3 mt-1.5 ml-9">
                           {agent.agentPhone && (
                             <a href={`tel:${agent.agentPhone}`} onClick={e => e.stopPropagation()}
                               className="flex items-center gap-1 text-[11px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
@@ -263,7 +263,7 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
                           )}
                           {agent.agentEmail && (
                             <a href={`mailto:${agent.agentEmail}`} onClick={e => e.stopPropagation()}
-                              className="flex items-center gap-1 text-[11px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
+                              className="flex items-center gap-1 text-[11px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline mt-1 md:mt-0">
                               <Mail className="w-3 h-3" />{agent.agentEmail}
                             </a>
                           )}

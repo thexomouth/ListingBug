@@ -1504,7 +1504,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 bg-gray-50" style={{ borderRadius: 0, border: 0 }}>
       {/* Header - Compact */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-0.5">
@@ -1814,7 +1814,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
 
       {/* Results Table */}
       {results.length > 0 && (
-        <LBCard elevation="sm" className="border-0" ref={resultsRef} data-walkthrough="results-section">
+        <LBCard elevation="sm" className="bg-gray-50 border-0 rounded-none" ref={resultsRef} data-walkthrough="results-section">
           <LBCardHeader className="pb-3">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <LBCardTitle className="text-base md:text-lg">
