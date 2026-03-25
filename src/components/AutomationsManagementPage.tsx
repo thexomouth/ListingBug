@@ -28,7 +28,9 @@ import {
   FileSpreadsheet,
   MessageSquare,
   Send,
-  Download
+  Download,
+  Play,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import {
@@ -772,6 +774,16 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                         </LBTableCell>
                         <LBTableCell className="text-right">
                           <div className="inline-flex items-center justify-end gap-3">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRunNow(automation); }}
+                              disabled={runNowLoading && runningAutomation?.id === automation.id}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50"
+                              title="Run now"
+                            >
+                              {runNowLoading && runningAutomation?.id === automation.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Play className="w-4 h-4" />}
+                            </button>
                             <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}
                               className="inline-flex items-center cursor-pointer select-none">
                               <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>

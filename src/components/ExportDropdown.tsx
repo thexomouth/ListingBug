@@ -5,7 +5,7 @@
  * and sending to connected integrations
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, FileText, Send, ChevronDown } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -17,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { toast } from 'sonner@2.0.3';
+import { supabase } from '../lib/supabase';
+
 
 interface ExportDropdownProps {
   onExportCSV: () => void;
@@ -32,6 +34,30 @@ export function ExportDropdown({
   className = '',
 }: ExportDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchIntegrations() {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setConnectedIntegrations([]);
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('integration_connections')
+        .select('integration_id');
+      if (error) {
+        setConnectedIntegrations([]);
+      } else {
+        setConnectedIntegrations((data || []).map((row: any) => row.integration_id));
+      }
+      setLoading(false);
+    }
+    fetchIntegrations();
+  }, []);
 
   const handleExportCSV = () => {
     onExportCSV();
@@ -54,6 +80,21 @@ export function ExportDropdown({
       toast.success(`Sending results to ${integration}...`);
     }
     setIsOpen(false);
+  };
+
+  // Map integration IDs to display names/icons as needed
+  const INTEGRATION_LABELS: Record<string, string> = {
+    mailchimp: 'Mailchimp',
+    salesforce: 'Salesforce',
+    hubspot: 'HubSpot',
+    constantcontact: 'Constant Contact',
+    sheets: 'Google Sheets',
+    airtable: 'Airtable',
+    twilio: 'Twilio',
+    zapier: 'Zapier',
+    make: 'Make',
+    webhook: 'Webhooks',
+    // Add more as needed
   };
 
   return (
@@ -93,19 +134,26 @@ export function ExportDropdown({
           <FileText className="w-4 h-4 mr-2" />
           <span>Download PDF</span>
         </DropdownMenuItem>
-        
         <DropdownMenuSeparator />
-        
         <DropdownMenuLabel className="text-xs text-gray-600">
           Send to Integration
         </DropdownMenuLabel>
-        <DropdownMenuItem 
-          onClick={() => handleSendToIntegration('Mailchimp')}
-          className="cursor-pointer"
-        >
-          <Send className="w-4 h-4 mr-2" />
-          <span>Mailchimp</span>
-        </DropdownMenuItem>
+        {loading ? (
+          <DropdownMenuItem disabled className="text-xs text-gray-400">Loading integrations...</DropdownMenuItem>
+        ) : connectedIntegrations.length === 0 ? (
+          <DropdownMenuItem disabled className="text-xs text-gray-400">No integrations connected</DropdownMenuItem>
+        ) : (
+          connectedIntegrations.map((id) => (
+            <DropdownMenuItem 
+              key={id}
+              onClick={() => handleSendToIntegration(id)}
+              className="cursor-pointer"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              <span>{INTEGRATION_LABELS[id] || id}</span>
+            </DropdownMenuItem>
+          ))
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

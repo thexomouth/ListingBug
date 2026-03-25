@@ -414,17 +414,8 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 {savedListings.slice(0, 4).map((listing) => (
                   <div key={listing.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-white/10" onClick={() => setSelectedListing(listing)}>
                     <div className="relative w-full aspect-[4/3] bg-gray-100">
-                      {listing.photos?.[0] ? (
-                        <ImageWithFallback
-                          src={listing.photos[0]}
-                          alt={listing.address}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-                          <Bookmark className="w-8 h-8 text-gray-300" />
-                        </div>
-                      )}
+                      {/* Multi-level fallback: RentCast photo, then Street View, then bookmark icon */}
+                      <ListingImageWithFallback listing={listing} />
                       <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${listing.status === 'Active' ? 'bg-green-100 text-green-800' : listing.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>{listing.status}</span>
                     </div>
                     <div className="p-3">

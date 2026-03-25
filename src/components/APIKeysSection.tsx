@@ -116,12 +116,19 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
 
     console.log('[APIKeys] inserting for user:', userId);
 
+    // Generate key_hash (SHA-256) — required by DB constraint
+    const encoder = new TextEncoder();
+    const keyBuffer = encoder.encode(fullKey);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', keyBuffer);
+    const keyHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
     const { data, error } = await supabase
       .from('api_keys')
       .insert({
         user_id: userId,
         name: newKeyName.trim(),
         key: fullKey,
+        key_hash: keyHash,
       })
       .select()
       .single();

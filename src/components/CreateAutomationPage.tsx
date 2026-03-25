@@ -152,19 +152,70 @@ export function CreateAutomationPage({
     return savedSearches.find(s => s.id === selectedSearchId);
   };
 
-  const integrations: Integration[] = [
-    { id: 'csv-download', name: 'ListingBug CSV Download', icon: Download, category: 'Export', connected: true },
-    { id: 'salesforce', name: 'Salesforce', icon: Database, category: 'CRM', connected: true },
-    { id: 'hubspot', name: 'HubSpot', icon: Database, category: 'CRM', connected: true },
-    { id: 'mailchimp', name: 'Mailchimp', icon: Mail, category: 'Email Marketing', connected: true },
-    { id: 'constantcontact', name: 'Constant Contact', icon: Mail, category: 'Email Marketing', connected: true },
-    { id: 'sheets', name: 'Google Sheets', icon: FileSpreadsheet, category: 'Spreadsheets', connected: true },
-    { id: 'airtable', name: 'Airtable', icon: Database, category: 'Spreadsheets', connected: true },
-    { id: 'twilio', name: 'Twilio', icon: MessageSquare, category: 'SMS', connected: true },
-    { id: 'zapier', name: 'Zapier', icon: Zap, category: 'Automation', connected: true },
-    { id: 'make', name: 'Make', icon: Zap, category: 'Automation', connected: true },
-    { id: 'webhook', name: 'Custom Webhook', icon: Webhook, category: 'Developer', connected: true },
-  ];
+  const [integrations, setIntegrations] = useState<Integration[]>([{
+    id: 'csv-download',
+    name: 'ListingBug CSV Download',
+    icon: Download,
+    category: 'Export',
+    connected: true,
+  }]);
+
+  useEffect(() => {
+    async function fetchIntegrations() {
+      // Always include CSV as a standard option
+      const baseIntegrations: Integration[] = [{
+        id: 'csv-download',
+        name: 'ListingBug CSV Download',
+        icon: Download,
+        category: 'Export',
+        connected: true,
+      }];
+      // Fetch user-connected integrations from Supabase
+      // Map integration_id to display info
+      const INTEGRATION_INFO: Record<string, { name: string; icon: any; category: string }> = {
+        salesforce: { name: 'Salesforce', icon: Database, category: 'CRM' },
+        hubspot: { name: 'HubSpot', icon: Database, category: 'CRM' },
+        mailchimp: { name: 'Mailchimp', icon: Mail, category: 'Email Marketing' },
+        constantcontact: { name: 'Constant Contact', icon: Mail, category: 'Email Marketing' },
+        sheets: { name: 'Google Sheets', icon: FileSpreadsheet, category: 'Spreadsheets' },
+        airtable: { name: 'Airtable', icon: Database, category: 'Spreadsheets' },
+        twilio: { name: 'Twilio', icon: MessageSquare, category: 'SMS' },
+        zapier: { name: 'Zapier', icon: Zap, category: 'Automation' },
+        make: { name: 'Make', icon: Zap, category: 'Automation' },
+        webhook: { name: 'Custom Webhook', icon: Webhook, category: 'Developer' },
+      };
+      try {
+        // @ts-ignore
+        const { supabase } = await import('../lib/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIntegrations(baseIntegrations);
+          return;
+        }
+        const { data, error } = await supabase
+          .from('integration_connections')
+          .select('integration_id');
+        if (error) {
+          setIntegrations(baseIntegrations);
+          return;
+        }
+        const connected = (data || []).map((row: any) => row.integration_id);
+        const userIntegrations: Integration[] = connected
+          .filter((id: string) => INTEGRATION_INFO[id])
+          .map((id: string) => ({
+            id,
+            name: INTEGRATION_INFO[id].name,
+            icon: INTEGRATION_INFO[id].icon,
+            category: INTEGRATION_INFO[id].category,
+            connected: true,
+          }));
+        setIntegrations([...baseIntegrations, ...userIntegrations]);
+      } catch (e) {
+        setIntegrations(baseIntegrations);
+      }
+    }
+    fetchIntegrations();
+  }, []);
 
   const frequencyOptions = [
     { value: 'daily', label: 'Daily' },
@@ -292,16 +343,7 @@ export function CreateAutomationPage({
         </section>
 
         {/* Step 3: Map Fields - REMOVED */}
-        {selectedDestination && (
-          <section className="bg-white border border-gray-200 rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-[#FFD447] flex items-center justify-center">
-                <ArrowRight className="w-4 h-4 text-[#342E37]" />
-              </div>
-              <h2 className="text-[18px] font-bold text-[#342E37]">Field mappings will be configured per integration at implementation time.</h2>
-            </div>
-          </section>
-        )}
+        {/* Field mappings section hidden as requested */}
 
         {/* Audit & Compliance Info */}
         {selectedDestination && (

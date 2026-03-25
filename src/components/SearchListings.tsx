@@ -1763,10 +1763,10 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
             )}
 
             {/* Search Tip */}
-            <div className="flex items-start gap-2 mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-900">
+            <div className="flex items-start gap-2 mb-4 p-3 rounded-lg">
               <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-[13px] text-gray-700 dark:text-gray-300">
-                <span className="text-gray-900 dark:text-white font-medium">Search Tip:</span> Wide search radius + long date ranges may increase listing usage. Monitor your usage meter to avoid overages.
+                <span className="text-gray-900 dark:text-white font-medium">Search Tip:</span> Each search can only yield up to 500 listings.
               </p>
             </div>
 
