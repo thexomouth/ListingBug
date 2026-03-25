@@ -1504,7 +1504,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 bg-gray-50" style={{ borderRadius: 0, border: 0 }}>
+    <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 bg-white dark:bg-[#0F1115]" style={{ borderRadius: 0, border: 0 }}>
       {/* Header - Compact */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-0.5">

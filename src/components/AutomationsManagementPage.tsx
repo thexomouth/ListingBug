@@ -760,10 +760,19 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                           ) : <span className="text-[12px] text-gray-400">�</span>}
                         </LBTableCell>
                         <LBTableCell className="text-right">
-                          <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}
-                            className="inline-flex items-center justify-end gap-2 cursor-pointer select-none">
-                            <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${automation.active ? 'translate-x-5' : 'translate-x-0'}`} />
+                          <div className="inline-flex items-center justify-end gap-3">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteAutomation(automation.id); }}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              title="Delete automation"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}
+                              className="inline-flex items-center cursor-pointer select-none">
+                              <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${automation.active ? 'translate-x-5' : 'translate-x-0'}`} />
+                              </div>
                             </div>
                           </div>
                         </LBTableCell>
