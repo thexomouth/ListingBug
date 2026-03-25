@@ -1390,12 +1390,16 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       toast.success('Listing saved successfully!');
       // Sync to Supabase
       if (user) {
-        await supabase.from('saved_listings').upsert({
+        const { error: saveErr } = await supabase.from('saved_listings').upsert({
           user_id: user.id,
           listing_id: String(listing.id),
           listing_data_json: savedListing,
           saved_at: savedListing.savedAt,
         }, { onConflict: 'user_id,listing_id' });
+        if (saveErr) {
+          console.error('[SaveListing] upsert error:', saveErr.code, saveErr.message, saveErr.details);
+          toast.error('Save failed: ' + saveErr.message);
+        }
       }
     }
   };
