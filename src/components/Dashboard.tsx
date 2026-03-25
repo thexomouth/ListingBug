@@ -7,6 +7,7 @@ import { getUserDataState, initializeEmptyUserData } from './utils/userDataUtils
 import { migrateSavedListings } from './utils/sandboxDataUtils';
 import { ListingDetailModal } from './ListingDetailModal';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ListingImageWithFallback } from './ListingImageWithFallback';
 import { ViewEditAutomationDrawer } from './ViewEditAutomationDrawer';
 import {
   LayoutDashboard,
