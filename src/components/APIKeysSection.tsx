@@ -129,6 +129,7 @@ export function APIKeysSection({ onNavigate }: APIKeysSectionProps) {
         name: newKeyName.trim(),
         key: fullKey,
         key_hash: keyHash,
+        key_preview: `${fullKey.substring(0, 16)}...`,
       })
       .select()
       .single();

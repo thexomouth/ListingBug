@@ -31,7 +31,7 @@
 - [ ] automation page create an automation tab, when choosing a destination, themap fields section still shows up. remove the entire
 - [ ] saved listings are not saving in the db to the user account - they give the appearance of saving but are no longer saved after refresh and do not populate in L:istings/saved listings or dashboard in the saved listigns section
 - [ ] automations page my automations tab needs a 'run' button. also the 'active' column is offset from the toggle that should live in it. perhaps the trash icon to remvoe automations is sharing the column with the toggle? if so, give the trash icon it's own blank column with no heading
-- [ ] 
+- [ ] cities in our city/state database used for the autofill in listings search isn't comprehensive. it's missing many cities. for instance it only has one arlington in texas when virginia has an arlington, and it doesn't have smaller towns like paris texas or hell texas. i'd like to expand our list to cover alllllll cities
 - [ ] 
 - [ ] 
 - [ ] 

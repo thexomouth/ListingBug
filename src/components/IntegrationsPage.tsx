@@ -165,30 +165,14 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       category: 'available'
     },
 
-    // Available Integrations - 9 Confirmed
+    // Available Integrations - Launch List
     // CRM
-    { 
-      id: 'salesforce', 
-      name: 'Salesforce', 
-      icon: Plug, // Changed from Database to Plug for a more relevant and modern look
-      connected: false, 
-      description: 'Enterprise CRM integration',
-      category: 'available'
-    },
     { 
       id: 'hubspot', 
       name: 'HubSpot', 
       icon: Database, 
       connected: false, 
       description: 'All-in-one CRM platform',
-      category: 'available'
-    },
-    { 
-      id: 'zoho', 
-      name: 'Zoho CRM', 
-      icon: Database, 
-      connected: false, 
-      description: 'Complete CRM solution',
       category: 'available'
     },
     // Email Marketing
@@ -198,14 +182,6 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       icon: Mail, 
       connected: false, 
       description: 'Email delivery platform',
-      category: 'available'
-    },
-    { 
-      id: 'constantcontact', 
-      name: 'Constant Contact', 
-      icon: Mail, 
-      connected: false, 
-      description: 'Email marketing made easy',
       category: 'available'
     },
     // Automation
@@ -233,14 +209,39 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       description: 'Self-hosted automation',
       category: 'available'
     },
-
-    // Future Integrations - Everything else marked as Coming Soon
+    // Google Sheets now available
     { 
       id: 'sheets', 
       name: 'Google Sheets', 
       icon: FileSpreadsheet, 
       connected: false, 
       description: 'Spreadsheet automation',
+      category: 'available'
+    },
+
+    // Future Integrations - Coming Soon
+    { 
+      id: 'salesforce', 
+      name: 'Salesforce', 
+      icon: Plug, 
+      connected: false, 
+      description: 'Enterprise CRM integration',
+      category: 'future'
+    },
+    { 
+      id: 'zoho', 
+      name: 'Zoho CRM', 
+      icon: Database, 
+      connected: false, 
+      description: 'Complete CRM solution',
+      category: 'future'
+    },
+    { 
+      id: 'constantcontact', 
+      name: 'Constant Contact', 
+      icon: Mail, 
+      connected: false, 
+      description: 'Email marketing made easy',
       category: 'future'
     },
     { 
