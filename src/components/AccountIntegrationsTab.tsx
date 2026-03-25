@@ -624,79 +624,12 @@ export function AccountIntegrationsTab({ onConnect, onManage, onRequestIntegrati
               </div>
             </div>
 
+
             {/* Field Mapping */}
-            <div>
-              <h4 className="font-medium text-[#342e37] mb-3 flex items-center gap-2">
-                <ArrowRight className="w-4 h-4" />
-                Field Mapping
-              </h4>
-              <Separator className="mb-4" />
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  Map ListingBug fields to {selectedIntegration?.name} fields
-                </p>
-                <div className="space-y-2 bg-gray-50 rounded-lg p-3">
-                  {/* Field mappings */}
-                  <div className="flex items-center justify-between text-sm py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-medium">Email</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <ArrowRight className="w-3 h-3 text-gray-400" />
-                      <span className="text-[#342e37] font-medium">email</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-medium">First Name</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <ArrowRight className="w-3 h-3 text-gray-400" />
-                      <span className="text-[#342e37] font-medium">FNAME</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-medium">Last Name</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <ArrowRight className="w-3 h-3 text-gray-400" />
-                      <span className="text-[#342e37] font-medium">LNAME</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-medium">Phone</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <ArrowRight className="w-3 h-3 text-gray-400" />
-                      <span className="text-[#342e37] font-medium">PHONE</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-medium">Address</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <ArrowRight className="w-3 h-3 text-gray-400" />
-                      <span className="text-[#342e37] font-medium">ADDRESS</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-medium">Property Type</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <ArrowRight className="w-3 h-3 text-gray-400" />
-                      <span className="text-[#342e37] font-medium">PROPERTY_TYPE</span>
-                    </div>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Custom Field Mapping
-                </Button>
-              </div>
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-sm text-gray-500">
+                Field mappings will be configured per integration at implementation time.
+              </p>
             </div>
 
             {/* Integration-Specific Settings */}
