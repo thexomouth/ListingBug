@@ -29,6 +29,8 @@ interface AgentsPageProps {
 
 export function AgentsPage({ onNavigate }: AgentsPageProps) {
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [resultsPerPage, setResultsPerPage] = useState(25);
+  const resultsPerPageOptions = [10, 25, 50, 100];
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [zipFilter, setZipFilter] = useState('');
@@ -147,6 +149,17 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
     return list;
   }, [agents, search, zipFilter, sortKey, sortDir]);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(filtered.length / resultsPerPage);
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * resultsPerPage;
+    return filtered.slice(start, start + resultsPerPage);
+  }, [filtered, currentPage, resultsPerPage]);
+
+  // Reset to page 1 if filters or resultsPerPage change
+  useEffect(() => { setCurrentPage(1); }, [search, zipFilter, resultsPerPage]);
+
   const SortIcon = ({ k }: { k: SortKey }) => sortKey === k
     ? (sortDir === 'desc' ? <ChevronDown className="w-3 h-3 inline ml-1" /> : <ChevronUp className="w-3 h-3 inline ml-1" />)
     : <ChevronDown className="w-3 h-3 inline ml-1 opacity-30" />;
@@ -177,6 +190,20 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
             Ranked by listing activity from your searches. {agents.length} agents tracked.
           </p>
         </div>
+      </div>
+
+      {/* Results per page selector */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex justify-end">
+        <label className="text-[13px] text-gray-600 dark:text-gray-300 mr-2">Results per page:</label>
+        <select
+          className="border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-[13px] bg-white dark:bg-[#1a1a1a] dark:text-white"
+          value={resultsPerPage}
+          onChange={e => setResultsPerPage(Number(e.target.value))}
+        >
+          {resultsPerPageOptions.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
       </div>
 
       {/* Filters */}
@@ -234,7 +261,7 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
 
             {/* Rows */}
             <div className="divide-y divide-gray-100 dark:divide-white/5">
-              {filtered.map((agent, idx) => {
+              {paginated.map((agent, idx) => {
                 const isExpanded = expandedAgent === agent.agentName;
                 return (
                   <div key={agent.agentName}>
@@ -341,8 +368,30 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
         )}
 
         {/* Results count */}
+        {/* Pagination controls */}
         {!isLoading && filtered.length > 0 && (
-          <p className="text-[12px] text-gray-400 mt-3 text-right">{filtered.length} agent{filtered.length !== 1 ? 's' : ''} shown</p>
+          <>
+            <p className="text-[12px] text-gray-400 mt-3 text-right">{filtered.length} agent{filtered.length !== 1 ? 's' : ''} shown</p>
+            <div className="flex justify-center items-center gap-2 mt-2">
+              <button
+                className="px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-[13px] disabled:opacity-50"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </button>
+              <span className="text-[13px] text-gray-600 dark:text-gray-300">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-[13px] disabled:opacity-50"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </>
         )}
       </div>
 

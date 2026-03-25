@@ -703,6 +703,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                     <LBTableHead className="hidden md:table-cell">Last Run</LBTableHead>
                     <LBTableHead className="hidden md:table-cell">Search Results</LBTableHead>
                     <LBTableHead className="hidden md:table-cell">Export Results</LBTableHead>
+                    <LBTableHead className="text-right"></LBTableHead>
                   </LBTableRow>
                 </LBTableHeader>
                 <LBTableBody>
@@ -718,33 +719,16 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                         onClick={() => { setSelectedAutomation(automation); setEditModalOpen(true); }}
                         className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
                       >
+                        {/* Toggle column (leftmost) */}
                         <LBTableCell className="text-right">
-                          <div className="inline-flex items-center justify-end gap-3">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleRunNow(automation); }}
-                              disabled={runNowLoading && runningAutomation?.id === automation.id}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50"
-                              title="Run now"
-                            >
-                              {runNowLoading && runningAutomation?.id === automation.id
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <Play className="w-4 h-4" />}
-                            </button>
-                            <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}
-                              className="inline-flex items-center cursor-pointer select-none">
-                              <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${automation.active ? 'translate-x-5' : 'translate-x-0'}`} />
-                              </div>
+                          <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}
+                            className="inline-flex items-center cursor-pointer select-none justify-end">
+                            <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${automation.active ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteAutomation(automation.id); }}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                              title="Delete automation"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
                         </LBTableCell>
+                        {/* Name and details */}
                         <LBTableCell>
                           <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
                           <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{automation.destination?.label ?? '�'}</div>
@@ -798,6 +782,28 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                               )}
                             </div>
                           ) : <span className="text-[12px] text-gray-400">�</span>}
+                        </LBTableCell>
+                        {/* Play/Trash column (rightmost) */}
+                        <LBTableCell className="text-right">
+                          <div className="inline-flex items-center justify-end gap-3">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRunNow(automation); }}
+                              disabled={runNowLoading && runningAutomation?.id === automation.id}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50"
+                              title="Run now"
+                            >
+                              {runNowLoading && runningAutomation?.id === automation.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Play className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteAutomation(automation.id); }}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              title="Delete automation"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </LBTableCell>
                       </LBTableRow>
                     );
