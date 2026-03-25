@@ -66,9 +66,9 @@ interface RunHistoryItem {
   automationName: string;
   runDate: string;
   status: 'success' | 'failed';
+  listingsFound: number;
   listingsSent: number;
-  destination: string;
-  details?: string;
+  destination: string;$8  details?: string;
 }
 
 interface Integration {
@@ -188,7 +188,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
 
       const { data, error } = await supabase
         .from('automation_runs')
-        .select('id,automation_name:automation_name,run_date,status,listings_sent,destination,details')
+        .select('id,automation_name:automation_name,run_date,status,listings_found,listings_sent,destination,details')
         .eq('user_id', userId)
         .order('run_date', { ascending: false })
         .limit(20);
@@ -210,6 +210,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
           automationName: run.automation_name || 'Unknown automation',
           runDate: run.run_date || new Date().toISOString(),
           status: run.status || 'failed',
+          listingsFound: run.listings_found || 0,
           listingsSent: run.listings_sent || 0,
           destination: run.destination || '',
           details: run.details || '',
@@ -514,7 +515,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
       parts.push('Re-listed properties');
     }
     
-    return parts.length > 0 ? parts.join(' â€¢ ') : 'All listings';
+    return parts.length > 0 ? parts.join(' • ') : 'All listings';
   };
 
   const getCategoryLabel = (category: string) => {
@@ -662,48 +663,90 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                 <LBTableHeader>
                   <LBTableRow>
                     <LBTableHead>Name</LBTableHead>
-                    <LBTableHead className="text-right">Status</LBTableHead>
+                    <LBTableHead className="hidden md:table-cell">Last Run</LBTableHead>
+                    <LBTableHead className="hidden md:table-cell">Search Results</LBTableHead>
+                    <LBTableHead className="hidden md:table-cell">Export Results</LBTableHead>
+                    <LBTableHead className="text-right">Active</LBTableHead>
                   </LBTableRow>
                 </LBTableHeader>
                 <LBTableBody>
-                  {automations.map((automation) => (
-                    <LBTableRow
-                      key={automation.id}
-                      onClick={() => {
-                        setSelectedAutomation(automation);
-                        setEditModalOpen(true);
-                      }}
-                      className="cursor-pointer hover:bg-gray-50"
-                    >
-                      <LBTableCell className="font-medium">
-                        {automation.name}
-                      </LBTableCell>
-                      <LBTableCell className="text-right">
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleAutomation(automation.id);
-                          }}
-                          className="inline-flex items-center justify-end gap-2 cursor-pointer select-none"
-                        >
-                          <span className="text-sm text-gray-600">
-                            {automation.active ? 'On' : 'Off'}
-                          </span>
-                          <div
-                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              automation.active ? 'bg-[#FFD447]' : 'bg-gray-200'
-                            }`}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                automation.active ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
+                  {automations.map((automation) => {
+                    const lastRun = runHistory.find(r => r.automationName === automation.name);
+                    const lastRunStatus = lastRun?.status;
+                    const lastRunDate = lastRun?.runDate;
+                    const lastRunFound = lastRun?.listingsFound ?? 0;
+                    const lastRunSent = lastRun?.listingsSent ?? 0;
+                    return (
+                      <LBTableRow
+                        key={automation.id}
+                        onClick={() => { setSelectedAutomation(automation); setEditModalOpen(true); }}
+                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
+                      >
+                        <LBTableCell>
+                          <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
+                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{automation.destination?.label ?? '—'}</div>
+                          {lastRun && (
+                            <div className="flex items-center gap-2 mt-1 md:hidden">
+                              <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded ${lastRunStatus === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {lastRunStatus === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                                {lastRunStatus === 'success' ? 'Success' : 'Failed'}
+                              </span>
+                              <span className="text-[11px] text-gray-400">{formatDate(lastRunDate ?? '')}</span>
+                            </div>
+                          )}
+                        </LBTableCell>
+                        <LBTableCell className="hidden md:table-cell">
+                          {lastRun ? (
+                            <div className="flex flex-col gap-1">
+                              <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full w-fit ${lastRunStatus === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
+                                {lastRunStatus === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                                {lastRunStatus === 'success' ? 'Success' : 'Failed'}
+                              </span>
+                              <span className="text-[11px] text-gray-400">{formatDate(lastRunDate ?? '')}</span>
+                              {lastRunStatus === 'failed' && lastRun.details && (
+                                <span className="text-[11px] text-red-500 max-w-[180px] truncate" title={lastRun.details}>{lastRun.details}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[12px] text-gray-400 italic">Never run</span>
+                          )}
+                        </LBTableCell>
+                        <LBTableCell className="hidden md:table-cell">
+                          {lastRun ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span>
+                              <span className="text-[11px] text-gray-400">listings found</span>
+                            </div>
+                          ) : <span className="text-[12px] text-gray-400">—</span>}
+                        </LBTableCell>
+                        <LBTableCell className="hidden md:table-cell">
+                          {lastRun ? (
+                            <div className="flex flex-col gap-0.5">
+                              {lastRunStatus === 'success' ? (
+                                <>
+                                  <span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span>
+                                  <span className="text-[11px] text-gray-400">sent to {automation.destination?.label ?? 'destination'}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="font-bold text-[15px] text-red-500">0</span>
+                                  <span className="text-[11px] text-red-400">export failed</span>
+                                </>
+                              )}
+                            </div>
+                          ) : <span className="text-[12px] text-gray-400">—</span>}
+                        </LBTableCell>
+                        <LBTableCell className="text-right">
+                          <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}
+                            className="inline-flex items-center justify-end gap-2 cursor-pointer select-none">
+                            <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${automation.active ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </div>
                           </div>
-                        </div>
-                      </LBTableCell>
-                    </LBTableRow>
-                  ))}
+                        </LBTableCell>
+                      </LBTableRow>
+                    );
+                  })}
                 </LBTableBody>
               </LBTable>
             )}

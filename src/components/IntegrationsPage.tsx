@@ -170,7 +170,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     { 
       id: 'salesforce', 
       name: 'Salesforce', 
-      icon: Database, 
+      icon: Plug, // Changed from Database to Plug for a more relevant and modern look
       connected: false, 
       description: 'Enterprise CRM integration',
       category: 'available'

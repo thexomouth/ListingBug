@@ -117,8 +117,8 @@ export function IntegrationManagementModal({
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-              <Icon className="w-6 h-6 text-[#342E37]" />
+            <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+              <Icon className="w-7 h-7 text-[#2563eb]" />
             </div>
             <div className="flex-1">
               <SheetTitle>{integration.name}</SheetTitle>

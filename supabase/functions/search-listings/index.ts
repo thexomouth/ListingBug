@@ -111,10 +111,26 @@ serve(async (req) => {
     }
 
     const { listingType = "sale", address, city, state, zipCode, latitude, longitude, radius,
-      propertyType, bedrooms, bathrooms, squareFootage, lotSize, yearBuilt, daysOld,
+      propertyType, bedrooms, bathrooms, squareFootage, lotSize, yearBuilt, daysOld: rawDaysOld,
       minPrice, maxPrice, status = "Active", limit: resultLimit = 500, offset = 0 } = body;
 
-    console.log("[search-listings] search params:", JSON.stringify({ city, state, zipCode, address, propertyType, status }));
+    // Validate daysOld: must be a single positive integer, never a range.
+    // Ranges like "10-30" would return weeks of data, burning usage on every call.
+    let daysOld: number | undefined = undefined;
+    if (rawDaysOld !== undefined && rawDaysOld !== null && rawDaysOld !== "") {
+      const raw = String(rawDaysOld).trim();
+      if (!/^\d+$/.test(raw)) {
+        console.error("[search-listings] invalid daysOld rejected:", raw);
+        return new Response(JSON.stringify({ error: "daysOld must be a single whole number (e.g. 1, 30, 200). Ranges are not allowed." }), { status: 400, headers: corsHeaders });
+      }
+      const parsed = parseInt(raw, 10);
+      if (parsed <= 0) {
+        return new Response(JSON.stringify({ error: "daysOld must be greater than 0." }), { status: 400, headers: corsHeaders });
+      }
+      daysOld = parsed;
+    }
+
+    console.log("[search-listings] search params:", JSON.stringify({ city, state, zipCode, address, propertyType, status, daysOld }));
 
     // ── BUILD RENTCAST REQUEST ────────────────────────────────────────────────
     // RentCast Sale Listings: GET https://api.rentcast.io/v1/listings/sale
