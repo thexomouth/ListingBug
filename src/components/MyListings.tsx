@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { Search, Filter, Eye, Trash2, Download, BookmarkX, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { LBInput } from './design-system/LBInput';
 import { LBSelect } from './design-system/LBSelect';
@@ -16,158 +17,33 @@ export function MyListings() {
   const [currentPage, setCurrentPage] = useState(1);
   const [resultsPerPage, setResultsPerPage] = useState(25);
 
-  // Mock saved listings data
-  const [savedListings] = useState([
-    {
-      id: 1,
-      address: '123 Main St',
-      city: 'Los Angeles',
-      state: 'CA',
-      zip: '90001',
-      propertyType: 'Single Family',
-      bedrooms: 3,
-      bathrooms: 2,
-      sqft: 1850,
-      lotSize: 5000,
-      yearBuilt: 2005,
-      status: 'Active',
-      price: 750000,
-      daysListed: 12,
-      agentName: 'Sarah Johnson',
-      agentPhone: '(555) 123-4567',
-      agentEmail: 'sarah.j@realty.com',
-      brokerage: 'Premier Realty Group',
-      reList: false,
-      priceDrop: true,
-      priceDropAmount: 25000,
-      priceDropPercent: 3.2,
-      latitude: 34.0522,
-      longitude: -118.2437,
-      description: 'Beautiful single-family home in prime Los Angeles location. Recently updated kitchen and bathrooms.',
-      photos: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'],
-      mlsNumber: 'LA12345678',
-      mlsSource: 'CRMLS',
-      savedDate: '2024-11-20',
-    },
-    {
-      id: 2,
-      address: '789 Pine Rd',
-      city: 'Los Angeles',
-      state: 'CA',
-      zip: '90003',
-      propertyType: 'Single Family',
-      bedrooms: 4,
-      bathrooms: 3,
-      sqft: 2400,
-      lotSize: 7500,
-      yearBuilt: 1998,
-      status: 'Active',
-      price: 895000,
-      daysListed: 22,
-      agentName: 'Jennifer Martinez',
-      agentPhone: '(555) 345-6789',
-      agentEmail: 'jmartinez@homeexperts.com',
-      brokerage: 'Home Experts Realty',
-      reList: true,
-      priceDrop: true,
-      priceDropAmount: 50000,
-      priceDropPercent: 5.3,
-      latitude: 34.0522,
-      longitude: -118.2437,
-      description: 'Spacious family home on large lot. Needs some updates but great bones.',
-      photos: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800'],
-      mlsNumber: 'LA34567890',
-      mlsSource: 'CRMLS',
-      savedDate: '2024-11-19',
-    },
-    {
-      id: 3,
-      address: '321 Elm Blvd',
-      city: 'San Diego',
-      state: 'CA',
-      zip: '92101',
-      propertyType: 'Townhouse',
-      bedrooms: 3,
-      bathrooms: 2.5,
-      sqft: 1650,
-      lotSize: 2000,
-      yearBuilt: 2015,
-      status: 'Pending',
-      price: 675000,
-      daysListed: 8,
-      agentName: 'David Thompson',
-      agentPhone: '(555) 456-7890',
-      agentEmail: 'dthompson@coastalrealty.com',
-      brokerage: 'Coastal Realty Partners',
-      reList: false,
-      priceDrop: false,
-      latitude: 32.7157,
-      longitude: -117.1611,
-      description: 'Charming townhouse in downtown San Diego. Walk to restaurants and shops.',
-      photos: ['https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800'],
-      mlsNumber: 'SD12345678',
-      mlsSource: 'SDMLS',
-      savedDate: '2024-11-18',
-    },
-    {
-      id: 4,
-      address: '555 Beach Way',
-      city: 'Santa Monica',
-      state: 'CA',
-      zip: '90401',
-      propertyType: 'Condo',
-      bedrooms: 2,
-      bathrooms: 2,
-      sqft: 1100,
-      lotSize: 0,
-      yearBuilt: 2020,
-      status: 'Active',
-      price: 1250000,
-      daysListed: 3,
-      agentName: 'Amanda Wilson',
-      agentPhone: '(555) 567-8901',
-      agentEmail: 'awilson@beachfront.com',
-      brokerage: 'Beachfront Properties',
-      reList: false,
-      priceDrop: false,
-      latitude: 34.0195,
-      longitude: -118.4912,
-      description: 'Stunning ocean-view condo steps from the beach. Brand new construction.',
-      photos: ['https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800'],
-      mlsNumber: 'SM12345678',
-      mlsSource: 'CRMLS',
-      savedDate: '2024-11-22',
-    },
-    {
-      id: 5,
-      address: '456 Oak Ave',
-      city: 'Los Angeles',
-      state: 'CA',
-      zip: '90002',
-      propertyType: 'Condo',
-      bedrooms: 2,
-      bathrooms: 2,
-      sqft: 1200,
-      lotSize: 0,
-      yearBuilt: 2018,
-      status: 'Sold',
-      price: 525000,
-      daysListed: 5,
-      agentName: 'Michael Chen',
-      agentPhone: '(555) 234-5678',
-      agentEmail: 'mchen@luxuryprops.com',
-      brokerage: 'Luxury Properties Inc',
-      reList: false,
-      priceDrop: false,
-      latitude: 34.0522,
-      longitude: -118.2437,
-      description: 'Modern condo with amazing views. HOA includes gym and pool access.',
-      photos: ['https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800'],
-      mlsNumber: 'LA23456789',
-      mlsSource: 'CRMLS',
-      savedDate: '2024-11-15',
-    },
-  ]);
+  // Saved listings state
+  const [savedListings, setSavedListings] = useState<any[]>([]);
+
+  // Load saved listings from Supabase (with localStorage fallback)
+  useEffect(() => {
+    const loadListings = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('saved_listings')
+          .select('listing_data_json, saved_at')
+          .eq('user_id', user.id)
+          .order('saved_at', { ascending: false });
+        if (data && data.length > 0) {
+          const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
+          setSavedListings(listings);
+          localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
+          return;
+        }
+      }
+      const stored = localStorage.getItem('listingbug_saved_listings');
+      if (stored) {
+        try { setSavedListings(JSON.parse(stored)); } catch (e) {}
+      }
+    };
+    loadListings();
+  }, []);
 
   // Filter listings based on search and filters
   const filteredListings = savedListings.filter((listing) => {

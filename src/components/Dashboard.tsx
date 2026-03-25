@@ -6,6 +6,7 @@ import { InteractiveWalkthroughOverlay } from './InteractiveWalkthroughOverlay';
 import { getUserDataState, initializeEmptyUserData } from './utils/userDataUtils';
 import { migrateSavedListings } from './utils/sandboxDataUtils';
 import { ListingDetailModal } from './ListingDetailModal';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ViewEditAutomationDrawer } from './ViewEditAutomationDrawer';
 import {
   LayoutDashboard,
@@ -414,11 +415,10 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                   <div key={listing.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-white/10" onClick={() => setSelectedListing(listing)}>
                     <div className="relative w-full aspect-[4/3] bg-gray-100">
                       {listing.photos?.[0] ? (
-                        <img
+                        <ImageWithFallback
                           src={listing.photos[0]}
                           alt={listing.address}
                           className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">

@@ -31,6 +31,27 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
   // Saved listings state
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(new Set());
 
+  // Load saved listing IDs from Supabase
+  const loadSavedListingIds = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('saved_listings')
+      .select('listing_id')
+      .eq('user_id', user.id);
+    if (data) {
+      setSavedListingIds(new Set(data.map((row: any) => row.listing_id)));
+    }
+  };
+
+  // Listen for savedListingsUpdated event
+  useEffect(() => {
+    loadSavedListingIds();
+    const handler = () => { loadSavedListingIds(); };
+    window.addEventListener('savedListingsUpdated', handler);
+    return () => window.removeEventListener('savedListingsUpdated', handler);
+  }, []);
+
   const handleSaveListing = async (listing: any) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error('Sign in to save listings'); return; }
@@ -44,6 +65,8 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       setSavedListingIds(prev => new Set([...prev, listing.id]));
       toast.success('Listing saved');
     }
+    // Dispatch sync event
+    window.dispatchEvent(new Event('savedListingsUpdated'));
   };
 
   // Save search state

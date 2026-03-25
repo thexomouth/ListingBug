@@ -194,7 +194,20 @@ const US_STATES = [
 ];
 
 export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResults }: SearchListingsProps = {}) {
-  const [activeTab, setActiveTab] = useState<'search' | 'saved' | 'listings' | 'history'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'saved' | 'listings' | 'history'>(() => {
+    // Try to restore last tab from sessionStorage
+    const shouldOpenSaved = sessionStorage.getItem('listingbug_open_saved_tab');
+    const tabToOpen = sessionStorage.getItem('listingbug_open_tab');
+    const lastTab = sessionStorage.getItem('listingbug_last_tab');
+    if (shouldOpenSaved === 'true') {
+      return 'saved';
+    } else if (tabToOpen && ['search','saved','listings','history'].includes(tabToOpen)) {
+      return tabToOpen as 'search' | 'saved' | 'listings' | 'history';
+    } else if (lastTab && ['search','saved','listings','history'].includes(lastTab)) {
+      return lastTab as 'search' | 'saved' | 'listings' | 'history';
+    }
+    return 'search';
+  });
 
   // Reset scroll lock on tab change — prevents blackout on mobile
   useEffect(() => {
@@ -219,19 +232,20 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     }
   }, []);
 
-  // Check if we should open saved listings tab (from dashboard navigation)
+  // Remove dashboard navigation tab triggers after mount
   useEffect(() => {
-    const shouldOpenSaved = sessionStorage.getItem('listingbug_open_saved_tab');
-    const tabToOpen = sessionStorage.getItem('listingbug_open_tab');
-    
-    if (shouldOpenSaved === 'true') {
-      setActiveTab('saved');
+    if (sessionStorage.getItem('listingbug_open_saved_tab')) {
       sessionStorage.removeItem('listingbug_open_saved_tab');
-    } else if (tabToOpen) {
-      setActiveTab(tabToOpen as 'search' | 'saved' | 'listings' | 'history');
+    }
+    if (sessionStorage.getItem('listingbug_open_tab')) {
       sessionStorage.removeItem('listingbug_open_tab');
     }
   }, []);
+
+  // Persist activeTab to sessionStorage on change
+  useEffect(() => {
+    sessionStorage.setItem('listingbug_last_tab', activeTab);
+  }, [activeTab]);
   
   // Walkthrough: Auto-resume and advance on page load
   useEffect(() => {

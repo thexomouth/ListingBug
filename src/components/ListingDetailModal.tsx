@@ -17,6 +17,37 @@ type ViewMode = 'listing' | 'property-record' | 'valuation';
 export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = false }: ListingDetailModalProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('listing');
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [saved, setSaved] = useState(isSaved);
+
+  // Always check save state on open and on event
+  useEffect(() => {
+    const checkSaved = async () => {
+      if (!listing?.id) return;
+      // Try to get user and check if this listing is saved
+      try {
+        const { supabase } = await import('../lib/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setSaved(false); return; }
+        const { data } = await supabase
+          .from('saved_listings')
+          .select('listing_id')
+          .eq('user_id', user.id)
+          .eq('listing_id', listing.id)
+          .single();
+        setSaved(!!data);
+      } catch {
+        setSaved(false);
+      }
+    };
+    checkSaved();
+    const handler = () => { checkSaved(); };
+    window.addEventListener('savedListingsUpdated', handler);
+    return () => window.removeEventListener('savedListingsUpdated', handler);
+    // eslint-disable-next-line
+  }, [listing?.id]);
+
+  // Also update if parent prop changes
+  useEffect(() => { setSaved(isSaved); }, [isSaved]);
 
   // Enable swipe-to-close on mobile (swipe right to close)
   useSwipeGesture({
@@ -270,14 +301,14 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                 <button
                   onClick={() => onSaveListing(listing)}
                   className={`p-2 rounded-lg transition-colors ${ 
-                    isSaved 
+                    saved 
                       ? 'bg-[#342e37] text-[#FFD447] hover:bg-[#342e37]/90' 
                       : 'hover:bg-[#342e37]/10'
                   }`}
-                  aria-label={isSaved ? "Unsave listing" : "Save listing"}
-                  title={isSaved ? "Remove from saved listings" : "Save this listing"}
+                  aria-label={saved ? "Unsave listing" : "Save listing"}
+                  title={saved ? "Remove from saved listings" : "Save this listing"}
                 >
-                  <Save className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
+                  <Save className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
                 </button>
               )}
               <button

@@ -93,7 +93,18 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
   const walkthroughStep3Active = isStepActive(3);
   
-  const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(() => {
+    // Try to restore last tab from sessionStorage
+    const lastTab = sessionStorage.getItem('listingbug_automations_last_tab');
+    if (lastTab && ['create','automations','history'].includes(lastTab)) {
+      return lastTab as 'create' | 'automations' | 'history';
+    }
+    return initialTab;
+  });
+    // Persist activeTab to sessionStorage on change
+    useEffect(() => {
+      sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
+    }, [activeTab]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
   const [expandedAutomations, setExpandedAutomations] = useState<Set<string>>(new Set());

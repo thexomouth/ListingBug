@@ -32,13 +32,20 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [email, setEmail] = useState('');
   const [emailPlaceholder, setEmailPlaceholder] = useState('');
   const [company, setCompany] = useState('');
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   
   // Controlled tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'usage' | 'billing' | 'integrations' | 'compliance'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'profile' | 'usage' | 'billing' | 'integrations' | 'compliance'>(() => {
+    const lastTab = sessionStorage.getItem('account_last_tab');
+    if (lastTab && ['profile','usage','billing','integrations','compliance'].includes(lastTab)) {
+      return lastTab as 'profile' | 'usage' | 'billing' | 'integrations' | 'compliance';
+    }
+    return defaultTab;
+  });
   
   // Load user profile on mount
   useEffect(() => {
@@ -54,13 +61,14 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('full_name, company')
+            .select('full_name, company, created_at')
             .eq('id', user.id)
             .single();
-          
+
           if (profileData) {
             if (profileData.full_name) setName(profileData.full_name);
             if (profileData.company) setCompany(profileData.company);
+            if (profileData.created_at) setCreatedAt(profileData.created_at);
           }
         }
       } catch (err) {
@@ -73,10 +81,15 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
     loadProfile();
   }, []);
   
-  // Update active tab when defaultTab prop changes
+
+  // Update active tab when defaultTab prop changes (unless user has a sessionStorage tab)
   useEffect(() => {
-    setActiveTab(defaultTab);
+    const lastTab = sessionStorage.getItem('account_last_tab');
+    if (!lastTab) {
+      setActiveTab(defaultTab);
+    }
   }, [defaultTab]);
+
 
   // Read tab override from sessionStorage (e.g. "Get API Key" button on IntegrationsPage)
   useEffect(() => {
@@ -86,6 +99,11 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
       sessionStorage.removeItem('account_default_tab');
     }
   }, []);
+
+  // Persist activeTab to sessionStorage on change
+  useEffect(() => {
+    sessionStorage.setItem('account_last_tab', activeTab);
+  }, [activeTab]);
   
   // Walkthrough integration
   const { resetWalkthrough } = useWalkthrough();
@@ -552,7 +570,9 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-green-900">DPA Accepted</p>
                         <p className="text-xs text-green-800 mt-1 break-words">
-                          Accepted on November 15, 2024 by sarah.martinez@realestatepros.com
+                          {createdAt && email
+                            ? `Accepted on ${new Date(createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} by ${email}`
+                            : 'Accepted by your account email'}
                         </p>
                         <p className="text-xs text-green-700 mt-2 leading-relaxed">
                           You are the data controller; ListingBug processes data on your behalf in accordance with this agreement.
