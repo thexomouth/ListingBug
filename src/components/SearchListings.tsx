@@ -1684,6 +1684,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   </div>
                   
                   {/* Boolean Toggles */}
+                  {/* Boolean Toggles - HIDDEN */}
+                  {/*
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-1">
                     <LBToggle
                       checked={criteria.reListedProperty}
@@ -1710,6 +1712,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                       size="sm"
                     />
                   </div>
+                  */}
                 </div>
               </div>
             </div>

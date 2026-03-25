@@ -24,10 +24,22 @@
 - [ ] update supa schema to track full name for users "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
 - [ ] when updating profile information in the profile information section of account/profile, allow users to update any one field, don't require full section fill in order to update. for instance, if they onyl wanna update name or company it's fine - update shouldn't be dependent on all fields filled for profile information section
 - [ ] in listings/history, if the search run was from a saved search with a name or from an automation with a name, impor the name and use it for the container heading, if no name for the search or run exists, then use the current city/state for container title/heading
-- [ ] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab
-- [ ]
+- [x] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab
+- [ ] the preview and test page shows a preview payload that was made during prototyping phase and it needs to be dynamic to reflect all of the fields we recieve from our rentcast get sale listings GET function in total which is much more vast, and the fields each platform will want/accept. this  preview payload needs to be prepped for each platform integration/ data 'destination' aswell
+- [ \] i want to remove the full field mappings section that comes unhidden after selecting a destination in create automation page (still not right)
+- [x] listings page got a background visible in all tabs - remove that shit
+- [ ] automation page create an automation tab, when choosing a destination, themap fields section still shows up. remove the entire
+- [ ] saved listings are not saving in the db to the user account - they give the appearance of saving but are no longer saved after refresh and do not populate in L:istings/saved listings or dashboard in the saved listigns section
+- [ ] automations page my automations tab needs a 'run' button. also the 'active' column is offset from the toggle that should live in it. perhaps the trash icon to remvoe automations is sharing the column with the toggle? if so, give the trash icon it's own blank column with no heading
 - [ ] 
-- [ ]
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
+- [ ] 
 - [ ] 
 - [ ] 
 - [ ] 
