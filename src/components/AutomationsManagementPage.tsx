@@ -128,17 +128,567 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
 
 // Load automations from Supabase — works on any device
   const loadAutomations = async () => {
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (!currentUser?.id) {
-      console.warn('[loadAutomations] no authenticated user, skipping');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      console.warn('[loadAutomations] no session, skipping');
       setAutomationsLoading(false);
       return;
     }
-    console.log('[loadAutomations] fetching for user', currentUser.id);
+    const userId = session.user.id;
+    console.log('[loadAutomations] fetching for user', userId);
     const { data, error } = await supabase
       .from('automations')
       .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
-      .eq('user_id', currentUser.id)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[Automations] load error:', error.message);
+      setAutomationsLoading(false);
+      return;
+    }
+    const mapped = (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      searchName: row.search_name ?? '',
+      schedule: [row.schedule, row.schedule_time ? `at ${row.schedule_time}` : ''].filter(Boolean).join(' '),
+      destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
+      searchCriteria: row.search_criteria ?? {},
+      active: row.active ?? true,
+      status: 'idle',
+      lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
+      nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+    }));
+    // Only update if we got real data back — never wipe existing state with empty array
+    if (data !== null) {
+      console.log('[loadAutomations] setting', mapped.length, 'automations');
+      setAutomations(mapped);
+    } else {
+      console.warn('[loadAutomations] data was null, keeping existing state');
+    }
+    setAutomationsLoading(false);
+  };
+
+  // Load on mount and whenever auth state changes (handles mobile session restore)
+  useEffect(() => {
+    loadAutomations();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        loadAutomations();
+      }
+      if (event === 'SIGNED_OUT') {
+        setAutomations([]);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+// Check for prefilled automation data from search page
+  useEffect(() => {
+    const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
+    if (prefillData) {
+      try {
+        const { searchId, searchName } = JSON.parse(prefillData);
+        // Auto-switch to create tab
+        setActiveTab('create');
+        
+        // Clear the prefill data
+        sessionStorage.removeItem('listingbug_prefill_automation');
+        
+        // Show a helpful toast
+        toast.info(`Ready to automate "${searchName}"`, {
+          description: 'Your saved search has been pre-selected.',
+          duration: 3000,
+        });
+      } catch (e) {
+        console.error('Failed to parse prefill data:', e);
+      }
+    }
+
+    // Check if user clicked Active Automations card from dashboard
+    const automationsTabPreference = sessionStorage.getItem('listingbug_automations_tab');
+    if (automationsTabPreference === 'automations') {
+      setActiveTab('automations');
+      sessionStorage.removeItem('listingbug_automations_tab');
+    } else if (automationsTabPreference === 'history') {
+      setActiveTab('history');
+      sessionStorage.removeItem('listingbug_automations_tab');
+    }
+  }, []);
+
+  const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
+
+  const loadRunHistory = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) { setRunHistory([]); return; }
+    const { data, error } = await supabase
+      .from('automation_runs')
+      .select('id,automation_name:automation_name,run_date,status,listings_found,listings_sent,destination,details')
+      .eq('user_id', userId)
+      .order('run_date', { ascending: false })
+      .limit(20);
+    if (error || !data || data.length === 0) { setRunHistory([]); return; }
+    setRunHistory(data.map((run) => ({
+      id: run.id,
+      automationName: run.automation_name || 'Unknown',
+      runDate: run.run_date || new Date().toISOString(),
+      status: run.status || 'failed',
+      listingsFound: run.listings_found || 0,
+      listingsSent: run.listings_sent || 0,
+      destination: run.destination || '',
+      details: run.details || '',
+    })));
+  }, []);
+
+  useEffect(() => {
+    const loadRunHistory = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        setRunHistory([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('automation_runs')
+        .select('id,automation_name:automation_name,run_date,status,listings_found,listings_sent,destination,details')
+        .eq('user_id', userId)
+        .order('run_date', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Failed to load automation run history:', error);
+        setRunHistory([]);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        setRunHistory([]);
+        return;
+      }
+
+      setRunHistory(
+        data.map((run: any) => ({
+          id: run.id,
+          automationName: run.automation_name || 'Unknown automation',
+          runDate: run.run_date || new Date().toISOString(),
+          status: run.status || 'failed',
+          listingsFound: run.listings_found || 0,
+          listingsSent: run.listings_sent || 0,
+          destination: run.destination || '',
+          details: run.details || '',
+        }))
+      );
+    };
+
+    loadRunHistory();
+  }, []);
+
+
+  const integrations: Integration[] = [
+    // Native ListingBug Features
+    { 
+      id: 'csv-download', 
+      name: 'ListingBug CSV Download', 
+      icon: Download, 
+      connected: true, 
+      description: 'Download listing data as CSV files automatically',
+      category: 'storage',
+      useCases: ['Data exports', 'Offline analysis', 'Backup copies'],
+      connectedDate: '2024-01-01',
+      automationsUsing: 0
+    },
+    
+    // CRM (MVP)
+    { 
+      id: 'salesforce', 
+      name: 'Salesforce', 
+      icon: Database, 
+      connected: true, 
+      description: 'Enterprise CRM with custom object mapping',
+      category: 'crm',
+      useCases: ['Lead creation', 'Opportunity management', 'Custom objects'],
+      connectedDate: '2024-01-20',
+      automationsUsing: 1
+    },
+    { 
+      id: 'hubspot', 
+      name: 'HubSpot', 
+      icon: Database, 
+      connected: true, 
+      description: 'Contact/deal sync with workflows',
+      category: 'crm',
+      useCases: ['Lead management', 'Deal tracking', 'Contact updates'],
+      connectedDate: '2024-01-20',
+      automationsUsing: 1
+    },
+    
+    // Email Marketing (MVP)
+    { 
+      id: 'mailchimp', 
+      name: 'Mailchimp', 
+      icon: Mail, 
+      connected: true, 
+      description: 'Audience sync + campaign triggers',
+      category: 'email',
+      useCases: ['Lead nurturing', 'Newsletter campaigns', 'Drip sequences'],
+      connectedDate: '2024-02-01',
+      automationsUsing: 1
+    },
+    { 
+      id: 'constantcontact', 
+      name: 'Constant Contact', 
+      icon: Mail, 
+      connected: true, 
+      description: 'Email marketing for small businesses',
+      category: 'email',
+      useCases: ['Monthly market reports', 'Open house announcements', 'Seasonal showcases'],
+      connectedDate: '2024-02-15',
+      automationsUsing: 0
+    }, 
+    
+    // Spreadsheets & Databases (MVP)
+    { 
+      id: 'sheets', 
+      name: 'Google Sheets', 
+      icon: FileSpreadsheet, 
+      connected: true, 
+      description: 'Daily updates, fallback option',
+      category: 'storage',
+      useCases: ['Data analysis', 'Custom reports', 'Team sharing'],
+      connectedDate: '2024-01-15',
+      automationsUsing: 2
+    },
+    { 
+      id: 'airtable', 
+      name: 'Airtable', 
+      icon: Database, 
+      connected: true, 
+      description: 'Structured sync with custom views',
+      category: 'storage',
+      useCases: ['Custom databases', 'Project management', 'Collaboration'],
+      connectedDate: '2024-02-05',
+      automationsUsing: 0
+    },
+    
+    // SMS (MVP)
+    { 
+      id: 'twilio', 
+      name: 'Twilio', 
+      icon: MessageSquare, 
+      connected: true, 
+      description: 'SMS notifications and campaigns',
+      category: 'communication',
+      useCases: ['Time-sensitive alerts', 'Agent outreach', 'Follow-up sequences'],
+      connectedDate: '2024-01-25',
+      automationsUsing: 0
+    },
+    
+    // Automation Platforms (MVP)
+    { 
+      id: 'zapier', 
+      name: 'Zapier', 
+      icon: Zap, 
+      connected: true, 
+      description: 'Webhook triggers, multi-app workflows',
+      category: 'automation',
+      useCases: ['Multi-step workflows', 'Custom integrations', 'App connections'],
+      connectedDate: '2024-01-18',
+      automationsUsing: 0
+    },
+    { 
+      id: 'make', 
+      name: 'Make', 
+      icon: Zap, 
+      connected: true, 
+      description: 'Advanced automation scenarios',
+      category: 'automation',
+      useCases: ['Complex workflows', 'Data transformation', 'API routing'],
+      connectedDate: '2024-02-10',
+      automationsUsing: 0
+    },
+    
+    // Developer Tools (Available)
+    { 
+      id: 'webhook', 
+      name: 'Custom Webhook', 
+      icon: Webhook, 
+      connected: true, 
+      description: 'Send listing data to any custom API endpoint',
+      category: 'automation',
+      useCases: ['Custom integrations', 'Internal systems', 'Third-party APIs'],
+      connectedDate: '2024-01-10',
+      automationsUsing: 0
+    }
+  ];
+
+  const getDestinationIcon = (type: string) => {
+    const icons: Record<string, any> = {
+      email: Mail,
+      mailchimp: Send,
+      webhook: Webhook,
+      hubspot: Database,
+      sheets: FileSpreadsheet,
+      slack: MessageSquare
+    };
+    return icons[type] || Database;
+  };
+
+  const handleToggleAutomation = (id: string) => {
+    setAutomations(prev => prev.map(a => 
+      a.id === id ? { ...a, active: !a.active } : a
+    ));
+    const automation = automations.find(a => a.id === id);
+    toast.success(`Automation ${automation?.active ? 'paused' : 'activated'}`);
+  };
+
+  const handleRunNow = async (automation: Automation) => {
+    setRunNowLoading(true);
+    setRunningAutomation(automation);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const res = await fetch(
+        `https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ automation }),
+        }
+      );
+
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Automation run failed');
+
+      const { status, listings_found, listings_sent, details } = result;
+      const destLabel = automation.destination?.label ?? 'destination';
+
+      if (status === 'failed') {
+        toast.error(`"${automation.name}" failed: ${(details ?? 'Unknown error').slice(0, 120)}`);
+      } else {
+        toast.success(`"${automation.name}" complete — ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await createNotification({
+          userId: user.id,
+          type: status === 'failed' ? 'error' : 'success',
+          title: status === 'failed'
+            ? `Automation failed: ${automation.name}`
+            : `Automation run complete: ${automation.name}`,
+          message: status === 'failed'
+            ? (details ?? 'The automation encountered an error.')
+            : listings_sent > 0
+              ? `${listings_found} listings found — ${listings_sent} sent to ${destLabel}`
+              : `${listings_found} listings found. Check destination config if 0 were sent.`,
+        });
+      }
+
+      await loadRunHistory();
+
+      setAutomations(prev => prev.map(a =>
+        a.id === automation.id
+          ? { ...a, lastRun: { status: status === 'failed' ? 'failed' : 'success', date: new Date().toISOString(), listingsSent: listings_sent ?? 0, details: details ?? '' } }
+          : a
+      ));
+
+    } catch (err: any) {
+      const msg = err.message ?? 'Unknown error';
+      toast.error(`Run failed: ${msg}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await createNotification({
+          userId: user.id,
+          type: 'error',
+          title: `Automation failed: ${automation.name}`,
+          message: msg,
+        });
+      }
+    } finally {
+      setRunNowLoading(false);
+      setRunningAutomation(null);
+    }
+  };
+
+const handleDeleteAutomation = async (id: string) => {
+    await supabase.from('automations').delete().eq('id', id);
+    setAutomations(prev => prev.filter(a => a.id !== id));
+    toast.success('Automation deleted');
+  };
+
+  const handleDuplicateAutomation = (automation: Automation) => {
+    const newAutomation: Automation = {
+      ...automation,
+      id: Date.now().toString(),
+      name: `${automation.name} (Copy)`,
+      active: false,
+      lastRun: undefined,
+      nextRun: undefined
+    };
+    setAutomations(prev => [...prev, newAutomation]);
+    toast.success('Automation duplicated');
+  };
+
+  const handleAutomationCreated = async (automation: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      console.warn('[loadAutomations] no session, skipping');
+      setAutomationsLoading(false);
+      return;
+    }
+    const userId = session.user.id;
+    console.log('[loadAutomations] fetching for user', userId);
+    const { data, error } = await supabase
+      .from('automations')
+      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
+      .eq('user_id', userId) useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+import { Button } from './ui/button';
+import { LBButton } from './design-system/LBButton';
+import { ChevronDown, ChevronUp, ExternalLink, Settings, LayoutGrid, Table as TableIcon } from 'lucide-react';
+import { CreateAutomationPage } from './CreateAutomationPage';
+import { ViewEditAutomationDrawer } from './ViewEditAutomationDrawer';
+import { RunAutomationLoading } from './RunAutomationLoading';
+import { IntegrationManagementModal, Integration as IntegrationInterface } from './IntegrationManagementModal';
+import { AutomationLimitModal } from './AutomationLimitModal';
+import { RunDetailsModal } from './RunDetailsModal';
+import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
+import { canCreateAutomation, getCurrentPlan, getAutomationUsage, getNextPlan } from './utils/planLimits';
+import { 
+  Zap, 
+  Plus, 
+  Play, 
+  Pause, 
+  Edit2, 
+  Trash2, 
+  Copy,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Mail,
+  Database,
+  Webhook,
+  FileSpreadsheet,
+  MessageSquare,
+  Send,
+  Download,
+  Play,
+  Loader2
+} from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { useWalkthrough } from './WalkthroughContext';
+import { WalkthroughOverlay } from './WalkthroughOverlay';
+import { AlertTriangle } from 'lucide-react';
+import { createNotification } from '../lib/notifications';
+
+interface Automation {
+  id: string;
+  name: string;
+  searchName: string;
+  schedule: string;
+  destination: {
+    type: 'email' | 'mailchimp' | 'webhook' | 'hubspot' | 'sheets' | 'slack';
+    label: string;
+  };
+  active: boolean;
+  lastRun?: {
+    date: string;
+    status: 'success' | 'failed';
+    listingsSent: number;
+  };
+  nextRun?: string;
+}
+
+interface RunHistoryItem {
+  id: string;
+  automationName: string;
+  runDate: string;
+  status: 'success' | 'failed';
+  listingsFound: number;
+  listingsSent: number;
+  destination: string;$8  details?: string;
+}
+
+interface Integration {
+  id: string;
+  name: string;
+  icon: any;
+  connected: boolean;
+  description: string;
+  category: 'crm' | 'email' | 'communication' | 'automation' | 'storage';
+  useCases: string[];
+  connectedDate?: string;
+  automationsUsing?: number;
+}
+
+interface AutomationsManagementPageProps {
+  onViewDetail?: (automation: Automation) => void;
+  initialTab?: 'create' | 'automations' | 'history';
+}
+
+export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' }: AutomationsManagementPageProps = {}) {
+  // Walkthrough integration
+  const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
+  const walkthroughStep3Active = isStepActive(3);
+  
+  const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(() => {
+    // Try to restore last tab from sessionStorage
+    const lastTab = sessionStorage.getItem('listingbug_automations_last_tab');
+    if (lastTab && ['create','automations','history'].includes(lastTab)) {
+      return lastTab as 'create' | 'automations' | 'history';
+    }
+    return initialTab;
+  });
+    // Persist activeTab to sessionStorage on change
+    useEffect(() => {
+      sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
+    }, [activeTab]);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
+  const [expandedAutomations, setExpandedAutomations] = useState<Set<string>>(new Set());
+  const [runNowLoading, setRunNowLoading] = useState(false);
+  const [runningAutomation, setRunningAutomation] = useState<Automation | null>(null);
+  const [integrationModalOpen, setIntegrationModalOpen] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<IntegrationInterface | null>(null);
+  const [runDetailsModalOpen, setRunDetailsModalOpen] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<RunHistoryItem | null>(null);
+  
+  // Automation limit modal state
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const currentPlan = getCurrentPlan();
+  const automationUsage = getAutomationUsage(currentPlan);
+
+  // Automations loaded from Supabase (see loadAutomations below)
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [automationsLoading, setAutomationsLoading] = useState(true);
+
+// Load automations from Supabase — works on any device
+  const loadAutomations = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      console.warn('[loadAutomations] no session, skipping');
+      setAutomationsLoading(false);
+      return;
+    }
+    const userId = session.user.id;
+    console.log('[loadAutomations] fetching for user', userId);
+    const { data, error } = await supabase
+      .from('automations')
+      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) {
       console.error('[Automations] load error:', error.message);
