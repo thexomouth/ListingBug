@@ -540,6 +540,10 @@ const handleDeleteAutomation = async (id: string) => {
     setActiveTab('automations');
   };
 
+  const handleAutomationUpdated = async (_updated: any) => {
+    await loadAutomations();
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       {/* Header */}
