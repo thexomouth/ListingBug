@@ -55,7 +55,7 @@ export function AutomationLimitModal({
     }
   };
 
-  const info = planInfo[currentPlan];
+  const info = planInfo[currentPlan] ?? planInfo['starter'];
   const showUpgradeOption = currentPlan !== 'enterprise';
 
   return (

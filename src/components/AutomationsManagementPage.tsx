@@ -994,7 +994,7 @@ const handleDeleteAutomation = async (id: string) => {
       <AutomationLimitModal
         isOpen={limitModalOpen}
         onClose={() => setLimitModalOpen(false)}
-        currentPlan={currentPlan}
+        currentPlan={currentPlan === 'professional' ? 'pro' : currentPlan === 'trial' ? 'starter' : currentPlan as 'starter' | 'pro' | 'enterprise'}
         currentSlots={automationUsage.current}
         maxSlots={automationUsage.max === Infinity ? 999 : automationUsage.max}
         onUpgrade={() => {
