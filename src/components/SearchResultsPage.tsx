@@ -61,7 +61,10 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       setSavedListingIds(prev => { const n = new Set(prev); n.delete(listing.id); return n; });
       toast.success('Removed from saved listings');
     } else {
-      await supabase.from('saved_listings').upsert({ user_id: user.id, listing_id: listing.id, listing_data: listing });
+      await supabase.from('saved_listings').upsert(
+        { user_id: user.id, listing_id: listing.id, listing_data_json: listing, saved_at: new Date().toISOString() },
+        { onConflict: 'user_id,listing_id' }
+      )
       setSavedListingIds(prev => new Set([...prev, listing.id]));
       toast.success('Listing saved');
     }

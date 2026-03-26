@@ -34,8 +34,8 @@
 - [ ] cities in our city/state database used for the autofill in listings search isn't comprehensive. it's missing many cities. for instance it only has one arlington in texas when virginia has an arlington, and it doesn't have smaller towns like paris texas or hell texas. i'd like to expand our list to cover alllllll cities
 - [ ] we need to ensure enforcement of accounttype limitations are in place. 4000,10000 listings per month for starter and professional. 1 automation cap for starter. 
 - [ ] let's introduce a 1000 listing cap for trial accounts since they get one week, 1/4th of a month; 1/4th the allowance of a starter plan
-- [ ] 
-- [ ] 
+- [ ] we have logic that remembers the last tab someone was on within listings,automations, and account pages. however, if a user uses the navigation menu to select and navitgate to one of these pages, then it should default to the first tab in the respective tab menu eg listings/search, automations/create, and account/profile
+- [ ] in account billing, the 'current plan' section says trial plan $19/mo. but the trial is free. can you make sure the text in that section is dynamic reflecting $0 for trial $19 for star and $49 for pro
 - [ ] 
 - [ ] 
 - [ ] 
