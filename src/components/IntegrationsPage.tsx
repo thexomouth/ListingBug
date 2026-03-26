@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { LBButton } from './design-system/LBButton';
 import { 
   CheckCircle,
@@ -139,19 +140,57 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     }, 100);
   };
 
-  const handleConnectionComplete = (integrationId: string, credentials?: { apiKey?: string }) => {
-    console.log('Connection complete:', integrationId, credentials);
-    toast.success(`Successfully connected to ${integrations.find(i => getModalIntegrationId(i.id) === integrationId)?.name}!`);
+  const handleConnectionComplete = (integrationId: string, credentials?: any) => {
     setConnectionModalOpen(false);
     setConnectionModalIntegration(null);
-    
-    // Call the parent onConnect if provided
+    loadConnectedIntegrations();
     onConnect?.(integrationId);
   };
 
   const handleConnectionModalClose = () => {
     setConnectionModalOpen(false);
     setConnectionModalIntegration(null);
+  };
+
+  // ── Load real connected state from Supabase ──────────────────────────────
+  const loadConnectedIntegrations = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    const { data, error } = await supabase
+      .from('integration_connections')
+      .select('integration_id')
+      .eq('user_id', session.user.id);
+    if (error || !data) return;
+    const connectedIds = new Set(data.map((r: any) => r.integration_id));
+    setIntegrations(prev => prev.map(i => ({
+      ...i,
+      connected: connectedIds.has(i.id),
+      category: connectedIds.has(i.id) ? 'connected' : (i.category === 'connected' ? 'available' : i.category),
+    })));
+  };
+
+  useEffect(() => {
+    loadConnectedIntegrations();
+    const params = new URLSearchParams(window.location.search);
+    const justConnected = params.get('connected');
+    if (justConnected) {
+      toast.success('Integration connected! Configure your settings below.');
+      setTimeout(() => {
+        handleConnectClick(justConnected);
+        window.history.replaceState({}, '', '/integrations');
+      }, 400);
+    }
+  }, []);
+
+  const handleDisconnect = async (integrationId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    await supabase.from('integration_connections').delete().eq('user_id', session.user.id).eq('integration_id', integrationId);
+    setIntegrations(prev => prev.map(i =>
+      i.id === integrationId ? { ...i, connected: false, category: 'available' } : i
+    ));
+    setDisconnectOpen(false);
+    toast.success('Integration disconnected');
   };
 
   const [integrations, setIntegrations] = useState<Integration[]>([
@@ -332,18 +371,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     setDisconnectOpen(true);
   };
 
-  const handleDisconnect = () => {
-    if (selectedIntegration) {
-      setIntegrations(prev => prev.map(i =>
-        i.id === selectedIntegration.id
-          ? { ...i, connected: false, category: 'available' as const }
-          : i
-      ));
-      toast.success(`\ disconnected`);
-      setDisconnectOpen(false);
-      setSelectedIntegration(null);
-    }
-  };
+
 
   const handleRequestIntegration = () => {
     if (onNavigate) {
@@ -931,7 +959,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
             <Button variant="outline" onClick={() => setDisconnectOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDisconnect}>
+            <Button variant="destructive" onClick={() => selectedIntegration && handleDisconnect(selectedIntegration.id)}>
               Disconnect
             </Button>
           </DialogFooter>

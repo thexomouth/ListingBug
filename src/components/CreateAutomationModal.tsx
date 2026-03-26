@@ -112,6 +112,20 @@ export function CreateAutomationModal({
   const [syncRate, setSyncRate] = useState('day'); // Per day/week/month
   const [selectedDestination, setSelectedDestination] = useState('');
   const [destinationConfig, setDestinationConfig] = useState<Record<string, string>>({});
+  const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const loadConnections = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return;
+      const { data } = await supabase
+        .from('integration_connections')
+        .select('integration_id')
+        .eq('user_id', session.user.id);
+      if (data) setConnectedIds(new Set(data.map((r: any) => r.integration_id)));
+    };
+    loadConnections();
+  }, []);
   const [savedSearches, setSavedSearches] = useState<any[]>([]);
   const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
   const [mappingsAccepted, setMappingsAccepted] = useState(false);
@@ -257,7 +271,7 @@ export function CreateAutomationModal({
       id: 'hubspot', 
       name: 'HubSpot', 
       icon: Database, 
-      connected: true, 
+      connected: connectedIds.has('hubspot'), 
       requiresSetup: false,
       riskTier: 'medium' // Tier B - CRM destination
     },
@@ -266,7 +280,7 @@ export function CreateAutomationModal({
       id: 'mailchimp', 
       name: 'Mailchimp', 
       icon: Mail, 
-      connected: true, 
+      connected: connectedIds.has('mailchimp'), 
       requiresSetup: true,
       setupFields: [
         { key: 'audience_id', label: 'Audience ID', placeholder: 'abc123' },
@@ -280,19 +294,22 @@ export function CreateAutomationModal({
       connected: true, 
       requiresSetup: true,
       setupFields: [
-        { key: 'api_key', label: 'API Key', placeholder: 'Enter API key', type: 'password' },
-        { key: 'list_id', label: 'Contact List ID', placeholder: 'Enter list ID' }
+        { key: 'list_id', label: 'Audience / List ID', placeholder: 'abc123def', hint: 'Found in Mailchimp → Audience → Settings → Audience ID' },
+        { key: 'tags', label: 'Tags (optional)', placeholder: 'ListingBug, Denver Agents', hint: 'Comma-separated tags applied to each contact' },
+        { key: 'double_opt_in', label: 'Double opt-in', type: 'select', options: [{value:'false',label:'No (subscribe immediately)'},{value:'true',label:'Yes (send confirmation email)'}] }
       ]
     },
     // Spreadsheets & Databases
     { 
-      id: 'sheets', 
+      id: 'google', 
       name: 'Google Sheets', 
       icon: FileSpreadsheet, 
-      connected: true, 
+      connected: connectedIds.has('google'), 
       requiresSetup: true,
       setupFields: [
-        { key: 'spreadsheet_id', label: 'Spreadsheet ID', placeholder: '1A2B3C4D...' }
+        { key: 'spreadsheet_id', label: 'Spreadsheet ID', placeholder: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms', hint: 'In your Google Sheets URL between /d/ and /edit' },
+        { key: 'sheet_name', label: 'Sheet Tab Name', placeholder: 'Sheet1', hint: 'The tab name at the bottom of your spreadsheet' },
+        { key: 'write_mode', label: 'Write Mode', type: 'select', options: [{value:'append',label:'Append rows each run'},{value:'overwrite',label:'Overwrite each run'}] }
       ]
     },
     { 
@@ -312,12 +329,10 @@ export function CreateAutomationModal({
       id: 'twilio', 
       name: 'Twilio', 
       icon: MessageSquare, 
-      connected: true, 
+      connected: connectedIds.has('twilio'), 
       requiresSetup: true,
       setupFields: [
-        { key: 'account_sid', label: 'Account SID', placeholder: 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' },
-        { key: 'auth_token', label: 'Auth Token', placeholder: 'Enter auth token', type: 'password' },
-        { key: 'from_number', label: 'From Number', placeholder: '+1234567890' }
+        { key: 'list_unique_name', label: 'Sync List Name', placeholder: 'listingbug_contacts', hint: 'Name of the Twilio Sync List to push contacts to' }
       ]
     },
     // Automation Platforms
@@ -325,20 +340,22 @@ export function CreateAutomationModal({
       id: 'zapier', 
       name: 'Zapier', 
       icon: Zap, 
-      connected: true, 
+      connected: connectedIds.has('zapier'), 
       requiresSetup: true,
       setupFields: [
-        { key: 'webhook_url', label: 'Zapier Webhook URL', placeholder: 'https://hooks.zapier.com/hooks/catch/...', type: 'url' }
+        { key: 'webhook_url', label: 'Zapier Webhook URL', placeholder: 'https://hooks.zapier.com/hooks/catch/...', type: 'url', hint: 'From Webhooks by Zapier → Catch Hook trigger' },
+        { key: 'send_mode', label: 'Delivery Mode', type: 'select', options: [{value:'batch',label:'Batch (one request with all listings)'},{value:'individual',label:'Individual (one request per listing)'}] }
       ]
     },
     { 
       id: 'make', 
       name: 'Make', 
       icon: Zap, 
-      connected: true, 
+      connected: connectedIds.has('make'), 
       requiresSetup: true,
       setupFields: [
-        { key: 'webhook_url', label: 'Make Webhook URL', placeholder: 'https://hook.integromat.com/...', type: 'url' }
+        { key: 'webhook_url', label: 'Make Webhook URL', placeholder: 'https://hook.make.com/...', type: 'url', hint: 'From Webhooks module → Custom Webhook trigger' },
+        { key: 'send_mode', label: 'Delivery Mode', type: 'select', options: [{value:'batch',label:'Batch (one request with all listings)'},{value:'individual',label:'Individual (one request per listing)'}] }
       ]
     },
     // Developer Tools
@@ -350,6 +367,17 @@ export function CreateAutomationModal({
       requiresSetup: true,
       setupFields: [
         { key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://api.example.com/webhook', type: 'url' }
+      ]
+    },
+    { 
+      id: 'n8n', 
+      name: 'n8n', 
+      icon: Webhook, 
+      connected: connectedIds.has('n8n'), 
+      requiresSetup: true,
+      setupFields: [
+        { key: 'webhook_url', label: 'n8n Webhook URL', placeholder: 'https://your-n8n.com/webhook/...', type: 'url', hint: 'From a Webhook trigger node in your n8n workflow' },
+        { key: 'send_mode', label: 'Delivery Mode', type: 'select', options: [{value:'batch',label:'Batch (one request with all listings)'},{value:'individual',label:'Individual (one request per listing)'}] }
       ]
     }
   ];
@@ -926,9 +954,11 @@ export function CreateAutomationModal({
     onClose();
   };
 
-  const canProceedToStep2 = selectedDestination && 
-    (!selectedIntegration?.requiresSetup || 
-      (selectedIntegration.setupFields?.every(f => destinationConfig[f.key]?.trim())));
+  const canProceedToStep2 = selectedDestination &&
+    (!selectedIntegration?.requiresSetup ||
+      (selectedIntegration.setupFields?.every((f: any) =>
+        f.type === 'select' || destinationConfig[f.key]?.trim()
+      )));
   
   // Field mapping step is hidden — step 1 jumps directly to step 3
   const canProceedToStep3 = canProceedToStep2;
@@ -1234,26 +1264,39 @@ export function CreateAutomationModal({
 
                 {/* Configuration Fields */}
                 {selectedIntegration?.requiresSetup && selectedIntegration.setupFields && (
-                  <div className="space-y-3 pt-4 border-t border-gray-300">
-                    <h4 className="font-bold text-sm flex items-center gap-2">
+                  <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-white/10">
+                    <h4 className="font-bold text-sm text-gray-900 dark:text-white">
                       Configure {selectedIntegration.name}
-                      <span className="text-xs font-normal text-gray-600">
-                        (API Endpoint: POST /api/integrations/{selectedIntegration.id}/configure)
-                      </span>
                     </h4>
-                    {selectedIntegration.setupFields.map((field) => (
-                      <LBInput
-                        key={field.key}
-                        label={`${field.label} (Field: destination_config.${field.key})`}
-                        type={field.type || 'text'}
-                        value={destinationConfig[field.key] || ''}
-                        onChange={(e) => setDestinationConfig({
-                          ...destinationConfig,
-                          [field.key]: e.target.value
-                        })}
-                        placeholder={field.placeholder}
-                        required
-                      />
+                    {selectedIntegration.setupFields.map((field: any) => (
+                      <div key={field.key} className="space-y-1.5">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {field.label}
+                          {field.required !== false && <span className="text-red-500 ml-0.5">*</span>}
+                        </label>
+                        {field.type === 'select' ? (
+                          <select
+                            className="w-full border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white"
+                            value={destinationConfig[field.key] || (field.options?.[0]?.value ?? '')}
+                            onChange={(e) => setDestinationConfig({ ...destinationConfig, [field.key]: e.target.value })}
+                          >
+                            {(field.options ?? []).map((opt: any) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={field.type === 'password' ? 'password' : field.type === 'url' ? 'url' : 'text'}
+                            className="w-full border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white placeholder-gray-400"
+                            placeholder={field.placeholder}
+                            value={destinationConfig[field.key] || ''}
+                            onChange={(e) => setDestinationConfig({ ...destinationConfig, [field.key]: e.target.value })}
+                          />
+                        )}
+                        {field.hint && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{field.hint}</p>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
