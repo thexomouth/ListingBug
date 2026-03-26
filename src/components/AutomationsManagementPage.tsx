@@ -565,15 +565,6 @@ const handleDeleteAutomation = async (id: string) => {
       completeStep(3);
     }
   };
-    setAutomations(prev => [newAutomation, ...prev]);
-    setActiveTab('automations'); // Switch to automations tab after creation
-    toast.success('Automation created successfully!');
-    
-    // Complete walkthrough step 3 if active (Create Automation step)
-    if (walkthroughStep3Active) {
-      completeStep(3);
-    }
-  };
 
   const handleAutomationUpdated = (updatedAutomation: any) => {
     setAutomations(prev => prev.map(a => 
