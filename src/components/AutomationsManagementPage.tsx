@@ -41,7 +41,6 @@ import {
 } from './ui/dialog';
 import { useWalkthrough } from './WalkthroughContext';
 import { WalkthroughOverlay } from './WalkthroughOverlay';
-import { AlertTriangle } from 'lucide-react';
 import { createNotification } from '../lib/notifications';
 
 interface Automation {

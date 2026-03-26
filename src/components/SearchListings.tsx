@@ -289,7 +289,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
 
       const { data: user, error } = await supabase
         .from('users')
-        .select('plan,plan_status,trial_ends_at,stripe_subscription_start,stripe_subscription_end')
+        .select('plan,plan_status,trial_ends_at,stripe_subscription_end')
         .eq('id', userId)
         .single();
 

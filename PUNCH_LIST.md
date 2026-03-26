@@ -20,8 +20,8 @@
 - [ ] api key generator still not generating ' '
 - [ ] saved listings are not saving. leave the page, navigate back and it's reset. this needs to be saved to the user account until they remove it
 - [x] remove all toggles except pricedrop from listings/search
-- [ ] password reset tool doesn't recognize an incorrect current password or is failing to initialize 'failed to fetch'
-- [ ] trying to update profile information: "Could not find the 'updated_at' column of 'users' in the schema cache" and "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
+- [x] password reset tool doesn't recognize an incorrect current password or is failing to initialize 'failed to fetch'
+- [x] trying to update profile information: "Could not find the 'updated_at' column of 'users' in the schema cache" and "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
 - [x] when updating profile information in the profile information section of account/profile, allow users to update any one field, don't require full section fill in order to update. for instance, if they onyl wanna update name or company it's fine - update shouldn't be dependent on all fields filled for profile information section
 - [ ] in listings/history, if the search run was from a saved search with a name or from an automation with a name, impor the name and use it for the container heading, if no name for the search or run exists, then use the current city/state for container title/heading
 - [x] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab
@@ -276,3 +276,11 @@ instantly recognizes, then show the product doing it.
 - [x] Street View API key live
 - [x] Search history cards clickable + View Results button
 - [x] SavedListingsPage Supabase sync
+- [x] Automations page/myautomations — fixed: was returning zero-state due to missing last_run_at/next_run_at columns in DB + file corruption; added columns, rebuilt component
+- [x] Dashboard automations — fixed: was reading from localStorage; now queries Supabase
+- [x] Automation creation limit — enforced from Supabase plan (trial=0, starter=1, pro=unlimited)
+- [x] Profile update — fixed: column was 'name' not 'full_name', removed non-existent updated_at, allow partial field updates
+- [x] Password updater — deployed update-password edge function; verifies current password server-side via service role, updates via admin API
+- [x] Billing trial price — now shows $0 for trial accounts instead of $19
+- [x] Saved listings dashboard nav — both cards now navigate to Listings tab (not Saved Searches)
+- [x] Dashboard plan/slot counter — now fetches real plan from Supabase users table

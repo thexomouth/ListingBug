@@ -81,7 +81,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
 
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('plan,plan_status,trial_ends_at,stripe_subscription_start,stripe_subscription_end')
+        .select('plan,plan_status,trial_ends_at,stripe_subscription_end')
         .eq('id', userId)
         .single();
 
@@ -90,7 +90,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
       } else if (userData) {
         const isTrial = userData.plan_status?.toLowerCase() === 'trialing' || !!userData.trial_ends_at;
         const trialEndsAt = userData.trial_ends_at;
-        const billingStart = userData.stripe_subscription_start || '';
+        const billingStart = '';
         const billingEnd = userData.stripe_subscription_end || '';
 
         const planKey = userData.plan?.toLowerCase() || 'starter';

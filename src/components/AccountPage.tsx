@@ -127,11 +127,11 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) throw new Error('Not authenticated');
 
-      const updatePayload: any = { id: user.id };
+      const updatePayload: any = {};
       if (name.trim()) updatePayload.name = name.trim();
       if (company.trim()) updatePayload.company = company.trim();
 
-      const { error } = await supabase.from('users').upsert(updatePayload);
+      const { error } = await supabase.from('users').update(updatePayload).eq('id', user.id);
       if (error) throw error;
       toast.success('Account settings saved successfully');
     } catch (err: any) {
@@ -155,17 +155,17 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
     }
 
     try {
-      // Verify current password by re-signing in
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw new Error('Not authenticated');
 
+      // Verify current password by re-signing in
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: currentPassword,
       });
       if (signInError) throw new Error('Current password is incorrect');
 
-      // Current password verified — update to new password
+      // Update to new password
       const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
       if (updateError) throw new Error(updateError.message || 'Failed to update password');
 
