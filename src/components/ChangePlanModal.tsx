@@ -95,6 +95,25 @@ export function ChangePlanModal({
 
   const plans: Plan[] = [
     {
+      id: 'trial',
+      name: 'Trial',
+      price: 0,
+      interval: 'month',
+      features: [
+        'Limited listings',
+        'Limited automations',
+        'All 9 integrations',
+        'Email notifications',
+        'CSV exports',
+        'Basic support',
+      ],
+      limits: {
+        reports: 500,
+        dataPoints: 5000,
+        users: 1,
+      },
+    },
+    {
       id: 'starter',
       name: 'Starter',
       price: 19,
@@ -135,9 +154,10 @@ export function ChangePlanModal({
     },
   ];
 
-  // For trial users, we map them to Starter plan pricing but keep "Trial" as display name
   const isTrialUser = currentPlan.toLowerCase() === 'trial';
-  const currentPlanId = isTrialUser ? 'starter' : currentPlan.toLowerCase();
+  const isStarterUser = currentPlan.toLowerCase() === 'starter';
+  const isProUser = currentPlan.toLowerCase() === 'professional' || currentPlan.toLowerCase() === 'pro';
+  const currentPlanId = isTrialUser ? 'trial' : isStarterUser ? 'starter' : isProUser ? 'professional' : currentPlan.toLowerCase();
   const currentPlanData = plans.find(p => p.id === currentPlanId);
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
@@ -261,22 +281,28 @@ export function ChangePlanModal({
                 {plans.map((plan) => {
                   const isCurrent = plan.id === currentPlanId;
                   const isSelected = plan.id === selectedPlan;
+                  // Special style for trial: dark bg, yellow border, no 'Current Plan' badge
+                  let cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e]';
+                  if (plan.id === 'trial') {
+                    cardClass = 'relative transition-all bg-[#1a1a2e] border-2 border-[#FFCE0A]';
+                  } else if (isCurrent && plan.id === 'starter') {
+                    cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e] border-2 border-green-400 dark:border-green-500 bg-green-50/30 dark:bg-green-500/10';
+                  } else if (isCurrent && plan.id === 'professional') {
+                    cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e] border-2 border-[#FFCE0A] dark:border-[#FFCE0A] shadow-lg dark:shadow-xl dark:shadow-[#FFCE0A]/20';
+                  } else if (isSelected) {
+                    cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e] border-2 border-[#342e37] dark:border-[#FFCE0A] shadow-lg dark:shadow-xl dark:shadow-[#FFCE0A]/20';
+                  } else {
+                    cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e] border-2 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:shadow-md dark:hover:shadow-lg cursor-pointer';
+                  }
 
                   return (
                     <Card
                       key={plan.id}
-                      className={`relative transition-all bg-white dark:bg-[#1a1a2e] ${
-                        isCurrent
-                          ? 'border-2 border-green-400 dark:border-green-500 bg-green-50/30 dark:bg-green-500/10'
-                          : isSelected
-                          ? 'border-2 border-[#342e37] dark:border-[#FFCE0A] shadow-lg dark:shadow-xl dark:shadow-[#FFCE0A]/20'
-                          : 'border-2 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 hover:shadow-md dark:hover:shadow-lg cursor-pointer'
-                      }`}
-                      onClick={() => !isCurrent && handleSelectPlan(plan.id)}
+                      className={cardClass}
+                      onClick={() => !isCurrent && plan.id !== 'trial' && handleSelectPlan(plan.id)}
                     >
                       {/* Popular Badge */}
-                      {/* LIGHT MODE: Yellow badge | DARK MODE: dark:bg-[#FFCE0A] dark:text-[#0F1115] */}
-                      {plan.popular && !isCurrent && (
+                      {plan.popular && !isCurrent && plan.id !== 'trial' && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <Badge className="bg-[#ffd447] dark:bg-[#FFCE0A] text-[#342e37] dark:text-[#0F1115] border-2 border-white shadow-md">
                             <Sparkles className="w-3 h-3 mr-1" />
@@ -286,7 +312,7 @@ export function ChangePlanModal({
                       )}
 
                       {/* Current Plan Badge */}
-                      {isCurrent && (
+                      {isCurrent && plan.id === 'starter' && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <Badge className="bg-green-600 text-white border-2 border-white shadow-md">
                             <CheckCircle className="w-3 h-3 mr-1" />
@@ -294,10 +320,17 @@ export function ChangePlanModal({
                           </Badge>
                         </div>
                       )}
+                      {isCurrent && plan.id === 'professional' && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <Badge className="bg-[#FFCE0A] text-[#0F1115] border-2 border-white shadow-md">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Current Plan
+                          </Badge>
+                        </div>
+                      )}
+                      {/* No badge for trial */}
 
                       <CardContent className="p-6">
-                        {/* Plan Header */}
-                        {/* LIGHT MODE: Dark text | DARK MODE: dark:text-white */}
                         <div className="text-center mb-6">
                           <h3 className="font-bold text-xl text-[#342e37] dark:text-white mb-2">{plan.name}</h3>
                           <div className="flex items-baseline justify-center gap-1">
@@ -305,9 +338,6 @@ export function ChangePlanModal({
                             <span className="text-gray-600 dark:text-white/60">/month</span>
                           </div>
                         </div>
-
-                        {/* Features List */}
-                        {/* LIGHT MODE: Gray text | DARK MODE: dark:text-white/80 */}
                         <div className="space-y-3 mb-6">
                           {plan.features.map((feature, index) => (
                             <div key={index} className="flex items-start gap-2 text-sm">
@@ -316,17 +346,22 @@ export function ChangePlanModal({
                             </div>
                           ))}
                         </div>
-
                         {/* Action Button */}
-                        {isCurrent ? (
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            disabled
-                          >
-                            Current Plan
+                        {isCurrent && plan.id === 'starter' && (
+                          <Button variant="outline" className="w-full" disabled>Current Plan</Button>
+                        )}
+                        {isCurrent && plan.id === 'professional' && (
+                          <Button variant="outline" className="w-full" disabled>Current Plan</Button>
+                        )}
+                        {/* For trial, show upgrade button to Starter */}
+                        {plan.id === 'starter' && isTrialUser && (
+                          <Button className="w-full" variant="default" onClick={(e) => { e.stopPropagation(); handleSelectPlan('starter'); }}>
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                            Upgrade to Starter
                           </Button>
-                        ) : (
+                        )}
+                        {/* For selectable plans (not current, not trial) */}
+                        {!isCurrent && plan.id !== 'trial' && !(plan.id === 'starter' && isTrialUser) && (
                           <Button
                             className="w-full"
                             variant={isSelected ? 'default' : 'outline'}
