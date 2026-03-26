@@ -29,9 +29,10 @@ import {
   MessageSquare,
   Send,
   Download,
+  Play,
   Loader2
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import {
   Dialog,
   DialogContent,
@@ -534,11 +535,141 @@ const handleDeleteAutomation = async (id: string) => {
     toast.success('Automation duplicated');
   };
 
+  const handleAutomationCreated = async (automation: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      console.warn('[loadAutomations] no session, skipping');
+      setAutomationsLoading(false);
+      return;
+    }
+    const userId = session.user.id;
+    console.log('[loadAutomations] fetching for user', userId);
+    const { data, error } = await supabase
+      .from('automations')
+      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
+      .eq('user_id', userId) useCallback } from 'react';
+import { supabase } from '../lib/supabase';
+import { Button } from './ui/button';
+import { LBButton } from './design-system/LBButton';
+import { ChevronDown, ChevronUp, ExternalLink, Settings, LayoutGrid, Table as TableIcon } from 'lucide-react';
+import { CreateAutomationPage } from './CreateAutomationPage';
+import { ViewEditAutomationDrawer } from './ViewEditAutomationDrawer';
+import { RunAutomationLoading } from './RunAutomationLoading';
+import { IntegrationManagementModal, Integration as IntegrationInterface } from './IntegrationManagementModal';
+import { AutomationLimitModal } from './AutomationLimitModal';
+import { RunDetailsModal } from './RunDetailsModal';
+import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
+import { canCreateAutomation, getCurrentPlan, getAutomationUsage, getNextPlan } from './utils/planLimits';
+import { 
+  Zap, 
+  Plus, 
+  Play, 
+  Pause, 
+  Edit2, 
+  Trash2, 
+  Copy,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Mail,
+  Database,
+  Webhook,
+  FileSpreadsheet,
+  MessageSquare,
+  Send,
+  Download,
+  Play,
+  Loader2
+} from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { useWalkthrough } from './WalkthroughContext';
+import { WalkthroughOverlay } from './WalkthroughOverlay';
+import { AlertTriangle } from 'lucide-react';
+import { createNotification } from '../lib/notifications';
 
-  const handleAutomationCreated = async () => {
-    await loadAutomations();
-    setActiveTab('automations');
+interface Automation {
+  id: string;
+  name: string;
+  searchName: string;
+  schedule: string;
+  destination: {
+    type: 'email' | 'mailchimp' | 'webhook' | 'hubspot' | 'sheets' | 'slack';
+    label: string;
   };
+  active: boolean;
+  lastRun?: {
+    date: string;
+    status: 'success' | 'failed';
+    listingsSent: number;
+  };
+  nextRun?: string;
+}
+
+interface RunHistoryItem {
+  id: string;
+  automationName: string;
+  runDate: string;
+  status: 'success' | 'failed';
+  listingsFound: number;
+  listingsSent: number;
+  destination: string;$8  details?: string;
+}
+
+interface Integration {
+  id: string;
+  name: string;
+  icon: any;
+  connected: boolean;
+  description: string;
+  category: 'crm' | 'email' | 'communication' | 'automation' | 'storage';
+  useCases: string[];
+  connectedDate?: string;
+  automationsUsing?: number;
+}
+
+interface AutomationsManagementPageProps {
+  onViewDetail?: (automation: Automation) => void;
+  initialTab?: 'create' | 'automations' | 'history';
+}
+
+export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' }: AutomationsManagementPageProps = {}) {
+  // Walkthrough integration
+  const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
+  const walkthroughStep3Active = isStepActive(3);
+  
+  const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(() => {
+    // Try to restore last tab from sessionStorage
+    const lastTab = sessionStorage.getItem('listingbug_automations_last_tab');
+    if (lastTab && ['create','automations','history'].includes(lastTab)) {
+      return lastTab as 'create' | 'automations' | 'history';
+    }
+    return initialTab;
+  });
+    // Persist activeTab to sessionStorage on change
+    useEffect(() => {
+      sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
+    }, [activeTab]);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
+  const [expandedAutomations, setExpandedAutomations] = useState<Set<string>>(new Set());
+  const [runNowLoading, setRunNowLoading] = useState(false);
+  const [runningAutomation, setRunningAutomation] = useState<Automation | null>(null);
+  const [integrationModalOpen, setIntegrationModalOpen] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<IntegrationInterface | null>(null);
+  const [runDetailsModalOpen, setRunDetailsModalOpen] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<RunHistoryItem | null>(null);
+  
+  // Automation limit modal state
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const currentPlan = getCurrentPlan();
+  const automationUsage = getAutomationUsage(currentPlan);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
