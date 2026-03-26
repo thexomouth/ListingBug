@@ -213,7 +213,7 @@ export function IntegrationConnectionModal({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not signed in');
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/oauth-connect?integration=${integration!.id}`,
+        `https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/oauth-connect?integration=${integration!.id}`,
         { headers: { Authorization: `Bearer ${session.access_token}` } }
       );
       const data = await res.json();
@@ -232,7 +232,7 @@ export function IntegrationConnectionModal({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-integration-options`,
+        `https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
@@ -257,7 +257,7 @@ export function IntegrationConnectionModal({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-integration-options`,
+        `https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },

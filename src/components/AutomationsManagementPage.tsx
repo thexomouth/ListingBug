@@ -439,7 +439,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
       if (!session) throw new Error('Not authenticated');
 
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-automation`,
+        `https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation`,
         {
           method: 'POST',
           headers: {
