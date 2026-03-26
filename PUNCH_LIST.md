@@ -1,5 +1,5 @@
 # ListingBug Punch List
-**Last updated:** March 24, 2026
+**Last updated:** March 26, 2026
 **How to use:** Jack adds items anytime. Claude reads this at the start of every session.
 
 ## notes for the developer

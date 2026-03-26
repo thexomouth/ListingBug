@@ -28,7 +28,8 @@ import {
   MessageSquare,
   Send,
   Download,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
