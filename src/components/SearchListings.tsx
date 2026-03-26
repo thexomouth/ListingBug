@@ -99,7 +99,6 @@ const availableFilters: AdditionalFilter[] = [
   { key: 'newConstruction', label: 'New Construction', placeholder: '', type: 'boolean', category: 'Features' },
   
   // Market Intelligence
-  { key: 'foreclosureStatus', label: 'Foreclosure Status', placeholder: 'Any', type: 'select', options: ['Any', 'Pre-Foreclosure', 'Foreclosure', 'REO'], category: 'Intelligence' },
   { key: 'distressedProperty', label: 'Distressed Property', placeholder: '', type: 'boolean', category: 'Intelligence' },
   { key: 'vacancy', label: 'Vacant Property', placeholder: '', type: 'select', options: ['Any', 'Vacant', 'Occupied'], category: 'Intelligence' },
   { key: 'openHouseScheduled', label: 'Open House Scheduled', placeholder: '', type: 'boolean', category: 'Intelligence' },
@@ -454,11 +453,13 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         setSearchHistory(data.map((r: any) => ({
           id: r.id,
           location: r.location,
+          searchName: r.search_name || null,
+          automationName: r.automation_name || null,
           criteriaDescription: r.criteria_description,
           criteria: r.criteria_json,
           resultsCount: r.results_count,
           searchDate: r.searched_at,
-          listings: r.results_json || [], // loaded from DB — works across devices
+          listings: r.results_json || [],
         })));
       }
     };
@@ -477,7 +478,10 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     }
     return [];
   });
-  
+
+  // Track name context for the current search run (saved search name or automation name)
+  const pendingRunNameRef = React.useRef<{ searchName?: string; automationName?: string }>({});
+
   // Search history state - load from localStorage
   const [searchHistory, setSearchHistory] = useState<any[]>(() => {
     const stored = localStorage.getItem('listingbug_search_history');
@@ -972,7 +976,10 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
             results_json: finalResults,
             results_count: finalResults.length,
             searched_at: historyEntry.searchDate,
+            search_name: pendingRunNameRef.current.searchName || null,
+            automation_name: pendingRunNameRef.current.automationName || null,
           });
+          pendingRunNameRef.current = {};
           if (insertError) {
             console.error('[search_runs insert failed]', insertError.code, insertError.message, insertError.details);
           } else {
@@ -1254,6 +1261,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     setCriteria(search.criteria);
     setActiveFilters(search.activeFilters || []);
     setActiveTab('search');
+    pendingRunNameRef.current = { searchName: search.name };
     toast.success(`Loaded search "${search.name}"`);
     
     // Update last used
@@ -2248,7 +2256,9 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                         <CardContent className="pt-6">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
-                              <p className="font-bold text-[16px] mb-1">{search.location}</p>
+                              <p className="font-bold text-[16px] mb-1">
+                                {search.automationName || search.searchName || search.location}
+                              </p>
                               <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-1">{search.criteriaDescription}</p>
                               <p className="text-[13px] text-green-600 dark:text-green-400">
                                 {search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'} found

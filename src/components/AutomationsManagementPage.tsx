@@ -124,7 +124,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
 
   // Plan fetched from Supabase — do not use localStorage-based getCurrentPlan() for gate logic
   const [currentPlan, setCurrentPlan] = useState<'trial' | 'starter' | 'professional' | 'enterprise'>('trial');
-  const PLAN_SLOTS: Record<string, number> = { trial: 0, starter: 1, professional: Infinity, enterprise: Infinity };
+  const PLAN_SLOTS: Record<string, number> = { trial: 3, starter: 1, professional: Infinity, enterprise: Infinity };
   const maxSlots = PLAN_SLOTS[currentPlan] ?? 0;
   const automationUsage = {
     current: automations.length,

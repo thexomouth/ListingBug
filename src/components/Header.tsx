@@ -168,6 +168,18 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
     if (accountTab && onAccountTabChange) {
       onAccountTabChange(accountTab);
     }
+    // When navigating via nav menu, always reset to first tab (clear last-tab memory)
+    if (page === 'search-listings') {
+      sessionStorage.removeItem('listingbug_last_tab');
+      sessionStorage.removeItem('listingbug_open_tab');
+      sessionStorage.removeItem('listingbug_open_saved_tab');
+    }
+    if (page === 'automations') {
+      sessionStorage.removeItem('listingbug_automations_last_tab');
+    }
+    if (page === 'account') {
+      sessionStorage.removeItem('account_last_tab');
+    }
     onNavigate(page);
     setIsMenuOpen(false);
     setIsAccountMenuOpen(false);

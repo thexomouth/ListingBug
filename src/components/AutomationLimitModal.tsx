@@ -56,6 +56,8 @@ export function AutomationLimitModal({
   };
 
   const info = planInfo[currentPlan] ?? planInfo['starter'];
+  // For trial users proxied as 'starter', override slot display
+  const displayMaxSlots = currentPlan === 'starter' && maxSlots === 3 ? 3 : maxSlots;
   const showUpgradeOption = currentPlan !== 'enterprise';
 
   return (
