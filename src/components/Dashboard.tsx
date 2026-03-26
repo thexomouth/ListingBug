@@ -123,6 +123,14 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     const loadAutomations = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Fetch real plan from users table
+      const { data: userData } = await supabase.from('users').select('plan').eq('id', user.id).single();
+      if (userData?.plan) {
+        const planMap: Record<string, PlanType> = { trial: 'starter', starter: 'starter', professional: 'pro', enterprise: 'enterprise' };
+        setCurrentPlan(planMap[userData.plan] ?? 'starter');
+      }
+
       const { data, error } = await supabase
         .from('automations')
         .select('id,name,destination_type,destination_label,destination_config,active,last_run_at,next_run_at,schedule')
@@ -303,7 +311,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             <Card
               className="cursor-pointer transition-all border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-700 flex-1"
               onClick={() => {
-                sessionStorage.setItem('listingbug_open_saved_tab', 'listings');
+                sessionStorage.setItem('listingbug_open_saved_tab', 'true');
                 onNavigate?.('search-listings');
               }}
             >
@@ -428,7 +436,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 ))}
               </div>
               {savedListings.length > 4 && (
-                <button onClick={() => { sessionStorage.setItem('listingbug_open_saved_tab', 'listings'); onNavigate?.('search-listings'); }} className="mt-3 text-sm font-medium text-[#342e37] dark:text-white hover:underline flex items-center gap-1">
+                <button onClick={() => { sessionStorage.setItem('listingbug_open_saved_tab', 'true'); onNavigate?.('search-listings'); }} className="mt-3 text-sm font-medium text-[#342e37] dark:text-white hover:underline flex items-center gap-1">
                   View all {savedListings.length} saved listings <ArrowRight className="w-4 h-4" />
                 </button>
               )}

@@ -114,7 +114,7 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
         const isTrialing = data.plan_status === 'trialing' || !!data.trial_ends_at;
         // If user is in trial, show "Trial" as current plan; otherwise show actual plan
         const planName = isTrialing ? 'Trial' : (data.plan === 'professional' ? 'Professional' : data.plan === 'enterprise' ? 'Enterprise' : 'Starter');
-        const price = data.plan === 'professional' ? 49 : data.plan === 'enterprise' ? 0 : 19;
+        const price = isTrialing ? 0 : data.plan === 'professional' ? 49 : data.plan === 'enterprise' ? 0 : 19;
         const limit = data.plan === 'professional' ? 10000 : data.plan === 'enterprise' ? 999999 : 4000;
         setSubscription(prev => ({
           ...prev,

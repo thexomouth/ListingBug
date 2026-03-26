@@ -119,23 +119,19 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim() || !company.trim()) {
-      toast.error('Please fill in all fields');
+    if (!name.trim() && !company.trim()) {
+      toast.error('Please fill in at least one field to update');
       return;
     }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) throw new Error('Not authenticated');
-      
-      const { error } = await supabase
-        .from('users')
-        .upsert({
-          id: user.id,
-          full_name: name.trim(),
-          company: company.trim(),
-          updated_at: new Date().toISOString(),
-        });
-      
+
+      const updatePayload: any = { id: user.id, updated_at: new Date().toISOString() };
+      if (name.trim()) updatePayload.full_name = name.trim();
+      if (company.trim()) updatePayload.company = company.trim();
+
+      const { error } = await supabase.from('users').upsert(updatePayload);
       if (error) throw error;
       toast.success('Account settings saved successfully');
     } catch (err: any) {
@@ -159,15 +155,13 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
     }
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-      
-      // Call edge function to verify current password and update
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
       const response = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/update-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           currentPassword,
@@ -189,7 +183,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   };
 
   const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
-  const isProfileFormValid = name.trim() && company.trim();
+  const isProfileFormValid = name.trim() || company.trim();
 
   const handleDeleteAccount = async () => {
     setShowDeleteConfirm(false);
