@@ -127,7 +127,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   const [automationsLoading, setAutomationsLoading] = useState(true);
 
 // Load automations from Supabase — works on any device
-  const loadAutomations = useCallback(async () => {
+  const loadAutomations = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) { setAutomationsLoading(false); return; }
     const { data, error } = await supabase
@@ -154,7 +154,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
     }));
     setAutomations(mapped);
     setAutomationsLoading(false);
-  }, []);
+  };
 
   // Load on mount and whenever auth state changes (handles mobile session restore)
   useEffect(() => {
