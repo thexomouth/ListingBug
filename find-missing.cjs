@@ -1,6 +1,7 @@
 const fs = require('fs');
-const v = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/AutomationsManagementPage.tsx', 'utf8');
-console.log('AlertTriangle count:', (v.match(/AlertTriangle/g)||[]).length);
-// Also check planLimits imports still needed
-console.log('canCreateAutomation uses:', (v.match(/canCreateAutomation/g)||[]).length);
-console.log('getNextPlan uses:', (v.match(/getNextPlan/g)||[]).length);
+const amp = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/AutomationsManagementPage.tsx', 'utf8');
+const lines = amp.split('\n');
+// Find the state declarations around the automations/automationUsage area
+lines.forEach((l, i) => {
+  if (i >= 110 && i <= 140) console.log(i+1, l);
+});

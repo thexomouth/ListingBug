@@ -10,7 +10,6 @@ import { IntegrationManagementModal, Integration as IntegrationInterface } from 
 import { AutomationLimitModal } from './AutomationLimitModal';
 import { RunDetailsModal } from './RunDetailsModal';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
-import { canCreateAutomation, getCurrentPlan, getAutomationUsage, getNextPlan } from './utils/planLimits';
 import { 
   Zap, 
   Plus, 
@@ -117,6 +116,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   
   // Automation limit modal state
   const [limitModalOpen, setLimitModalOpen] = useState(false);
+
+  // Automations loaded from Supabase (see loadAutomations below)
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [automationsLoading, setAutomationsLoading] = useState(true);
+
   // Plan fetched from Supabase — do not use localStorage-based getCurrentPlan() for gate logic
   const [currentPlan, setCurrentPlan] = useState<'trial' | 'starter' | 'professional' | 'enterprise'>('trial');
   const PLAN_SLOTS: Record<string, number> = { trial: 0, starter: 1, professional: Infinity, enterprise: Infinity };
@@ -126,10 +130,6 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
     max: maxSlots,
     isAtLimit: maxSlots !== Infinity && automations.length >= maxSlots,
   };
-
-  // Automations loaded from Supabase (see loadAutomations below)
-  const [automations, setAutomations] = useState<Automation[]>([]);
-  const [automationsLoading, setAutomationsLoading] = useState(true);
 
 // Load automations from Supabase — works on any device
   const loadAutomations = async () => {
