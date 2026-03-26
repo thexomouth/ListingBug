@@ -9,49 +9,61 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  isChunkError: boolean;
+}
+
+function isChunkLoadError(error: Error | null): boolean {
+  if (!error) return false;
+  return (
+    error.message?.includes('Failed to fetch dynamically imported module') ||
+    error.message?.includes('Importing a module script failed') ||
+    error.message?.includes('error loading dynamically imported module') ||
+    error.name === 'ChunkLoadError'
+  );
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
+    isChunkError: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, isChunkError: isChunkLoadError(error) };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
 
-    // Auto-reload on stale chunk errors (happens after new deploy)
-    const isChunkError =
-      error.message?.includes('Failed to fetch dynamically imported module') ||
-      error.message?.includes('Importing a module script failed') ||
-      error.message?.includes('error loading dynamically imported module') ||
-      error.name === 'ChunkLoadError';
+    if (isChunkLoadError(error)) {
+      // Use localStorage + timestamp to prevent reload loops
+      // Only auto-reload once per 30 seconds
+      const lastReload = localStorage.getItem('lb_chunk_reload_at');
+      const now = Date.now();
+      const thirtySeconds = 30 * 1000;
 
-    if (isChunkError) {
-      // Avoid reload loop — only reload once per session
-      const reloaded = sessionStorage.getItem('chunk_reload');
-      if (!reloaded) {
-        sessionStorage.setItem('chunk_reload', '1');
+      if (!lastReload || now - parseInt(lastReload) > thirtySeconds) {
+        localStorage.setItem('lb_chunk_reload_at', String(now));
         window.location.reload();
       }
+      // If we reloaded recently and still erroring, fall through to show the UI
     }
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false, error: null });
+    localStorage.removeItem('lb_chunk_reload_at');
+    this.setState({ hasError: false, error: null, isChunkError: false });
     window.location.href = '/';
+  };
+
+  private handleRefresh = () => {
+    localStorage.removeItem('lb_chunk_reload_at');
+    window.location.reload();
   };
 
   public render() {
     if (this.state.hasError) {
-      const isChunkError =
-        this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
-        this.state.error?.message?.includes('Importing a module script failed');
-
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="max-w-md w-full text-center">
@@ -60,16 +72,16 @@ export class ErrorBoundary extends Component<Props, State> {
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
             </div>
-            <h1 className="mb-4">
-              {isChunkError ? 'Update available' : 'Something went wrong'}
+            <h1 className="mb-4 text-xl font-bold">
+              {this.state.isChunkError ? 'Update available' : 'Something went wrong'}
             </h1>
             <p className="text-gray-600 mb-6 leading-relaxed">
-              {isChunkError
-                ? 'ListingBug was just updated. Please refresh to load the latest version.'
+              {this.state.isChunkError
+                ? 'ListingBug was just updated. Tap Refresh to load the latest version.'
                 : 'An unexpected error occurred. Please try refreshing the page or return to the homepage.'}
             </p>
             <div className="flex gap-3 justify-center">
-              <Button onClick={() => window.location.reload()} variant="outline">
+              <Button onClick={this.handleRefresh} variant="outline">
                 Refresh Page
               </Button>
               <Button onClick={this.handleReset}>
