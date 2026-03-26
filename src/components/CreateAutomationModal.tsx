@@ -14,6 +14,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWalkthrough } from './WalkthroughContext';
+import { supabase } from '../lib/supabase';
 import { InteractiveWalkthroughOverlay } from './InteractiveWalkthroughOverlay';
 import { LBInput } from './design-system/LBInput';
 import { LBSelect } from './design-system/LBSelect';

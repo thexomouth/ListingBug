@@ -302,8 +302,8 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       name: 'Twilio', 
       icon: MessageSquare, 
       connected: false, 
-      description: 'SMS notifications',
-      category: 'future'
+      description: 'Push agent contacts to your Twilio Sync List',
+      category: 'available'
     },
     { 
       id: 'webhook', 
