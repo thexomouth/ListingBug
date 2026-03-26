@@ -263,7 +263,7 @@ export function ChangePlanModal({
               <div>
                 <h2 className="font-bold text-[#342e37] dark:text-[#0F1115]">Change Your Plan</h2>
                 <p className="text-sm text-[#342e37]/80 dark:text-white/70 mt-1">
-                  Currently on <span className="font-medium">{currentPlan}</span> - ${currentPrice}/month
+                  {isTrialUser ? 'Free trial — choose a plan to continue' : `Currently on ${currentPlan} — $${currentPrice}/month`}
                 </p>
               </div>
               <button
@@ -278,7 +278,7 @@ export function ChangePlanModal({
             {/* LIGHT MODE: Light background | DARK MODE: dark:bg-[#2F2F2F] */}
             <div className="p-6 bg-white dark:bg-[#2F2F2F]">
               <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                {plans.map((plan) => {
+                {plans.filter(plan => plan.id !== 'trial').map((plan) => {
                   const isCurrent = plan.id === currentPlanId;
                   const isSelected = plan.id === selectedPlan;
                   // Special style for trial: dark bg, yellow border, no 'Current Plan' badge
@@ -427,54 +427,55 @@ export function ChangePlanModal({
             {/* LIGHT MODE: Light background | DARK MODE: dark:bg-[#1a1a2e] */}
             <div className="p-6 max-w-2xl mx-auto bg-white dark:bg-[#2F2F2F]">
               {/* Change Summary */}
-              {/* LIGHT MODE: Light gray background | DARK MODE: dark:bg-[#1a1a2e] dark:border-white/10 */}
               <div className="bg-gray-50 dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-lg p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-center flex-1">
-                    <p className="text-sm text-gray-600 dark:text-white/60 mb-1">Current Plan</p>
-                    <p className="font-bold text-lg text-[#342e37] dark:text-white">{currentPlanData?.name}</p>
-                    <p className="text-sm text-gray-600 dark:text-white/60">${currentPlanData?.price}/month</p>
-                  </div>
-
-                  <div className="px-6">
-                    <ArrowRight className="w-6 h-6 text-[#342e37] dark:text-white/60" />
-                  </div>
-
-                  <div className="text-center flex-1">
-                    <p className="text-sm text-gray-600 dark:text-white/60 mb-1">New Plan</p>
+                {isTrialUser ? (
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 dark:text-white/60 mb-1">Upgrading to</p>
                     <p className="font-bold text-lg text-[#342e37] dark:text-white">{selectedPlanData?.name}</p>
                     <p className="text-sm text-gray-600 dark:text-white/60">${selectedPlanData?.price}/month</p>
                   </div>
-                </div>
-
-                {isUpgrade && (
-                  <Alert className="bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30">
-                    <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertDescription>
-                      <p className="font-medium text-blue-900 dark:text-blue-300 mb-1">Upgrading Your Plan</p>
-                      <p className="text-sm text-blue-800 dark:text-blue-200/80">
-                        Your plan starts today. You'll be billed ${selectedPlanData?.price}/month from your first payment.
-                        Your next full billing cycle starts on your renewal date.
-                      </p>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {isDowngrade && (
-                  <Alert className="bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
-                    <TrendingDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <AlertDescription>
-                      <p className="font-medium text-amber-900 dark:text-amber-300 mb-1">Downgrading Your Plan</p>
-                      <p className="text-sm text-amber-800 dark:text-amber-200/80">
-                        Your plan will change to <strong>{selectedPlanData?.name}</strong> at the end of your current billing period 
-                        (December 15, 2024). You'll continue to have access to {currentPlanData?.name} features until then.
-                      </p>
-                    </AlertDescription>
-                  </Alert>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-center flex-1">
+                        <p className="text-sm text-gray-600 dark:text-white/60 mb-1">Current Plan</p>
+                        <p className="font-bold text-lg text-[#342e37] dark:text-white">{currentPlanData?.name}</p>
+                        <p className="text-sm text-gray-600 dark:text-white/60">${currentPlanData?.price}/month</p>
+                      </div>
+                      <div className="px-6">
+                        <ArrowRight className="w-6 h-6 text-[#342e37] dark:text-white/60" />
+                      </div>
+                      <div className="text-center flex-1">
+                        <p className="text-sm text-gray-600 dark:text-white/60 mb-1">New Plan</p>
+                        <p className="font-bold text-lg text-[#342e37] dark:text-white">{selectedPlanData?.name}</p>
+                        <p className="text-sm text-gray-600 dark:text-white/60">${selectedPlanData?.price}/month</p>
+                      </div>
+                    </div>
+                    {isUpgrade && (
+                      <Alert className="bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30">
+                        <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <AlertDescription>
+                          <p className="font-medium text-blue-900 dark:text-blue-300 mb-1">Upgrading Your Plan</p>
+                          <p className="text-sm text-blue-800 dark:text-blue-200/80">
+                            Your plan starts today. You'll be billed ${selectedPlanData?.price}/month from your first payment.
+                          </p>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {isDowngrade && (
+                      <Alert className="bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
+                        <TrendingDown className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <AlertDescription>
+                          <p className="font-medium text-amber-900 dark:text-amber-300 mb-1">Downgrading Your Plan</p>
+                          <p className="text-sm text-amber-800 dark:text-amber-200/80">
+                            Your plan will change to <strong>{selectedPlanData?.name}</strong> at the end of your current billing period.
+                          </p>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </>
                 )}
               </div>
-
-              {/* What Changes */}
               {/* LIGHT MODE: Dark text | DARK MODE: dark:text-white */}
               <div className="mb-6">
                 <h3 className="font-bold text-[#342e37] dark:text-white mb-4">What's Changing</h3>

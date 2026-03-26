@@ -83,9 +83,9 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
   // ============================================================================
 
   const [subscription, setSubscription] = React.useState({
-    plan: 'Starter',
-    status: 'Active',
-    price: 19,
+    plan: 'Trial',
+    status: 'Trial',
+    price: 0,
     billingCycle: 'Monthly',
     nextBillingDate: '—',
     reportsLimit: 4000,

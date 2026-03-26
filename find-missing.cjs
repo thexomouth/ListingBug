@@ -1,8 +1,7 @@
 const fs = require('fs');
-const amp = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/AutomationsManagementPage.tsx', 'utf8');
-// Find where AutomationLimitModal is rendered and what props are passed
-amp.split('\n').forEach((l, i) => {
-  if (l.includes('AutomationLimitModal') || l.includes('limitModal') || l.includes('LimitModal')) {
+const c = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/APIKeysSection.tsx', 'utf8');
+c.split('\n').forEach((l,i) => {
+  if (l.includes('showKeyModal') || l.includes('KeyModal') || l.includes('setShowKey')) {
     console.log(i+1, l.trim());
   }
 });

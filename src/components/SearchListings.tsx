@@ -1397,6 +1397,10 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         await supabase.from('saved_listings').delete()
           .eq('user_id', user.id)
           .eq('listing_id', String(listing.id));
+        const updated = savedListings.filter(l => l.id !== listing.id);
+        localStorage.setItem('listingbug_saved_listings', JSON.stringify(updated));
+        window.dispatchEvent(new Event('savedListingsUpdated'));
+        window.dispatchEvent(new Event('savedListingsChanged'));
       }
     } else {
       const savedListing = { ...listing, savedAt: new Date().toISOString() };
@@ -1413,6 +1417,12 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         if (saveErr) {
           console.error('[SaveListing] upsert error:', saveErr.code, saveErr.message, saveErr.details);
           toast.error('Save failed: ' + saveErr.message);
+        } else {
+          // Update localStorage cache and notify dashboard
+          const updated = [savedListing, ...savedListings.filter(l => l.id !== listing.id)];
+          localStorage.setItem('listingbug_saved_listings', JSON.stringify(updated));
+          window.dispatchEvent(new Event('savedListingsUpdated'));
+          window.dispatchEvent(new Event('savedListingsChanged'));
         }
       }
     }

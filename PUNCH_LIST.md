@@ -14,17 +14,17 @@
 ## 🔴 CRITICAL — Fix Now
 
 ### In Progress (Current Session)
-- [ ] changeplanmodal indicates current plan is starter plan when my account is trial. only add current plan if user is on a paid account and be sure to add it to the right one.
-- [ ] in changeplanmodal, add an 'upgrade to starter' button for the starter plan for trial user accounts (not an option right now)
-- [ ] saved listings are not saving. saving in listingdetailmodal then closing the modal and reopening it shows unsaved icon design and the saved listing is not appearing on dashboar dor in listings/savedlistings
-- [ ] api key generator still not generating ' '
-- [ ] saved listings are not saving. leave the page, navigate back and it's reset. this needs to be saved to the user account until they remove it
+- [x] changeplanmodal indicates current plan is starter plan when my account is trial. only add current plan if user is on a paid account and be sure to add it to the right one.
+- [x] in changeplanmodal, add an 'upgrade to starter' button for the starter plan for trial user accounts (not an option right now)
+- [x] saved listings are not saving. saving in listingdetailmodal then closing the modal and reopening it shows unsaved icon design and the saved listing is not appearing on dashboar dor in listings/savedlistings
+- [x] api key generator still not generating ' '
+- [x] saved listings are not saving. leave the page, navigate back and it's reset. this needs to be saved to the user account until they remove it
 - [x] remove all toggles except pricedrop from listings/search
 - [x] password reset tool doesn't recognize an incorrect current password or is failing to initialize 'failed to fetch'
 - [x] trying to update profile information: "Could not find the 'updated_at' column of 'users' in the schema cache" and "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
 - [x] when updating profile information in the profile information section of account/profile, allow users to update any one field, don't require full section fill in order to update. for instance, if they onyl wanna update name or company it's fine - update shouldn't be dependent on all fields filled for profile information section
 - [ ] in listings/history, if the search run was from a saved search with a name or from an automation with a name, impor the name and use it for the container heading, if no name for the search or run exists, then use the current city/state for container title/heading
-- [x] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab
+- [x] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab — FIXED: both dashboard card and "View all X" link now set listingbug_open_tab='listings' (tab value for Saved Listings, not 'saved' which is Saved Searches)
 - [ ] the preview and test page shows a preview payload that was made during prototyping phase and it needs to be dynamic to reflect all of the fields we recieve from our rentcast get sale listings GET function in total which is much more vast, and the fields each platform will want/accept. this  preview payload needs to be prepped for each platform integration/ data 'destination' aswell
 - [x] i want to remove the full field mappings section that comes unhidden after selecting a destination in create automation page (still not right)
 - [x] listings page got a background visible in all tabs - remove that shit
@@ -51,7 +51,7 @@ Fire off a single POST request as a form or JSON.
 PUT
 Fire off a single PUT request as a form or JSON." also the configure step from zapier doesn't GIVE a webhooks url, it expects the user to input a url. so now both listingbug and zapier are requesting a webhook url.
 - [x] integrations section of dashboard doesn't reflect connected integrations - shows zero state to account with four connected integrations
-- [x] new and old automations in myautomations are still fucking disappearing after navigating away or refreshing. this is fucking critical to the entire company we have to get this right
+- [x] new and old automations in myautomations are still disappearing after navigating away or refreshing — FIXED this session: TDZ crash (automationUsage before automations useState), AlertTriangle missing from lucide block, AutomationLimitModal crashing on undefined planInfo for 'trial'/'professional' keys, stale planLimits import removed
 - [ ] 
 - [ ] 
 - [ ] 
@@ -280,7 +280,8 @@ instantly recognizes, then show the product doing it.
 - [x] Dashboard automations — fixed: was reading from localStorage; now queries Supabase
 - [x] Automation creation limit — enforced from Supabase plan (trial=0, starter=1, pro=unlimited)
 - [x] Profile update — fixed: column was 'name' not 'full_name', removed non-existent updated_at, allow partial field updates
-- [x] Password updater — deployed update-password edge function; verifies current password server-side via service role, updates via admin API
-- [x] Billing trial price — now shows $0 for trial accounts instead of $19
-- [x] Saved listings dashboard nav — both cards now navigate to Listings tab (not Saved Searches)
-- [x] Dashboard plan/slot counter — now fetches real plan from Supabase users table
+- [x] Password updater — replaced broken update-password edge function fetch with direct Supabase client calls: signInWithPassword to verify current password, then updateUser to set new one. No edge function needed.
+- [x] Profile update — fixed: public.users has 'name' not 'full_name'; added updated_at column via ALTER TABLE; changed upsert→update to prevent email NOT NULL constraint violation on insert; partial updates allowed (name or company alone)
+- [x] Saved listings dashboard nav — both card and "View all X saved listings" now set listingbug_open_tab='listings' (correct tab key); previously used listingbug_open_saved_tab='true' which routes to Saved Searches tab instead
+- [x] stripe_subscription_start removed from SearchListings.tsx and UsagePage.tsx queries — column doesn't exist in public.users schema
+- [x] Automations page TDZ crash fixed — automations useState moved above automationUsage derived object; AlertTriangle added to lucide import block; AutomationLimitModal planInfo lookup guarded with ?? fallback; stale planLimits import removed
