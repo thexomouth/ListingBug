@@ -190,8 +190,6 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
         toast.success(`${names[justConnected] ?? justConnected} connected successfully!`);
       });
     }
-  }, 400);
-    }
   }, []);
 
   const handleDisconnect = async (integrationId: string) => {
