@@ -556,9 +556,27 @@ const handleDeleteAutomation = async (id: string) => {
       return;
     }
 
-    // Reload from DB so local state matches exactly what's in Supabase
-    await loadAutomations();
+    // Immediately add to local state so UI updates without waiting for DB round-trip
+    const newAutomation: any = {
+      id: inserted.id,
+      name: inserted.name,
+      searchName: inserted.search_name ?? '',
+      schedule: [inserted.schedule, inserted.schedule_time ? `at ${inserted.schedule_time}` : ''].filter(Boolean).join(' '),
+      destination: {
+        type: inserted.destination_type,
+        label: inserted.destination_label ?? inserted.destination_type,
+        config: inserted.destination_config ?? {}
+      },
+      searchCriteria: inserted.search_criteria ?? {},
+      active: inserted.active ?? true,
+      status: 'idle',
+      lastRun: undefined,
+      nextRun: 'Pending first run',
+    };
+    setAutomations(prev => [newAutomation, ...prev]);
     setActiveTab('automations');
+    // Also sync from DB in background to ensure consistency
+    loadAutomations();
     toast.success('Automation created successfully!');
 
     if (walkthroughStep3Active) {
