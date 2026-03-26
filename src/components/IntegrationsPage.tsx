@@ -180,11 +180,17 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     const params = new URLSearchParams(window.location.search);
     const justConnected = params.get('connected');
     if (justConnected) {
-      toast.success('Integration connected! Configure your settings below.');
-      setTimeout(() => {
-        handleConnectClick(justConnected);
-        window.history.replaceState({}, '', '/integrations');
-      }, 400);
+      window.history.replaceState({}, '', '/integrations');
+      // Reload connected state from DB then show success
+      loadConnectedIntegrations().then(() => {
+        const names: Record<string, string> = {
+          google: 'Google Sheets', mailchimp: 'Mailchimp', hubspot: 'HubSpot',
+          sendgrid: 'SendGrid', twilio: 'Twilio',
+        };
+        toast.success(`${names[justConnected] ?? justConnected} connected successfully!`);
+      });
+    }
+  }, 400);
     }
   }, []);
 
