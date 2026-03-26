@@ -122,40 +122,55 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   const currentPlan = getCurrentPlan();
   const automationUsage = getAutomationUsage(currentPlan);
 
-  // Load automations from localStorage
-  const [automations, setAutomations] = useState<Automation[]>(() => {
-    const stored = localStorage.getItem('listingbug_automations');
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch (e) {
-        console.error('Failed to parse stored automations:', e);
-      }
-    }
-    return [
-    {
-      id: '1',
-      name: 'Daily Active Listings to MailChimp',
-      searchName: 'Foreclosures - Miami Area',
-      schedule: 'Daily at 8:00 AM PST',
-      destination: { type: 'mailchimp', label: 'MailChimp' },
-      active: true,
-      status: 'running',
-      lastRun: {
-        date: new Date().toISOString(),
-        status: 'success',
-        listingsSent: 12
-      },
-      nextRun: 'Tomorrow at 8:00 AM'
-    }
-  ]});
+  // Automations loaded from Supabase (see loadAutomations below)
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [automationsLoading, setAutomationsLoading] = useState(true);
 
-  // Save automations to localStorage whenever they change
+// Load automations from Supabase — works on any device
+  const loadAutomations = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) { setAutomationsLoading(false); return; }
+    const { data, error } = await supabase
+      .from('automations')
+      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[Automations] load error:', error.message);
+      setAutomationsLoading(false);
+      return;
+    }
+    const mapped = (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      searchName: row.search_name ?? '',
+      schedule: [row.schedule, row.schedule_time ? `at ${row.schedule_time}` : ''].filter(Boolean).join(' '),
+      destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
+      searchCriteria: row.search_criteria ?? {},
+      active: row.active ?? true,
+      status: 'idle',
+      lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
+      nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+    }));
+    setAutomations(mapped);
+    setAutomationsLoading(false);
+  };
+
+  // Load on mount and whenever auth state changes (handles mobile session restore)
   useEffect(() => {
-    localStorage.setItem('listingbug_automations', JSON.stringify(automations));
-  }, [automations]);
+    loadAutomations();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        loadAutomations();
+      }
+      if (event === 'SIGNED_OUT') {
+        setAutomations([]);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-  // Check for prefilled automation data from search page
+// Check for prefilled automation data from search page
   useEffect(() => {
     const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
     if (prefillData) {
@@ -489,7 +504,8 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
     }
   };
 
-const handleDeleteAutomation = (id: string) => {
+const handleDeleteAutomation = async (id: string) => {
+    await supabase.from('automations').delete().eq('id', id);
     setAutomations(prev => prev.filter(a => a.id !== id));
     toast.success('Automation deleted');
   };
@@ -507,26 +523,48 @@ const handleDeleteAutomation = (id: string) => {
     toast.success('Automation duplicated');
   };
 
-  const handleAutomationCreated = (automation: any) => {
-    const newAutomation: any = {
-      id: automation.id,
-      name: automation.name,
-      searchName: automation.searchName,
-      schedule: automation.schedule + (automation.scheduleTime ? ` at ${automation.scheduleTime}` : ''),
-      destination: {
-        type: automation.destination.type,
-        label: automation.destination.label,
-        config: automation.destination.config
-      },
-      // Store search criteria
-      searchCriteria: automation.searchCriteria,
-      activeFilters: automation.activeFilters,
-      status: automation.status || 'running',
-      active: true,
-      listingsProcessed: automation.listingsProcessed || 0,
-      lastRun: automation.lastRun,
-      nextRun: automation.schedule.includes('Real-time') ? 'When new matches appear' : 'Pending first run'
-    };
+  const handleAutomationCreated = async (automation: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      toast.error('You must be signed in to create automations.');
+      return;
+    }
+
+    // Write to Supabase so it's available on all devices
+    const { data: inserted, error } = await supabase
+      .from('automations')
+      .insert({
+        user_id: session.user.id,
+        name: automation.name,
+        search_name: automation.searchName ?? '',
+        search_criteria: automation.searchCriteria ?? {},
+        destination_type: automation.destination?.type ?? '',
+        destination_label: automation.destination?.label ?? '',
+        destination_config: automation.destination?.config ?? {},
+        schedule: automation.schedule ?? 'daily',
+        schedule_time: automation.scheduleTime ?? '08:00',
+        sync_frequency: automation.syncFrequency ?? '1',
+        sync_rate: automation.syncRate ?? 'day',
+        active: true,
+      })
+      .select()
+      .single();
+
+    if (error || !inserted) {
+      console.error('[Automations] insert failed:', error?.message);
+      toast.error('Failed to save automation. Please try again.');
+      return;
+    }
+
+    // Reload from DB so local state matches exactly what's in Supabase
+    await loadAutomations();
+    setActiveTab('automations');
+    toast.success('Automation created successfully!');
+
+    if (walkthroughStep3Active) {
+      completeStep(3);
+    }
+  };
     setAutomations(prev => [newAutomation, ...prev]);
     setActiveTab('automations'); // Switch to automations tab after creation
     toast.success('Automation created successfully!');
