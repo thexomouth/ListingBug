@@ -118,8 +118,15 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   
   // Automation limit modal state
   const [limitModalOpen, setLimitModalOpen] = useState(false);
-  const currentPlan = getCurrentPlan();
-  const automationUsage = getAutomationUsage(currentPlan);
+  // Plan fetched from Supabase — do not use localStorage-based getCurrentPlan() for gate logic
+  const [currentPlan, setCurrentPlan] = useState<'trial' | 'starter' | 'professional' | 'enterprise'>('trial');
+  const PLAN_SLOTS: Record<string, number> = { trial: 0, starter: 1, professional: Infinity, enterprise: Infinity };
+  const maxSlots = PLAN_SLOTS[currentPlan] ?? 0;
+  const automationUsage = {
+    current: automations.length,
+    max: maxSlots,
+    isAtLimit: maxSlots !== Infinity && automations.length >= maxSlots,
+  };
 
   // Automations loaded from Supabase (see loadAutomations below)
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -127,14 +134,22 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
 
 // Load automations from Supabase — works on any device
   const loadAutomations = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       console.warn('[loadAutomations] no session, skipping');
       setAutomationsLoading(false);
       return;
     }
-    const userId = session.user.id;
+    const userId = user.id;
     console.log('[loadAutomations] fetching for user', userId);
+
+    // Fetch plan from users table
+    const { data: userData } = await supabase
+      .from('users')
+      .select('plan')
+      .eq('id', userId)
+      .single();
+    if (userData?.plan) setCurrentPlan(userData.plan as any);
     const { data, error } = await supabase
       .from('automations')
       .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
@@ -608,7 +623,7 @@ const handleDeleteAutomation = async (id: string) => {
               </div>
               <p className="text-gray-900 dark:text-white text-[18px] font-bold mb-2">Automation Limit Reached</p>
               <p className="text-gray-600 dark:text-[#EBF2FA] text-[14px] mb-6">
-                You've used {automationUsage.current} of {automationUsage.max} automation slots on your {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan.
+                You've used {automationUsage.current} of {automationUsage.max === Infinity ? '∞' : automationUsage.max} automation slots on your {currentPlan === 'professional' ? 'Professional' : currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan.
               </p>
               <div className="flex items-center justify-center gap-3">
                 <LBButton 
@@ -628,11 +643,10 @@ const handleDeleteAutomation = async (id: string) => {
           ) : (
             <CreateAutomationPage
               onAutomationCreated={(automation) => {
-                // Check limit before creating
-                const limitCheck = canCreateAutomation(currentPlan);
-                
-                if (!limitCheck.allowed && !walkthroughStep3Active) {
-                  // Show limit modal
+                // Check limit using live Supabase-fetched plan + count
+                const atLimit = maxSlots !== Infinity && automations.length >= maxSlots;
+
+                if (atLimit && !walkthroughStep3Active) {
                   setLimitModalOpen(true);
                   toast.error('Automation limit reached');
                   return;
