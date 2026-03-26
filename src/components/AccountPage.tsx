@@ -61,12 +61,12 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('full_name, company, created_at')
+            .select('name, company, created_at')
             .eq('id', user.id)
             .single();
 
           if (profileData) {
-            if (profileData.full_name) setName(profileData.full_name);
+            if (profileData.name) setName(profileData.name);
             if (profileData.company) setCompany(profileData.company);
             if (profileData.created_at) setCreatedAt(profileData.created_at);
           }
@@ -127,8 +127,8 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) throw new Error('Not authenticated');
 
-      const updatePayload: any = { id: user.id, updated_at: new Date().toISOString() };
-      if (name.trim()) updatePayload.full_name = name.trim();
+      const updatePayload: any = { id: user.id };
+      if (name.trim()) updatePayload.name = name.trim();
       if (company.trim()) updatePayload.company = company.trim();
 
       const { error } = await supabase.from('users').upsert(updatePayload);
@@ -153,25 +153,22 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
       toast.error('New password must be at least 8 characters');
       return;
     }
-    
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error('Not authenticated');
-      const response = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/update-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
+      // Verify current password by re-signing in
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error('Not authenticated');
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
       });
-      
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to update password');
-      
+      if (signInError) throw new Error('Current password is incorrect');
+
+      // Current password verified — update to new password
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw new Error(updateError.message || 'Failed to update password');
+
       toast.success('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');

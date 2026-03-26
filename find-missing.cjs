@@ -1,13 +1,8 @@
 const fs = require('fs');
-// Check update-password edge function
-const ef = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/supabase/functions/update-password/index.ts', 'utf8');
-console.log('=== update-password edge fn ===');
-console.log(ef);
-// Check how listings tab switching works
-const sl = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/SearchListings.tsx', 'utf8');
-const lines = sl.split('\n');
-lines.forEach((l, i) => {
-  if (l.includes('open_saved') || l.includes('open_tab') || l.includes('savedlistings') || l.includes('savedListings') && l.includes('sessionStorage')) {
-    console.log('SearchListings', i+1, l.trim());
+const v = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/SearchListings.tsx', 'utf8');
+const lines = v.split('\n');
+lines.forEach((l,i) => {
+  if (l.includes('Saved Listings') || l.includes('Saved Searches') || l.includes('tab="saved"') || l.includes("tab='saved'") || (l.includes('saved') && l.includes('Tab'))) {
+    console.log(i+1, l.trim().substring(0,120));
   }
 });

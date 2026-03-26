@@ -21,21 +21,21 @@
 - [ ] saved listings are not saving. leave the page, navigate back and it's reset. this needs to be saved to the user account until they remove it
 - [x] remove all toggles except pricedrop from listings/search
 - [ ] password reset tool doesn't recognize an incorrect current password or is failing to initialize 'failed to fetch'
-- [ ] update supa schema to track full name for users "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
-- [ ] when updating profile information in the profile information section of account/profile, allow users to update any one field, don't require full section fill in order to update. for instance, if they onyl wanna update name or company it's fine - update shouldn't be dependent on all fields filled for profile information section
+- [ ] trying to update profile information: "Could not find the 'updated_at' column of 'users' in the schema cache" and "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
+- [x] when updating profile information in the profile information section of account/profile, allow users to update any one field, don't require full section fill in order to update. for instance, if they onyl wanna update name or company it's fine - update shouldn't be dependent on all fields filled for profile information section
 - [ ] in listings/history, if the search run was from a saved search with a name or from an automation with a name, impor the name and use it for the container heading, if no name for the search or run exists, then use the current city/state for container title/heading
 - [x] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab
 - [ ] the preview and test page shows a preview payload that was made during prototyping phase and it needs to be dynamic to reflect all of the fields we recieve from our rentcast get sale listings GET function in total which is much more vast, and the fields each platform will want/accept. this  preview payload needs to be prepped for each platform integration/ data 'destination' aswell
-- [/] i want to remove the full field mappings section that comes unhidden after selecting a destination in create automation page (still not right)
+- [x] i want to remove the full field mappings section that comes unhidden after selecting a destination in create automation page (still not right)
 - [x] listings page got a background visible in all tabs - remove that shit
-- [ ] automation page create an automation tab, when choosing a destination, themap fields section still shows up. remove the entire
-- [ ] saved listings are not saving in the db to the user account - they give the appearance of saving but are no longer saved after refresh and do not populate in L:istings/saved listings or dashboard in the saved listigns section
-- [ ] automations page my automations tab needs a 'run' button. also the 'active' column is offset from the toggle that should live in it. perhaps the trash icon to remvoe automations is sharing the column with the toggle? if so, give the trash icon it's own blank column with no heading
+- [/] automation page create an automation tab, when choosing a destination, themap fields section still shows up. remove the entire
+- [x] saved listings are not saving in the db to the user account - they give the appearance of saving but are no longer saved after refresh and do not populate in L:istings/saved listings or dashboard in the saved listigns section
+- [x] automations page my automations tab needs a 'run' button. also the 'active' column is offset from the toggle that should live in it. perhaps the trash icon to remvoe automations is sharing the column with the toggle? if so, give the trash icon it's own blank column with no heading
 - [ ] cities in our city/state database used for the autofill in listings search isn't comprehensive. it's missing many cities. for instance it only has one arlington in texas when virginia has an arlington, and it doesn't have smaller towns like paris texas or hell texas. i'd like to expand our list to cover alllllll cities
 - [ ] we need to ensure enforcement of accounttype limitations are in place. 4000,10000 listings per month for starter and professional. 1 automation cap for starter. 
-- [ ] let's introduce a 1000 listing cap for trial accounts since they get one week, 1/4th of a month; 1/4th the allowance of a starter plan
+- [ ] let's introduce a 1000 listing cap for trial accounts since they get one week, 1/4th of a month; 1/4th the allowance of a starter plan and ensure that usage metering throughout the site reflects this accounttype-based metering and enforcement
 - [ ] we have logic that remembers the last tab someone was on within listings,automations, and account pages. however, if a user uses the navigation menu to select and navigate to one of these pages, then it should default to the first tab in the respective tab menu eg listings/search, automations/create, and account/profile
-- [ ] in account billing, the 'current plan' section says trial plan $19/mo. but the trial is free. can you make sure the text in that section is dynamic reflecting $0 for trial $19 for star and $49 for pro
+- [x] in account billing, the 'current plan' section says trial plan $19/mo. but the trial is free. can you make sure the text in that section is dynamic reflecting $0 for trial $19 for star and $49 for pro
 - [/] some of the integrations, hubspot, mailchimp and google sheets, are returning this error [Unexpected token '<', " <!DOCTYPE "... is not valid JSON"]
 - [ ] in mailchimp integration settings, after connecting successfully, we prompt the user to type in the audience id, but instead we should run a get function to check all their audiences, and make the text input into a drop down from which they can select from their existing audiences. also the tag input field should be optional
 - [ ] tried running an automation search -> mailchimp and got this error "Run failed: Failed to fetch"
@@ -50,8 +50,8 @@ POST
 Fire off a single POST request as a form or JSON.
 PUT
 Fire off a single PUT request as a form or JSON." also the configure step from zapier doesn't GIVE a webhooks url, it expects the user to input a url. so now both listingbug and zapier are requesting a webhook url.
-- [ ] integrations section of dashboard doesn't reflect connected integrations - shows zero state to account with four connected integrations
-- [ ] new and old automations in myautomations are still fucking disappearing after navigating away or refreshing. this is fucking critical to the entire company we have to get this right
+- [x] integrations section of dashboard doesn't reflect connected integrations - shows zero state to account with four connected integrations
+- [x] new and old automations in myautomations are still fucking disappearing after navigating away or refreshing. this is fucking critical to the entire company we have to get this right
 - [ ] 
 - [ ] 
 - [ ] 

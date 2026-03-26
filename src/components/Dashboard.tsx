@@ -311,7 +311,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             <Card
               className="cursor-pointer transition-all border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-700 flex-1"
               onClick={() => {
-                sessionStorage.setItem('listingbug_open_saved_tab', 'true');
+                sessionStorage.setItem('listingbug_open_tab', 'listings');
                 onNavigate?.('search-listings');
               }}
             >
@@ -436,7 +436,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 ))}
               </div>
               {savedListings.length > 4 && (
-                <button onClick={() => { sessionStorage.setItem('listingbug_open_saved_tab', 'true'); onNavigate?.('search-listings'); }} className="mt-3 text-sm font-medium text-[#342e37] dark:text-white hover:underline flex items-center gap-1">
+                <button onClick={() => { sessionStorage.setItem('listingbug_open_tab', 'listings'); onNavigate?.('search-listings'); }} className="mt-3 text-sm font-medium text-[#342e37] dark:text-white hover:underline flex items-center gap-1">
                   View all {savedListings.length} saved listings <ArrowRight className="w-4 h-4" />
                 </button>
               )}
