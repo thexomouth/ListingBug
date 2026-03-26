@@ -118,32 +118,31 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     fetchUsage();
   }, []);
 
-  // Load automations from localStorage
+  // Load automations from Supabase
   useEffect(() => {
-    const loadAutomations = () => {
-      const stored = localStorage.getItem('listingbug_automations');
-      if (stored) {
-        try {
-          const automations = JSON.parse(stored);
-          setActiveAutomations(Array.isArray(automations) ? automations : []);
-        } catch (e) {
-          setActiveAutomations([]);
-        }
-      } else {
-        setActiveAutomations([]);
+    const loadAutomations = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('automations')
+        .select('id,name,destination_type,destination_label,destination_config,active,last_run_at,next_run_at,schedule')
+        .eq('user_id', user.id)
+        .eq('active', true)
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setActiveAutomations(data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
+          status: 'idle',
+          lastRun: row.last_run_at,
+          nextRun: row.next_run_at,
+          schedule: row.schedule,
+          active: row.active,
+        })));
       }
     };
     loadAutomations();
-    const handleStorageChange = () => {
-      loadAutomations();
-      setUserDataState(getUserDataState());
-    };
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('automationsChanged', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('automationsChanged', handleStorageChange);
-    };
   }, []);
 
   // Load saved listings — Supabase is source of truth, localStorage is cache
