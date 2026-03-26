@@ -128,17 +128,17 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
 
 // Load automations from Supabase — works on any device
   const loadAutomations = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
-      console.warn('[loadAutomations] no session, skipping');
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser?.id) {
+      console.warn('[loadAutomations] no authenticated user, skipping');
       setAutomationsLoading(false);
       return;
     }
-    console.log('[loadAutomations] fetching for user', session.user.id);
+    console.log('[loadAutomations] fetching for user', currentUser.id);
     const { data, error } = await supabase
       .from('automations')
       .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
-      .eq('user_id', session.user.id)
+      .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false });
     if (error) {
       console.error('[Automations] load error:', error.message);
@@ -535,8 +535,8 @@ const handleDeleteAutomation = async (id: string) => {
   };
 
   const handleAutomationCreated = async (automation: any) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser?.id) {
       toast.error('You must be signed in to create automations.');
       return;
     }
@@ -545,7 +545,7 @@ const handleDeleteAutomation = async (id: string) => {
     const { data: inserted, error } = await supabase
       .from('automations')
       .insert({
-        user_id: session.user.id,
+        user_id: currentUser.id,
         name: automation.name,
         search_name: automation.searchName ?? '',
         search_criteria: automation.searchCriteria ?? {},
