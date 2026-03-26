@@ -63,23 +63,207 @@ export function ActivateAutomationModal({
   const [testSent, setTestSent] = useState(false);
   const [integrationConfig, setIntegrationConfig] = useState<Record<string, string>>({});
 
-  // Generate preview payload
-  const previewPayload = {
-    search: searchName,
-    sync_frequency: syncFrequency,
-    field_mappings: fieldMappings.reduce((acc, mapping) => {
-      acc[mapping.source] = mapping.destination;
-      return acc;
-    }, {} as Record<string, string>),
-    sample_record: {
-      address: '123 Main St, Miami, FL 33101',
-      price: 450000,
-      bedrooms: 3,
-      bathrooms: 2,
-      sqft: 1800,
-      listing_date: '2024-12-06',
-    }
+  // Full representative RentCast listing — every field we actually receive and send
+  const sampleListing = {
+    id: "8e3f1a2b-4c5d-6e7f-8a9b-0c1d2e3f4a5b",
+    formattedAddress: "2412 Maple Ave, Denver, CO 80205",
+    addressLine1: "2412 Maple Ave",
+    addressLine2: null,
+    city: "Denver",
+    state: "CO",
+    zipCode: "80205",
+    county: "Denver County",
+    latitude: 39.7392,
+    longitude: -104.9903,
+    status: "Active",
+    price: 485000,
+    priceReduced: false,
+    listedDate: "2026-03-20",
+    daysOnMarket: 6,
+    removedDate: null,
+    createdDate: "2026-03-20",
+    lastSeenDate: "2026-03-26",
+    propertyType: "Single Family",
+    bedrooms: 3,
+    bathrooms: 2,
+    squareFootage: 1820,
+    lotSize: 6200,
+    yearBuilt: 1998,
+    garage: true,
+    garageSpaces: 2,
+    pool: false,
+    stories: 2,
+    mlsNumber: "4781029",
+    mlsName: "REColorado",
+    listingType: "Standard",
+    hoa: { fee: 125 },
+    description: "Updated 3-bed, 2-bath home in central Denver. New kitchen, hardwood floors, 2-car garage.",
+    virtualTourUrl: null,
+    photos: [
+      "https://photos.rentcast.io/sample1.jpg",
+      "https://photos.rentcast.io/sample2.jpg"
+    ],
+    listingAgent: {
+      name: "Jane Smith",
+      phone: "(303) 555-0192",
+      email: "jane.smith@recolorado.com",
+      website: "https://janesmith.recolorado.com"
+    },
+    listingOffice: {
+      name: "RE/MAX Alliance",
+      phone: "(303) 555-0100",
+      email: "info@remaxalliance.com",
+      website: "https://remaxalliance.com"
+    },
+    history: [
+      { date: "2026-03-20", event: "Listed", price: 485000 },
+      { date: "2025-08-14", event: "Sold", price: 461000 }
+    ]
   };
+
+  // Build destination-specific payload shape that matches what we actually send
+  const destType = (destination?.id ?? '').toLowerCase();
+
+  const buildPreviewPayload = () => {
+    // Webhook / Zapier / Make / n8n: batch array of full listing objects + metadata
+    if (['zapier','make','n8n','webhook','custom-webhook'].includes(destType)) {
+      return {
+        metadata: {
+          automation_name: automationName,
+          search_name: searchName,
+          run_id: "run_abc123",
+          run_date: new Date().toISOString(),
+          listings_count: 1
+        },
+        listings: [sampleListing]
+      };
+    }
+
+    // Mailchimp: subscriber-style records with listing data in merge fields
+    if (destType === 'mailchimp') {
+      return {
+        list_id: "[your_audience_id]",
+        tags: ["listingbug", searchName].filter(Boolean),
+        members: [{
+          email_address: sampleListing.listingAgent.email,
+          status: "subscribed",
+          merge_fields: {
+            FNAME: sampleListing.listingAgent.name.split(' ')[0],
+            LNAME: sampleListing.listingAgent.name.split(' ').slice(1).join(' '),
+            PHONE: sampleListing.listingAgent.phone,
+            ADDRESS: sampleListing.formattedAddress,
+            PRICE: `$${sampleListing.price.toLocaleString()}`,
+            BEDS: sampleListing.bedrooms,
+            BATHS: sampleListing.bathrooms,
+            SQFT: sampleListing.squareFootage,
+            DOM: sampleListing.daysOnMarket,
+            MLS: sampleListing.mlsNumber,
+            LISTED: sampleListing.listedDate
+          }
+        }]
+      };
+    }
+
+    // Google Sheets: rows array matching column headers
+    if (['google','sheets'].includes(destType)) {
+      return {
+        spreadsheet_id: "[your_spreadsheet_id]",
+        sheet_name: "Listings",
+        write_mode: "append",
+        rows: [{
+          address: sampleListing.formattedAddress,
+          city: sampleListing.city,
+          state: sampleListing.state,
+          zip: sampleListing.zipCode,
+          price: sampleListing.price,
+          beds: sampleListing.bedrooms,
+          baths: sampleListing.bathrooms,
+          sqft: sampleListing.squareFootage,
+          lot_size: sampleListing.lotSize,
+          year_built: sampleListing.yearBuilt,
+          property_type: sampleListing.propertyType,
+          status: sampleListing.status,
+          days_on_market: sampleListing.daysOnMarket,
+          listed_date: sampleListing.listedDate,
+          mls_number: sampleListing.mlsNumber,
+          price_reduced: sampleListing.priceReduced,
+          garage: sampleListing.garage,
+          pool: sampleListing.pool,
+          hoa_fee: sampleListing.hoa?.fee ?? null,
+          agent_name: sampleListing.listingAgent.name,
+          agent_phone: sampleListing.listingAgent.phone,
+          agent_email: sampleListing.listingAgent.email,
+          office_name: sampleListing.listingOffice.name,
+          latitude: sampleListing.latitude,
+          longitude: sampleListing.longitude
+        }]
+      };
+    }
+
+    // HubSpot: contact/deal objects
+    if (destType === 'hubspot') {
+      return {
+        object_type: "contacts",
+        records: [{
+          properties: {
+            firstname: sampleListing.listingAgent.name.split(' ')[0],
+            lastname: sampleListing.listingAgent.name.split(' ').slice(1).join(' '),
+            phone: sampleListing.listingAgent.phone,
+            email: sampleListing.listingAgent.email,
+            company: sampleListing.listingOffice.name,
+            address: sampleListing.formattedAddress,
+            city: sampleListing.city,
+            state: sampleListing.state,
+            zip: sampleListing.zipCode,
+            listing_price: sampleListing.price,
+            listing_date: sampleListing.listedDate,
+            days_on_market: sampleListing.daysOnMarket,
+            mls_number: sampleListing.mlsNumber,
+            property_type: sampleListing.propertyType,
+            bedrooms: sampleListing.bedrooms,
+            bathrooms: sampleListing.bathrooms,
+            square_footage: sampleListing.squareFootage
+          }
+        }]
+      };
+    }
+
+    // SendGrid: contact marketing list
+    if (destType === 'sendgrid') {
+      return {
+        mode: "contacts",
+        contacts: [{
+          email: sampleListing.listingAgent.email,
+          first_name: sampleListing.listingAgent.name.split(' ')[0],
+          last_name: sampleListing.listingAgent.name.split(' ').slice(1).join(' '),
+          phone_number: sampleListing.listingAgent.phone,
+          custom_fields: {
+            address: sampleListing.formattedAddress,
+            price: sampleListing.price,
+            beds: sampleListing.bedrooms,
+            baths: sampleListing.bathrooms,
+            sqft: sampleListing.squareFootage,
+            days_on_market: sampleListing.daysOnMarket,
+            listed_date: sampleListing.listedDate,
+            mls_number: sampleListing.mlsNumber
+          }
+        }]
+      };
+    }
+
+    // Twilio: SMS to agent
+    if (destType === 'twilio') {
+      return {
+        to: sampleListing.listingAgent.phone,
+        body: `New listing: ${sampleListing.formattedAddress} — $${sampleListing.price.toLocaleString()}, ${sampleListing.bedrooms}bd/${sampleListing.bathrooms}ba, ${sampleListing.squareFootage} sqft. Listed ${sampleListing.listedDate}. MLS# ${sampleListing.mlsNumber}`
+      };
+    }
+
+    // Default / CSV: full listing object
+    return { listings: [sampleListing] };
+  };
+
+  const previewPayload = buildPreviewPayload();
 
   const handleSendTest = async () => {
     toast.info('Sending test data...');
@@ -210,11 +394,19 @@ export function ActivateAutomationModal({
 
             {/* Preview Payload */}
             <div>
-              <div className="flex items-center gap-2 mb-3">
-                <FileJson className="w-4 h-4 text-[#ffffff]" />
-                <h3 className="text-[15px] font-bold text-[#ffffff]">Preview Payload</h3>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <FileJson className="w-4 h-4 text-[#ffffff]" />
+                  <h3 className="text-[15px] font-bold text-[#ffffff]">
+                    Actual Payload — {destination?.name ?? 'Destination'}
+                  </h3>
+                </div>
+                <span className="text-[11px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded">sample data</span>
               </div>
-              <div className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[300px] font-mono text-[12px]">
+              <p className="text-[12px] text-gray-400 mb-2">
+                This is the exact structure sent to {destination?.name} on each run. Values shown are representative — real listings will populate all fields from RentCast.
+              </p>
+              <div className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[360px] font-mono text-[12px]">
                 <pre>{JSON.stringify(previewPayload, null, 2)}</pre>
               </div>
             </div>

@@ -1,30 +1,22 @@
 const fs = require('fs');
 const path = require('path');
+const srcDir = 'C:/Users/User/Downloads/ListingBug FIGMA MVP/src';
 
-// Check edge functions too
-const efDir = 'C:/Users/User/Downloads/ListingBug FIGMA MVP/supabase/functions';
-function checkDir(d) {
-  try {
-    fs.readdirSync(d).forEach(item => {
-      const full = path.join(d, item);
-      if (fs.statSync(full).isDirectory()) checkDir(full);
-      else if (item.endsWith('.ts')) {
-        const c = fs.readFileSync(full, 'utf8');
-        if (c.includes('trial') && c.includes('slot')) {
-          c.split('\n').forEach((l,i) => {
-            if (l.includes('trial') && (l.includes('slot') || l.includes('auto') || l.includes('0'))) {
-              console.log(`${path.basename(full)}:${i+1}`, l.trim().substring(0,120));
-            }
-          });
-        }
+function walk(d) {
+  fs.readdirSync(d).forEach(item => {
+    const full = path.join(d, item);
+    if (fs.statSync(full).isDirectory()) walk(full);
+    else if (item.endsWith('.tsx') || item.endsWith('.ts')) {
+      const c = fs.readFileSync(full, 'utf8');
+      if (c.includes('preview') && c.includes('payload') || c.includes('PreviewModal') || c.includes('TestModal') || c.includes('previewPayload')) {
+        console.log('FILE:', path.basename(full));
+        c.split('\n').forEach((l,i) => {
+          if (l.includes('preview') && l.includes('payload') || l.includes('previewPayload') || l.includes('PreviewModal') || l.includes('TestModal') || l.includes('sampleData') || l.includes('mockData')) {
+            console.log(' ', i+1, l.trim().substring(0,120));
+          }
+        });
       }
-    });
-  } catch(e) {}
+    }
+  });
 }
-checkDir(efDir);
-
-// Check Dashboard
-const db = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/Dashboard.tsx', 'utf8');
-db.split('\n').forEach((l,i) => {
-  if (l.includes('PLAN_SLOTS') || (l.includes('trial') && l.includes('slot'))) console.log(`Dashboard:${i+1}`, l.trim().substring(0,120));
-});
+walk(srcDir);
