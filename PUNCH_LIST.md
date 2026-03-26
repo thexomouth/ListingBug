@@ -19,14 +19,14 @@
 - [ ] saved listings are not saving. saving in listingdetailmodal then closing the modal and reopening it shows unsaved icon design and the saved listing is not appearing on dashboar dor in listings/savedlistings
 - [ ] api key generator still not generating ' '
 - [ ] saved listings are not saving. leave the page, navigate back and it's reset. this needs to be saved to the user account until they remove it
-- [ ] remove all toggles except pricedrop from listings/search
+- [x] remove all toggles except pricedrop from listings/search
 - [ ] password reset tool doesn't recognize an incorrect current password or is failing to initialize 'failed to fetch'
 - [ ] update supa schema to track full name for users "Could not find the 'full_name' column of 'users' in the schema cache" when trying to update name
 - [ ] when updating profile information in the profile information section of account/profile, allow users to update any one field, don't require full section fill in order to update. for instance, if they onyl wanna update name or company it's fine - update shouldn't be dependent on all fields filled for profile information section
 - [ ] in listings/history, if the search run was from a saved search with a name or from an automation with a name, impor the name and use it for the container heading, if no name for the search or run exists, then use the current city/state for container title/heading
 - [x] in the hero section of the dashboard, link the 'listings saved' activity meter to the listings/savedlistings page/tab
 - [ ] the preview and test page shows a preview payload that was made during prototyping phase and it needs to be dynamic to reflect all of the fields we recieve from our rentcast get sale listings GET function in total which is much more vast, and the fields each platform will want/accept. this  preview payload needs to be prepped for each platform integration/ data 'destination' aswell
-- [ \] i want to remove the full field mappings section that comes unhidden after selecting a destination in create automation page (still not right)
+- [/] i want to remove the full field mappings section that comes unhidden after selecting a destination in create automation page (still not right)
 - [x] listings page got a background visible in all tabs - remove that shit
 - [ ] automation page create an automation tab, when choosing a destination, themap fields section still shows up. remove the entire
 - [ ] saved listings are not saving in the db to the user account - they give the appearance of saving but are no longer saved after refresh and do not populate in L:istings/saved listings or dashboard in the saved listigns section
@@ -34,8 +34,25 @@
 - [ ] cities in our city/state database used for the autofill in listings search isn't comprehensive. it's missing many cities. for instance it only has one arlington in texas when virginia has an arlington, and it doesn't have smaller towns like paris texas or hell texas. i'd like to expand our list to cover alllllll cities
 - [ ] we need to ensure enforcement of accounttype limitations are in place. 4000,10000 listings per month for starter and professional. 1 automation cap for starter. 
 - [ ] let's introduce a 1000 listing cap for trial accounts since they get one week, 1/4th of a month; 1/4th the allowance of a starter plan
-- [ ] we have logic that remembers the last tab someone was on within listings,automations, and account pages. however, if a user uses the navigation menu to select and navitgate to one of these pages, then it should default to the first tab in the respective tab menu eg listings/search, automations/create, and account/profile
+- [ ] we have logic that remembers the last tab someone was on within listings,automations, and account pages. however, if a user uses the navigation menu to select and navigate to one of these pages, then it should default to the first tab in the respective tab menu eg listings/search, automations/create, and account/profile
 - [ ] in account billing, the 'current plan' section says trial plan $19/mo. but the trial is free. can you make sure the text in that section is dynamic reflecting $0 for trial $19 for star and $49 for pro
+- [/] some of the integrations, hubspot, mailchimp and google sheets, are returning this error [Unexpected token '<', " <!DOCTYPE "... is not valid JSON"]
+- [ ] in mailchimp integration settings, after connecting successfully, we prompt the user to type in the audience id, but instead we should run a get function to check all their audiences, and make the text input into a drop down from which they can select from their existing audiences. also the tag input field should be optional
+- [ ] tried running an automation search -> mailchimp and got this error "Run failed: Failed to fetch"
+- [ ] if user has connect4ed one or more integrations, the 'available integrations' section of the integrations page should be collapsed on load like the future integrations sections is.
+- [ ] i have connected the google sheets integration multiple times but it isn't moving to the connected int. section or showing 'connected' in the browser
+- [ ] there is no 'catch hook' in zapier webhook as our zapier setup steps say. these are zaps options for webhook "CREATE
+Custom Request
+Fire off a custom request by providing raw details. Very flexible but unforgiving.
+GET
+Fire off a single GET request with optional querystrings.
+POST
+Fire off a single POST request as a form or JSON.
+PUT
+Fire off a single PUT request as a form or JSON." also the configure step from zapier doesn't GIVE a webhooks url, it expects the user to input a url. so now both listingbug and zapier are requesting a webhook url.
+- [ ] integrations section of dashboard doesn't reflect connected integrations - shows zero state to account with four connected integrations
+- [ ] new and old automations in myautomations are still fucking disappearing after navigating away or refreshing. this is fucking critical to the entire company we have to get this right
+- [ ] 
 - [ ] 
 - [ ] 
 - [ ] 
@@ -61,28 +78,28 @@
 - [ ] Usage stats mismatch — dashboard ≠ account/usage ≠ listings/search. Investigate whether they will reconcile with UUID+Supa fix or needs additional work
 
 ### Stripe / Billing
-- [ ] Stripe checkout fails: "Could not start checkout. Please try again." — broken on trial→starter and starter→pro
-- [ ] Verify Stripe checkout works end-to-end on test account (STRIPE_SECRET_KEY set in Supabase secrets)
+- [x] Stripe checkout fails: "Could not start checkout. Please try again." — broken on trial→starter and starter→pro
+- [x] Verify Stripe checkout works end-to-end on test account (STRIPE_SECRET_KEY set in Supabase secrets)
 
 ### Search Form Cleanup
 - [x] Move zip, radius, lat, long, price/sqft to Additional Filters dropdown
 - [x] On desktop: City and State join Address row (columns 3+4)
 - [x] Remove static beds/baths from Property Details (already in additional filters)
 - [x] Move 'state' input up to same row as city (left: city, right: state)
-- [ ] Make toggles appear on one row (currently two rows × two columns)
-- [ ] Remove 'New Construction' and 'Foreclosure Status' from additional filters dropdown
+- [x] Make toggles appear on one row (currently two rows × two columns) WE HID THEM ENTIRELY
+- [ ] Remove 'Foreclosure Status' from additional filters dropdown
 
 ### Account / Integrations Cleanup
 - [x] Create Automation: remove 'Manual Sync' from frequency options
-- [ ] Create Automation: remove Field Mappings section entirely. Add note: "Field mappings will be configured per integration at implementation time."
+- [x] Create Automation: remove Field Mappings section entirely. Add note: "Field mappings will be configured per integration at implementation time."
 - [x] Automation history table: white background → black background, white/grey text and icon
 
 ### API Key Generation
-- [ ] API key generation broken — "Unable to generate API key: null value in column "key_hash" of relation "api_keys" violates not-null constraint"
+- [x] API key generation broken — "Unable to generate API key: null value in column "key_hash" of relation "api_keys" violates not-null constraint"
 
 
 ### Listing Detail Modal
-- [ ] Save listing button — add to listingdetailmodal
+- [x] Save listing button — add to listingdetailmodal
 - [x] Street View — verify loads in listing modal on a property with lat/lng
 
 ---
@@ -90,16 +107,16 @@
 ## 🟡 PRODUCT — AGENTS PAGE & LEADERBOARD
 
 ### New "Agents" nav item
-- [ ] Add `Agents` between `Listings` and `Automations` in TopNav
-- [ ] Create `/agents` route and `AgentsPage.tsx`
-- [ ] Build filterable agent leaderboard from existing `listings` DB data (no new API calls)
-- [ ] don't forget the agent & office website data we get
+- [x] Add `Agents` between `Listings` and `Automations` in TopNav
+- [x] Create `/agents` route and `AgentsPage.tsx`
+- [x] Build filterable agent leaderboard from existing `listings` DB data (no new API calls)
+- [x] don't forget the agent & office website data we get
   - Aggregate by `agent_name` + `agent_phone` + `agent_email`
   - Columns: Agent Name, Brokerage, # Listings, Avg Price, Avg DOM, Price Drops, ZIP codes
   - Filters: ZIP code, time window (7/30/90 days), property type, min listing count
   - Sort: by any column
   - Each row expandable or links to agent profile view
-- [ ] Agent profile view: listing history, call/email CTA buttons, brokerage info
+- [x] Agent profile view: listing history, call/email CTA buttons, brokerage info
 - [ ] Add DB index: `listings(agent_name, listed_date)` for query performance
 
 ---
@@ -194,7 +211,7 @@ instantly recognizes, then show the product doing it.
 
 ## 🟡 NEEDS LIVE QA
 
-- [ ] Usage cap — trial should allow 4,000 listings (was 500). Test after search is fixed
+- [ ] Usage cap — trial should allow 1,000 listings (was 4000). Test after search is fixed
 - [ ] Google OAuth consent screen — submit at console.cloud.google.com (/privacy and /terms live)
 - [ ] ChangePlanModal — center the two remaining plan options (blank space where Enterprise was)
 - [ ] ChangePlanModal — restore "Upgrades take effect immediately" line (non-proration version)
@@ -212,17 +229,17 @@ instantly recognizes, then show the product doing it.
 
 ## 📋 BACKLOG / FUTURE
 
-- [ ] OAuth integrations — Mailchimp, HubSpot, Salesforce (flagged as launch critical — revisit)
+- [x] OAuth integrations — Mailchimp, HubSpot, Salesforce (flagged as launch critical — revisit)
 - [ ] PropertyRadar homeowner data — full implementation (teaser live, waiting on search fix)
 - [ ] CSV email delivery backend
-- [ ] Automation runner backend (scheduled execution)
+- [x] Automation runner backend (scheduled execution)
 - [ ] Email notification system for automation alerts
 - [ ] Saved Listings page improvements
 - [ ] Search run history retention policy
 - [ ] Saved listings photo grid view
 - [ ] Mobile app (post-funding)
 - [ ] Facebook/Apple OAuth
-- [ ] Namecheap CNAME → e53e829ee840f3ad.vercel-dns-017.com
+- [x] Namecheap CNAME → e53e829ee840f3ad.vercel-dns-017.com
 - [ ] Custom email templates for Supabase auth emails (skeleton in place)
 - [ ] Light mode
 

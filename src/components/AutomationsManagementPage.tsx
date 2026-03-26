@@ -129,7 +129,12 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
 // Load automations from Supabase — works on any device
   const loadAutomations = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) { setAutomationsLoading(false); return; }
+    if (!session?.user?.id) {
+      console.warn('[loadAutomations] no session, skipping');
+      setAutomationsLoading(false);
+      return;
+    }
+    console.log('[loadAutomations] fetching for user', session.user.id);
     const { data, error } = await supabase
       .from('automations')
       .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
@@ -152,7 +157,13 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
       lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
       nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
     }));
-    setAutomations(mapped);
+    // Only update if we got real data back — never wipe existing state with empty array
+    if (data !== null) {
+      console.log('[loadAutomations] setting', mapped.length, 'automations');
+      setAutomations(mapped);
+    } else {
+      console.warn('[loadAutomations] data was null, keeping existing state');
+    }
     setAutomationsLoading(false);
   };
 
@@ -160,7 +171,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   useEffect(() => {
     loadAutomations();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN') {
         loadAutomations();
       }
       if (event === 'SIGNED_OUT') {
