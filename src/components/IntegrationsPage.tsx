@@ -78,6 +78,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [editModalOpen, setEditModalOpen] = useState(false);
   
   // Connection modal states
+  const [connectedInfo, setConnectedInfo] = useState<Record<string, {connectedAt: string; config: any}>>({});
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
   const [connectionModalIntegration, setConnectionModalIntegration] = useState<string | null>(null);
   
@@ -158,10 +159,15 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     if (!session?.user?.id) return;
     const { data, error } = await supabase
       .from('integration_connections')
-      .select('integration_id')
+      .select('integration_id, connected_at, config')
       .eq('user_id', session.user.id);
     if (error || !data) return;
     const connectedIds = new Set(data.map((r: any) => r.integration_id));
+    const infoMap: Record<string, { connectedAt: string; config: any }> = {};
+    data.forEach((r: any) => {
+      infoMap[r.integration_id] = { connectedAt: r.connected_at, config: r.config };
+    });
+    setConnectedInfo(infoMap);
     setIntegrations(prev => prev.map(i => ({
       ...i,
       connected: connectedIds.has(i.id),
@@ -250,11 +256,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     },
     // Google Sheets now available
     { 
-      id: 'sheets', 
+      id: 'google', 
       name: 'Google Sheets', 
       icon: FileSpreadsheet, 
       connected: false, 
-      description: 'Spreadsheet automation',
+      description: 'Append listing data as rows in a spreadsheet',
       category: 'available'
     },
 
@@ -407,6 +413,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               <CheckCircle className="w-3 h-3" />
               Connected
             </span>
+          {connectedInfo[integration.id]?.connectedAt && (
+            <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">
+              Since {new Date(connectedInfo[integration.id].connectedAt).toLocaleDateString()}
+            </p>
+          )}
           )}
           {isFuture && (
             <span className="text-[10px] text-gray-500 dark:text-gray-400">Coming Soon</span>
