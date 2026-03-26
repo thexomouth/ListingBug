@@ -413,11 +413,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               <CheckCircle className="w-3 h-3" />
               Connected
             </span>
-          {connectedInfo[integration.id]?.connectedAt && (
+          )}
+          {isConnected && connectedInfo[integration.id]?.connectedAt && (
             <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">
               Since {new Date(connectedInfo[integration.id].connectedAt).toLocaleDateString()}
             </p>
-          )}
           )}
           {isFuture && (
             <span className="text-[10px] text-gray-500 dark:text-gray-400">Coming Soon</span>
