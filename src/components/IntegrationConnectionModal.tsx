@@ -148,6 +148,7 @@ export function IntegrationConnectionModal({
 
   // Webhook
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [authHeader, setAuthHeader] = useState('');
   const [sendMode, setSendMode] = useState<'batch' | 'individual'>('batch');
 
   // SendGrid lists (after key entry)
@@ -179,7 +180,7 @@ export function IntegrationConnectionModal({
       setStep('connect');
       setApiKey(''); setShowApiKey(false);
       setAccountSid(''); setAuthToken(''); setShowAuthToken(false);
-      setWebhookUrl(''); setSendMode('batch');
+      setWebhookUrl(''); setSendMode('batch'); setAuthHeader('');
       setSgLists([]); setSgListIds([]); setLoadingLists(false);
       setMcAudiences([]); setMcListId(''); setMcTags(''); setMcDoubleOptIn(false);
       setSpreadsheetId(''); setSheetName('Sheet1'); setWriteMode('append');
@@ -318,11 +319,11 @@ export function IntegrationConnectionModal({
         user_id: session.user.id,
         integration_id: integration!.id,
         credentials: {},
-        config: { webhook_url: webhookUrl.trim(), send_mode: sendMode },
+        config: { webhook_url: webhookUrl.trim(), send_mode: sendMode, ...(authHeader.trim() ? { auth_header: authHeader.trim() } : {}) },
         connected_at: new Date().toISOString(),
       }, { onConflict: 'user_id,integration_id' });
       toast.success(`${integration!.name} connected!`);
-      onConnect(integration!.id, { webhook_url: webhookUrl, send_mode: sendMode });
+      onConnect(integration!.id, { webhook_url: webhookUrl, send_mode: sendMode, ...(authHeader.trim() ? { auth_header: authHeader.trim() } : {}) });
       onClose();
     } catch (err: any) {
       toast.error(err.message ?? 'Failed to save webhook');

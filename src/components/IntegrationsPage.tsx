@@ -1023,15 +1023,15 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Account</span>
-                  <span className="font-medium text-[#342e37] dark:text-white">Not connected</span>
+                  {selectedIntegration && (connectedInfo[selectedIntegration.id]?.config?.email || connectedInfo[selectedIntegration.id]?.config?.account_name) ? <span className="font-medium text-[#342e37] dark:text-white">{connectedInfo[selectedIntegration.id].config.email ?? connectedInfo[selectedIntegration.id].config.account_name}</span> : <span className="font-medium text-gray-400">—</span>}
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Connected</span>
-                  <span className="font-medium text-[#342e37] dark:text-white">Dec 1, 2024</span>
+                  {selectedIntegration && connectedInfo[selectedIntegration.id]?.connectedAt ? <span className="font-medium text-[#342e37] dark:text-white">{new Date(connectedInfo[selectedIntegration.id].connectedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : <span className="font-medium text-gray-400">Unknown</span>}
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Last Sync</span>
-                  <span className="font-medium text-[#342e37] dark:text-white">{lastSyncTime}</span>
+                  {selectedIntegration && connectedInfo[selectedIntegration.id]?.config?.last_used_at ? <span className="font-medium text-[#342e37] dark:text-white">{new Date(connectedInfo[selectedIntegration.id].config.last_used_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : <span className="font-medium text-gray-400">{lastSyncTime}</span>}
                 </div>
               </div>
             </div>

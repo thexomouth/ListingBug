@@ -44,6 +44,14 @@ import { useWalkthrough } from './WalkthroughContext';
 import { WalkthroughOverlay } from './WalkthroughOverlay';
 import { createNotification } from '../lib/notifications';
 
+// Format date helper
+const formatDate = (iso: string): string => {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return iso; }
+};
+
 interface Automation {
   id: string;
   name: string;

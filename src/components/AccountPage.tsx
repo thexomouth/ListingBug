@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Button } from './ui/button';
@@ -61,12 +61,12 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('full_name, company, created_at')
+            .select('name, company, created_at')
             .eq('id', user.id)
             .single();
 
           if (profileData) {
-            if (profileData.full_name) setName(profileData.full_name);
+            if (profileData.name) setName(profileData.name);
             if (profileData.company) setCompany(profileData.company);
             if (profileData.created_at) setCreatedAt(profileData.created_at);
           }
@@ -131,7 +131,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         .from('users')
         .upsert({
           id: user.id,
-          full_name: name.trim(),
+          name: name.trim(),
           company: company.trim(),
           updated_at: new Date().toISOString(),
         });
