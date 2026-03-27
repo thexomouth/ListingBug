@@ -160,24 +160,19 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-      
-      // Call edge function to verify current password and update
-      const response = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/update-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
+      if (!user?.email) throw new Error('Not authenticated');
+
+      // Step 1: verify current password by signing in
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
       });
-      
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to update password');
-      
+      if (signInErr) throw new Error('Current password is incorrect');
+
+      // Step 2: update to new password
+      const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateErr) throw new Error(updateErr.message);
+
       toast.success('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');

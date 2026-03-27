@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChangePlanModal } from './ChangePlanModal';
 import { CancelSubscriptionModal } from './CancelSubscriptionModal';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 /**
  * BILLING PAGE COMPONENT
@@ -154,27 +154,6 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
     } finally {
       setIsLoadingPortal(false);
     }
-  };
-
-  // WORKFLOW: Change plan (upgrade/downgrade)
-  // BACKEND: POST /api/billing/change-plan → Creates Stripe checkout session
-  // Frontend: Redirect to Stripe checkout
-  const handleChangePlan = async () => {
-    // PRODUCTION: Replace with actual API call
-    // try {
-    //   const response = await fetch('/api/billing/change-plan', { 
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ newPlanId: 'plan_xxx' })
-    //   });
-    //   const data = await response.json();
-    //   window.location.href = data.checkoutUrl;
-    // } catch (error) {
-    //   toast.error('Failed to start upgrade. Please try again.');
-    //   console.error('Failed to start upgrade:', error);
-    // }
-    
-    toast.info('Demo Mode: In production, this would redirect you to Stripe Checkout to upgrade your plan.');
   };
 
   // WORKFLOW: Download invoice
