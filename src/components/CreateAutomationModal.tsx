@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CREATE AUTOMATION WIZARD - 4-Step Flow (Processor Stance)
  * 
  * API ENDPOINTS:
@@ -881,63 +881,57 @@ export function CreateAutomationModal({
    * }
    */
   const handleFinalApproval = async () => {
-    // Log owner confirmation event
-    const confirmationEvent = {
-      event_type: 'automation_approved',
-      owner_id: 'owner_123', // DATA BINDING: current_user.id
-      automation_id: `auto_${Date.now()}`,
-      automation_name: automationName,
-      destination_type: selectedDestination,
-      destination_config: destinationConfig,
-      search_id: selectedSearchId,
-      consent_percentage: mockConsentSummary.verified_opt_in_percentage,
-      verified_count: mockConsentSummary.verified_opt_in_count,
-      total_contacts: mockConsentSummary.total_contacts,
-      suppression_count: mockValidationResult.suppression_count,
-      risk_tier: selectedIntegration?.riskTier,
-      field_mappings: fieldMappings,
-      timestamp: new Date().toISOString(),
-      ip_address: '0.0.0.0', // DATA BINDING: request.ip
-      user_agent: navigator.userAgent
-    };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) { toast.error('Not signed in'); return; }
 
-    console.log('📊 LOGGING TO /api/ledger/events:', confirmationEvent);
+      const selectedSearch = getSelectedSearch();
+      const now = new Date().toISOString();
 
-    // Create automation
-    const automation = {
-      id: confirmationEvent.automation_id,
-      name: automationName,
-      searchName: getSelectedSearch()?.name || 'Current Search',
-      schedule: scheduleOptions.find(s => s.value === schedule)?.label || schedule,
-      scheduleTime: scheduleTime,
-      syncFrequency: syncFrequency,
-      syncRate: syncRate,
-      syncFrequencyLabel: `${syncFrequency} time(s) each ${syncRateOptions.find(r => r.value === syncRate)?.label.toLowerCase()}`,
-      destination: {
-        type: selectedDestination,
-        label: selectedIntegration?.name || selectedDestination,
-        config: destinationConfig
-      },
-      searchCriteria: getSelectedSearch()?.criteria || {},
-      activeFilters: getSelectedSearch()?.activeFilters || [],
-      fieldMappings: fieldMappings,
-      active: true,
-      createdAt: new Date().toISOString(),
-      consentValidated: true,
-      consentPercentage: mockConsentSummary.verified_opt_in_percentage,
-      riskTier: selectedIntegration?.riskTier,
-      confirmationEvent: confirmationEvent
-    };
+      // Save automation to Supabase
+      const { data: saved, error } = await supabase.from('automations').insert({
+        user_id: session.user.id,
+        name: automationName,
+        search_name: selectedSearch?.name ?? null,
+        destination_type: selectedDestination,
+        destination_label: selectedIntegration?.name ?? selectedDestination,
+        destination_config: destinationConfig ?? {},
+        search_criteria: selectedSearch?.criteria ?? {},
+        active_filters: selectedSearch?.activeFilters ?? [],
+        schedule: schedule,
+        schedule_time: scheduleTime,
+        sync_frequency: syncFrequency,
+        sync_rate: syncRate,
+        active: true,
+        created_at: now,
+        updated_at: now,
+      }).select().single();
 
-    onAutomationCreated?.(automation);
-    
-    // Walkthrough: Trigger Step 8 → Step 9 transition
-    handleWalkthroughAutomationCreated();
-    
-    toast.success(`Automation "${automationName}" created successfully!`, {
-      description: `${mockConsentSummary.verified_opt_in_count} verified contacts will be synced to ${selectedIntegration?.name}`
-    });
-    handleClose();
+      if (error) {
+        console.error('[CreateAutomation] DB insert error:', error);
+        toast.error(`Failed to save automation: ${error.message}`);
+        return;
+      }
+
+      const automation = {
+        id: saved.id,
+        name: automationName,
+        searchName: selectedSearch?.name ?? '',
+        schedule: scheduleOptions.find(s => s.value === schedule)?.label || schedule,
+        destination: { type: selectedDestination, label: selectedIntegration?.name ?? selectedDestination, config: destinationConfig },
+        searchCriteria: selectedSearch?.criteria ?? {},
+        active: true,
+        createdAt: now,
+      };
+
+      onAutomationCreated?.(automation);
+      handleWalkthroughAutomationCreated();
+      toast.success(`Automation "${automationName}" created!`);
+      handleClose();
+    } catch (err: any) {
+      console.error('[CreateAutomation] unexpected error:', err);
+      toast.error(err.message ?? 'Failed to create automation');
+    }
   };
 
   const handleClose = () => {

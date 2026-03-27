@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CREATE AUTOMATION PAGE - Processor Stance
  * 
  * Shared automation setup:
@@ -384,39 +384,34 @@ export function CreateAutomationPage({
         destination={integrations.find(i => i.id === selectedDestination)}
         fieldMappings={fieldMappings}
         syncFrequency={syncFrequency}
-        onActivate={(config) => {
-          const automation = {
-            id: Date.now().toString(),
-            name: automationName,
-            searchName: getSelectedSearch()?.name || '',
-            searchCriteria: getSelectedSearch()?.criteria,
-            destination: {
-              type: selectedDestination,
-              label: integrations.find(i => i.id === selectedDestination)?.name || '',
-              config: config
-            },
-            fieldMappings,
-            schedule: syncFrequency,
-            status: 'running',
-            active: true,
-            listingsProcessed: 0,
-            lastRun: new Date()
-          };
-          
-          onAutomationCreated?.(automation);
-          setShowActivateModal(false);
-          
-          // Complete walkthrough step 3 if active
-          if (walkthroughStep3Active) {
-            completeStep(3);
-            setShowCompleteModal(true);
-          }
-          
-          // Reset form
-          setSelectedSearchId('');
-          setSelectedDestination('');
-          setSyncFrequency('daily');
-          setFieldMappings([]);
+        onActivate={async (config) => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user?.id) { toast.error('Not signed in'); return; }
+            const selectedSearch = getSelectedSearch();
+            const destIntegration = integrations.find((i: any) => i.id === selectedDestination);
+            const now = new Date().toISOString();
+            const { data: saved, error } = await supabase.from('automations').insert({
+              user_id: session.user.id,
+              name: automationName,
+              search_name: selectedSearch?.name ?? null,
+              destination_type: selectedDestination,
+              destination_label: destIntegration?.name ?? selectedDestination,
+              destination_config: config ?? {},
+              search_criteria: selectedSearch?.criteria ?? {},
+              schedule: syncFrequency,
+              schedule_time: '08:00',
+              active: true,
+              created_at: now,
+              updated_at: now,
+            }).select().single();
+            if (error) { console.error('[CreateAuto]', error); toast.error('Failed to save: ' + error.message); return; }
+            onAutomationCreated?.({ id: saved.id, name: automationName, searchName: selectedSearch?.name ?? '', destination: { type: selectedDestination, label: destIntegration?.name ?? '', config }, schedule: syncFrequency, active: true });
+            toast.success('Automation created: ' + automationName);
+            if (walkthroughStep3Active) { completeStep(3); setShowCompleteModal(true); }
+            setShowActivateModal(false);
+            setSelectedSearchId(''); setSelectedDestination(''); setSyncFrequency('daily'); setFieldMappings([]);
+          } catch (err: any) { toast.error(err.message ?? 'Failed to create automation'); }
         }}
       />
       
