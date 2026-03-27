@@ -255,19 +255,30 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       const sent = data.sent ?? data.accepted ?? data.written ?? 0;
       const failed = data.failed ?? 0;
       const skipped = data.skipped_no_email ?? 0;
+      // Surface the first per-contact error from Mailchimp (e.g. "already subscribed", "invalid email")
+      const firstError: string | null = data.errors?.[0]
+        ? `${data.errors[0].email_address ?? ''}: ${data.errors[0].error ?? data.errors[0]}`.trim().replace(/^: /, '')
+        : null;
 
-      if (skipped > 0 && sent === 0) {
+      if (skipped > 0 && sent === 0 && failed === 0) {
         setTestContactResult('failed');
         setTestContactDetail(`Email ${userEmail} was skipped — check the address is valid for ${selectedIntegration.name}.`);
         toast.error('Test contact skipped — email may be invalid for this platform.');
-      } else if (sent > 0 || res.ok) {
+      } else if (failed > 0 && sent === 0) {
+        // Mailchimp accepted the request but rejected the contact (e.g. invalid email, fake email, already cleaned)
+        const detail = firstError ?? data.error ?? `${selectedIntegration.name} rejected the contact (${failed} error${failed > 1 ? 's' : ''})`;
+        setTestContactResult('failed');
+        setTestContactDetail(detail);
+        toast.error(`Test failed: ${detail}`);
+      } else if (sent > 0) {
         setTestContactResult('success');
         setTestContactDetail(`Test contact (${userEmail}) sent — check ${selectedIntegration.name} to confirm it arrived.`);
         toast.success(`Test contact sent to ${selectedIntegration.name}!`);
       } else {
-        setTestContactResult('failed');
-        setTestContactDetail(data.error ?? 'Contact was not accepted.');
-        toast.error(data.error ?? 'Test contact was not accepted.');
+        // sent=0 failed=0 skipped=0 — treat as success (contact already existed, update_existing may have been a no-op)
+        setTestContactResult('success');
+        setTestContactDetail(`Test contact (${userEmail}) processed by ${selectedIntegration.name} — verify it appears in your list.`);
+        toast.success(`Test contact sent to ${selectedIntegration.name}!`);
       }
     } catch (e: any) {
       setTestContactResult('failed');
@@ -318,7 +329,13 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const handleConnectionComplete = (integrationId: string, credentials?: any) => {
     setConnectionModalOpen(false);
     setConnectionModalIntegration(null);
-    loadConnectedIntegrations();
+    loadConnectedIntegrations().then(() => {
+      // Auto-open settings modal so user can finish setup in one go
+      const integ = integrations.find(i => i.id === integrationId);
+      if (integ) {
+        setTimeout(() => handleOpenSettings({ ...integ, connected: true, category: 'connected' }), 400);
+      }
+    });
     onConnect?.(integrationId);
   };
 
@@ -356,14 +373,22 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     const params = new URLSearchParams(window.location.search);
     const justConnected = params.get('connected');
     if (justConnected) {
-      window.history.replaceState({}, '', '/integrations');
-      // Reload connected state from DB then show success
+      window.history.replaceState({}, '', window.location.pathname);
+      // Reload connected state from DB then show success and auto-open settings
       loadConnectedIntegrations().then(() => {
         const names: Record<string, string> = {
           google: 'Google Sheets', mailchimp: 'Mailchimp', hubspot: 'HubSpot',
           sendgrid: 'SendGrid', twilio: 'Twilio',
         };
         toast.success(`${names[justConnected] ?? justConnected} connected successfully!`);
+        // Auto-open settings so user can finish setup immediately
+        setIntegrations(prev => {
+          const integ = prev.find(i => i.id === justConnected);
+          if (integ) {
+            setTimeout(() => handleOpenSettings({ ...integ, connected: true, category: 'connected' }), 600);
+          }
+          return prev;
+        });
       });
     }
   }, []);
@@ -552,7 +577,16 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     setConnectionTestResult(null);
     setTestContactResult(null);
     setTestContactDetail(null);
+    // Pre-populate saved settings so user doesn't have to re-configure each time
+    const cfg = connectedInfo[integration.id]?.config ?? {};
+    setSettingsListId(cfg.list_id ?? '');
+    setSettingsTags(Array.isArray(cfg.tags) ? cfg.tags.join(', ') : (cfg.tags ?? ''));
+    setSettingsDoubleOptIn(cfg.double_opt_in ?? false);
     setSettingsOpen(true);
+    // Auto-load Mailchimp audiences so the saved audience is visible immediately
+    if (integration.id === 'mailchimp') {
+      setTimeout(() => loadSettingsAudiences(), 50);
+    }
   };
 
   const handleOpenDisconnect = (integration: Integration) => {
