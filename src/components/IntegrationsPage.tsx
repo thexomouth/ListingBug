@@ -113,9 +113,13 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const loadSettingsAudiences = async () => {
     setSettingsAudiencesLoading(true);
     try {
-      // Force-refresh the session so verify_jwt: true edge functions get a valid token
-      const { data: refreshData } = await supabase.auth.refreshSession();
-      const session = refreshData.session;
+      // Use cached session (background auto-refresh keeps it valid); only force-refresh if actually expired
+      let { data: { session } } = await supabase.auth.getSession();
+      const now = Math.floor(Date.now() / 1000);
+      if (session && session.expires_at && session.expires_at <= now + 30) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData.session;
+      }
       if (!session) { toast.error('Not signed in — please refresh the page.'); return; }
       const res = await fetch(
         'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options',
