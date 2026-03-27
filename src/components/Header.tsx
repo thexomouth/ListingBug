@@ -1,9 +1,9 @@
-import { Menu, User, X, Bell, ChevronLeft, CheckCircle2, AlertCircle, Info, Trash2, ChevronDown } from 'lucide-react';
+﻿import { Menu, User, X, Bell, ChevronLeft, CheckCircle2, AlertCircle, Info, Trash2, ChevronDown } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import headerLogoFull from 'figma:asset/507fab16b51ccf6be96c685cf4c76a6b2a4bb7b0.png';
 import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
 import headerLogoWhite from 'figma:asset/ac9d14a9fc5e2f8315c311b8dec3220da367a867.png';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LBToggle } from './design-system/LBToggle';
 import { fetchUserNotifications, deleteNotification, markNotificationAsRead } from '../lib/notifications';
 import { supabase } from '../lib/supabase';

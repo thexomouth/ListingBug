@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ACTIVATE AUTOMATION MODAL
  * Step 1: Preview & Test (real test — no fake spinner)
  * Step 2: Activate — config + activate
@@ -6,7 +6,7 @@
  * Error codes ERR_01–ERR_13 printed on failure for fast triage.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { LBButton } from './design-system/LBButton';
 import { LBInput } from './design-system/LBInput';
