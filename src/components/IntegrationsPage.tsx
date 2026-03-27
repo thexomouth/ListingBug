@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { LBButton } from './design-system/LBButton';
-import { 
+import {
   Eye, CheckCircle,
   Settings,
   Zap,
@@ -24,12 +24,12 @@ import {
   Clock,
   Bell,
   ArrowRight,
-  Eye,
   EyeOff,
   Copy,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import {
@@ -113,7 +113,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const loadSettingsAudiences = async () => {
     setSettingsAudiencesLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData.session;
+      }
       if (!session) return;
       const res = await fetch(
         'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options',
@@ -123,8 +127,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
           body: JSON.stringify({ integration: 'mailchimp' }),
         }
       );
+      // If still 401, token is genuinely invalid — surface the error
+      if (res.status === 401) { toast.error('Session expired — please refresh the page.'); return; }
       const data = await res.json();
       if (data.options) setSettingsAudiences(data.options);
+      else if (data.error) toast.error(data.error);
     } catch {
       // silently fail — user can click Refresh
     } finally {
