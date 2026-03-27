@@ -130,6 +130,83 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   const currentPlan = getCurrentPlan();
   const automationUsage = getAutomationUsage(currentPlan);
 
+
+  // Automations data state
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [automationsLoading, setAutomationsLoading] = useState(true);
+  const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
+
+  // Load automations from Supabase
+  const loadAutomations = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) { setAutomationsLoading(false); return; }
+    const userId = session.user.id;
+    const { data, error } = await supabase
+      .from('automations')
+      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('[Automations] load error:', error.message); setAutomationsLoading(false); return; }
+    const mapped = (data || []).map((row: any) => ({
+      id: row.id, name: row.name, searchName: row.search_name ?? '',
+      schedule: [row.schedule, row.schedule_time ? `at ${row.schedule_time}` : ''].filter(Boolean).join(' '),
+      destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
+      searchCriteria: row.search_criteria ?? {}, active: row.active ?? true, status: 'idle',
+      lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
+      nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+    }));
+    if (data !== null) setAutomations(mapped);
+    setAutomationsLoading(false);
+  };
+
+  const loadRunHistory = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) { setRunHistory([]); return; }
+    const { data, error } = await supabase
+      .from('automation_runs')
+      .select('id,automation_name,run_date,status,listings_found,listings_sent,destination,details')
+      .eq('user_id', userId)
+      .order('run_date', { ascending: false })
+      .limit(50);
+    if (error || !data) { setRunHistory([]); return; }
+    setRunHistory(data.map((run: any) => ({
+      id: run.id, automationName: run.automation_name || 'Unknown',
+      runDate: run.run_date || new Date().toISOString(),
+      status: run.status || 'failed',
+      listingsFound: run.listings_found || 0, listingsSent: run.listings_sent || 0,
+      destination: run.destination || '', details: run.details || '',
+    })));
+  }, []);
+
+  // Load on mount
+  useEffect(() => {
+    loadAutomations();
+    loadRunHistory();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') { loadAutomations(); loadRunHistory(); }
+      if (event === 'SIGNED_OUT') { setAutomations([]); setRunHistory([]); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Handle prefill from saved search navigation
+  useEffect(() => {
+    const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
+    if (prefillData) {
+      try {
+        const { searchName } = JSON.parse(prefillData);
+        setActiveTab('create');
+        sessionStorage.removeItem('listingbug_prefill_automation');
+        toast.info(`Ready to automate "${searchName}"`);
+      } catch (e) { console.error('Failed to parse prefill data:', e); }
+    }
+    const tabPref = sessionStorage.getItem('listingbug_automations_tab');
+    if (tabPref === 'automations' || tabPref === 'history') {
+      setActiveTab(tabPref as any);
+      sessionStorage.removeItem('listingbug_automations_tab');
+    }
+  }, []);
   // ── Handler functions ────────────────────────────────────────────────────
 
   const handleToggleAutomation = (id: string) => {

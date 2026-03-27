@@ -1,114 +1,94 @@
-﻿# ListingBug Punch List
-Last updated: 2026-03-27
+# ListingBug Punch List
+Last updated: 2026-03-27 (session 2)
 
-## ✅ COMPLETED THIS SESSION
+---
 
-### Bug Fixes
-- [x] Automations page TDZ crash (state ordering, AlertTriangle import, planInfo fallback)
-- [x] Profile update (name column, updated_at column, update not upsert)
-- [x] Password updater (signInWithPassword verify + updateUser)
-- [x] Saved Listings dashboard nav (correct sessionStorage key 'listings' tab)
-- [x] stripe_subscription_start column removed from queries
-- [x] Billing Trial Price default flash fixed (starts as Trial $0)
-- [x] ChangePlanModal — trial card hidden, correct header, simplified confirmation
-- [x] Saved listings sync — both event names fired (savedListingsUpdated + savedListingsChanged)
-- [x] Trial automation slots — 0 → 3 sitewide (planLimits.ts, AutomationsManagementPage)
-- [x] History tab heading — uses automationName → searchName → location priority
-- [x] Nav tab reset — Header clears last_tab keys on nav menu clicks
-- [x] Foreclosure Status filter removed from available filters
-- [x] Preview payload rewrite — per-destination accurate payloads (Webhook/Zapier/Make/n8n, Mailchimp, Sheets, HubSpot, SendGrid, Twilio, CSV)
-- [x] Automation run "Failed to fetch" — all dispatch functions updated: verify_jwt: false, accept user_id in body
-- [x] Mailchimp audience auto-load — loads when modal opens to config step (not just on OAuth return)
-- [x] Available integrations collapse — auto-collapses when user has connected integrations
-- [x] search_name + automation_name columns added to search_runs table
-- [x] Trial listing cap corrected to 1,000 (was 4,000) — UsagePage, BillingPage, Dashboard, SearchListings, planLimits.ts, search-listings edge fn
-- [x] AutomationsManagementPage.tsx corruption fixed (duplicate export function, $8 garbage chars, missing loadAutomations body)
+## ✅ FIXED THIS SESSION (58c79587)
 
-### Edge Functions Updated (no frontend deploy needed)
-- [x] send-to-mailchimp v3 — verify_jwt: false, user_id body auth
-- [x] send-to-sheets v3 — verify_jwt: false, user_id body auth
-- [x] send-to-hubspot v3 — verify_jwt: false, user_id body auth
-- [x] send-to-sendgrid v4 — verify_jwt: false, user_id body auth
-- [x] send-to-twilio v4 — verify_jwt: false, user_id body auth
-- [x] webhook-push v3 — verify_jwt: false, no auth required
-- [x] run-automation v12 — passes user_id in all dispatch payloads, uses service key internally
-- [x] search-listings v34 — trial cap corrected to 1,000
-
-### DB Changes
-- [x] public.users — added updated_at column
-- [x] public.search_runs — added search_name, automation_name columns
+- [x] /listings page crash — `React is not defined` — added React import to SearchListings, ActivateAutomationModal, IntegrationConnectionModal, IntegrationsPage, Header, ChangePlanModal
+- [x] /automations page crash — `handleAutomationUpdated is not defined` — re-inserted all missing handler functions (handleToggleAutomation, handleRunNow, handleDeleteAutomation, handleDuplicateAutomation, handleAutomationUpdated, handleAutomationCreated) that were lost during file repair
+- [x] AutomationsManagementPage — `formatDate is not defined` — added formatDate helper
+- [x] AccountPage — `full_name column not found` — fixed all 3 references (select, read, update) from `full_name` → `name`
+- [x] Password updater — "Failed to update password" — replaced dead edge function call with native `supabase.auth.signInWithPassword` (verify) + `supabase.auth.updateUser` (update)
+- [x] Integration detail modal — "Connected Dec 1, 2024" hardcoded — now reads real `connectedAt` from `connectedInfo` DB data
+- [x] Integration detail modal — "Last Sync 2 hours ago" hardcoded — now reads real `last_used_at` from `connectedInfo.config`
+- [x] Integration detail modal — "Not connected" account — now shows real email/account_name from config
+- [x] View vs Settings button inconsistency — desktop "Settings" button now opens same integration detail modal as mobile "View" button (using Eye icon). Disconnect button retained separately
+- [x] Webhook integration — moved from `future` → `available` in IntegrationsPage with proper description
+- [x] Webhook integration — added `webhook` config entry to IntegrationConnectionModal with setup instructions, generic URL placeholder, and optional Authorization header field
+- [x] ActivateAutomationModal — audience dropdown is now a real dynamic dropdown (calls get-integration-options edge fn), auto-loads on open, refresh button
+- [x] ActivateAutomationModal — tags field marked optional
+- [x] ActivateAutomationModal — test button now calls real send-to-mailchimp, only shows success when Mailchimp confirms. Error codes ERR_01–ERR_13 for triage
 
 ---
 
 ## 🔴 REQUIRES HUMAN INTERVENTION
 
 ### Google Sheets OAuth not persisting
-**Status:** Code is correct. Root cause identified.
-**Action needed:** In Supabase Dashboard → Project Settings → Edge Function Secrets, update:
-- `GOOGLE_CLIENT_ID` → Client ID from "Listingbug sheets" OAuth client (ends in -obpm...)
-- `GOOGLE_CLIENT_SECRET` → Client secret from "Listingbug sheets" OAuth client (GOCSPX-lk5XhZ0ks...)
-The current GOOGLE_CLIENT_ID points to the sign-in client which only has the Supabase Auth callback URL registered, not the edge function callback URL.
+**Root cause:** `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` Supabase secrets point to the sign-in OAuth client, not the "Listingbug sheets" client.
+**Action:** Supabase Dashboard → Project Settings → Edge Function Secrets → update:
+- `GOOGLE_CLIENT_ID` → Client ID from "Listingbug sheets" (ends `-obpm...`)
+- `GOOGLE_CLIENT_SECRET` → `GOCSPX-lk5XhZ0ks...` (from the OAuth dialog screenshot)
 
 ### Google OAuth Consent Screen
-**Action needed:** Submit for verification in Google Cloud Console to allow more than 100 test users.
+**Action:** Submit for verification to allow >100 test users.
 
 ---
 
-## 🟡 QA NEEDED (verify in production)
+## 🟡 QA NEEDED
 
-- [ ] ChangePlanModal — verify trial user sees correct UI (no trial card, "Free trial — choose a plan" header)
-- [ ] Automations page — verify loads with 3 slots for trial users
-- [ ] Saved listings — verify 6 DB listings show in UI, save/unsave syncs correctly
-- [ ] Password updater — verify with correct + incorrect credentials
-- [ ] Billing history — verify with real Stripe data
-- [ ] History tab heading — new runs show search name; old runs show location (expected)
-- [ ] Automation runs → Mailchimp — verify no more "Failed to fetch" after edge fn fix
-- [ ] Automation runs → Google Sheets — will work once Google OAuth secrets are updated
-- [ ] Automation runs → HubSpot — verify no more 401 errors
-- [ ] Trial 1,000 listing cap — verify UsagePage, BillingPage show correct number
-- [ ] Integrations page — verify available section collapses when integrations are connected
-- [ ] Mailchimp connection modal — verify audience dropdown auto-loads on open
+- [ ] /automations My Automations tab — verify loads without crash after handler fix
+- [ ] /automations History tab — verify run history loads
+- [ ] Account page profile update — verify "name" saves correctly (no more full_name error)
+- [ ] Account page password update — verify correct password accepted, wrong password rejected with clear error
+- [ ] Integration detail modal — verify Connected date shows real date, not Dec 1 2024
+- [ ] Integration detail modal — verify Account shows email for OAuth integrations
+- [ ] Webhook integration — verify Connect flow saves URL + optional auth header to integration_connections
+- [ ] Webhook integration — verify automation runs dispatch to saved webhook URL
+- [ ] ActivateAutomationModal Mailchimp — verify audience dropdown populates from real account
+- [ ] ActivateAutomationModal Mailchimp test — verify ERR_* codes display on failure
+- [ ] Listings page — verify no more React crash
 
 ---
 
-## 🔵 OPEN / FUTURE ITEMS
+## 🔵 OPEN / IN PROGRESS
 
-- [ ] API key generator display issue — DB has 1 key, may be a UI display bug; needs QA
-- [ ] Zapier webhook setup instructions — already correct in code ("Webhooks by Zapier → Catch Hook")
-- [ ] Usage cap enforcement in UI — toast/modal when user hits 1,000 listing cap during search
-- [ ] Billing history with real Stripe data
-- [ ] Google OAuth consent screen verification submission
-- [ ] SearchListings history — old runs show location (not name) since search_name was null; only new runs will show names
+### Per-integration config in ActivateAutomationModal
+Currently done: Mailchimp (audience dropdown + tags)
+Remaining: each needs real dynamic config UI:
+- [ ] **Google Sheets** — spreadsheet ID input + optional sheet name. Could add "Open Google Drive" link to help user find their spreadsheet ID
+- [ ] **HubSpot** — pipeline dropdown (load from HubSpot API) + object type (Contact/Deal)
+- [ ] **SendGrid** — list dropdown (get-integration-options already supports sendgrid)
+- [ ] **Twilio** — from-number input with E.164 validation
+- [ ] **Zapier/Make/n8n/Webhook** — webhook URL input (already works in getFields())
+- [ ] **Airtable** — base ID + table ID inputs
+
+### Other open items
+- [ ] API key generator — may be display bug; needs QA
+- [ ] Billing history — needs real Stripe data to verify
+- [ ] Usage cap enforcement in UI — show toast/modal when trial user hits 1,000 listing cap
+- [ ] SearchListings history — old runs show location (not name); only new runs show search name
+- [ ] Google OAuth consent screen verification
 
 ---
 
 ## PLAN LIMITS REFERENCE
 | Plan         | Listings/mo | Automations | Price |
-|--------------|-------------|-------------|-------|
+|---|---|---|---|
 | Trial        | 1,000       | 3           | $0    |
 | Starter      | 4,000       | 1           | $19   |
 | Professional | 10,000      | 3           | $49   |
 | Enterprise   | Unlimited   | Unlimited   | TBD   |
 
-## KEY FILE LOCATIONS
-- `src/components/AutomationsManagementPage.tsx` — automations list, run history
-- `src/components/AutomationLimitModal.tsx` — plan limit modal
-- `src/components/AccountPage.tsx` — profile update, password update
-- `src/components/BillingPage.tsx` — billing, plan display
-- `src/components/ChangePlanModal.tsx` — plan upgrade flow
-- `src/components/SearchListings.tsx` — search, saved listings, history, listing cap
-- `src/components/Dashboard.tsx` — dashboard shortcuts
-- `src/components/Header.tsx` — nav tab reset
-- `src/components/IntegrationConnectionModal.tsx` — Mailchimp auto-load, OAuth config
-- `src/components/IntegrationsPage.tsx` — available integrations collapse
-- `src/components/ActivateAutomationModal.tsx` — preview payload rewrite
-- `src/components/UsagePage.tsx` — usage display
-- `src/components/utils/planLimits.ts` — canonical plan limits
-- `supabase/functions/run-automation` — v12, user_id dispatch, service key
-- `supabase/functions/send-to-mailchimp` — v3, verify_jwt: false
-- `supabase/functions/send-to-sheets` — v3, verify_jwt: false
-- `supabase/functions/send-to-hubspot` — v3, verify_jwt: false
-- `supabase/functions/send-to-sendgrid` — v4, verify_jwt: false
-- `supabase/functions/send-to-twilio` — v4, verify_jwt: false
-- `supabase/functions/webhook-push` — v3, verify_jwt: false
-- `supabase/functions/search-listings` — v34, trial cap 1,000
+## KEY EDGE FUNCTIONS
+| Function | Version | Notes |
+|---|---|---|
+| search-listings | v34 | trial cap 1,000 |
+| run-automation | v12 | passes user_id, service key dispatch |
+| send-to-mailchimp | v3 | verify_jwt: false, user_id body auth |
+| send-to-sheets | v3 | verify_jwt: false, user_id body auth |
+| send-to-hubspot | v3 | verify_jwt: false, user_id body auth |
+| send-to-sendgrid | v4 | verify_jwt: false, user_id body auth |
+| send-to-twilio | v4 | verify_jwt: false, user_id body auth |
+| webhook-push | v3 | verify_jwt: false, no credentials needed |
+| get-integration-options | v1 | mailchimp + sendgrid audience/list load |
