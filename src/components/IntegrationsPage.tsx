@@ -103,6 +103,12 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [emailOnSync, setEmailOnSync] = useState(false);
   const [emailOnError, setEmailOnError] = useState(true);
   const [webhookNotifications, setWebhookNotifications] = useState(false);
+  // Mailchimp audience state for settings modal
+  const [settingsAudiences, setSettingsAudiences] = useState<{id:string;name:string}[]>([]);
+  const [settingsAudiencesLoading, setSettingsAudiencesLoading] = useState(false);
+  const [settingsListId, setSettingsListId] = useState('');
+  const [settingsTags, setSettingsTags] = useState('');
+  const [settingsDoubleOptIn, setSettingsDoubleOptIn] = useState(false);
 
   // Map integration IDs to modal integration IDs
   const getModalIntegrationId = (integrationId: string): string => {
@@ -615,350 +621,122 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
 
       {/* Settings Modal - Full from AccountIntegrationsTab */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedIntegration?.name} Settings</DialogTitle>
-            <DialogDescription>
-              Configure how ListingBug syncs data with {selectedIntegration?.name}
-            </DialogDescription>
+            <DialogDescription>Configure how ListingBug syncs data with {selectedIntegration?.name}</DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-6 py-2">
-            {/* Connection Information */}
-            <div>
-              <h4 className="font-medium text-[#342e37] dark:text-white mb-3 flex items-center gap-2">
-                <Database className="w-4 h-4" />
-                Connection Information
-              </h4>
-              <Separator className="mb-4" />
-              <div className="space-y-3">
-                {/* API Key - Mailchimp specific */}
-                {selectedIntegration?.id === 'mailchimp' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="api-key">API Key</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input
-                          id="api-key"
-                          type={showApiKey ? 'text' : 'password'}
-                          value=""
-                          readOnly
-                          className="pr-20"
-                        />
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setShowApiKey(!showApiKey)}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded transition-colors"
-                          >
-                            {showApiKey ? (
-                              <EyeOff className="w-4 h-4 text-gray-500 dark:text-white/60" />
-                            ) : (
-                              <Eye className="w-4 h-4 text-gray-500 dark:text-white/60" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText('');
-                              setCopiedKey(true);
-                              setTimeout(() => setCopiedKey(false), 2000);
-                              toast.success('API key copied to clipboard');
-                            }}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded transition-colors"
-                          >
-                            {copiedKey ? (
-                              <Check className="w-4 h-4 text-green-600" />
-                            ) : (
-                              <Copy className="w-4 h-4 text-gray-500 dark:text-white/60" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Your API key is encrypted and securely stored
-                    </p>
-                  </div>
-                )}
-
-                {/* Audience/List ID - Mailchimp specific */}
-                {selectedIntegration?.id === 'mailchimp' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="audience-id">Primary Audience ID</Label>
-                    <Input
-                      id="audience-id"
-                      value=""
-                      readOnly
-                      className="bg-gray-50 dark:bg-[#1a1a1a]"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      The default audience for new contacts
-                    </p>
-                  </div>
-                )}
-
-                {/* Account Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="account-email">Connected Account</Label>
-                  <Input
-                    id="account-email"
-                    value=""
-                    readOnly
-                    className="bg-gray-50 dark:bg-[#1a1a1a]"
-                  />
-                </div>
+          <div className="space-y-5 py-2">
+            {/* Connected Account */}
+            <div className="space-y-2">
+              <Label>Connected Account</Label>
+              <div className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 text-sm">
+                {selectedIntegration && (connectedInfo[selectedIntegration.id]?.config?.email || connectedInfo[selectedIntegration.id]?.config?.account_name)
+                  ? <span className="text-gray-800 dark:text-gray-200">{connectedInfo[selectedIntegration.id].config.email ?? connectedInfo[selectedIntegration.id].config.account_name}</span>
+                  : <span className="text-gray-400 italic">Not available — reconnect to refresh</span>}
               </div>
             </div>
 
-            {/* Sync Settings */}
-            <div>
-              <h4 className="font-medium text-[#342e37] dark:text-white mb-3 flex items-center gap-2">
-                <RefreshCw className="w-4 h-4" />
-                Sync Settings
-              </h4>
-              <Separator className="mb-4" />
-              <div className="space-y-4">
-                {/* Sync Frequency */}
+            {/* Mailchimp specific: real audience dropdown + tags */}
+            {selectedIntegration?.id === "mailchimp" && (
+              <>
                 <div className="space-y-2">
-                  <Label htmlFor="sync-frequency">Sync Frequency</Label>
-                  <Select value={syncFrequency} onValueChange={setSyncFrequency}>
-                    <SelectTrigger id="sync-frequency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">Every 5 minutes</SelectItem>
-                      <SelectItem value="15">Every 15 minutes</SelectItem>
-                      <SelectItem value="30">Every 30 minutes</SelectItem>
-                      <SelectItem value="60">Every hour</SelectItem>
-                      <SelectItem value="180">Every 3 hours</SelectItem>
-                      <SelectItem value="360">Every 6 hours</SelectItem>
-                      <SelectItem value="720">Every 12 hours</SelectItem>
-                      <SelectItem value="1440">Once daily</SelectItem>
-                      <SelectItem value="manual">Manual only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    How often ListingBug checks for new data to sync
-                  </p>
-                </div>
-
-                {/* Default Audience - Mailchimp/Email specific */}
-                {['mailchimp', 'constantcontact', 'sendgrid'].includes(selectedIntegration?.id || '') && (
-                  <div className="space-y-2">
-                    <Label htmlFor="default-audience">Default Audience/List</Label>
-                    <Select value={defaultAudience} onValueChange={setDefaultAudience}>
-                      <SelectTrigger id="default-audience">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="main-list">Main Contact List</SelectItem>
-                        <SelectItem value="leads">New Leads</SelectItem>
-                        <SelectItem value="hot-prospects">Hot Prospects</SelectItem>
-                        <SelectItem value="buyers">Buyer List</SelectItem>
-                        <SelectItem value="sellers">Seller List</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Where new contacts are added by default
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <Label>Audience <span className="text-red-500">*</span></Label>
+                    <button onClick={loadSettingsAudiences} disabled={settingsAudiencesLoading} className="text-xs text-blue-500 hover:underline flex items-center gap-1">
+                      {settingsAudiencesLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                      {settingsAudiences.length ? "Refresh" : "Load"}
+                    </button>
                   </div>
-                )}
-
-                {/* Update Existing Contacts */}
+                  {settingsAudiencesLoading && <div className="flex items-center gap-2 text-sm text-gray-400 py-1"><Loader2 className="w-4 h-4 animate-spin" /> Loading your audiences…</div>}
+                  {!settingsAudiencesLoading && settingsAudiences.length === 0 && (
+                    <button onClick={loadSettingsAudiences} className="w-full px-3 py-2 border border-dashed border-gray-300 dark:border-white/20 rounded-lg text-sm text-gray-500 hover:border-gray-400 transition-colors">
+                      Click to load your Mailchimp audiences
+                    </button>
+                  )}
+                  {settingsAudiences.length > 0 && (
+                    <select
+                      className="w-full border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white"
+                      value={settingsListId}
+                      onChange={e => setSettingsListId(e.target.value)}
+                    >
+                      <option value="">Select an audience…</option>
+                      {settingsAudiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  )}
+                  <p className="text-xs text-gray-400">Contacts will be added to this audience when automations run.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Add Custom Tag(s) <span className="text-xs text-gray-400 font-normal">(optional)</span></Label>
+                  <Input placeholder="listingbug, denver-agents" value={settingsTags} onChange={e => setSettingsTags(e.target.value)} />
+                  <p className="text-xs text-gray-400">Comma-separated. Applied to every contact synced via this integration.</p>
+                </div>
                 <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1a1a1a] rounded-lg">
-                  <div className="flex-1">
-                    <Label htmlFor="update-existing" className="cursor-pointer">
-                      Update Existing Contacts
-                    </Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Overwrite contact data if they already exist
-                    </p>
+                  <div>
+                    <p className="text-sm font-medium dark:text-white">Double Opt-in</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Mailchimp sends a confirmation email before subscribing</p>
                   </div>
-                  <Switch
-                    id="update-existing"
-                    checked={updateExisting}
-                    onCheckedChange={setUpdateExisting}
-                  />
+                  <button onClick={() => setSettingsDoubleOptIn(v => !v)} className={`w-11 h-6 rounded-full transition-colors ${settingsDoubleOptIn ? "bg-[#FFCE0A]" : "bg-gray-300 dark:bg-gray-600"}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full mx-1 transition-transform ${settingsDoubleOptIn ? "translate-x-5" : "translate-x-0"}`} />
+                  </button>
                 </div>
-              </div>
-            </div>
-
-
-            {/* Field Mapping */}
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-500">
-                Field mappings will be configured per integration at implementation time.
-              </p>
-            </div>
-
-            {/* Integration-Specific Settings */}
-            {selectedIntegration?.id === 'mailchimp' && (
-              <div>
-                <h4 className="font-medium text-[#342e37] dark:text-white mb-3 flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Mailchimp Options
-                </h4>
-                <Separator className="mb-4" />
-                <div className="space-y-3">
-                  {/* Auto Tagging */}
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1a1a1a] rounded-lg">
-                    <div className="flex-1">
-                      <Label htmlFor="auto-tagging" className="cursor-pointer">
-                        Automatic Tagging
-                      </Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Auto-tag contacts with property type and status
-                      </p>
-                    </div>
-                    <Switch
-                      id="auto-tagging"
-                      checked={autoTagging}
-                      onCheckedChange={setAutoTagging}
-                    />
-                  </div>
-
-                  {/* Double Opt-in */}
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1a1a1a] rounded-lg">
-                    <div className="flex-1">
-                      <Label htmlFor="double-opt-in" className="cursor-pointer">
-                        Double Opt-in Required
-                      </Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Send confirmation email before adding to list
-                      </p>
-                    </div>
-                    <Switch
-                      id="double-opt-in"
-                      checked={doubleOptIn}
-                      onCheckedChange={setDoubleOptIn}
-                    />
-                  </div>
-                </div>
-              </div>
+              </>
             )}
 
-            {/* Notification Preferences */}
-            <div>
-              <h4 className="font-medium text-[#342e37] dark:text-white mb-3 flex items-center gap-2">
-                <Bell className="w-4 h-4" />
-                Notification Preferences
-              </h4>
-              <Separator className="mb-4" />
-              <div className="space-y-3">
-                {/* Email on successful sync */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1a1a1a] rounded-lg">
-                  <div className="flex-1">
-                    <Label htmlFor="email-on-sync" className="cursor-pointer">
-                      Email on Successful Sync
-                    </Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Get notified when data syncs successfully
-                    </p>
-                  </div>
-                  <Switch
-                    id="email-on-sync"
-                    checked={emailOnSync}
-                    onCheckedChange={setEmailOnSync}
-                  />
-                </div>
-
-                {/* Email on errors */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1a1a1a] rounded-lg">
-                  <div className="flex-1">
-                    <Label htmlFor="email-on-error" className="cursor-pointer">
-                      Email on Sync Errors
-                    </Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Get notified when syncs fail or encounter errors
-                    </p>
-                  </div>
-                  <Switch
-                    id="email-on-error"
-                    checked={emailOnError}
-                    onCheckedChange={setEmailOnError}
-                  />
-                </div>
-
-                {/* Webhook notifications */}
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1a1a1a] rounded-lg">
-                  <div className="flex-1">
-                    <Label htmlFor="webhook-notifications" className="cursor-pointer">
-                      Webhook Notifications
-                    </Label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Send sync events to webhook endpoint
-                    </p>
-                  </div>
-                  <Switch
-                    id="webhook-notifications"
-                    checked={webhookNotifications}
-                    onCheckedChange={setWebhookNotifications}
-                  />
-                </div>
-
-                {webhookNotifications && (
-                  <div className="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-white/10">
-                    <Label htmlFor="webhook-url">Webhook URL</Label>
-                    <Input
-                      id="webhook-url"
-                      type="url"
-                      placeholder="https://your-app.com/webhooks/listingbug"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Events will be sent via POST request
-                    </p>
-                  </div>
-                )}
-              </div>
+            {/* Test Connection */}
+            <div className="space-y-1.5">
+              <Button variant="outline" className="w-full" disabled={isTestingConnection} onClick={async () => {
+                setIsTestingConnection(true); setConnectionTestResult(null);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) throw new Error("Not signed in");
+                  const res = await fetch("https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ integration: selectedIntegration?.id }),
+                  });
+                  const data = await res.json();
+                  if (res.ok && !data.error) { setConnectionTestResult("success"); toast.success(`${selectedIntegration?.name} connection verified.`); }
+                  else { setConnectionTestResult("failed"); toast.error(data.error ?? "Connection test failed"); }
+                } catch (e: any) { setConnectionTestResult("failed"); toast.error(e.message ?? "Failed"); }
+                finally { setIsTestingConnection(false); }
+              }}>
+                {isTestingConnection ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
+                {isTestingConnection ? "Testing…" : "Test Connection"}
+              </Button>
+              {connectionTestResult === "success" && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Connection verified</p>}
+              {connectionTestResult === "failed" && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Failed — try reconnecting</p>}
             </div>
 
-            {/* Advanced Options */}
-            <div>
-              <h4 className="font-medium text-[#342e37] dark:text-white mb-3 flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Advanced Options
-              </h4>
-              <Separator className="mb-4" />
-              <div className="space-y-3">
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-lg p-4">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-blue-800 dark:text-blue-200">
-                      <p className="font-medium mb-1">Data Sync Information</p>
-                      <p className="text-xs">
-                        All data is synced securely over HTTPS. Changes may take up to 
-                        {' '}{syncFrequency === 'manual' ? 'manual trigger' : `${syncFrequency} minutes`} to appear 
-                        in {selectedIntegration?.name}.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Clock className="w-3 h-3 mr-1" />
-                    View Sync History
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Shield className="w-3 h-3 mr-1" />
-                    Test Connection
-                  </Button>
-                </div>
-              </div>
-            </div>
+            {/* View Run History */}
+            <Button variant="outline" className="w-full" onClick={() => {
+              setSettingsOpen(false);
+              if (onNavigate) onNavigate("automations");
+              sessionStorage.setItem("listingbug_automations_last_tab", "history");
+            }}>
+              <Clock className="w-4 h-4 mr-2" /> View Run History
+            </Button>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSettingsOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              toast.success(`${selectedIntegration?.name} settings saved successfully!`);
-              setSettingsOpen(false);
-            }}>
-              Save Changes
-            </Button>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancel</Button>
+            <Button
+              disabled={selectedIntegration?.id === "mailchimp" && !settingsListId}
+              onClick={async () => {
+                if (!selectedIntegration) return;
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) { toast.error("Not signed in"); return; }
+                  const tags = settingsTags ? settingsTags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+                  await supabase.from("integration_connections").update({
+                    config: { ...connectedInfo[selectedIntegration.id]?.config, list_id: settingsListId, tags, double_opt_in: settingsDoubleOptIn }
+                  }).eq("user_id", session.user.id).eq("integration_id", selectedIntegration.id);
+                  setConnectedInfo(prev => ({ ...prev, [selectedIntegration.id]: { ...prev[selectedIntegration.id], config: { ...prev[selectedIntegration.id]?.config, list_id: settingsListId, tags, double_opt_in: settingsDoubleOptIn } } }));
+                  toast.success("Settings saved");
+                  setSettingsOpen(false);
+                } catch (e: any) { toast.error(e.message ?? "Failed to save"); }
+              }}
+            >Save Settings</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
