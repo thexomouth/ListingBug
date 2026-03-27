@@ -61,12 +61,12 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('name, company, created_at')
+            .select('full_name, company, created_at')
             .eq('id', user.id)
             .single();
 
           if (profileData) {
-            if (profileData.name) setName(profileData.name);
+            if (profileData.full_name) setName(profileData.full_name);
             if (profileData.company) setCompany(profileData.company);
             if (profileData.created_at) setCreatedAt(profileData.created_at);
           }
@@ -119,19 +119,23 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim() && !company.trim()) {
-      toast.error('Please fill in at least one field to update');
+    if (!name.trim() || !company.trim()) {
+      toast.error('Please fill in all fields');
       return;
     }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) throw new Error('Not authenticated');
-
-      const updatePayload: any = {};
-      if (name.trim()) updatePayload.name = name.trim();
-      if (company.trim()) updatePayload.company = company.trim();
-
-      const { error } = await supabase.from('users').update(updatePayload).eq('id', user.id);
+      
+      const { error } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          full_name: name.trim(),
+          company: company.trim(),
+          updated_at: new Date().toISOString(),
+        });
+      
       if (error) throw error;
       toast.success('Account settings saved successfully');
     } catch (err: any) {
@@ -153,22 +157,27 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
       toast.error('New password must be at least 8 characters');
       return;
     }
-
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) throw new Error('Not authenticated');
-
-      // Verify current password by re-signing in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user.email,
-        password: currentPassword,
+      if (!user) throw new Error('Not authenticated');
+      
+      // Call edge function to verify current password and update
+      const response = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
       });
-      if (signInError) throw new Error('Current password is incorrect');
-
-      // Update to new password
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-      if (updateError) throw new Error(updateError.message || 'Failed to update password');
-
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to update password');
+      
       toast.success('Password updated successfully');
       setCurrentPassword('');
       setNewPassword('');
@@ -180,7 +189,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   };
 
   const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
-  const isProfileFormValid = name.trim() || company.trim();
+  const isProfileFormValid = name.trim() && company.trim();
 
   const handleDeleteAccount = async () => {
     setShowDeleteConfirm(false);

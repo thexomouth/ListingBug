@@ -195,16 +195,19 @@ export function IntegrationConnectionModal({
     }
   }, [isOpen]);
 
-  // If returning from OAuth (?connected= param), go straight to config step
+  // If returning from OAuth OR already connected and opening config, auto-load audiences
   useEffect(() => {
-    if (isOpen && integration && (authType === 'oauth')) {
+    if (isOpen && integration && authType === 'oauth') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('connected') === integration.id) {
+      const fromOAuth = params.get('connected') === integration.id;
+      if (fromOAuth) {
         setStep('config');
         if (integration.id === 'mailchimp') loadMailchimpAudiences();
+      } else if (step === 'config' && integration.id === 'mailchimp' && mcAudiences.length === 0) {
+        loadMailchimpAudiences();
       }
     }
-  }, [isOpen, integration]);
+  }, [isOpen, integration, step]);
 
   // ── OAuth connect ──────────────────────────────────────────────────────────
   const handleOAuthConnect = async () => {

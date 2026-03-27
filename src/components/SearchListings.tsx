@@ -298,6 +298,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       }
 
       if (user?.plan) {
+        if (user.plan.toLowerCase() === 'trial') setListingsCap(1000);
         if (user.plan.toLowerCase() === 'starter') setListingsCap(4000);
         if (user.plan.toLowerCase() === 'professional') setListingsCap(10000);
         if (user.plan.toLowerCase() === 'enterprise') setListingsCap(999999);
@@ -638,7 +639,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   
   // Listings synced tracking
   const [listingsSynced, setListingsSynced] = useState(0);
-  const [listingsCap, setListingsCap] = useState(4000);
+  const [listingsCap, setListingsCap] = useState(1000); // trial default; updated after plan load
   const [resetLabel, setResetLabel] = useState('Resets 04/27/25');
   const [isTrialUser, setIsTrialUser] = useState(false);
   

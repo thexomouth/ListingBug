@@ -108,8 +108,8 @@ export function ChangePlanModal({
         'Basic support',
       ],
       limits: {
-        reports: 500,
-        dataPoints: 5000,
+        reports: 1000,
+        dataPoints: 10000,
         users: 1,
       },
     },

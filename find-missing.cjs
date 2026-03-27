@@ -1,22 +1,18 @@
 const fs = require('fs');
-const path = require('path');
-const srcDir = 'C:/Users/User/Downloads/ListingBug FIGMA MVP/src';
-
-function walk(d) {
-  fs.readdirSync(d).forEach(item => {
-    const full = path.join(d, item);
-    if (fs.statSync(full).isDirectory()) walk(full);
-    else if (item.endsWith('.tsx') || item.endsWith('.ts')) {
-      const c = fs.readFileSync(full, 'utf8');
-      if (c.includes('preview') && c.includes('payload') || c.includes('PreviewModal') || c.includes('TestModal') || c.includes('previewPayload')) {
-        console.log('FILE:', path.basename(full));
-        c.split('\n').forEach((l,i) => {
-          if (l.includes('preview') && l.includes('payload') || l.includes('previewPayload') || l.includes('PreviewModal') || l.includes('TestModal') || l.includes('sampleData') || l.includes('mockData')) {
-            console.log(' ', i+1, l.trim().substring(0,120));
-          }
-        });
-      }
-    }
+const text = fs.readFileSync('C:/Users/User/Downloads/ListingBug FIGMA MVP/src/components/AutomationsManagementPage.tsx', 'utf8');
+// Use a real parser approach - find the actual SyntaxError by just trying to compile
+const { execSync } = require('child_process');
+try {
+  execSync('node --input-type=module', { 
+    input: text.replace(/tsx?$/, ''),
+    timeout: 5000
   });
+} catch(e) {
+  // Just check what tsc reports about the structure
 }
-walk(srcDir);
+// Instead, look at lines 1-50 of current file
+const lines = text.split('\n');
+console.log('Lines 1-50 of current file:');
+for (let i = 0; i < 50; i++) {
+  console.log(i+1, lines[i].substring(0, 100));
+}

@@ -173,6 +173,8 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       connected: connectedIds.has(i.id),
       category: connectedIds.has(i.id) ? 'connected' : (i.category === 'connected' ? 'available' : i.category),
     })));
+    // Collapse "Available" section when user already has connected integrations
+    if (connectedIds.size > 0) setAvailableExpanded(false);
   };
 
   useEffect(() => {

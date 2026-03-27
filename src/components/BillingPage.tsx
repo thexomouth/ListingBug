@@ -88,7 +88,7 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
     price: 0,
     billingCycle: 'Monthly',
     nextBillingDate: '—',
-    reportsLimit: 4000,
+    reportsLimit: 1000,
     reportsUsed: 0,
     dataPointsLimit: 40000,
     dataPointsUsed: 0,
@@ -115,7 +115,7 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
         // If user is in trial, show "Trial" as current plan; otherwise show actual plan
         const planName = isTrialing ? 'Trial' : (data.plan === 'professional' ? 'Professional' : data.plan === 'enterprise' ? 'Enterprise' : 'Starter');
         const price = isTrialing ? 0 : data.plan === 'professional' ? 49 : data.plan === 'enterprise' ? 0 : 19;
-        const limit = data.plan === 'professional' ? 10000 : data.plan === 'enterprise' ? 999999 : 4000;
+        const limit = data.plan === 'professional' ? 10000 : data.plan === 'enterprise' ? 999999 : data.plan === 'trial' ? 1000 : 4000;
         setSubscription(prev => ({
           ...prev,
           plan: planName, price, reportsLimit: limit,

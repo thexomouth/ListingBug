@@ -5,7 +5,7 @@
  * Ensures consistent enforcement across all components
  */
 
-export type PlanType = 'starter' | 'pro' | 'enterprise';
+export type PlanType = 'trial' | 'starter' | 'pro' | 'enterprise';
 
 export interface PlanLimits {
   name: string;
@@ -25,6 +25,19 @@ export interface PlanLimits {
  * Plan configuration
  */
 export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
+  trial: {
+    name: 'Trial',
+    automationSlots: 3,
+    listingsCap: 1000,
+    price: 0,
+    features: {
+      crmIntegrations: false,
+      automationPlatforms: false,
+      customAPI: false,
+      whiteLabel: false,
+      prioritySupport: false
+    }
+  },
   starter: {
     name: 'Starter',
     automationSlots: 1,

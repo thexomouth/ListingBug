@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { LBButton } from './design-system/LBButton';
@@ -10,6 +10,7 @@ import { IntegrationManagementModal, Integration as IntegrationInterface } from 
 import { AutomationLimitModal } from './AutomationLimitModal';
 import { RunDetailsModal } from './RunDetailsModal';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
+import { canCreateAutomation, getCurrentPlan, getAutomationUsage, getNextPlan } from './utils/planLimits';
 import { 
   Zap, 
   Plus, 
@@ -31,7 +32,7 @@ import {
   Loader2,
   AlertTriangle
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import {
   Dialog,
   DialogContent,
@@ -68,7 +69,8 @@ interface RunHistoryItem {
   status: 'success' | 'failed';
   listingsFound: number;
   listingsSent: number;
-  destination: string;$8  details?: string;
+  destination: string;
+  details?: string;
 }
 
 interface Integration {
@@ -117,39 +119,23 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   
   // Automation limit modal state
   const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const currentPlan = getCurrentPlan();
+  const automationUsage = getAutomationUsage(currentPlan);
 
   // Automations loaded from Supabase (see loadAutomations below)
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [automationsLoading, setAutomationsLoading] = useState(true);
 
-  // Plan fetched from Supabase — do not use localStorage-based getCurrentPlan() for gate logic
-  const [currentPlan, setCurrentPlan] = useState<'trial' | 'starter' | 'professional' | 'enterprise'>('trial');
-  const PLAN_SLOTS: Record<string, number> = { trial: 3, starter: 1, professional: Infinity, enterprise: Infinity };
-  const maxSlots = PLAN_SLOTS[currentPlan] ?? 0;
-  const automationUsage = {
-    current: automations.length,
-    max: maxSlots,
-    isAtLimit: maxSlots !== Infinity && automations.length >= maxSlots,
-  };
-
 // Load automations from Supabase — works on any device
   const loadAutomations = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
       console.warn('[loadAutomations] no session, skipping');
       setAutomationsLoading(false);
       return;
     }
-    const userId = user.id;
+    const userId = session.user.id;
     console.log('[loadAutomations] fetching for user', userId);
-
-    // Fetch plan from users table
-    const { data: userData } = await supabase
-      .from('users')
-      .select('plan')
-      .eq('id', userId)
-      .single();
-    if (userData?.plan) setCurrentPlan(userData.plan as any);
     const { data, error } = await supabase
       .from('automations')
       .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
@@ -549,15 +535,123 @@ const handleDeleteAutomation = async (id: string) => {
     toast.success('Automation duplicated');
   };
 
-
-  const handleAutomationCreated = async () => {
-    await loadAutomations();
-    setActiveTab('automations');
+  const handleAutomationCreated = async (automation: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      console.warn('[loadAutomations] no session, skipping');
+      setAutomationsLoading(false);
+      return;
+    }
+    const userId = session.user.id;
+    console.log('[loadAutomations] fetching for user', userId);
+    const { data, error } = await supabase
+      .from('automations')
+      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[Automations] load error:', error.message);
+      setAutomationsLoading(false);
+      return;
+    }
+    const mapped = (data || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      searchName: row.search_name ?? '',
+      schedule: [row.schedule, row.schedule_time ? `at ${row.schedule_time}` : ''].filter(Boolean).join(' '),
+      destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
+      searchCriteria: row.search_criteria ?? {},
+      active: row.active ?? true,
+      status: 'idle',
+      lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
+      nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+    }));
+    if (data !== null) {
+      console.log('[loadAutomations] setting', mapped.length, 'automations');
+      setAutomations(mapped);
+    } else {
+      console.warn('[loadAutomations] data was null, keeping existing state');
+    }
+    setAutomationsLoading(false);
   };
 
-  const handleAutomationUpdated = async (_updated: any) => {
-    await loadAutomations();
+interface Automation {
+  id: string;
+  name: string;
+  searchName: string;
+  schedule: string;
+  destination: {
+    type: 'email' | 'mailchimp' | 'webhook' | 'hubspot' | 'sheets' | 'slack';
+    label: string;
   };
+  active: boolean;
+  lastRun?: {
+    date: string;
+    status: 'success' | 'failed';
+    listingsSent: number;
+  };
+  nextRun?: string;
+}
+
+interface RunHistoryItem {
+  id: string;
+  automationName: string;
+  runDate: string;
+  status: 'success' | 'failed';
+  listingsFound: number;
+  listingsSent: number;
+  destination: string;
+  details?: string;
+}
+
+interface Integration {
+  id: string;
+  name: string;
+  icon: any;
+  connected: boolean;
+  description: string;
+  category: 'crm' | 'email' | 'communication' | 'automation' | 'storage';
+  useCases: string[];
+  connectedDate?: string;
+  automationsUsing?: number;
+}
+
+interface AutomationsManagementPageProps {
+  onViewDetail?: (automation: Automation) => void;
+  initialTab?: 'create' | 'automations' | 'history';
+}
+
+export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' }: AutomationsManagementPageProps = {}) {
+  // Walkthrough integration
+  const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
+  const walkthroughStep3Active = isStepActive(3);
+  
+  const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(() => {
+    // Try to restore last tab from sessionStorage
+    const lastTab = sessionStorage.getItem('listingbug_automations_last_tab');
+    if (lastTab && ['create','automations','history'].includes(lastTab)) {
+      return lastTab as 'create' | 'automations' | 'history';
+    }
+    return initialTab;
+  });
+    // Persist activeTab to sessionStorage on change
+    useEffect(() => {
+      sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
+    }, [activeTab]);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
+  const [expandedAutomations, setExpandedAutomations] = useState<Set<string>>(new Set());
+  const [runNowLoading, setRunNowLoading] = useState(false);
+  const [runningAutomation, setRunningAutomation] = useState<Automation | null>(null);
+  const [integrationModalOpen, setIntegrationModalOpen] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<IntegrationInterface | null>(null);
+  const [runDetailsModalOpen, setRunDetailsModalOpen] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<RunHistoryItem | null>(null);
+  
+  // Automation limit modal state
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const currentPlan = getCurrentPlan();
+  const automationUsage = getAutomationUsage(currentPlan);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
@@ -623,7 +717,7 @@ const handleDeleteAutomation = async (id: string) => {
               </div>
               <p className="text-gray-900 dark:text-white text-[18px] font-bold mb-2">Automation Limit Reached</p>
               <p className="text-gray-600 dark:text-[#EBF2FA] text-[14px] mb-6">
-                You've used {automationUsage.current} of {automationUsage.max === Infinity ? '∞' : automationUsage.max} automation slots on your {currentPlan === 'professional' ? 'Professional' : currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan.
+                You've used {automationUsage.current} of {automationUsage.max} automation slots on your {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan.
               </p>
               <div className="flex items-center justify-center gap-3">
                 <LBButton 
@@ -643,10 +737,11 @@ const handleDeleteAutomation = async (id: string) => {
           ) : (
             <CreateAutomationPage
               onAutomationCreated={(automation) => {
-                // Check limit using live Supabase-fetched plan + count
-                const atLimit = maxSlots !== Infinity && automations.length >= maxSlots;
-
-                if (atLimit && !walkthroughStep3Active) {
+                // Check limit before creating
+                const limitCheck = canCreateAutomation(currentPlan);
+                
+                if (!limitCheck.allowed && !walkthroughStep3Active) {
+                  // Show limit modal
                   setLimitModalOpen(true);
                   toast.error('Automation limit reached');
                   return;
@@ -994,7 +1089,7 @@ const handleDeleteAutomation = async (id: string) => {
       <AutomationLimitModal
         isOpen={limitModalOpen}
         onClose={() => setLimitModalOpen(false)}
-        currentPlan={currentPlan === 'professional' ? 'pro' : currentPlan === 'trial' ? 'starter' : currentPlan as 'starter' | 'pro' | 'enterprise'}
+        currentPlan={currentPlan}
         currentSlots={automationUsage.current}
         maxSlots={automationUsage.max === Infinity ? 999 : automationUsage.max}
         onUpgrade={() => {

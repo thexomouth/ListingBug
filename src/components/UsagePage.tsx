@@ -31,7 +31,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
   const [planState, setPlanState] = useState({
     planKey: 'starter',
     planName: 'Starter',
-    listingsCap: 4000,
+    listingsCap: 1000,
     isTrial: true,
     trialEndsAt: '',
     billingPeriodStart: '',
@@ -40,6 +40,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
   });
 
   const planConfigs = {
+    trial: { listingsCap: 1000, name: 'Trial' },
     starter: { listingsCap: 4000, name: 'Starter' },
     professional: { listingsCap: 10000, name: 'Professional' },
     enterprise: { listingsCap: Infinity, name: 'Enterprise' }
@@ -93,9 +94,9 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
         const billingStart = '';
         const billingEnd = userData.stripe_subscription_end || '';
 
-        const planKey = userData.plan?.toLowerCase() || 'starter';
-        const planName = planConfigs[planKey]?.name || 'Starter';
-        const listingsCap = planConfigs[planKey]?.listingsCap || 4000;
+        const planKey = userData.plan?.toLowerCase() || 'trial';
+        const planName = planConfigs[planKey as keyof typeof planConfigs]?.name || 'Trial';
+        const listingsCap = planConfigs[planKey as keyof typeof planConfigs]?.listingsCap || 1000;
 
         let billingPeriodText = '';
         if (isTrial) {
@@ -154,7 +155,7 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
 
       // Use the freshly fetched plan cap, not the stale state value
       const planKey = userData?.plan?.toLowerCase() || 'starter';
-      const resolvedCap = planConfigs[planKey as keyof typeof planConfigs]?.listingsCap || 4000;
+      const resolvedCap = planConfigs[planKey as keyof typeof planConfigs]?.listingsCap || 1000;
 
       setUsage({
         listingsProcessed,
