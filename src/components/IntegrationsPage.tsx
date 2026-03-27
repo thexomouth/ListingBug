@@ -113,7 +113,9 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const loadSettingsAudiences = async () => {
     setSettingsAudiencesLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Force-refresh the session so verify_jwt: true edge functions get a valid token
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      const session = refreshData.session;
       if (!session) { toast.error('Not signed in — please refresh the page.'); return; }
       const res = await fetch(
         'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options',
@@ -126,9 +128,8 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       let data: any = {};
       try { data = await res.json(); } catch {}
       if (res.status === 401) {
-        // 401 here = Mailchimp rejected the stored token, not a Supabase session issue
         setSettingsAudiences([]);
-        toast.error('Mailchimp token expired. Disconnect and reconnect your Mailchimp account.');
+        toast.error('Session expired — please sign out and sign back in.');
         return;
       }
       if (!res.ok) { toast.error(data.error ?? `Could not load audiences (HTTP ${res.status})`); return; }
