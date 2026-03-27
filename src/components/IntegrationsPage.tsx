@@ -113,12 +113,8 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const loadSettingsAudiences = async () => {
     setSettingsAudiencesLoading(true);
     try {
-      let { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        const { data: refreshData } = await supabase.auth.refreshSession();
-        session = refreshData.session;
-      }
-      if (!session) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error('Not signed in — please refresh the page.'); return; }
       const res = await fetch(
         'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options',
         {
@@ -127,13 +123,18 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
           body: JSON.stringify({ integration: 'mailchimp' }),
         }
       );
-      // If still 401, token is genuinely invalid — surface the error
-      if (res.status === 401) { toast.error('Session expired — please refresh the page.'); return; }
-      const data = await res.json();
+      let data: any = {};
+      try { data = await res.json(); } catch {}
+      if (res.status === 401) {
+        // 401 here = Mailchimp rejected the stored token, not a Supabase session issue
+        setSettingsAudiences([]);
+        toast.error('Mailchimp token expired. Disconnect and reconnect your Mailchimp account.');
+        return;
+      }
+      if (!res.ok) { toast.error(data.error ?? `Could not load audiences (HTTP ${res.status})`); return; }
       if (data.options) setSettingsAudiences(data.options);
-      else if (data.error) toast.error(data.error);
-    } catch {
-      // silently fail — user can click Refresh
+    } catch (e: any) {
+      toast.error('Network error loading audiences — check your connection.');
     } finally {
       setSettingsAudiencesLoading(false);
     }
