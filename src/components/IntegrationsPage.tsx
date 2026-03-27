@@ -110,22 +110,37 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [settingsTags, setSettingsTags] = useState('');
   const [settingsDoubleOptIn, setSettingsDoubleOptIn] = useState(false);
 
+  // Returns a valid access token, refreshing if the JWT is expired or missing.
+  // On rotation-race (refreshSession returns null), re-reads session which has the background-rotated token.
+  const getEdgeToken = async (): Promise<string | null> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+    // Decode the JWT payload to check actual exp claim (more reliable than session.expires_at)
+    try {
+      const b64 = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const { exp } = JSON.parse(atob(b64));
+      const now = Math.floor(Date.now() / 1000);
+      if (exp && exp > now + 10) return session.access_token; // Token is genuinely valid
+    } catch { /* fall through to refresh */ }
+    // Token is expired or undecodable — try explicit refresh
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed.session?.access_token) return refreshed.session.access_token;
+    // refreshSession() failed (background auto-refresh already rotated the token) —
+    // re-read session which now has the rotated token
+    const { data: { session: latest } } = await supabase.auth.getSession();
+    return latest?.access_token ?? null;
+  };
+
   const loadSettingsAudiences = async () => {
     setSettingsAudiencesLoading(true);
     try {
-      // Use cached session (background auto-refresh keeps it valid); only force-refresh if actually expired
-      let { data: { session } } = await supabase.auth.getSession();
-      const now = Math.floor(Date.now() / 1000);
-      if (session && session.expires_at && session.expires_at <= now + 30) {
-        const { data: refreshData } = await supabase.auth.refreshSession();
-        session = refreshData.session;
-      }
-      if (!session) { toast.error('Not signed in — please refresh the page.'); return; }
+      const token = await getEdgeToken();
+      if (!token) { toast.error('Not signed in — please refresh the page.'); return; }
       const res = await fetch(
         'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ integration: 'mailchimp' }),
         }
       );
@@ -723,11 +738,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               <Button variant="outline" className="w-full" disabled={isTestingConnection} onClick={async () => {
                 setIsTestingConnection(true); setConnectionTestResult(null);
                 try {
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session) throw new Error("Not signed in");
+                  const token = await getEdgeToken();
+                  if (!token) throw new Error("Not signed in");
                   const res = await fetch("https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                     body: JSON.stringify({ integration: selectedIntegration?.id }),
                   });
                   const data = await res.json();
