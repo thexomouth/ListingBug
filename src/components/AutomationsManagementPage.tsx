@@ -122,6 +122,88 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   const currentPlan = getCurrentPlan();
   const automationUsage = getAutomationUsage(currentPlan);
 
+  // ── Handler functions ────────────────────────────────────────────────────
+
+  const handleToggleAutomation = (id: string) => {
+    setAutomations(prev => prev.map(a => a.id === id ? { ...a, active: !a.active } : a));
+    const automation = automations.find(a => a.id === id);
+    toast.success(`Automation ${automation?.active ? 'paused' : 'activated'}`);
+  };
+
+  const handleRunNow = async (automation: any) => {
+    setRunNowLoading(true);
+    setRunningAutomation(automation);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ automation }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.error) throw new Error(result.error || 'Automation run failed');
+      const { status, listings_found, listings_sent, details } = result;
+      const destLabel = automation.destination?.label ?? 'destination';
+      if (status === 'failed') {
+        toast.error(`"${automation.name}" failed: ${(details ?? 'Unknown error').slice(0, 120)}`);
+      } else {
+        toast.success(`"${automation.name}" complete \u2014 ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await createNotification({
+          userId: user.id,
+          type: status === 'failed' ? 'error' : 'success',
+          title: status === 'failed' ? `Automation failed: ${automation.name}` : `Automation run complete: ${automation.name}`,
+          message: status === 'failed' ? (details ?? 'The automation encountered an error.') : listings_sent > 0 ? `${listings_found} listings found \u2014 ${listings_sent} sent to ${destLabel}` : `${listings_found} listings found.`,
+        });
+      }
+      await loadRunHistory();
+      setAutomations(prev => prev.map(a => a.id === automation.id ? { ...a, lastRun: { status: status === 'failed' ? 'failed' : 'success', date: new Date().toISOString(), listingsSent: listings_sent ?? 0, details: details ?? '' } } : a));
+    } catch (err: any) {
+      const msg = err.message ?? 'Unknown error';
+      toast.error(`Run failed: ${msg}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await createNotification({ userId: user.id, type: 'error', title: `Automation failed: ${automation.name}`, message: msg });
+      }
+    } finally {
+      setRunNowLoading(false);
+      setRunningAutomation(null);
+    }
+  };
+
+  const handleDeleteAutomation = async (id: string) => {
+    await supabase.from('automations').delete().eq('id', id);
+    setAutomations(prev => prev.filter(a => a.id !== id));
+    toast.success('Automation deleted');
+  };
+
+  const handleDuplicateAutomation = (automation: any) => {
+    const newAutomation = { ...automation, id: Date.now().toString(), name: `${automation.name} (Copy)`, active: false, lastRun: undefined, nextRun: undefined };
+    setAutomations(prev => [...prev, newAutomation]);
+    toast.success('Automation duplicated');
+  };
+
+  const handleAutomationUpdated = (updated: any) => {
+    setAutomations(prev => prev.map(a => a.id === updated.id ? { ...a, ...updated } : a));
+    setEditModalOpen(false);
+    toast.success('Automation updated');
+    loadAutomations();
+  };
+
+  const handleAutomationCreated = (automation: any) => {
+    loadAutomations();
+    setActiveTab('automations');
+    toast.success(`Automation "${automation.name}" created`);
+  };
+
+  const getDestinationIcon = (type: string) => {
+    const icons: Record<string, any> = { email: Mail, mailchimp: Send, webhook: Webhook, hubspot: Database, sheets: FileSpreadsheet, slack: MessageSquare };
+    return icons[type] || Database;
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       {/* Header */}
