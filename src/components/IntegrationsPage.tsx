@@ -110,6 +110,28 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [settingsTags, setSettingsTags] = useState('');
   const [settingsDoubleOptIn, setSettingsDoubleOptIn] = useState(false);
 
+  const loadSettingsAudiences = async () => {
+    setSettingsAudiencesLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(
+        'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ integration: 'mailchimp' }),
+        }
+      );
+      const data = await res.json();
+      if (data.options) setSettingsAudiences(data.options);
+    } catch {
+      // silently fail — user can click Refresh
+    } finally {
+      setSettingsAudiencesLoading(false);
+    }
+  };
+
   // Map integration IDs to modal integration IDs
   const getModalIntegrationId = (integrationId: string): string => {
     const mapping: { [key: string]: string } = {
