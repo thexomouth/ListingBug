@@ -29,7 +29,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Loader2,
+  UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import {
@@ -109,6 +110,10 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [settingsListId, setSettingsListId] = useState('');
   const [settingsTags, setSettingsTags] = useState('');
   const [settingsDoubleOptIn, setSettingsDoubleOptIn] = useState(false);
+  // Send Test Contact state
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testContactResult, setTestContactResult] = useState<'success' | 'failed' | null>(null);
+  const [testContactDetail, setTestContactDetail] = useState<string | null>(null);
 
   // Returns a valid access token, refreshing if the JWT is expired or missing.
   // On rotation-race (refreshSession returns null), re-reads session which has the background-rotated token.
@@ -157,6 +162,119 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       toast.error('Network error loading audiences — check your connection.');
     } finally {
       setSettingsAudiencesLoading(false);
+    }
+  };
+
+  // Send a single test contact through the integration's dispatch function
+  const sendTestContact = async () => {
+    if (!selectedIntegration) return;
+    setIsSendingTest(true);
+    setTestContactResult(null);
+    setTestContactDetail(null);
+    try {
+      const token = await getEdgeToken();
+      if (!token) { toast.error('Not signed in'); return; }
+
+      // Use the authenticated user's own email/name so the test contact is easy to identify
+      const { data: { session } } = await supabase.auth.getSession();
+      const userEmail = session?.user?.email ?? 'test.contact@listingbug.com';
+      const rawName = session?.user?.user_metadata?.full_name ?? session?.user?.user_metadata?.name ?? '';
+      const agentName = rawName || 'ListingBug Test';
+
+      // Realistic test listing matching the exact fields the dispatch functions expect
+      const testListing = {
+        id: `listingbug-test-${Date.now()}`,
+        formatted_address: '742 Evergreen Terrace, Denver, CO 80203',
+        city: 'Denver',
+        state: 'CO',
+        zip_code: '80203',
+        price: 485000,
+        bedrooms: 3,
+        bathrooms: 2,
+        square_footage: 1850,
+        property_type: 'Single Family',
+        status: 'Active',
+        listed_date: new Date().toISOString().split('T')[0],
+        days_on_market: 5,
+        listing_type: 'sale',
+        agent_name: agentName,
+        agent_phone: '(720) 555-0192',
+        agent_email: userEmail,
+        office_name: 'ListingBug Test Realty',
+        mls_number: 'TEST-LB-' + new Date().getFullYear(),
+        latitude: 39.7392,
+        longitude: -104.9903,
+      };
+
+      const integId = selectedIntegration.id;
+      const config = connectedInfo[integId]?.config ?? {};
+      const BASE = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      let fnUrl = '';
+      let payload: any = { listings: [testListing] };
+
+      if (integId === 'mailchimp') {
+        const listId = settingsListId || config.list_id;
+        if (!listId) { toast.error('Select a Mailchimp audience first, then try again.'); return; }
+        fnUrl = `${BASE}/send-to-mailchimp`;
+        payload = { ...payload, list_id: listId, tags: ['listingbug-test', ...(config.tags ?? [])], double_opt_in: false };
+      } else if (integId === 'hubspot') {
+        fnUrl = `${BASE}/send-to-hubspot`;
+        payload = { ...payload, object_type: config.object_type ?? 'contacts' };
+      } else if (integId === 'sendgrid') {
+        fnUrl = `${BASE}/send-to-sendgrid`;
+        payload = { ...payload, list_ids: config.list_ids ?? [] };
+      } else if (integId === 'google' || integId === 'sheets' || integId === 'google-sheets') {
+        if (!config.spreadsheet_id) { toast.error('No spreadsheet ID configured — edit the integration first.'); return; }
+        fnUrl = `${BASE}/send-to-sheets`;
+        payload = { ...payload, spreadsheet_id: config.spreadsheet_id, sheet_name: config.sheet_name ?? 'Sheet1', write_mode: 'append' };
+      } else if (integId === 'twilio') {
+        fnUrl = `${BASE}/send-to-twilio`;
+        payload = { ...payload, list_unique_name: config.list_unique_name ?? 'listingbug_contacts' };
+      } else if (['zapier', 'make', 'n8n', 'webhook', 'custom-webhook'].includes(integId)) {
+        if (!config.webhook_url) { toast.error('No webhook URL configured — save settings first.'); return; }
+        fnUrl = `${BASE}/webhook-push`;
+        payload = { ...payload, webhook_url: config.webhook_url, send_mode: 'batch', metadata: { automation_name: 'ListingBug Test', run_id: 'test-' + Date.now() } };
+      } else {
+        toast.error(`Send test contact is not yet supported for ${selectedIntegration.name}`);
+        return;
+      }
+
+      const res = await fetch(fnUrl, { method: 'POST', headers, body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const detail = data.error ?? data.details ?? `HTTP ${res.status}`;
+        setTestContactResult('failed');
+        setTestContactDetail(detail);
+        toast.error(`Test failed: ${detail}`);
+        return;
+      }
+
+      const sent = data.sent ?? data.accepted ?? data.written ?? 0;
+      const failed = data.failed ?? 0;
+      const skipped = data.skipped_no_email ?? 0;
+
+      if (skipped > 0 && sent === 0) {
+        setTestContactResult('failed');
+        setTestContactDetail(`Email ${userEmail} was skipped — check the address is valid for ${selectedIntegration.name}.`);
+        toast.error('Test contact skipped — email may be invalid for this platform.');
+      } else if (sent > 0 || res.ok) {
+        setTestContactResult('success');
+        setTestContactDetail(`Test contact (${userEmail}) sent — check ${selectedIntegration.name} to confirm it arrived.`);
+        toast.success(`Test contact sent to ${selectedIntegration.name}!`);
+      } else {
+        setTestContactResult('failed');
+        setTestContactDetail(data.error ?? 'Contact was not accepted.');
+        toast.error(data.error ?? 'Test contact was not accepted.');
+      }
+    } catch (e: any) {
+      setTestContactResult('failed');
+      setTestContactDetail(e.message ?? 'Network error');
+      toast.error(e.message ?? 'Network error during test');
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -431,6 +549,9 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
 
   const handleOpenSettings = (integration: Integration) => {
     setSelectedIntegration(integration);
+    setConnectionTestResult(null);
+    setTestContactResult(null);
+    setTestContactDetail(null);
     setSettingsOpen(true);
   };
 
@@ -756,6 +877,30 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               </Button>
               {connectionTestResult === "success" && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Connection verified</p>}
               {connectionTestResult === "failed" && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Failed — try reconnecting</p>}
+            </div>
+
+            {/* Send Test Contact */}
+            <div className="space-y-1.5">
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={isSendingTest}
+                onClick={sendTestContact}
+              >
+                {isSendingTest ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
+                {isSendingTest ? "Sending test contact…" : "Send Test Contact"}
+              </Button>
+              {testContactResult === "success" && (
+                <p className="text-xs text-green-600 flex items-center gap-1 flex-wrap">
+                  <CheckCircle className="w-3 h-3 shrink-0" /> {testContactDetail}
+                </p>
+              )}
+              {testContactResult === "failed" && (
+                <p className="text-xs text-red-500 flex items-center gap-1 flex-wrap">
+                  <AlertCircle className="w-3 h-3 shrink-0" /> {testContactDetail}
+                </p>
+              )}
+              <p className="text-xs text-gray-400">Sends a test listing agent contact using your account email. Safe to delete afterwards.</p>
             </div>
 
             {/* View Run History */}
