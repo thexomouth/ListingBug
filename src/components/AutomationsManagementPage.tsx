@@ -761,7 +761,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
           automation: selectedRun.automationName,
           date: selectedRun.runDate,
           status: selectedRun.status,
-          listingsFound: selectedRun.listingsSent,
+          listingsFound: selectedRun.listingsFound,
           exported: selectedRun.listingsSent,
           destination: selectedRun.destination,
           details: selectedRun.details
