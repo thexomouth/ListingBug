@@ -88,9 +88,9 @@ export const INTEGRATION_CONFIGS: Record<string, any> = {
     ],
     instructions: [
       'In Zapier, create a new Zap',
-      'Choose "Webhooks by Zapier" as the trigger',
-      'Select "Catch Hook" and copy the webhook URL',
-      'Paste the URL below and save',
+      'For Step 1 (the trigger), search "Webhooks by Zapier" and select it',
+      'Choose "Catch Hook" as the trigger event — Zapier will generate a unique URL',
+      'Copy that webhook URL, paste it below, then add your desired action steps in Zapier',
     ],
   },
   make: {

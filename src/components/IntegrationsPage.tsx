@@ -383,6 +383,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   useEffect(() => {
     loadConnectedIntegrations();
     const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get('error');
+    if (oauthError) {
+      window.history.replaceState({}, '', window.location.pathname);
+      toast.error(`Connection failed: ${oauthError}`);
+    }
     const justConnected = params.get('connected');
     if (justConnected) {
       window.history.replaceState({}, '', window.location.pathname);

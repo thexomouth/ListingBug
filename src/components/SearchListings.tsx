@@ -2377,10 +2377,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                               <Trash2 className="w-3.5 h-3.5 text-red-600" />
                             </LBButton>
                           </div>
-                          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/10">
-                            <div className="text-[12px] text-gray-500 dark:text-gray-400">
-                              {new Date(search.searchDate).toLocaleString()}
-                            </div>
+                          <div className="flex items-center justify-end pt-3 border-t border-gray-100 dark:border-white/10">
                             <div className="flex items-center gap-2">
                               <LBButton
                                 variant="primary"
