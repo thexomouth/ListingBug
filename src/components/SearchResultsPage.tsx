@@ -300,7 +300,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
           body: JSON.stringify({
             listings: normalized,
             list_id: cfg.list_id,
-            tags: cfg.tags ? cfg.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+            tags: Array.isArray(cfg.tags) ? cfg.tags : (cfg.tags ? cfg.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []),
             double_opt_in: cfg.double_opt_in || false,
           }),
         });
