@@ -74,6 +74,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const [selectedAutomation, setSelectedAutomation] = useState<any | null>(null);
   const [isAutomationDrawerOpen, setIsAutomationDrawerOpen] = useState(false);
   const [alertCount, setAlertCount] = useState(0);
+  const [connectedIntegrations, setConnectedIntegrations] = useState<Array<{ id: string; name: string; category: string }>>([]);
   // Real usage data from Supabase
   const [listingsImported, setListingsImported] = useState(0);
   const [listingsExported, setListingsExported] = useState(0);
@@ -151,6 +152,38 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
       }
     };
     loadAutomations();
+  }, []);
+
+  // Load connected integrations
+  useEffect(() => {
+    const INTEGRATION_META: Record<string, { name: string; category: string }> = {
+      salesforce: { name: 'Salesforce', category: 'CRM' },
+      hubspot: { name: 'HubSpot', category: 'CRM' },
+      mailchimp: { name: 'Mailchimp', category: 'Email Marketing' },
+      constantcontact: { name: 'Constant Contact', category: 'Email Marketing' },
+      sheets: { name: 'Google Sheets', category: 'Spreadsheets' },
+      airtable: { name: 'Airtable', category: 'Spreadsheets' },
+      twilio: { name: 'Twilio', category: 'SMS' },
+      zapier: { name: 'Zapier', category: 'Automation' },
+      make: { name: 'Make', category: 'Automation' },
+      webhook: { name: 'Custom Webhook', category: 'Developer' },
+    };
+    const fetchConnected = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('integration_connections')
+        .select('integration_id')
+        .eq('user_id', user.id);
+      if (data) {
+        const list = data
+          .map((row: any) => row.integration_id)
+          .filter((id: string) => INTEGRATION_META[id])
+          .map((id: string) => ({ id, ...INTEGRATION_META[id] }));
+        setConnectedIntegrations(list);
+      }
+    };
+    fetchConnected();
   }, []);
 
   // Load saved listings — Supabase is source of truth, localStorage is cache
@@ -510,17 +543,43 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
               Connect More Tools
             </button>
           </div>
-          <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
-              <Database className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+          {connectedIntegrations.length === 0 ? (
+            <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+                <Database className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+              </div>
+              <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No Connected Integrations</h3>
+              <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Connect tools like Mailchimp, Google Sheets, Salesforce, and more</p>
+              <button onClick={() => onNavigate?.('integrations')} className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37] rounded-lg font-bold transition-all">
+                <Plus className="w-4 h-4" />
+                Connect Your First Tool
+              </button>
             </div>
-            <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No Connected Integrations</h3>
-            <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Connect tools like Mailchimp, Google Sheets, Salesforce, and more</p>
-            <button onClick={() => onNavigate?.('integrations')} className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37] rounded-lg font-bold transition-all">
-              <Plus className="w-4 h-4" />
-              Connect Your First Tool
-            </button>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {connectedIntegrations.map((integration) => (
+                <div
+                  key={integration.id}
+                  className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-4 flex items-center gap-4 cursor-pointer hover:border-[#FFCE0A] transition-all"
+                  onClick={() => onNavigate?.('integrations')}
+                >
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-[#0F1115] flex-shrink-0">
+                    <Database className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[14px] text-gray-900 dark:text-white truncate">{integration.name}</p>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400">{integration.category}</p>
+                  </div>
+                  <div className="ml-auto flex-shrink-0">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-600 dark:text-green-400">
+                      <CheckCircle className="w-3 h-3" />
+                      Connected
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
