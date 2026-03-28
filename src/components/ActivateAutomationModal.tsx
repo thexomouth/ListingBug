@@ -245,7 +245,7 @@ export function ActivateAutomationModal({
     }
     if (isMailchimp) {
       return {
-        list_id: config.audience_id || '[select audience above]',
+        list_id: config.list_id || '[select audience above]',
         tags: config.tags ? config.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
         members: [{ email_address: sample.listingAgent.email, status: 'subscribed', merge_fields: { FNAME: 'Jane', LNAME: 'Smith', PHONE: sample.listingAgent.phone, ADDRESS: sample.formattedAddress, CITY: sample.city, STATE: sample.state, ZIP: sample.zipCode, PRICE: `$${sample.price.toLocaleString()}`, PROPTYPE: sample.propertyType, BROKERAGE: sample.listingOffice.name } }],
       };
@@ -279,7 +279,7 @@ export function ActivateAutomationModal({
       const session = { access_token: token };
 
       if (isMailchimp) {
-        if (!config.audience_id) { setTestError(ERR.NO_LIST_ID); return; }
+        if (!config.list_id) { setTestError(ERR.NO_LIST_ID); return; }
         const tags = config.tags ? config.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
 
         let res: Response;
@@ -287,7 +287,7 @@ export function ActivateAutomationModal({
           res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/send-to-mailchimp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-            body: JSON.stringify({ listings: [sample], list_id: config.audience_id, tags }),
+            body: JSON.stringify({ listings: [sample], list_id: config.list_id, tags }),
           });
         } catch (e: any) { setTestError(`${ERR.NETWORK_ERROR}\n${e.message}`); return; }
 
@@ -309,7 +309,7 @@ export function ActivateAutomationModal({
         }
         if (sent === 0) { setTestError(`${ERR.ZERO_SYNCED}\nRaw: ${JSON.stringify(data).slice(0, 300)}`); return; }
 
-        const audienceName = audiences.find(a => a.id === config.audience_id)?.name ?? config.audience_id;
+        const audienceName = audiences.find(a => a.id === config.list_id)?.name ?? config.list_id;
         setTestSent(true);
         setTestDetail(`Contact synced to "${audienceName}".${failed > 0 ? ` ${failed} failed.` : ''}`);
         toast.success(`Test confirmed — contact added to "${audienceName}".`);
@@ -340,7 +340,7 @@ export function ActivateAutomationModal({
   };
 
   const handleActivate = () => {
-    if (isMailchimp && !config.audience_id) { toast.error('Select an audience first.'); return; }
+    if (isMailchimp && !config.list_id) { toast.error('Select an audience first.'); return; }
     if (isSendGrid && !config.list_id) { toast.error('Select a SendGrid list first.'); return; }
     const missing = getFields().filter(f => f.required && !config[f.key]);
     if (missing.length) { toast.error(`Fill in: ${missing.map(f => f.label).join(', ')}`); return; }
@@ -490,8 +490,8 @@ export function ActivateAutomationModal({
         <div className="flex gap-2">
           <select
             className="flex-1 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-[13px] bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white"
-            value={config.audience_id ?? ''}
-            onChange={e => setConfig(p => ({ ...p, audience_id: e.target.value }))}
+            value={config.list_id ?? ''}
+            onChange={e => setConfig(p => ({ ...p, list_id: e.target.value }))}
             disabled={audiencesLoading}
           >
             <option value="">
@@ -599,7 +599,7 @@ export function ActivateAutomationModal({
               <div className="flex items-center gap-3 flex-wrap">
                 <LBButton
                   onClick={handleSendTest}
-                  disabled={testLoading || (isMailchimp && !config.audience_id) || (isSendGrid && !config.list_id)}
+                  disabled={testLoading || (isMailchimp && !config.list_id) || (isSendGrid && !config.list_id)}
                   size="sm"
                 >
                   {testLoading
@@ -690,7 +690,7 @@ export function ActivateAutomationModal({
               <LBButton variant="outline" onClick={() => setStep('preview')}>Back</LBButton>
               <div className="flex gap-3">
                 <LBButton variant="outline" onClick={handleReset}>Cancel</LBButton>
-                <LBButton onClick={handleActivate} disabled={(isMailchimp && !config.audience_id) || (isSendGrid && !config.list_id)}>
+                <LBButton onClick={handleActivate} disabled={(isMailchimp && !config.list_id) || (isSendGrid && !config.list_id)}>
                   <Zap className="w-4 h-4 mr-2" />Activate
                 </LBButton>
               </div>

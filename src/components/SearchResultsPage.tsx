@@ -267,6 +267,66 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
     }
   };
 
+  const handleSendToIntegration = async (integrationId: string) => {
+    if (results.length === 0) { toast.error('No results to send'); return; }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { toast.error('Sign in to send to integrations'); return; }
+
+    const { data: conn } = await supabase
+      .from('integration_connections')
+      .select('config')
+      .eq('integration_id', integrationId)
+      .single();
+
+    if (!conn) { toast.error(`${integrationId} is not connected`); return; }
+    const cfg = conn.config || {};
+
+    if (integrationId === 'mailchimp') {
+      if (!cfg.list_id) {
+        toast.error('Mailchimp audience not configured. Go to Integrations → Settings to choose an audience.');
+        return;
+      }
+      const toastId = toast.info(`Sending ${results.length} listing${results.length !== 1 ? 's' : ''} to Mailchimp…`, { autoClose: false });
+      try {
+        // Normalize flat agentEmail → agent_email so send-to-mailchimp can find the email
+        const normalized = results.map((r: any) => ({
+          ...r,
+          agent_email: r.agent_email || r.agentEmail || r.listingAgent?.email,
+        }));
+        const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/send-to-mailchimp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({
+            listings: normalized,
+            list_id: cfg.list_id,
+            tags: cfg.tags ? cfg.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+            double_opt_in: cfg.double_opt_in || false,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        toast.dismiss(toastId);
+        if (!res.ok) {
+          toast.error(`Mailchimp error: ${data.error || `HTTP ${res.status}`}`);
+          return;
+        }
+        const { sent = 0, failed = 0, skipped_no_email = 0 } = data;
+        if (failed > 0 && sent === 0) {
+          toast.error(`Mailchimp: ${failed} contacts failed. Check audience merge fields.`);
+        } else if (sent === 0) {
+          toast.warn(`Sent 0 contacts — ${skipped_no_email} listing${skipped_no_email !== 1 ? 's' : ''} had no agent email.`);
+        } else {
+          toast.success(`Sent ${sent} contact${sent !== 1 ? 's' : ''} to Mailchimp${failed > 0 ? ` (${failed} failed)` : ''}.`);
+        }
+      } catch (e: any) {
+        toast.dismiss(toastId);
+        toast.error(`Network error: ${e.message}`);
+      }
+    } else {
+      toast.info(`Sending to ${integrationId} is coming soon.`);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-12">
       <div className="mb-6">
@@ -302,7 +362,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
             </button>
             <ExportDropdown
               onExportCSV={handleExportCSV}
-              onSendToIntegration={(integration: string) => toast.success('Sending ' + results.length + ' listings to ' + integration + '...')}
+              onSendToIntegration={handleSendToIntegration}
             />
           </div>
         </div>
