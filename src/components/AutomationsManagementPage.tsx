@@ -13,13 +13,14 @@ import { RunDetailsModal } from './RunDetailsModal';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
 import { canCreateAutomation, getCurrentPlan, getAutomationUsage, getNextPlan } from './utils/planLimits';
 import { 
-  Zap, 
-  Plus, 
-  Play, 
-  Pause, 
-  Edit2, 
-  Trash2, 
+  Zap,
+  Plus,
+  Play,
+  Pause,
+  Edit2,
+  Trash2,
   Copy,
+  Eye,
   CheckCircle,
   XCircle,
   Clock,
@@ -492,7 +493,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                               {lastRunStatus === 'success' ? (
                                 <>
                                   <span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span>
-                                  <span className="text-[11px] text-gray-400">sent to {automation.destination?.label ?? 'destination'}</span>
+                                  <span className="text-[11px] text-gray-400">exported</span>
                                 </>
                               ) : (
                                 <>
@@ -622,7 +623,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                       <LBTableHead className="text-gray-300">Destination</LBTableHead>
                       <LBTableHead className="text-gray-300">Status</LBTableHead>
                       <LBTableHead className="text-right text-gray-300">Listings Sent</LBTableHead>
-                      <LBTableHead className="text-gray-300">Details</LBTableHead>
+                      <LBTableHead className="text-gray-300 w-[80px]"></LBTableHead>
                     </LBTableRow>
                   </LBTableHeader>
                   <LBTableBody>
@@ -650,8 +651,14 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                         <LBTableCell className="text-right font-medium text-white">
                           {run.listingsSent}
                         </LBTableCell>
-                        <LBTableCell className="text-[13px] text-gray-400">
-                          {run.details || '-'}
+                        <LBTableCell>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedRun(run); setRunDetailsModalOpen(true); }}
+                            className="flex items-center gap-1 text-[12px] text-[#FFCE0A] hover:text-[#FFCE0A]/80 font-medium transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View
+                          </button>
                         </LBTableCell>
                       </LBTableRow>
                     ))}
