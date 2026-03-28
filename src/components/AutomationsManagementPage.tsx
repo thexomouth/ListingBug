@@ -11,7 +11,7 @@ import { IntegrationManagementModal, Integration as IntegrationInterface } from 
 import { AutomationLimitModal } from './AutomationLimitModal';
 import { RunDetailsModal } from './RunDetailsModal';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
-import { canCreateAutomation, getCurrentPlan, getAutomationUsage, getNextPlan } from './utils/planLimits';
+import { canCreateAutomation, getCurrentPlan, getPlanLimits, getNextPlan, type PlanType } from './utils/planLimits';
 import { 
   Zap,
   Plus,
@@ -124,13 +124,23 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   
   // Automation limit modal state
   const [limitModalOpen, setLimitModalOpen] = useState(false);
-  const currentPlan = getCurrentPlan();
-  const automationUsage = getAutomationUsage(currentPlan);
-
+  const [currentPlan, setCurrentPlan] = useState<ReturnType<typeof getCurrentPlan>>(getCurrentPlan());
 
   // Automations data state
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [automationsLoading, setAutomationsLoading] = useState(true);
+
+  // Compute usage from real Supabase count + real plan (not localStorage)
+  const realCount = automations.length;
+  const planLimits = getPlanLimits(currentPlan);
+  const maxSlots = planLimits.automationSlots;
+  const automationUsage = {
+    current: realCount,
+    max: maxSlots,
+    percentage: maxSlots === Infinity ? 0 : (realCount / maxSlots) * 100,
+    remaining: maxSlots === Infinity ? Infinity : Math.max(0, maxSlots - realCount),
+    isAtLimit: maxSlots !== Infinity && realCount >= maxSlots,
+  };
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
 
   // Load automations from Supabase
@@ -138,6 +148,13 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) { setAutomationsLoading(false); return; }
     const userId = session.user.id;
+    // Fetch real plan from DB
+    const { data: userData } = await supabase.from('users').select('plan').eq('id', userId).single();
+    if (userData?.plan) {
+      const planMap: Record<string, PlanType> = { trial: 'trial', starter: 'starter', professional: 'pro', enterprise: 'enterprise' };
+      const mapped = planMap[userData.plan];
+      if (mapped) { setCurrentPlan(mapped); localStorage.setItem('listingbug_user_plan', mapped); }
+    }
     const { data, error } = await supabase
       .from('automations')
       .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
@@ -382,8 +399,8 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
           ) : (
             <CreateAutomationPage
               onAutomationCreated={(automation) => {
-                // Check limit before creating
-                const limitCheck = canCreateAutomation(currentPlan);
+                // Check limit before creating (use real Supabase count)
+                const limitCheck = canCreateAutomation(currentPlan, automations.length);
                 
                 if (!limitCheck.allowed && !walkthroughStep3Active) {
                   // Show limit modal
