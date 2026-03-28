@@ -16,9 +16,11 @@ import { toast } from 'sonner@2.0.3';
 import { ListingDetailModal } from './ListingDetailModal';
 import { TableColumnCustomizer, ColumnConfig } from './TableColumnCustomizer';
 import { SavedListingsTableRow } from './SavedListingsTableRow';
+import { SkeletonSavedListingRow } from './SkeletonLoader';
 
 export function SavedListingsPage() {
   const [savedListings, setSavedListings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   
   // Column customization state
@@ -35,6 +37,7 @@ export function SavedListingsPage() {
   // Load saved listings from Supabase (with localStorage fallback)
   useEffect(() => {
     const loadListings = async () => {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data } = await supabase
@@ -46,6 +49,7 @@ export function SavedListingsPage() {
           const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
           setSavedListings(listings);
           localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
+          setIsLoading(false);
           return;
         }
       }
@@ -53,6 +57,7 @@ export function SavedListingsPage() {
       if (stored) {
         try { setSavedListings(JSON.parse(stored)); } catch (e) {}
       }
+      setIsLoading(false);
     };
     loadListings();
   }, []);
@@ -106,7 +111,15 @@ export function SavedListingsPage() {
       </div>
 
       {/* Content */}
-      {savedListings.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden">
+          <table className="w-full">
+            <tbody>
+              {Array.from({ length: 5 }).map((_, i) => <SkeletonSavedListingRow key={i} />)}
+            </tbody>
+          </table>
+        </div>
+      ) : savedListings.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-gray-300 rounded-lg">
           <Save className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <p className="text-gray-600 mb-2">No saved listings yet</p>

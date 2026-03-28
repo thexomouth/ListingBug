@@ -38,6 +38,7 @@ import { toast } from 'sonner@2.0.3';
 import { useWalkthrough } from './WalkthroughContext';
 import { WalkthroughOverlay } from './WalkthroughOverlay';
 import { createNotification } from '../lib/notifications';
+import { SkeletonAutomationRow } from './SkeletonLoader';
 
 // Format date helper
 const formatDate = (iso: string): string => {
@@ -402,7 +403,23 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
               <h3 className="font-bold text-[18px]">Your Automations ({automations.length})</h3>
             </div>
 
-            {automations.length === 0 ? (
+            {automationsLoading ? (
+              <LBTable>
+                <LBTableHeader>
+                  <LBTableRow>
+                    <LBTableHead className="text-right"></LBTableHead>
+                    <LBTableHead>Name</LBTableHead>
+                    <LBTableHead className="hidden md:table-cell">Last Run</LBTableHead>
+                    <LBTableHead className="hidden md:table-cell">Search Results</LBTableHead>
+                    <LBTableHead className="hidden md:table-cell">Export Results</LBTableHead>
+                    <LBTableHead className="text-right"></LBTableHead>
+                  </LBTableRow>
+                </LBTableHeader>
+                <LBTableBody>
+                  {Array.from({ length: 4 }).map((_, i) => <SkeletonAutomationRow key={i} />)}
+                </LBTableBody>
+              </LBTable>
+            ) : automations.length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
                 <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
                   <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />

@@ -7,6 +7,65 @@ interface SkeletonProps {
   className?: string;
 }
 
+// Base shimmer block — dark-mode compatible
+function Sk({ className = '' }: SkeletonProps) {
+  return <div className={`rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse ${className}`} />;
+}
+
+export function SkeletonIntegrationCard() {
+  return (
+    <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-4">
+      <Sk className="w-10 h-10 rounded-lg mb-3" />
+      <Sk className="h-3.5 w-24 mb-2" />
+      <Sk className="h-2.5 w-16 mb-3" />
+      <Sk className="h-7 w-full" />
+    </div>
+  );
+}
+
+export function SkeletonAutomationRow() {
+  return (
+    <tr className="border-b border-gray-100 dark:border-white/5">
+      <td className="px-4 py-3"><Sk className="h-6 w-10 rounded-full" /></td>
+      <td className="px-4 py-3"><Sk className="h-4 w-40" /></td>
+      <td className="px-4 py-3 hidden md:table-cell"><Sk className="h-4 w-24" /></td>
+      <td className="px-4 py-3 hidden md:table-cell"><Sk className="h-4 w-16" /></td>
+      <td className="px-4 py-3 hidden md:table-cell"><Sk className="h-4 w-16" /></td>
+      <td className="px-4 py-3"><Sk className="h-7 w-14 ml-auto" /></td>
+    </tr>
+  );
+}
+
+export function SkeletonAgentRow() {
+  return (
+    <div className="grid grid-cols-8 gap-2 px-4 py-3 border-b border-gray-100 dark:border-white/5 animate-pulse">
+      <div className="col-span-5 flex items-center gap-3">
+        <Sk className="h-9 w-9 rounded-full flex-shrink-0" />
+        <div className="flex-1 space-y-1.5">
+          <Sk className="h-3.5 w-36" />
+          <Sk className="h-2.5 w-24" />
+        </div>
+      </div>
+      <div className="col-span-1 flex items-center justify-center"><Sk className="h-4 w-8" /></div>
+      <div className="col-span-2 flex items-center justify-end"><Sk className="h-4 w-20" /></div>
+    </div>
+  );
+}
+
+export function SkeletonSavedListingRow() {
+  return (
+    <tr className="border-b border-gray-100 dark:border-white/5 animate-pulse">
+      <td className="px-4 py-3"><Sk className="h-4 w-48" /></td>
+      <td className="px-4 py-3"><Sk className="h-4 w-24" /></td>
+      <td className="px-4 py-3"><Sk className="h-4 w-20" /></td>
+      <td className="px-4 py-3"><Sk className="h-4 w-16" /></td>
+      <td className="px-4 py-3"><Sk className="h-5 w-16 rounded-full" /></td>
+      <td className="px-4 py-3"><Sk className="h-4 w-24" /></td>
+      <td className="px-4 py-3"><Sk className="h-7 w-20 rounded-md" /></td>
+    </tr>
+  );
+}
+
 export function SkeletonInput({ className = '' }: SkeletonProps) {
   return (
     <div className={`animate-pulse ${className}`}>
