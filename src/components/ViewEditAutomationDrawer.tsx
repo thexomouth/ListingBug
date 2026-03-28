@@ -19,6 +19,7 @@ const LAUNCH_INTEGRATIONS = [
   { id: 'zapier',    name: 'Zapier',        icon: Zap,             webhookField: true },
   { id: 'make',      name: 'Make.com',      icon: Zap,             webhookField: true },
   { id: 'n8n',       name: 'n8n',           icon: Webhook,         webhookField: true },
+  { id: 'webhook',   name: 'Webhooks',      icon: Webhook,         webhookField: true },
   { id: 'mailchimp', name: 'Mailchimp',     icon: Mail,            webhookField: false },
   { id: 'google',    name: 'Google Sheets', icon: FileSpreadsheet, webhookField: false },
   { id: 'hubspot',   name: 'HubSpot',       icon: Database,        webhookField: false },
