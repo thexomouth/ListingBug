@@ -356,12 +356,12 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       } else if ((integrationId === 'sheets' || integrationId === 'google') && !cfg.spreadsheet_id) {
         toast.error('No Google Sheets spreadsheet ID configured — open Integrations and save settings first.');
         return;
-      } else if (['zapier', 'make', 'webhook'].includes(integrationId) && !cfg.webhook_url) {
+      } else if (['zapier', 'make', 'n8n', 'webhook'].includes(integrationId) && !cfg.webhook_url) {
         toast.error('No webhook URL configured — open Integrations and save settings first.');
         return;
       }
 
-      const integrationName: Record<string, string> = { hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', sendgrid: 'SendGrid', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' };
+      const integrationName: Record<string, string> = { hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', sendgrid: 'SendGrid', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', n8n: 'n8n', webhook: 'Webhook' };
       const name = integrationName[integrationId] ?? integrationId;
       const toastId = toast.info(`Sending ${results.length} listing${results.length !== 1 ? 's' : ''} to ${name}…`, { autoClose: false });
 
@@ -394,7 +394,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       else if (integrationId === 'sheets' || integrationId === 'google') payload = { ...payload, spreadsheet_id: cfg.spreadsheet_id, sheet_name: cfg.sheet_name ?? 'Sheet1', write_mode: cfg.write_mode ?? 'append' };
       else if (integrationId === 'sendgrid') payload = { ...payload, mode: cfg.mode ?? 'contacts', list_ids: cfg.list_ids ?? [] };
       else if (integrationId === 'twilio') payload.list_unique_name = cfg.list_unique_name ?? 'listingbug_contacts';
-      else if (['zapier', 'make', 'webhook'].includes(integrationId)) payload = { ...payload, webhook_url: cfg.webhook_url, send_mode: 'batch' };
+      else if (['zapier', 'make', 'n8n', 'webhook'].includes(integrationId)) payload = { ...payload, webhook_url: cfg.webhook_url, send_mode: cfg.send_mode ?? 'batch' };
 
       try {
         const res = await fetch(`https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/${fn}`, {

@@ -1212,12 +1212,12 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       payload = { ...payload, mode: config.mode ?? 'contacts', list_ids: config.list_ids ?? [] };
     } else if (integrationId === 'twilio') {
       payload = { ...payload, list_unique_name: config.list_unique_name ?? 'listingbug_contacts' };
-    } else if (['zapier', 'make', 'webhook'].includes(integrationId)) {
+    } else if (['zapier', 'make', 'n8n', 'webhook'].includes(integrationId)) {
       if (!config.webhook_url) { toast.error('No webhook URL configured — open Integrations and save settings first.'); return; }
-      payload = { ...payload, webhook_url: config.webhook_url, send_mode: 'batch' };
+      payload = { ...payload, webhook_url: config.webhook_url, send_mode: config.send_mode ?? 'batch' };
     }
 
-    const integrationName = { mailchimp: 'Mailchimp', hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', sendgrid: 'SendGrid', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' }[integrationId] ?? integrationId;
+    const integrationName = { mailchimp: 'Mailchimp', hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', sendgrid: 'SendGrid', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', n8n: 'n8n', webhook: 'Webhook' }[integrationId] ?? integrationId;
     const toastId = toast.loading(`Sending ${results.length} listings to ${integrationName}…`);
 
     try {
