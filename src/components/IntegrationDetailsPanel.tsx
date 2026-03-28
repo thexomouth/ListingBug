@@ -58,6 +58,7 @@ interface IntegrationDetailsPanelProps {
   onDisconnect: (integrationId: string) => void;
   onSync: (integrationId: string) => void;
   onUpdateSettings: (integrationId: string, settings: any) => void;
+  onViewGuide?: (integrationId: string) => void;
 }
 
 export function IntegrationDetailsPanel({
@@ -67,6 +68,7 @@ export function IntegrationDetailsPanel({
   onDisconnect,
   onSync,
   onUpdateSettings,
+  onViewGuide,
 }: IntegrationDetailsPanelProps) {
   const [autoSync, setAutoSync] = useState(integration?.autoSync || false);
   const [syncFrequency, setSyncFrequency] = useState(integration?.syncFrequency || 'hourly');
@@ -386,7 +388,16 @@ export function IntegrationDetailsPanel({
                 <p className="text-sm text-gray-600 mb-3">
                   View our integration guide for {integration.name} or contact support.
                 </p>
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (onViewGuide && integration) {
+                      onViewGuide(integration.id);
+                      onClose();
+                    }
+                  }}
+                >
                   View Documentation
                 </Button>
               </div>
