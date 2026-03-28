@@ -265,9 +265,30 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
         fnUrl = `${BASE}/send-to-sendgrid`;
         payload = { ...payload, list_ids: config.list_ids ?? [] };
       } else if (integId === 'google' || integId === 'sheets' || integId === 'google-sheets') {
-        if (!config.spreadsheet_id) { toast.error('No spreadsheet ID configured — edit the integration first.'); return; }
+        let spreadsheetId = settingsSpreadsheetId || config.spreadsheet_id;
+        if (!spreadsheetId && settingsCreateNew) {
+          // Auto-create the sheet inline so the user doesn't have to save first
+          const sheetTitle = settingsNewSheetName.trim() || 'ListingBug Export';
+          const createRes = await fetch(`${BASE}/list-google-sheets`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ action: 'create', name: sheetTitle }),
+          });
+          const createData = await createRes.json().catch(() => ({}));
+          if (!createRes.ok) { toast.error(createData.error ?? 'Failed to create spreadsheet'); return; }
+          spreadsheetId = createData.spreadsheet_id;
+          // Persist to state and DB so Save Settings reflects the new ID
+          setSettingsSpreadsheetId(spreadsheetId);
+          setSettingsCreateNew(false);
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const newConfig = { ...config, spreadsheet_id: spreadsheetId, sheet_name: settingsSheetName || 'Sheet1' };
+            await supabase.from('integration_connections').update({ config: newConfig }).eq('user_id', session.user.id).eq('integration_id', 'google');
+            setConnectedInfo(prev => ({ ...prev, google: { ...prev['google'], config: newConfig } }));
+          }
+        }
+        if (!spreadsheetId) { toast.error('Select or create a spreadsheet first.'); return; }
         fnUrl = `${BASE}/send-to-sheets`;
-        payload = { ...payload, spreadsheet_id: config.spreadsheet_id, sheet_name: config.sheet_name ?? 'Sheet1', write_mode: 'append' };
+        payload = { ...payload, spreadsheet_id: spreadsheetId, sheet_name: settingsSheetName || config.sheet_name || 'Sheet1', write_mode: 'append' };
       } else if (integId === 'twilio') {
         fnUrl = `${BASE}/send-to-twilio`;
         payload = { ...payload, list_unique_name: config.list_unique_name ?? 'listingbug_contacts' };
