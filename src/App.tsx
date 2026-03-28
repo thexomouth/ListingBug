@@ -320,7 +320,7 @@ export default function App() {
               navigateWithLoading('search-listings');
             }} />
         : <LoginPage onLogin={handleLogin} />;
-      case "automations": return isLoggedIn ? <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} /> : <LoginPage onLogin={handleLogin} />;
+      case "automations": return isLoggedIn ? <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
       case "automation-detail": return isLoggedIn && selectedAutomation ? (
         <AutomationDetailPage automation={selectedAutomation} onBack={handleBackToAutomations}
           onDelete={(id) => { const stored = localStorage.getItem('listingbug_automations'); if (stored) { try { const a = JSON.parse(stored); localStorage.setItem('listingbug_automations', JSON.stringify(a.filter((x: any) => x.id !== id))); } catch (e) {} } }}

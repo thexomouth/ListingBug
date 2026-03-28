@@ -17,7 +17,7 @@ import {
 interface AutomationLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentPlan: 'starter' | 'pro' | 'enterprise';
+  currentPlan: 'trial' | 'starter' | 'pro' | 'enterprise';
   currentSlots: number;
   maxSlots: number;
   onUpgrade: () => void;
@@ -35,10 +35,16 @@ export function AutomationLimitModal({
 }: AutomationLimitModalProps) {
   
   const planInfo = {
+    trial: {
+      name: 'Trial',
+      nextPlan: 'Starter',
+      nextSlots: 3,
+      price: '$49/mo'
+    },
     starter: {
       name: 'Starter',
       nextPlan: 'Professional',
-      nextSlots: 3,
+      nextSlots: 10,
       price: '$99/mo'
     },
     pro: {
@@ -56,8 +62,6 @@ export function AutomationLimitModal({
   };
 
   const info = planInfo[currentPlan] ?? planInfo['starter'];
-  // For trial users proxied as 'starter', override slot display
-  const displayMaxSlots = currentPlan === 'starter' && maxSlots === 3 ? 3 : maxSlots;
   const showUpgradeOption = currentPlan !== 'enterprise';
 
   return (
