@@ -43,7 +43,11 @@ interface BillingPageProps {
 
 export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageProps) {
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
-  const [showChangePlanModal, setShowChangePlanModal] = useState(false);
+  const [showChangePlanModal, setShowChangePlanModal] = useState(() => {
+    const flag = sessionStorage.getItem('billing_open_change_plan');
+    if (flag) { sessionStorage.removeItem('billing_open_change_plan'); return true; }
+    return false;
+  });
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   // ============================================================================

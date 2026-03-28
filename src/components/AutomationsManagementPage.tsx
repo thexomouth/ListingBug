@@ -92,9 +92,10 @@ interface Integration {
 interface AutomationsManagementPageProps {
   onViewDetail?: (automation: Automation) => void;
   initialTab?: 'create' | 'automations' | 'history';
+  onNavigate?: (page: string) => void;
 }
 
-export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' }: AutomationsManagementPageProps = {}) {
+export function AutomationsManagementPage({ onViewDetail, initialTab = 'create', onNavigate }: AutomationsManagementPageProps = {}) {
   // Walkthrough integration
   const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
   const walkthroughStep3Active = isStepActive(3);
@@ -776,12 +777,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
         currentSlots={automationUsage.current}
         maxSlots={automationUsage.max === Infinity ? 999 : automationUsage.max}
         onUpgrade={() => {
-          // Navigate to pricing page
-          window.location.hash = '#pricing';
+          sessionStorage.setItem('billing_open_change_plan', 'true');
+          onNavigate?.('billing');
         }}
         onContactSupport={() => {
-          // Navigate to contact support page
-          window.location.hash = '#contact-support';
+          onNavigate?.('contact-support');
         }}
       />
       
