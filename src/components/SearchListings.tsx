@@ -1166,6 +1166,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       hubspot: 'send-to-hubspot',
       sheets: 'send-to-sheets',
       google: 'send-to-sheets',
+      sendgrid: 'send-to-sendgrid',
       twilio: 'send-to-twilio',
       zapier: 'webhook-push', make: 'webhook-push', webhook: 'webhook-push',
     };
@@ -1182,6 +1183,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     } else if (integrationId === 'sheets' || integrationId === 'google') {
       if (!config.spreadsheet_id) { toast.error('No Google Sheets spreadsheet ID configured — open Integrations and save settings first.'); return; }
       payload = { ...payload, spreadsheet_id: config.spreadsheet_id, sheet_name: config.sheet_name ?? 'Sheet1', write_mode: config.write_mode ?? 'append' };
+    } else if (integrationId === 'sendgrid') {
+      payload = { ...payload, mode: config.mode ?? 'contacts', list_ids: config.list_ids ?? [] };
     } else if (integrationId === 'twilio') {
       payload = { ...payload, list_unique_name: config.list_unique_name ?? 'listingbug_contacts' };
     } else if (['zapier', 'make', 'webhook'].includes(integrationId)) {
@@ -1189,7 +1192,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       payload = { ...payload, webhook_url: config.webhook_url, send_mode: 'batch' };
     }
 
-    const integrationName = { mailchimp: 'Mailchimp', hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' }[integrationId] ?? integrationId;
+    const integrationName = { mailchimp: 'Mailchimp', hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', sendgrid: 'SendGrid', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' }[integrationId] ?? integrationId;
     const toastId = toast.loading(`Sending ${results.length} listings to ${integrationName}…`);
 
     try {
