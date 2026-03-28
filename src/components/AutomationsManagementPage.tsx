@@ -194,15 +194,28 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     })));
   }, []);
 
-  // Load on mount
+  // Load on mount + real-time subscription for new automation_runs
   useEffect(() => {
     loadAutomations();
     loadRunHistory();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') { loadAutomations(); loadRunHistory(); }
       if (event === 'SIGNED_OUT') { setAutomations([]); setRunHistory([]); }
     });
-    return () => subscription.unsubscribe();
+
+    // Real-time: reload run history whenever a new automation_run is inserted
+    const runsSub = supabase
+      .channel('automation_runs_changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'automation_runs' }, () => {
+        loadRunHistory();
+      })
+      .subscribe();
+
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(runsSub);
+    };
   }, []);
 
   // Handle prefill from saved search navigation
