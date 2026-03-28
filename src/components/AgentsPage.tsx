@@ -250,12 +250,9 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
         ) : (
           <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
             {/* Column headers */}
-            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-gray-50 dark:bg-[#1a1a1a] text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-white/10">
-              <div className="col-span-4">Agent / Brokerage</div>
-              <div className="col-span-2 text-center cursor-pointer hover:text-gray-700 dark:hover:text-white" onClick={() => handleSort('listingCount')}>Listings<SortIcon k="listingCount" /></div>
-              <div className="col-span-2 text-center cursor-pointer hover:text-gray-700 dark:hover:text-white" onClick={() => handleSort('avgPrice')}>Avg Price<SortIcon k="avgPrice" /></div>
-              <div className="col-span-1 text-center cursor-pointer hover:text-gray-700 dark:hover:text-white" onClick={() => handleSort('avgDom')}>DOM<SortIcon k="avgDom" /></div>
-              <div className="col-span-1 text-center cursor-pointer hover:text-gray-700 dark:hover:text-white" onClick={() => handleSort('priceDrops')}>Drops<SortIcon k="priceDrops" /></div>
+            <div className="grid grid-cols-8 gap-2 px-4 py-2.5 bg-gray-50 dark:bg-[#1a1a1a] text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-white/10">
+              <div className="col-span-5">Agent / Brokerage</div>
+              <div className="col-span-1 text-center cursor-pointer hover:text-gray-700 dark:hover:text-white" onClick={() => handleSort('listingCount')}>Listings<SortIcon k="listingCount" /></div>
               <div className="col-span-2 text-right cursor-pointer hover:text-gray-700 dark:hover:text-white" onClick={() => handleSort('lastListed')}>Last Listed<SortIcon k="lastListed" /></div>
             </div>
 
@@ -267,11 +264,11 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
                   <div key={agent.agentName}>
                     {/* Agent row */}
                     <div
-                      className="grid grid-cols-12 gap-2 px-4 py-3 items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                      className="grid grid-cols-8 gap-2 px-4 py-3 items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                       onClick={() => setExpandedAgent(isExpanded ? null : agent.agentName)}
                     >
                       {/* Agent name + contact */}
-                      <div className="col-span-4 min-w-0">
+                      <div className="col-span-5 min-w-0">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-[#FFCE0A] flex items-center justify-center text-[#342e37] font-bold text-[11px] flex-shrink-0">
                             {agent.agentName.charAt(0).toUpperCase()}
@@ -296,7 +293,7 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
                           )}
                         </div>
                         {agent.zipCodes.length > 0 && (
-                          <div className="flex gap-1 flex-wrap ml-9 mt-1">
+                          <div className="hidden sm:flex gap-1 flex-wrap ml-9 mt-1">
                             {agent.zipCodes.slice(0, 4).map(z => (
                               <span key={z} className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">{z}</span>
                             ))}
@@ -306,22 +303,8 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
                       </div>
 
                       {/* Stats */}
-                      <div className="col-span-2 text-center">
+                      <div className="col-span-1 text-center">
                         <span className="font-bold text-[15px] text-gray-900 dark:text-white">{agent.listingCount}</span>
-                      </div>
-                      <div className="col-span-2 text-center">
-                        <span className="text-[13px] text-gray-700 dark:text-gray-300">{agent.avgPrice > 0 ? `$${agent.avgPrice.toLocaleString()}` : '--'}</span>
-                      </div>
-                      <div className="col-span-1 text-center">
-                        <span className={`text-[13px] font-medium ${agent.avgDom > 30 ? 'text-orange-500' : agent.avgDom > 14 ? 'text-amber-500' : 'text-gray-700 dark:text-gray-300'}`}>
-                          {agent.avgDom > 0 ? `${agent.avgDom}d` : '--'}
-                        </span>
-                      </div>
-                      <div className="col-span-1 text-center">
-                        {agent.priceDrops > 0
-                          ? <span className="inline-flex items-center gap-0.5 text-[12px] font-medium text-red-500"><TrendingDown className="w-3 h-3" />{agent.priceDrops}</span>
-                          : <span className="text-[13px] text-gray-400">0</span>
-                        }
                       </div>
                       <div className="col-span-2 text-right">
                         <span className="text-[12px] text-gray-500 dark:text-gray-400">

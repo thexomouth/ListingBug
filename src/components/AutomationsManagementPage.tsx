@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { LBButton } from './design-system/LBButton';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { ChevronDown, ChevronUp, ExternalLink, Settings, LayoutGrid, Table as TableIcon } from 'lucide-react';
 import { CreateAutomationPage } from './CreateAutomationPage';
 import { ViewEditAutomationDrawer } from './ViewEditAutomationDrawer';
@@ -33,13 +34,6 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
 import { useWalkthrough } from './WalkthroughContext';
 import { WalkthroughOverlay } from './WalkthroughOverlay';
 import { createNotification } from '../lib/notifications';
@@ -124,6 +118,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   const [selectedIntegration, setSelectedIntegration] = useState<IntegrationInterface | null>(null);
   const [runDetailsModalOpen, setRunDetailsModalOpen] = useState(false);
   const [selectedRun, setSelectedRun] = useState<RunHistoryItem | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   
   // Automation limit modal state
   const [limitModalOpen, setLimitModalOpen] = useState(false);
@@ -457,7 +452,6 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                         {/* Name and details */}
                         <LBTableCell>
                           <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
-                          <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{automation.destination?.label ?? '�'}</div>
                           {lastRun && (
                             <div className="flex items-center gap-2 mt-1 md:hidden">
                               <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded ${lastRunStatus === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -523,7 +517,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                                 : <Play className="w-4 h-4" />}
                             </button>
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteAutomation(automation.id); }}
+                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(automation.id); }}
                               className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                               title="Delete automation"
                             >
@@ -633,7 +627,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
                   </LBTableHeader>
                   <LBTableBody>
                     {runHistory.map((run) => (
-                      <LBTableRow key={run.id} className="border-b border-white/5 hover:bg-white/5">
+                      <LBTableRow key={run.id} className="border-b border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => { setSelectedRun(run); setRunDetailsModalOpen(true); }}>
                         <LBTableCell className="font-medium text-white">
                           {new Date(run.runDate).toLocaleString()}
                         </LBTableCell>
@@ -750,6 +744,22 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
         }}
       />
       
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Automation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this automation? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Back</Button>
+            <Button variant="destructive" onClick={() => { if (deleteConfirmId) { handleDeleteAutomation(deleteConfirmId); setDeleteConfirmId(null); } }}>Yes, Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Run Details Modal */}
       <RunDetailsModal
         isOpen={runDetailsModalOpen}
@@ -758,6 +768,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
           setSelectedRun(null);
         }}
         run={selectedRun ? {
+          id: selectedRun.id,
           automation: selectedRun.automationName,
           date: selectedRun.runDate,
           status: selectedRun.status,

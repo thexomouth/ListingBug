@@ -1118,6 +1118,106 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     } catch {}
   };
 
+  const handleSendToIntegration = async (integrationId: string) => {
+    if (!results || results.length === 0) { toast.error('No results to export'); return; }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) { toast.error('Not signed in'); return; }
+    const token = session.access_token;
+    const userId = session.user.id;
+
+    // Fetch integration config
+    const { data: conn } = await supabase
+      .from('integration_connections')
+      .select('config')
+      .eq('user_id', userId)
+      .eq('integration_id', integrationId)
+      .single();
+    const config = conn?.config ?? {};
+
+    // Map results to the format the edge functions expect
+    const listings = results.map((r: any) => ({
+      id: r.id,
+      formatted_address: r.formattedAddress || r.address || '',
+      city: r.city || '',
+      state: r.state || '',
+      zip_code: r.zip || '',
+      price: r.price || null,
+      bedrooms: r.bedrooms || null,
+      bathrooms: r.bathrooms || null,
+      square_footage: r.sqft || null,
+      property_type: r.propertyType || '',
+      status: r.status || 'Active',
+      listed_date: r.listedDate || '',
+      days_on_market: r.daysListed || null,
+      listing_type: r.listingType || 'sale',
+      agent_name: r.agentName || '',
+      agent_phone: r.agentPhone || '',
+      agent_email: r.agentEmail || '',
+      office_name: r.officeName || '',
+      mls_number: r.mlsNumber || '',
+    }));
+
+    const BASE = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+    const DISPATCH_MAP: Record<string, string> = {
+      mailchimp: 'send-to-mailchimp',
+      hubspot: 'send-to-hubspot',
+      sheets: 'send-to-sheets',
+      google: 'send-to-sheets',
+      twilio: 'send-to-twilio',
+      zapier: 'webhook-push', make: 'webhook-push', webhook: 'webhook-push',
+    };
+
+    const fn = DISPATCH_MAP[integrationId];
+    if (!fn) { toast.error(`Export to ${integrationId} is not yet supported`); return; }
+
+    let payload: any = { listings };
+    if (integrationId === 'mailchimp') {
+      if (!config.list_id) { toast.error('No Mailchimp audience configured — open Integrations and save settings first.'); return; }
+      payload = { ...payload, list_id: config.list_id, tags: config.tags ?? [], double_opt_in: config.double_opt_in ?? false };
+    } else if (integrationId === 'hubspot') {
+      payload = { ...payload, object_type: config.object_type ?? 'contacts' };
+    } else if (integrationId === 'sheets' || integrationId === 'google') {
+      if (!config.spreadsheet_id) { toast.error('No Google Sheets spreadsheet ID configured — open Integrations and save settings first.'); return; }
+      payload = { ...payload, spreadsheet_id: config.spreadsheet_id, sheet_name: config.sheet_name ?? 'Sheet1', write_mode: config.write_mode ?? 'append' };
+    } else if (integrationId === 'twilio') {
+      payload = { ...payload, list_unique_name: config.list_unique_name ?? 'listingbug_contacts' };
+    } else if (['zapier', 'make', 'webhook'].includes(integrationId)) {
+      if (!config.webhook_url) { toast.error('No webhook URL configured — open Integrations and save settings first.'); return; }
+      payload = { ...payload, webhook_url: config.webhook_url, send_mode: 'batch' };
+    }
+
+    const integrationName = { mailchimp: 'Mailchimp', hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' }[integrationId] ?? integrationId;
+    const toastId = toast.loading(`Sending ${results.length} listings to ${integrationName}…`);
+
+    try {
+      const res = await fetch(`${BASE}/${fn}`, { method: 'POST', headers, body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      toast.dismiss(toastId);
+
+      if (!res.ok) {
+        toast.error(`Export failed: ${data.error ?? `HTTP ${res.status}`}`);
+        return;
+      }
+
+      const sent = data.sent ?? data.written ?? data.accepted ?? 0;
+      const failed = data.failed ?? 0;
+      if (sent > 0) {
+        toast.success(`${sent} listing${sent !== 1 ? 's' : ''} sent to ${integrationName}!`);
+      } else if (failed > 0 && sent === 0) {
+        const err = data.errors?.[0] ?? 'All contacts failed';
+        toast.error(`Export failed: ${typeof err === 'string' ? err : JSON.stringify(err)}`);
+      } else {
+        toast.success(`Listings sent to ${integrationName}!`);
+      }
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error(e.message ?? 'Network error during export');
+    }
+  };
+
   const handleViewPrintCSV = () => {
     // Open print-friendly view in new window
     const printWindow = window.open('', '_blank');
@@ -1882,11 +1982,9 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   <Zap className="w-4 h-4" />
                   <span>Automate</span>
                 </LBButton>
-                <ExportDropdown 
+                <ExportDropdown
                   onExportCSV={handleDownloadCSV}
-                  onSendToIntegration={(integration) => {
-                    toast.success(`Sending ${results.length} listings to ${integration}...`);
-                  }}
+                  onSendToIntegration={handleSendToIntegration}
                   className="flex-1 sm:flex-none min-w-0"
                 />
               </div>
@@ -2058,11 +2156,16 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                           <p className="text-[13px] text-gray-600 dark:text-gray-400 mb-1">{search.location}</p>
                           <p className="text-[13px] text-gray-500 dark:text-gray-500">{search.criteriaDescription}</p>
                         </div>
+                        <LBButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteSavedSearch(search.id)}
+                          className="-mt-1 -mr-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                        </LBButton>
                       </div>
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/10">
-                        <div className="text-[12px] text-gray-500 dark:text-gray-400">
-                          Created: {new Date(search.createdAt).toLocaleDateString()}
-                        </div>
+                      <div className="flex items-center justify-end pt-3 border-t border-gray-100 dark:border-white/10">
                         <div className="flex items-center gap-2">
                           <LBButton
                             variant="outline"
@@ -2079,13 +2182,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                           >
                             <Zap className="w-3.5 h-3.5 mr-1.5" />
                             Automate
-                          </LBButton>
-                          <LBButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteSavedSearch(search.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
                           </LBButton>
                         </div>
                       </div>
@@ -2129,7 +2225,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                       }}
                     >
                       <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                      Clear All
+                      Clear
                     </LBButton>
                   </div>
                 </CardHeader>
@@ -2265,6 +2361,18 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                                 {search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'} found
                               </p>
                             </div>
+                            <LBButton
+                              variant="ghost"
+                              size="sm"
+                              className="-mt-1 -mr-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSearchHistory(prev => prev.filter(s => s.id !== search.id));
+                                toast.success('Removed from history');
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                            </LBButton>
                           </div>
                           <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-white/10">
                             <div className="text-[12px] text-gray-500 dark:text-gray-400">
@@ -2295,17 +2403,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                               >
                                 <Play className="w-3.5 h-3.5 mr-1.5" />
                                 Run
-                              </LBButton>
-                              <LBButton
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSearchHistory(prev => prev.filter(s => s.id !== search.id));
-                                  toast.success('Removed from history');
-                                }}
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-red-600" />
                               </LBButton>
                             </div>
                           </div>

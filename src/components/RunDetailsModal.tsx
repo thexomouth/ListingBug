@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,8 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { LBButton } from './design-system/LBButton';
-import { 
+import { supabase } from '../lib/supabase';
+import {
   Clock,
   CheckCircle,
   XCircle,
@@ -16,7 +17,9 @@ import {
   Eye,
   Calendar,
   Target,
-  Send
+  Send,
+  Download,
+  Upload
 } from 'lucide-react';
 
 interface RunDetailsModalProps {
@@ -33,6 +36,40 @@ export function RunDetailsModal({
   onViewListings
 }: RunDetailsModalProps) {
   const [showCriteria, setShowCriteria] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [runListings, setRunListings] = useState<any[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && run?.id) {
+      setShowCriteria(false);
+      setShowResults(false);
+      setRunListings([]);
+    }
+  }, [isOpen, run?.id]);
+
+  const fetchRunListings = async () => {
+    if (!run?.id || runListings.length > 0) return;
+    setListingsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('automation_run_listings')
+        .select('listing_id, listing_data, transferred')
+        .eq('automation_run_id', run.id)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (!error && data) setRunListings(data);
+    } catch (e) {
+      console.error('Failed to fetch run listings:', e);
+    } finally {
+      setListingsLoading(false);
+    }
+  };
+
+  const handleToggleResults = () => {
+    if (!showResults) fetchRunListings();
+    setShowResults(prev => !prev);
+  };
 
   if (!run) return null;
 
@@ -50,6 +87,11 @@ export function RunDetailsModal({
     } catch {
       return time;
     }
+  };
+
+  const formatPrice = (price: number | null) => {
+    if (!price) return '—';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(price);
   };
 
   const getStatusColor = (status: string) => {
@@ -126,30 +168,30 @@ export function RunDetailsModal({
               </div>
             </div>
 
-            {/* Results */}
+            {/* Results metrics */}
             <div className="bg-gray-50 dark:bg-[#2F2F2F] rounded-lg p-4">
               <p className="text-[12px] text-gray-600 dark:text-gray-400 mb-3">Results</p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <Target className="w-4 h-4 text-blue-600" />
+                    <Download className="w-4 h-4 text-blue-600" />
                     <p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                      Listings Found
+                      Listings Imported
                     </p>
                   </div>
                   <p className="font-bold text-[24px] text-[#342e37] dark:text-white">
-                    {run.listingsFound || run.results || 0}
+                    {run.listingsFound ?? 0}
                   </p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <Send className="w-4 h-4 text-green-600" />
+                    <Upload className="w-4 h-4 text-green-600" />
                     <p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                      Exported
+                      Listings Exported
                     </p>
                   </div>
                   <p className="font-bold text-[24px] text-[#342e37] dark:text-white">
-                    {run.exported || run.listingsFound || run.results || 0}
+                    {run.exported ?? 0}
                   </p>
                 </div>
               </div>
@@ -199,14 +241,14 @@ export function RunDetailsModal({
                     <ChevronDown className="w-4 h-4 text-gray-500" />
                   )}
                 </button>
-                
+
                 {showCriteria && (
                   <div className="px-4 pb-4 space-y-2 border-t border-gray-200 dark:border-gray-700 pt-4">
                     {Object.entries(run.searchCriteria).map(([key, value]) => {
                       if (!value || (Array.isArray(value) && value.length === 0)) return null;
-                      
-                      const displayValue = Array.isArray(value) 
-                        ? value.join(', ') 
+
+                      const displayValue = Array.isArray(value)
+                        ? value.join(', ')
                         : typeof value === 'object'
                         ? JSON.stringify(value)
                         : String(value);
@@ -231,6 +273,88 @@ export function RunDetailsModal({
                 )}
               </div>
             )}
+
+            {/* Expandable Results Section */}
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
+              <button
+                onClick={handleToggleResults}
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#2F2F2F] transition-colors"
+              >
+                <span className="font-medium text-[14px] text-[#342e37] dark:text-white flex items-center gap-2">
+                  <Target className="w-4 h-4 text-gray-500" />
+                  Results
+                </span>
+                {showResults ? (
+                  <ChevronUp className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+
+              {showResults && (
+                <div className="border-t border-gray-200 dark:border-gray-700">
+                  {listingsLoading ? (
+                    <div className="p-6 text-center text-[13px] text-gray-500 dark:text-gray-400">
+                      Loading listings...
+                    </div>
+                  ) : runListings.length === 0 ? (
+                    <div className="p-6 text-center text-[13px] text-gray-500 dark:text-gray-400">
+                      No listing data available for this run. Detailed results are stored for automations run after this feature was added.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="bg-gray-50 dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-gray-700">
+                            <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium">Address</th>
+                            <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium hidden sm:table-cell">Type</th>
+                            <th className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium">Price</th>
+                            <th className="text-center px-3 py-2 text-gray-500 dark:text-gray-400 font-medium hidden sm:table-cell">Bed/Bath</th>
+                            <th className="text-center px-3 py-2 text-gray-500 dark:text-gray-400 font-medium">Exported</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {runListings.map((item, idx) => {
+                            const d = item.listing_data ?? {};
+                            return (
+                              <tr key={item.listing_id ?? idx} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#2F2F2F]">
+                                <td className="px-3 py-2 text-[#342e37] dark:text-white">
+                                  <div className="max-w-[180px] truncate" title={d.formatted_address ?? '—'}>
+                                    {d.formatted_address ?? '—'}
+                                  </div>
+                                  {d.city && (
+                                    <div className="text-gray-400 text-[11px]">{d.city}{d.state ? `, ${d.state}` : ''}</div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500 dark:text-gray-400 hidden sm:table-cell capitalize">
+                                  {d.property_type ?? '—'}
+                                </td>
+                                <td className="px-3 py-2 text-right font-medium text-[#342e37] dark:text-white">
+                                  {formatPrice(d.price)}
+                                </td>
+                                <td className="px-3 py-2 text-center text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+                                  {d.bedrooms != null ? `${d.bedrooms}bd` : '—'}{d.bathrooms != null ? ` / ${d.bathrooms}ba` : ''}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  {item.transferred ? (
+                                    <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-red-400 mx-auto" />
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      {runListings.length === 100 && (
+                        <p className="text-center text-[11px] text-gray-400 py-2">Showing first 100 results</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
