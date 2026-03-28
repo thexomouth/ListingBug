@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Card, CardContent } from './ui/card';
 import { useWalkthrough } from './WalkthroughContext';
@@ -79,6 +79,12 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const [listingsImported, setListingsImported] = useState(0);
   const [listingsExported, setListingsExported] = useState(0);
   const [listingsThisMonth, setListingsThisMonth] = useState(0);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+  const pendingLoads = useRef(3); // usage + automations + saved listings
+  const markLoaded = () => {
+    pendingLoads.current -= 1;
+    if (pendingLoads.current <= 0) setIsDashboardLoading(false);
+  };
 
   useEffect(() => {
     const dataState = getUserDataState();
@@ -115,6 +121,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         const total = runData.reduce((sum: number, r: any) => sum + (r.listings_sent ?? 0), 0);
         setListingsExported(total);
       }
+      markLoaded();
     };
     fetchUsage();
   }, []);
@@ -150,6 +157,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
           active: row.active,
         })));
       }
+      markLoaded();
     };
     loadAutomations();
   }, []);
@@ -209,6 +217,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
       if (saved) {
         try { setSavedListings(JSON.parse(saved)); } catch (e) { setSavedListings([]); }
       }
+      markLoaded();
     };
     loadFromSupabase();
 
@@ -315,7 +324,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center mb-2">
                   <Upload className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsImported}</div>
+                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsImported}</div>}
                 <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Listings Imported</div>
               </CardContent>
             </Card>
@@ -331,7 +340,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center mb-2">
                   <Download className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsExported}</div>
+                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsExported}</div>}
                 <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Listings Exported</div>
               </CardContent>
             </Card>
@@ -347,7 +356,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-purple-50 dark:bg-purple-950 flex items-center justify-center mb-2">
                   <Bookmark className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{savedListings.length}</div>
+                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{savedListings.length}</div>}
                 <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Listings Saved</div>
               </CardContent>
             </Card>
@@ -363,7 +372,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
                   <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
                 </div>
-                <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.activeAutomations}</div>
+                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.activeAutomations}</div>}
                 <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center w-full max-w-[4rem] md:max-w-none">Active<br />Automations</div>
               </CardContent>
             </Card>
