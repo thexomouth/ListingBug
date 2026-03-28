@@ -1,5 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+// State name → abbreviation for parsing Nominatim API responses
+const STATE_ABBR: Record<string, string> = {
+  'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
+  'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
+  'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
+  'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
+  'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+  'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+  'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+  'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+  'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+  'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+  'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
+  'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV',
+  'Wisconsin': 'WI', 'Wyoming': 'WY', 'District of Columbia': 'DC',
+};
+
 // ── US Cities dataset ──────────────────────────────────────────────────────────
 // Top ~2,000 US cities by population — covers every market a real estate
 // professional would realistically search. Format: "City, ST"
@@ -670,9 +687,20 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isSelected, setIsSelected] = useState(!!value);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   // Sync external value changes
   useEffect(() => {
@@ -687,25 +715,83 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
     }
   }, [value, stateValue]);
 
-  const getSuggestions = useCallback((query: string) => {
-    if (!query || query.length < 2) return [];
-    const q = query.toLowerCase().replace(/,.*/, '').trim(); // strip state if user typed "Denver, CO"
+  const getStaticSuggestions = useCallback((query: string) => {
+    const q = query.toLowerCase().replace(/,.*/, '').trim();
     return US_CITIES.filter(c =>
       c.city.toLowerCase().startsWith(q) ||
       c.label.toLowerCase().startsWith(q)
     ).slice(0, 8);
   }, []);
 
+  const fetchCitySuggestions = useCallback(async (query: string) => {
+    const q = query.toLowerCase().replace(/,.*/, '').trim();
+    if (q.length < 2) return;
+
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(q)}&countrycodes=us&format=json&addressdetails=1&limit=10&dedupe=1`,
+        {
+          signal: abortRef.current.signal,
+          headers: { 'User-Agent': 'ListingBug/1.0 (support@thelistingbug.com)' },
+        }
+      );
+      if (!res.ok) throw new Error('Nominatim error');
+      const data = await res.json();
+
+      const seen = new Set<string>();
+      const apiResults: typeof US_CITIES = [];
+      for (const item of data) {
+        const addr = item.address ?? {};
+        const cityName = addr.city || addr.town || addr.village || addr.hamlet;
+        const stateAbbr = STATE_ABBR[addr.state ?? ''];
+        if (!cityName || !stateAbbr) continue;
+        const key = `${cityName}|${stateAbbr}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        apiResults.push({ city: cityName, state: stateAbbr, label: `${cityName}, ${stateAbbr}` });
+      }
+
+      if (apiResults.length > 0) {
+        setSuggestions(apiResults);
+        setIsOpen(true);
+      }
+    } catch (e: any) {
+      if (e.name === 'AbortError') return;
+      // Keep static suggestions on network error
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
     setIsSelected(false);
-    // Clear parent values while typing
     onSelect('', '');
-    const results = getSuggestions(val);
-    setSuggestions(results);
-    setIsOpen(results.length > 0);
     setHighlightedIndex(-1);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (val.length < 2) {
+      setSuggestions([]);
+      setIsOpen(false);
+      setIsLoading(false);
+      return;
+    }
+
+    // Show static list immediately for instant feedback
+    const staticResults = getStaticSuggestions(val);
+    setSuggestions(staticResults);
+    setIsOpen(staticResults.length > 0);
+
+    // Fetch comprehensive results from Nominatim after short pause
+    debounceRef.current = setTimeout(() => {
+      fetchCitySuggestions(val);
+    }, 400);
   };
 
   const handleSelect = (item: typeof US_CITIES[0]) => {
@@ -781,16 +867,19 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
 
       {/* Validation hint */}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      {!isSelected && inputValue.length >= 2 && suggestions.length === 0 && (
+      {!isSelected && !isLoading && inputValue.length >= 2 && suggestions.length === 0 && (
         <p className="text-xs text-amber-500 dark:text-amber-400 mt-1">No matching city — please select from the list</p>
       )}
 
       {/* Dropdown */}
-      {isOpen && suggestions.length > 0 && (
+      {(isOpen && suggestions.length > 0) || (isLoading && inputValue.length >= 2) ? (
         <ul
           ref={listRef}
           className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-lg shadow-xl overflow-hidden"
         >
+          {isLoading && suggestions.length === 0 && (
+            <li className="px-4 py-2.5 text-sm text-gray-400 dark:text-white/40 italic">Searching cities…</li>
+          )}
           {suggestions.map((item, index) => (
             <li
               key={item.label}
@@ -805,8 +894,13 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
               <span className="text-gray-500 dark:text-white/50">, {item.state}</span>
             </li>
           ))}
+          {isLoading && suggestions.length > 0 && (
+            <li className="px-4 py-1.5 text-xs text-gray-400 dark:text-white/30 border-t border-gray-100 dark:border-white/5 italic">
+              Updating…
+            </li>
+          )}
         </ul>
-      )}
+      ) : null}
     </div>
   );
 }
