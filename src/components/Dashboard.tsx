@@ -263,21 +263,15 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const snapshotData = {
     listingsImported,
     listingsExported,
-    activeAutomations: activeAutomations.filter(a => a.status === 'running').length
+    activeAutomations: activeAutomations.length
   };
 
-  const toggleAutomationStatus = (automationId: number) => {
-    setActiveAutomations(prev =>
-      prev.map(automation => {
-        if (automation.id === automationId && automation.status !== 'error') {
-          return {
-            ...automation,
-            status: automation.status === 'running' ? 'paused' as const : 'running' as const
-          };
-        }
-        return automation;
-      })
-    );
+  const toggleAutomationStatus = async (automationId: string) => {
+    const automation = activeAutomations.find(a => a.id === automationId);
+    if (!automation) return;
+    const newActive = !automation.active;
+    setActiveAutomations(prev => prev.map(a => a.id === automationId ? { ...a, active: newActive } : a));
+    await supabase.from('automations').update({ active: newActive, updated_at: new Date().toISOString() }).eq('id', automationId);
   };
 
   const overageFee = 0.01;
@@ -519,9 +513,9 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleAutomationStatus(automation.id); }}
                       disabled={automation.status === 'error'}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ${automation.status === 'running' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ${automation.active ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
                     >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${automation.status === 'running' ? 'translate-x-6' : 'translate-x-1'}`} />
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${automation.active ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                   </div>
                 </div>

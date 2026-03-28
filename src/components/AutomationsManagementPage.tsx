@@ -209,10 +209,18 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
   }, []);
   // ── Handler functions ────────────────────────────────────────────────────
 
-  const handleToggleAutomation = (id: string) => {
-    setAutomations(prev => prev.map(a => a.id === id ? { ...a, active: !a.active } : a));
+  const handleToggleAutomation = async (id: string) => {
     const automation = automations.find(a => a.id === id);
-    toast.success(`Automation ${automation?.active ? 'paused' : 'activated'}`);
+    if (!automation) return;
+    const newActive = !automation.active;
+    setAutomations(prev => prev.map(a => a.id === id ? { ...a, active: newActive } : a));
+    const { error } = await supabase.from('automations').update({ active: newActive, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) {
+      setAutomations(prev => prev.map(a => a.id === id ? { ...a, active: !newActive } : a));
+      toast.error('Failed to update automation');
+    } else {
+      toast.success(`Automation ${newActive ? 'activated' : 'paused'}`);
+    }
   };
 
   const handleRunNow = async (automation: any) => {
