@@ -311,13 +311,19 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
         toast.error(`Test failed: ${detail}`);
       } else if (sent > 0) {
         setTestContactResult('success');
-        setTestContactDetail(`Test contact (${userEmail}) sent — check ${selectedIntegration.name} to confirm it arrived.`);
-        toast.success(`Test contact sent to ${selectedIntegration.name}!`);
+        const isSheets = selectedIntegration.id === 'google';
+        setTestContactDetail(isSheets
+          ? `${sent} test listing${sent !== 1 ? 's' : ''} sent — check your Google Sheet to confirm they arrived.`
+          : `Test contact (${userEmail}) sent — check ${selectedIntegration.name} to confirm it arrived.`);
+        toast.success(isSheets ? `${sent} test listings sent to Google Sheets!` : `Test contact sent to ${selectedIntegration.name}!`);
       } else {
         // sent=0 failed=0 skipped=0 — treat as success (contact already existed, update_existing may have been a no-op)
         setTestContactResult('success');
-        setTestContactDetail(`Test contact (${userEmail}) processed by ${selectedIntegration.name} — verify it appears in your list.`);
-        toast.success(`Test contact sent to ${selectedIntegration.name}!`);
+        const isSheets = selectedIntegration.id === 'google';
+        setTestContactDetail(isSheets
+          ? `Test listings processed by Google Sheets — verify they appear in your sheet.`
+          : `Test contact (${userEmail}) processed by ${selectedIntegration.name} — verify it appears in your list.`);
+        toast.success(isSheets ? `Test listings sent to Google Sheets!` : `Test contact sent to ${selectedIntegration.name}!`);
       }
     } catch (e: any) {
       setTestContactResult('failed');
@@ -1015,7 +1021,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               </>
             )}
 
-            {/* Send Test Contact */}
+            {/* Send Test Contact / Send Test Listings */}
             <div className="space-y-1.5">
               <Button
                 variant="outline"
@@ -1024,7 +1030,9 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                 onClick={sendTestContact}
               >
                 {isSendingTest ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                {isSendingTest ? "Sending test contact…" : "Send Test Contact"}
+                {isSendingTest
+                  ? (selectedIntegration?.id === 'google' ? "Sending test listings…" : "Sending test contact…")
+                  : (selectedIntegration?.id === 'google' ? "Send Test Listings" : "Send Test Contact")}
               </Button>
               {testContactResult === "success" && (
                 <p className="text-xs text-green-600 flex items-center gap-1 flex-wrap">
@@ -1036,7 +1044,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                   <AlertCircle className="w-3 h-3 shrink-0" /> {testContactDetail}
                 </p>
               )}
-              <p className="text-xs text-gray-400">Sends a test listing agent contact using your account email. Safe to delete afterwards.</p>
+              <p className="text-xs text-gray-400">{selectedIntegration?.id === 'google' ? "Sends 3 test listings to your configured spreadsheet. Safe to delete afterwards." : "Sends a test listing agent contact using your account email. Safe to delete afterwards."}</p>
             </div>
 
             {/* View Run History */}
