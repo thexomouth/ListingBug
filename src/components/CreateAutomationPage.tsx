@@ -35,6 +35,7 @@ import {
   Download
 } from 'lucide-react';
 import { ActivateAutomationModal } from './ActivateAutomationModal';
+import { toast } from 'sonner@2.0.3';
 import { useWalkthrough } from './WalkthroughContext';
 import { WalkthroughOverlay, WalkthroughCompleteModal } from './WalkthroughOverlay';
 
