@@ -195,7 +195,8 @@ export default function App() {
         setIsLoggedIn(true);
         const authPages = ['/login', '/signup', '/'];
         if (authPages.includes(location.pathname) || location.pathname === '/') {
-          navigateWithLoading('dashboard');
+          // Navigate immediately — no delay — so login form is never interactive with existing session
+          navigate(PAGE_TO_PATH['dashboard']);
         }
         const { data } = await supabase.from('users').select('plan_status, trial_ends_at').eq('id', session.user.id).single();
         if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); }
@@ -206,7 +207,8 @@ export default function App() {
         setIsLoggedIn(true);
         const publicPages = ['/login', '/signup', '/forgot-password'];
         if (publicPages.includes(location.pathname)) {
-          navigateWithLoading('dashboard');
+          // Navigate immediately — no delay — so login form is never interactive with existing session
+          navigate(PAGE_TO_PATH['dashboard']);
         }
       } else {
         setIsLoggedIn(false);

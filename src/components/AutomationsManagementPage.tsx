@@ -223,7 +223,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
       if (!session) throw new Error('Not authenticated');
       const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'X-Automation-User-Id': session.user.id,
+        },
         body: JSON.stringify({ automation }),
       });
       const result = await res.json();
