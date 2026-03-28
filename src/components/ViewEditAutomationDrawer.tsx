@@ -143,7 +143,7 @@ export function ViewEditAutomationDrawer({
   );
   const selectedIntegration = LAUNCH_INTEGRATIONS.find(i => i.id === selectedDestination);
   const availableIntegrations = LAUNCH_INTEGRATIONS.filter(
-    i => connectedIntegrations.includes(i.id) || ['zapier', 'make', 'n8n'].includes(i.id)
+    i => connectedIntegrations.includes(i.id)
   );
 
   const modal = (
