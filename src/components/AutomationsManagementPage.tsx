@@ -236,7 +236,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create' 
           'Authorization': `Bearer ${session.access_token}`,
           'X-Automation-User-Id': session.user.id,
         },
-        body: JSON.stringify({ automation }),
+        body: JSON.stringify({ automation_id: automation.id }),
       });
       const result = await res.json();
       if (!res.ok || result.error) throw new Error(result.error || 'Automation run failed');
