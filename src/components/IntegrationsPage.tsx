@@ -207,30 +207,43 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       const rawName = session?.user?.user_metadata?.full_name ?? session?.user?.user_metadata?.name ?? '';
       const agentName = rawName || 'ListingBug Test';
 
-      // Realistic test listing matching the exact fields the dispatch functions expect
-      const testListing = {
-        id: `listingbug-test-${Date.now()}`,
-        formatted_address: '742 Evergreen Terrace, Denver, CO 80203',
-        city: 'Denver',
-        state: 'CO',
-        zip_code: '80203',
-        price: 485000,
-        bedrooms: 3,
-        bathrooms: 2,
-        square_footage: 1850,
-        property_type: 'Single Family',
-        status: 'Active',
-        listed_date: new Date().toISOString().split('T')[0],
-        days_on_market: 5,
-        listing_type: 'sale',
-        agent_name: agentName,
-        agent_phone: '(720) 555-0192',
-        agent_email: userEmail,
-        office_name: 'ListingBug Test Realty',
-        mls_number: 'TEST-LB-' + new Date().getFullYear(),
-        latitude: 39.7392,
-        longitude: -104.9903,
-      };
+      // 3 realistic test listings in RentCast format (nested listingAgent/listingOffice)
+      const today = new Date().toISOString().split('T')[0];
+      const testListings = [
+        {
+          id: `listingbug-test-${Date.now()}-1`,
+          formattedAddress: '742 Evergreen Terrace, Denver, CO 80203',
+          city: 'Denver', state: 'CO', zipCode: '80203', county: 'Denver County',
+          price: 485000, bedrooms: 3, bathrooms: 2, squareFootage: 1850,
+          propertyType: 'Single Family', status: 'Active',
+          listedDate: today, daysOnMarket: 5, priceReduced: false,
+          mlsNumber: 'TEST-LB-001', latitude: 39.7392, longitude: -104.9903,
+          listingAgent: { name: agentName, phone: '(720) 555-0192', email: userEmail, website: 'https://thelistingbug.com' },
+          listingOffice: { name: 'ListingBug Test Realty', phone: '(720) 555-0100', email: 'office@listingbug.com' },
+        },
+        {
+          id: `listingbug-test-${Date.now()}-2`,
+          formattedAddress: '1204 Oak Creek Lane, Austin, TX 78701',
+          city: 'Austin', state: 'TX', zipCode: '78701', county: 'Travis County',
+          price: 620000, bedrooms: 4, bathrooms: 3, squareFootage: 2340,
+          propertyType: 'Single Family', status: 'Active',
+          listedDate: today, daysOnMarket: 2, priceReduced: false,
+          mlsNumber: 'TEST-LB-002', latitude: 30.2672, longitude: -97.7431,
+          listingAgent: { name: 'Maria Santos', phone: '(512) 555-0281', email: 'msantos.test@listingbug.com', website: '' },
+          listingOffice: { name: 'Horizon Realty Group', phone: '(512) 555-0200', email: 'info@horizonrealty.test' },
+        },
+        {
+          id: `listingbug-test-${Date.now()}-3`,
+          formattedAddress: '88 Magnolia Blvd, Atlanta, GA 30301',
+          city: 'Atlanta', state: 'GA', zipCode: '30301', county: 'Fulton County',
+          price: 399000, bedrooms: 3, bathrooms: 2, squareFootage: 1620,
+          propertyType: 'Condo', status: 'Active',
+          listedDate: today, daysOnMarket: 11, priceReduced: true,
+          mlsNumber: 'TEST-LB-003', latitude: 33.7490, longitude: -84.3880,
+          listingAgent: { name: 'Devon Price', phone: '(404) 555-0374', email: 'dprice.test@listingbug.com', website: '' },
+          listingOffice: { name: 'Peachtree Premier Homes', phone: '(404) 555-0300', email: 'contact@peachtreepremier.test' },
+        },
+      ];
 
       const integId = selectedIntegration.id;
       const config = connectedInfo[integId]?.config ?? {};
@@ -238,7 +251,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
       let fnUrl = '';
-      let payload: any = { listings: [testListing] };
+      let payload: any = { listings: testListings };
 
       if (integId === 'mailchimp') {
         const listId = settingsListId || config.list_id;
