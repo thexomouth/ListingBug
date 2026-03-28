@@ -614,13 +614,13 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       description: 'Push agent contacts to your Twilio Sync List',
       category: 'available'
     },
-    { 
-      id: 'webhook', 
-      name: 'Webhooks', 
-      icon: Webhook, 
-      connected: false, 
-      description: 'Custom API endpoints',
-      category: 'future'
+    {
+      id: 'webhook',
+      name: 'Webhooks',
+      icon: Webhook,
+      connected: false,
+      description: 'Send listings to any custom HTTP endpoint',
+      category: 'available'
     },
     { 
       id: 'slack', 

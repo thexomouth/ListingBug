@@ -123,6 +123,21 @@ export const INTEGRATION_CONFIGS: Record<string, any> = {
       'Activate the workflow in n8n',
     ],
   },
+  webhook: {
+    authType: 'webhook',
+    description: 'Send listing data to any custom HTTP endpoint. Works with any service that accepts a POST request.',
+    bullets: [
+      'Full listing JSON in every request',
+      'Batch or individual delivery modes',
+      'Works with any HTTP endpoint',
+    ],
+    instructions: [
+      'Set up an HTTP endpoint on your server or service that accepts POST requests',
+      'The endpoint should return a 2xx status code on success',
+      'Copy your endpoint URL and paste it below',
+      'Use webhook.site to test — get a free URL instantly with no setup',
+    ],
+  },
 };
 
 // ─── Main Component ──────────────────────────────────────────────────────────
