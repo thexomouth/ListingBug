@@ -2242,7 +2242,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                       }}
                     >
                       <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                      Clear Searches
+                      Clear
                     </LBButton>
                   </div>
                   <div className="grid gap-4 pb-[100px]">
@@ -2280,7 +2280,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                                 }}
                               >
                                 <Eye className="w-3.5 h-3.5 mr-1.5" />
-                                View Results
+                                View
                               </LBButton>
                               <LBButton
                                 variant="outline"
@@ -2294,7 +2294,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                                 }}
                               >
                                 <Play className="w-3.5 h-3.5 mr-1.5" />
-                                Re-run
+                                Run
                               </LBButton>
                               <LBButton
                                 variant="ghost"
