@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Phone, Mail, Globe, Search, ChevronUp, ChevronDown, Users, TrendingDown, Building2, MapPin, X } from 'lucide-react';
 import { ListingDetailModal } from './ListingDetailModal';
+import { SkeletonAgentRow } from './SkeletonLoader';
 
 interface Agent {
   agentName: string;
@@ -233,8 +234,13 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
       {/* Table */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
         {isLoading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="w-10 h-10 border-4 border-[#FFCE0A] border-t-transparent rounded-full animate-spin" />
+          <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
+            <div className="grid grid-cols-8 gap-2 px-4 py-2.5 bg-gray-50 dark:bg-[#1a1a1a] text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-white/10">
+              <div className="col-span-5">Agent / Brokerage</div>
+              <div className="col-span-1 text-center">Listings</div>
+              <div className="col-span-2 text-right">Last Listed</div>
+            </div>
+            {Array.from({ length: 8 }).map((_, i) => <SkeletonAgentRow key={i} />)}
           </div>
         ) : agents.length === 0 ? (
           <div className="text-center py-24">

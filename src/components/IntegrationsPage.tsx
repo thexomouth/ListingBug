@@ -56,6 +56,7 @@ import { Switch } from './ui/switch';
 import { VisuallyHidden } from './ui/visually-hidden';
 import { IntegrationConnectionModal, INTEGRATION_CONFIGS } from './IntegrationConnectionModal';
 import { IntegrationDetailsPanel } from './IntegrationDetailsPanel';
+import { SkeletonIntegrationCard } from './SkeletonLoader';
 
 interface Integration {
   id: string;
@@ -78,6 +79,8 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   
+  const [integrationsLoading, setIntegrationsLoading] = useState(true);
+
   // Connection modal states
   const [connectedInfo, setConnectedInfo] = useState<Record<string, {connectedAt: string; config: any}>>({});
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
@@ -446,6 +449,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     })));
     // Collapse "Available" section when user already has connected integrations
     if (connectedIds.size > 0) setAvailableExpanded(false);
+    setIntegrationsLoading(false);
     return infoMap;
   };
 
@@ -834,7 +838,14 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
           {/* Connected Integrations */}
-          {connectedIntegrations.length > 0 && (
+          {integrationsLoading ? (
+            <div>
+              <div className="h-7 w-52 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-4" />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 2 }).map((_, i) => <SkeletonIntegrationCard key={i} />)}
+              </div>
+            </div>
+          ) : connectedIntegrations.length > 0 && (
             <div>
               <h3 className="font-bold text-[22px] text-[#342e37] dark:text-white mb-4">
                 Connected Integrations ({connectedIntegrations.length})
