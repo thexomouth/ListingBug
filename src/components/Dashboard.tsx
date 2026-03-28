@@ -42,24 +42,14 @@ interface DashboardProps {
   onSetAutomationsTab?: (tab: 'create' | 'automations' | 'history') => void;
 }
 
-type PlanType = 'starter' | 'pro' | 'enterprise';
+type PlanType = 'trial' | 'starter' | 'pro' | 'enterprise';
 
 const getUserPlan = (): PlanType => {
   const storedPlan = localStorage.getItem('listingbug_user_plan');
-  if (storedPlan && ['starter', 'pro', 'enterprise'].includes(storedPlan)) {
+  if (storedPlan && ['trial', 'starter', 'pro', 'enterprise'].includes(storedPlan)) {
     return storedPlan as PlanType;
   }
-  const hasAutomations = localStorage.getItem('listingbug_automations');
-  if (hasAutomations) {
-    try {
-      const automations = JSON.parse(hasAutomations);
-      if (Array.isArray(automations) && automations.length > 0) {
-        localStorage.setItem('listingbug_user_plan', 'pro');
-        return 'pro';
-      }
-    } catch (e) {}
-  }
-  return 'starter';
+  return 'trial';
 };
 
 export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onViewAutomationDetail, onSetAutomationsTab }: DashboardProps) {
@@ -135,8 +125,8 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
       // Fetch real plan from users table
       const { data: userData } = await supabase.from('users').select('plan').eq('id', user.id).single();
       if (userData?.plan) {
-        const planMap: Record<string, PlanType> = { trial: 'starter', starter: 'starter', professional: 'pro', enterprise: 'enterprise' };
-        setCurrentPlan(planMap[userData.plan] ?? 'starter');
+        const planMap: Record<string, PlanType> = { trial: 'trial', starter: 'starter', professional: 'pro', pro: 'pro', enterprise: 'enterprise' };
+        setCurrentPlan(planMap[userData.plan?.toLowerCase()] ?? 'trial');
       }
 
       const { data, error } = await supabase

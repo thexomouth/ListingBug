@@ -31,6 +31,7 @@ import {
   ChevronUp,
   Loader2,
   UserPlus,
+  BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import {
@@ -1086,6 +1087,15 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               sessionStorage.setItem("listingbug_automations_last_tab", "history");
             }}>
               <Clock className="w-4 h-4 mr-2" /> View Run History
+            </Button>
+
+            {/* Setup Guide */}
+            <Button variant="outline" className="w-full" onClick={() => {
+              sessionStorage.setItem('listingbug_integration_guide_id', selectedIntegration?.id || '');
+              setSettingsOpen(false);
+              if (onNavigate) onNavigate("integration-guide");
+            }}>
+              <BookOpen className="w-4 h-4 mr-2" /> View Setup & Workflow Guide
             </Button>
 
             {/* Disconnect */}
