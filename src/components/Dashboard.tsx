@@ -98,7 +98,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   useEffect(() => {
     const fetchUsage = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { markLoaded(); return; }
       const monthYear = new Date().toISOString().slice(0, 7);
 
       const { data: usageData } = await supabase
@@ -130,7 +130,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   useEffect(() => {
     const loadAutomations = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { markLoaded(); return; }
 
       // Fetch real plan from users table
       const { data: userData } = await supabase.from('users').select('plan').eq('id', user.id).single();
@@ -200,7 +200,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
 
     const loadFromSupabase = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { markLoaded(); return; }
       const { data } = await supabase
         .from('saved_listings')
         .select('listing_data_json, saved_at')
@@ -210,6 +210,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
         setSavedListings(listings);
         localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
+        markLoaded();
         return;
       }
       // Fallback to localStorage if Supabase has nothing yet
