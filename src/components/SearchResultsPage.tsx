@@ -323,7 +323,68 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
         toast.error(`Network error: ${e.message}`);
       }
     } else {
-      toast.info(`Sending to ${integrationId} is coming soon.`);
+      // HubSpot, Sheets, Twilio, webhooks
+      const DISPATCH_MAP: Record<string, string> = {
+        hubspot: 'send-to-hubspot',
+        sheets: 'send-to-sheets', google: 'send-to-sheets',
+        twilio: 'send-to-twilio',
+        zapier: 'webhook-push', make: 'webhook-push', webhook: 'webhook-push',
+      };
+      const fn = DISPATCH_MAP[integrationId];
+      if (!fn) { toast.info(`Sending to ${integrationId} is coming soon.`); return; }
+
+      if (integrationId === 'hubspot') {
+        // no extra config required
+      } else if ((integrationId === 'sheets' || integrationId === 'google') && !cfg.spreadsheet_id) {
+        toast.error('No Google Sheets spreadsheet ID configured — open Integrations and save settings first.');
+        return;
+      } else if (['zapier', 'make', 'webhook'].includes(integrationId) && !cfg.webhook_url) {
+        toast.error('No webhook URL configured — open Integrations and save settings first.');
+        return;
+      }
+
+      const integrationName: Record<string, string> = { hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' };
+      const name = integrationName[integrationId] ?? integrationId;
+      const toastId = toast.info(`Sending ${results.length} listing${results.length !== 1 ? 's' : ''} to ${name}…`, { autoClose: false });
+
+      const listings = results.map((r: any) => ({
+        ...r,
+        formatted_address: r.formattedAddress || r.address || '',
+        agent_email: r.agent_email || r.agentEmail || '',
+        agent_name: r.agent_name || r.agentName || '',
+        agent_phone: r.agent_phone || r.agentPhone || '',
+        office_name: r.office_name || r.officeName || r.brokerage || '',
+        property_type: r.property_type || r.propertyType || '',
+        listed_date: r.listed_date || r.listedDate || '',
+        mls_number: r.mls_number || r.mlsNumber || '',
+        zip_code: r.zip_code || r.zip || '',
+        days_on_market: r.days_on_market || r.daysListed || null,
+      }));
+
+      let payload: any = { listings };
+      if (integrationId === 'hubspot') payload.object_type = cfg.object_type ?? 'contacts';
+      else if (integrationId === 'sheets' || integrationId === 'google') payload = { ...payload, spreadsheet_id: cfg.spreadsheet_id, sheet_name: cfg.sheet_name ?? 'Sheet1', write_mode: cfg.write_mode ?? 'append' };
+      else if (integrationId === 'twilio') payload.list_unique_name = cfg.list_unique_name ?? 'listingbug_contacts';
+      else if (['zapier', 'make', 'webhook'].includes(integrationId)) payload = { ...payload, webhook_url: cfg.webhook_url, send_mode: 'batch' };
+
+      try {
+        const res = await fetch(`https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/${fn}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        toast.dismiss(toastId);
+        if (!res.ok) { toast.error(`${name} error: ${data.error || `HTTP ${res.status}`}`); return; }
+        const sent = data.sent ?? data.written ?? data.accepted ?? 0;
+        const failed = data.failed ?? 0;
+        if (sent > 0) toast.success(`${sent} listing${sent !== 1 ? 's' : ''} sent to ${name}${failed > 0 ? ` (${failed} failed)` : ''}.`);
+        else if (failed > 0) toast.error(`${name}: all ${failed} contacts failed.`);
+        else toast.success(`Listings sent to ${name}!`);
+      } catch (e: any) {
+        toast.dismiss(toastId);
+        toast.error(`Network error: ${e.message}`);
+      }
     }
   };
 

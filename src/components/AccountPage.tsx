@@ -37,6 +37,8 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   
   // Controlled tab state
   const [activeTab, setActiveTab] = useState<'profile' | 'usage' | 'billing' | 'integrations' | 'compliance'>(() => {
@@ -56,7 +58,15 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
           setEmailPlaceholder(user.email);
           setEmail(user.email);
         }
-        
+
+        // Detect Google OAuth user
+        const googleIdentity = user?.identities?.find((i: any) => i.provider === 'google');
+        const isGoogle = !!googleIdentity;
+        setIsGoogleUser(isGoogle);
+
+        // Extract name from Google user_metadata if available
+        const googleName = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? '';
+
         // Load profile data from users table
         if (user?.id) {
           const { data: profileData } = await supabase
@@ -66,9 +76,19 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
             .single();
 
           if (profileData) {
-            if (profileData.name) setName(profileData.name);
+            // If DB name is empty and Google provides a name, auto-populate and save it
+            if (!profileData.name && googleName) {
+              setName(googleName);
+              await supabase.from('users').upsert({ id: user.id, name: googleName, updated_at: new Date().toISOString() });
+            } else if (profileData.name) {
+              setName(profileData.name);
+            }
             if (profileData.company) setCompany(profileData.company);
             if (profileData.created_at) setCreatedAt(profileData.created_at);
+          } else if (googleName) {
+            // No DB row yet — seed with Google name
+            setName(googleName);
+            await supabase.from('users').upsert({ id: user.id, name: googleName, updated_at: new Date().toISOString() });
           }
         }
       } catch (err) {
@@ -180,6 +200,22 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
     } catch (err: any) {
       console.error('Password update failed:', err);
       toast.error(err.message || 'Failed to update password');
+    }
+  };
+
+  const handleSendPasswordReset = async () => {
+    if (!email) { toast.error('No email address found'); return; }
+    setIsSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success('Password reset email sent. Check your inbox.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send reset email');
+    } finally {
+      setIsSendingReset(false);
     }
   };
 
@@ -389,50 +425,76 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                     Password
                   </CardTitle>
                   <CardDescription className="text-gray-600 dark:text-[#EBF2FA]">
-                    Update your password
+                    {isGoogleUser ? 'Your account uses Google Sign-in' : 'Update your password'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="current-password">Current Password</Label>
-                    <Input 
-                      id="current-password" 
-                      type="password"
-                      placeholder="Enter current password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="new-password">New Password</Label>
-                    <Input 
-                      id="new-password" 
-                      type="password"
-                      placeholder="Enter new password (min. 8 characters)"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirm-password">Confirm New Password</Label>
-                    <Input 
-                      id="confirm-password" 
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="placeholder:text-gray-400"
-                    />
-                  </div>
-                  
-                  <Separator className="dark:bg-white/10" />
-                  
-                  {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                    <p className="text-sm text-red-500">Passwords do not match</p>
+                  {isGoogleUser ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600 dark:text-[#EBF2FA]">
+                        You signed up with Google and don't have a separate password yet. To add one, we'll send a password reset link to your email address.
+                      </p>
+                      <Button
+                        onClick={handleSendPasswordReset}
+                        disabled={isSendingReset}
+                        variant="outline"
+                        className="border-gray-200 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
+                      >
+                        {isSendingReset ? 'Sending…' : 'Send password reset email'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="current-password">Current Password</Label>
+                        <Input
+                          id="current-password"
+                          type="password"
+                          placeholder="Enter current password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="placeholder:text-gray-400"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="new-password">New Password</Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          placeholder="Enter new password (min. 8 characters)"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="placeholder:text-gray-400"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="confirm-password">Confirm New Password</Label>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          placeholder="Confirm new password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="placeholder:text-gray-400"
+                        />
+                      </div>
+                      <Separator className="dark:bg-white/10" />
+                      {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                        <p className="text-sm text-red-500">Passwords do not match</p>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <Button onClick={handleUpdatePassword} disabled={!isPasswordFormValid} className="bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Update Password</Button>
+                        <button
+                          type="button"
+                          onClick={handleSendPasswordReset}
+                          disabled={isSendingReset}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                        >
+                          {isSendingReset ? 'Sending…' : 'Reset your password'}
+                        </button>
+                      </div>
+                    </>
                   )}
-                  <Button onClick={handleUpdatePassword} disabled={!isPasswordFormValid} className="mt-1 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Update Password</Button>
                 </CardContent>
               </Card>
 
