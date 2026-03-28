@@ -327,6 +327,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       const DISPATCH_MAP: Record<string, string> = {
         hubspot: 'send-to-hubspot',
         sheets: 'send-to-sheets', google: 'send-to-sheets',
+        sendgrid: 'send-to-sendgrid',
         twilio: 'send-to-twilio',
         zapier: 'webhook-push', make: 'webhook-push', webhook: 'webhook-push',
       };
@@ -343,7 +344,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
         return;
       }
 
-      const integrationName: Record<string, string> = { hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' };
+      const integrationName: Record<string, string> = { hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', sendgrid: 'SendGrid', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', webhook: 'Webhook' };
       const name = integrationName[integrationId] ?? integrationId;
       const toastId = toast.info(`Sending ${results.length} listing${results.length !== 1 ? 's' : ''} to ${name}…`, { autoClose: false });
 
@@ -364,6 +365,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       let payload: any = { listings };
       if (integrationId === 'hubspot') payload.object_type = cfg.object_type ?? 'contacts';
       else if (integrationId === 'sheets' || integrationId === 'google') payload = { ...payload, spreadsheet_id: cfg.spreadsheet_id, sheet_name: cfg.sheet_name ?? 'Sheet1', write_mode: cfg.write_mode ?? 'append' };
+      else if (integrationId === 'sendgrid') payload = { ...payload, mode: cfg.mode ?? 'contacts', list_ids: cfg.list_ids ?? [] };
       else if (integrationId === 'twilio') payload.list_unique_name = cfg.list_unique_name ?? 'listingbug_contacts';
       else if (['zapier', 'make', 'webhook'].includes(integrationId)) payload = { ...payload, webhook_url: cfg.webhook_url, send_mode: 'batch' };
 
