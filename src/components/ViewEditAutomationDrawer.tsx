@@ -92,7 +92,7 @@ export function ViewEditAutomationDrawer({
 
   const handleClose = () => { setIsEditing(false); onClose(); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!automationName.trim()) { toast.error('Automation name is required'); return; }
     if (!selectedDestination) { toast.error('Please select a destination'); return; }
     if (daysOld === '' || !/^\d+$/.test(daysOld.trim()) || parseInt(daysOld) <= 0) {
@@ -115,17 +115,35 @@ export function ViewEditAutomationDrawer({
       propertyType: propertyType || undefined,
       bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
     };
+    const destConfig = {
+      ...(automation.destination?.config ?? {}),
+      ...(integration?.webhookField ? { webhook_url: webhookUrl } : {}),
+    };
+    const destLabel = integration?.name ?? selectedDestination;
+
+    if (automation.id) {
+      const { error } = await supabase.from('automations').update({
+        name: automationName,
+        destination_type: selectedDestination,
+        destination_label: destLabel,
+        destination_config: destConfig,
+        search_criteria: updatedCriteria,
+        updated_at: new Date().toISOString(),
+      }).eq('id', automation.id);
+      if (error) {
+        toast.error('Failed to save: ' + error.message);
+        return;
+      }
+    }
+
     const updated = {
       ...automation,
       name: automationName,
       destination: {
         ...automation.destination,
         type: selectedDestination,
-        label: integration?.name ?? selectedDestination,
-        config: {
-          ...(automation.destination?.config ?? {}),
-          ...(integration?.webhookField ? { webhook_url: webhookUrl } : {}),
-        },
+        label: destLabel,
+        config: destConfig,
       },
       searchCriteria: updatedCriteria,
     };
