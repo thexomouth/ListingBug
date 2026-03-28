@@ -32,6 +32,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [email, setEmail] = useState('');
   const [emailPlaceholder, setEmailPlaceholder] = useState('');
   const [company, setCompany] = useState('');
+  const [phone, setPhone] = useState('');
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -71,7 +72,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('name, company, created_at')
+            .select('name, company, phone, created_at')
             .eq('id', user.id)
             .single();
 
@@ -79,16 +80,17 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
             // If DB name is empty and Google provides a name, auto-populate and save it
             if (!profileData.name && googleName) {
               setName(googleName);
-              await supabase.from('users').upsert({ id: user.id, name: googleName, updated_at: new Date().toISOString() });
+              await supabase.from('users').update({ name: googleName, updated_at: new Date().toISOString() }).eq('id', user.id);
             } else if (profileData.name) {
               setName(profileData.name);
             }
             if (profileData.company) setCompany(profileData.company);
+            if (profileData.phone) setPhone(profileData.phone);
             if (profileData.created_at) setCreatedAt(profileData.created_at);
           } else if (googleName) {
             // No DB row yet — seed with Google name
             setName(googleName);
-            await supabase.from('users').upsert({ id: user.id, name: googleName, updated_at: new Date().toISOString() });
+            await supabase.from('users').update({ name: googleName, updated_at: new Date().toISOString() }).eq('id', user.id);
           }
         }
       } catch (err) {
@@ -139,23 +141,25 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim() || !company.trim()) {
-      toast.error('Please fill in all fields');
+    const updates: Record<string, string> = { updated_at: new Date().toISOString() };
+    if (name.trim()) updates.name = name.trim();
+    if (company.trim()) updates.company = company.trim();
+    if (phone.trim()) updates.phone = phone.trim();
+
+    if (Object.keys(updates).length === 1) {
+      toast.error('Please fill in at least one field to save');
       return;
     }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) throw new Error('Not authenticated');
-      
+
       const { error } = await supabase
         .from('users')
-        .upsert({
-          id: user.id,
-          name: name.trim(),
-          company: company.trim(),
-          updated_at: new Date().toISOString(),
-        });
-      
+        .update(updates)
+        .eq('id', user.id);
+
       if (error) throw error;
       toast.success('Account settings saved successfully');
     } catch (err: any) {
@@ -220,7 +224,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   };
 
   const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
-  const isProfileFormValid = name.trim() && company.trim();
+  const isProfileFormValid = name.trim() || company.trim() || phone.trim();
 
   const handleDeleteAccount = async () => {
     setShowDeleteConfirm(false);
@@ -410,7 +414,18 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                       className="placeholder:text-gray-400"
                     />
                   </div>
-                  
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="Enter your phone number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="placeholder:text-gray-400"
+                    />
+                  </div>
+
                   <Separator className="dark:bg-white/10" />
                   
                   <Button onClick={handleSave} disabled={!isProfileFormValid} className="mt-1 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Save Changes</Button>
