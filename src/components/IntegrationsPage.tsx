@@ -910,31 +910,6 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               </>
             )}
 
-            {/* Test Connection */}
-            <div className="space-y-1.5">
-              <Button variant="outline" className="w-full" disabled={isTestingConnection} onClick={async () => {
-                setIsTestingConnection(true); setConnectionTestResult(null);
-                try {
-                  const token = await getEdgeToken();
-                  if (!token) throw new Error("Not signed in");
-                  const res = await fetch("https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-                    body: JSON.stringify({ integration: selectedIntegration?.id }),
-                  });
-                  const data = await res.json();
-                  if (res.ok && !data.error) { setConnectionTestResult("success"); toast.success(`${selectedIntegration?.name} connection verified.`); }
-                  else { setConnectionTestResult("failed"); toast.error(data.error ?? "Connection test failed"); }
-                } catch (e: any) { setConnectionTestResult("failed"); toast.error(e.message ?? "Failed"); }
-                finally { setIsTestingConnection(false); }
-              }}>
-                {isTestingConnection ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
-                {isTestingConnection ? "Testing…" : "Test Connection"}
-              </Button>
-              {connectionTestResult === "success" && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Connection verified</p>}
-              {connectionTestResult === "failed" && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Failed — try reconnecting</p>}
-            </div>
-
             {/* Send Test Contact */}
             <div className="space-y-1.5">
               <Button
@@ -967,6 +942,21 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
             }}>
               <Clock className="w-4 h-4 mr-2" /> View Run History
             </Button>
+
+            {/* Disconnect */}
+            <div className="pt-2 border-t border-gray-200 dark:border-white/10">
+              <p className="text-xs text-gray-400 mb-2">Removing this integration will stop all automations that use it.</p>
+              <button
+                onClick={() => {
+                  setSettingsOpen(false);
+                  setTimeout(() => handleOpenDisconnect(selectedIntegration!), 100);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Remove Integration
+              </button>
+            </div>
           </div>
 
           <DialogFooter>
@@ -1083,69 +1073,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                   <Settings className="w-4 h-4" />
                   <span>Configure Settings</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setIsTestingConnection(true);
-                    setConnectionTestResult(null);
-                    toast.info('Testing connection...');
-                    // Simulate connection test
-                    setTimeout(() => {
-                      setIsTestingConnection(false);
-                      setConnectionTestResult('success');
-                      toast.success('Connection test successful!');
-                    }, 2000);
-                  }}
-                  disabled={isTestingConnection}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-white bg-white dark:bg-[#0F1115] border border-gray-200 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isTestingConnection ? (
-                    <Shield className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Shield className="w-4 h-4" />
-                  )}
-                  <span>{isTestingConnection ? 'Testing...' : 'Test Connection'}</span>
-                </button>
-                
-                {/* Connection Test Result */}
-                {connectionTestResult && (
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
-                    connectionTestResult === 'success' 
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40' 
-                      : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/40'
-                  }`}>
-                    {connectionTestResult === 'success' ? (
-                      <>
-                        <CheckCheck className="w-4 h-4" />
-                        <span>Connection is working properly</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Connection test failed</span>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
-            </div>
-
-            <Separator />
-
-            {/* Danger Zone */}
-            <div>
-              <h4 className="text-sm font-medium text-red-600 dark:text-red-400 mb-3">Danger Zone</h4>
-              <button
-                onClick={() => {
-                  setEditModalOpen(false);
-                  setTimeout(() => {
-                    handleOpenDisconnect(selectedIntegration!);
-                  }, 100);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-              >
-                <X className="w-4 h-4" />
-                <span>Disconnect Integration</span>
-              </button>
             </div>
           </div>
 
