@@ -110,6 +110,9 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const [settingsListId, setSettingsListId] = useState('');
   const [settingsTags, setSettingsTags] = useState('');
   const [settingsDoubleOptIn, setSettingsDoubleOptIn] = useState(false);
+  // Google Sheets state for settings modal
+  const [settingsSpreadsheetId, setSettingsSpreadsheetId] = useState('');
+  const [settingsSheetName, setSettingsSheetName] = useState('');
   // Send Test Contact state
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testContactResult, setTestContactResult] = useState<'success' | 'failed' | null>(null);
@@ -609,6 +612,8 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     setSettingsListId(cfg.list_id ?? '');
     setSettingsTags(Array.isArray(cfg.tags) ? cfg.tags.join(', ') : (cfg.tags ?? ''));
     setSettingsDoubleOptIn(cfg.double_opt_in ?? false);
+    setSettingsSpreadsheetId(cfg.spreadsheet_id ?? '');
+    setSettingsSheetName(cfg.sheet_name ?? '');
     setSettingsOpen(true);
     // Auto-load Mailchimp audiences so the saved audience is visible immediately
     if (integration.id === 'mailchimp') {
@@ -915,6 +920,35 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               </>
             )}
 
+            {/* Google Sheets specific: spreadsheet URL/ID + sheet name */}
+            {selectedIntegration?.id === "google" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Spreadsheet URL or ID <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder="Paste the Google Sheets URL or spreadsheet ID"
+                    value={settingsSpreadsheetId}
+                    onChange={e => {
+                      const val = e.target.value.trim();
+                      // Extract ID from full URL if pasted
+                      const match = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+                      setSettingsSpreadsheetId(match ? match[1] : val);
+                    }}
+                  />
+                  <p className="text-xs text-gray-400">You can paste the full URL — we'll extract the ID automatically. Make sure the sheet is shared with your Google account.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Sheet (Tab) Name <span className="text-xs text-gray-400 font-normal">(optional)</span></Label>
+                  <Input
+                    placeholder="Sheet1"
+                    value={settingsSheetName}
+                    onChange={e => setSettingsSheetName(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-400">Defaults to "Sheet1". Must match the tab name exactly.</p>
+                </div>
+              </>
+            )}
+
             {/* Send Test Contact */}
             <div className="space-y-1.5">
               <Button
@@ -967,17 +1001,22 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancel</Button>
             <Button
-              disabled={selectedIntegration?.id === "mailchimp" && !settingsListId}
+              disabled={
+                (selectedIntegration?.id === "mailchimp" && !settingsListId) ||
+                (selectedIntegration?.id === "google" && !settingsSpreadsheetId)
+              }
               onClick={async () => {
                 if (!selectedIntegration) return;
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
                   if (!session) { toast.error("Not signed in"); return; }
                   const tags = settingsTags ? settingsTags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
-                  await supabase.from("integration_connections").update({
-                    config: { ...connectedInfo[selectedIntegration.id]?.config, list_id: settingsListId, tags, double_opt_in: settingsDoubleOptIn }
-                  }).eq("user_id", session.user.id).eq("integration_id", selectedIntegration.id);
-                  setConnectedInfo(prev => ({ ...prev, [selectedIntegration.id]: { ...prev[selectedIntegration.id], config: { ...prev[selectedIntegration.id]?.config, list_id: settingsListId, tags, double_opt_in: settingsDoubleOptIn } } }));
+                  const isGoogle = selectedIntegration.id === "google";
+                  const newConfig = isGoogle
+                    ? { ...connectedInfo[selectedIntegration.id]?.config, spreadsheet_id: settingsSpreadsheetId, sheet_name: settingsSheetName || 'Sheet1' }
+                    : { ...connectedInfo[selectedIntegration.id]?.config, list_id: settingsListId, tags, double_opt_in: settingsDoubleOptIn };
+                  await supabase.from("integration_connections").update({ config: newConfig }).eq("user_id", session.user.id).eq("integration_id", selectedIntegration.id);
+                  setConnectedInfo(prev => ({ ...prev, [selectedIntegration.id]: { ...prev[selectedIntegration.id], config: newConfig } }));
                   toast.success("Settings saved");
                   setSettingsOpen(false);
                 } catch (e: any) { toast.error(e.message ?? "Failed to save"); }
