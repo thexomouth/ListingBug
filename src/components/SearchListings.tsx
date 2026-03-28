@@ -1118,6 +1118,22 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     } catch {}
   };
 
+  const openIntegrationTab = (integrationId: string, config: any) => {
+    const urls: Record<string, string | null> = {
+      sheets: config.spreadsheet_id ? `https://docs.google.com/spreadsheets/d/${config.spreadsheet_id}` : 'https://sheets.google.com',
+      google: config.spreadsheet_id ? `https://docs.google.com/spreadsheets/d/${config.spreadsheet_id}` : 'https://sheets.google.com',
+      mailchimp: config.dc ? `https://${config.dc}.admin.mailchimp.com/` : 'https://mailchimp.com',
+      hubspot: config.hub_id ? `https://app.hubspot.com/contacts/${config.hub_id}/` : 'https://app.hubspot.com/contacts/',
+      sendgrid: 'https://app.sendgrid.com/marketing/contacts',
+      twilio: 'https://console.twilio.com/',
+      zapier: null,
+      make: null,
+      webhook: null,
+    };
+    const url = urls[integrationId];
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const handleSendToIntegration = async (integrationId: string) => {
     if (!results || results.length === 0) { toast.error('No results to export'); return; }
 
@@ -1135,27 +1151,36 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       .single();
     const config = conn?.config ?? {};
 
-    // Map results to the format the edge functions expect
+    // Map results to the format the edge functions expect (all RentCast fields)
     const listings = results.map((r: any) => ({
       id: r.id,
       formatted_address: r.formattedAddress || r.address || '',
       city: r.city || '',
       state: r.state || '',
-      zip_code: r.zip || '',
+      zip_code: r.zipCode || r.zip || '',
+      county: r.county || '',
       price: r.price || null,
       bedrooms: r.bedrooms || null,
       bathrooms: r.bathrooms || null,
-      square_footage: r.sqft || null,
+      square_footage: r.squareFootage || r.sqft || null,
+      lot_size: r.lotSize || null,
+      year_built: r.yearBuilt || null,
       property_type: r.propertyType || '',
       status: r.status || 'Active',
       listed_date: r.listedDate || '',
-      days_on_market: r.daysListed || null,
+      days_on_market: r.daysOnMarket || r.daysListed || null,
+      price_reduced: r.priceReduced || false,
       listing_type: r.listingType || 'sale',
-      agent_name: r.agentName || '',
-      agent_phone: r.agentPhone || '',
-      agent_email: r.agentEmail || '',
-      office_name: r.officeName || '',
       mls_number: r.mlsNumber || '',
+      agent_name: r.listingAgent?.name || r.agentName || '',
+      agent_phone: r.listingAgent?.phone || r.agentPhone || '',
+      agent_email: r.listingAgent?.email || r.agentEmail || '',
+      agent_website: r.listingAgent?.website || '',
+      office_name: r.listingOffice?.name || r.officeName || '',
+      office_phone: r.listingOffice?.phone || '',
+      office_email: r.listingOffice?.email || '',
+      latitude: r.latitude || null,
+      longitude: r.longitude || null,
     }));
 
     const BASE = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
@@ -1209,11 +1234,13 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       const failed = data.failed ?? 0;
       if (sent > 0) {
         toast.success(`${sent} listing${sent !== 1 ? 's' : ''} sent to ${integrationName}!`);
+        openIntegrationTab(integrationId, config);
       } else if (failed > 0 && sent === 0) {
         const err = data.errors?.[0] ?? 'All contacts failed';
         toast.error(`Export failed: ${typeof err === 'string' ? err : JSON.stringify(err)}`);
       } else {
         toast.success(`Listings sent to ${integrationName}!`);
+        openIntegrationTab(integrationId, config);
       }
     } catch (e: any) {
       toast.dismiss(toastId);

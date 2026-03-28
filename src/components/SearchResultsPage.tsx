@@ -267,6 +267,22 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
     }
   };
 
+  const openIntegrationTab = (integrationId: string, config: any) => {
+    const urls: Record<string, string | null> = {
+      sheets: config.spreadsheet_id ? `https://docs.google.com/spreadsheets/d/${config.spreadsheet_id}` : 'https://sheets.google.com',
+      google: config.spreadsheet_id ? `https://docs.google.com/spreadsheets/d/${config.spreadsheet_id}` : 'https://sheets.google.com',
+      mailchimp: config.dc ? `https://${config.dc}.admin.mailchimp.com/` : 'https://mailchimp.com',
+      hubspot: config.hub_id ? `https://app.hubspot.com/contacts/${config.hub_id}/` : 'https://app.hubspot.com/contacts/',
+      sendgrid: 'https://app.sendgrid.com/marketing/contacts',
+      twilio: 'https://console.twilio.com/',
+      zapier: null,
+      make: null,
+      webhook: null,
+    };
+    const url = urls[integrationId];
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const handleSendToIntegration = async (integrationId: string) => {
     if (results.length === 0) { toast.error('No results to send'); return; }
 
@@ -317,6 +333,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
           toast.warn(`Sent 0 contacts — ${skipped_no_email} listing${skipped_no_email !== 1 ? 's' : ''} had no agent email.`);
         } else {
           toast.success(`Sent ${sent} contact${sent !== 1 ? 's' : ''} to Mailchimp${failed > 0 ? ` (${failed} failed)` : ''}.`);
+          openIntegrationTab('mailchimp', cfg);
         }
       } catch (e: any) {
         toast.dismiss(toastId);
@@ -351,15 +368,25 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
       const listings = results.map((r: any) => ({
         ...r,
         formatted_address: r.formattedAddress || r.address || '',
-        agent_email: r.agent_email || r.agentEmail || '',
-        agent_name: r.agent_name || r.agentName || '',
-        agent_phone: r.agent_phone || r.agentPhone || '',
-        office_name: r.office_name || r.officeName || r.brokerage || '',
-        property_type: r.property_type || r.propertyType || '',
-        listed_date: r.listed_date || r.listedDate || '',
-        mls_number: r.mls_number || r.mlsNumber || '',
-        zip_code: r.zip_code || r.zip || '',
-        days_on_market: r.days_on_market || r.daysListed || null,
+        zip_code: r.zipCode || r.zip_code || r.zip || '',
+        county: r.county || '',
+        square_footage: r.squareFootage || r.square_footage || null,
+        lot_size: r.lotSize || r.lot_size || null,
+        year_built: r.yearBuilt || r.year_built || null,
+        property_type: r.propertyType || r.property_type || '',
+        listed_date: r.listedDate || r.listed_date || '',
+        days_on_market: r.daysOnMarket || r.days_on_market || r.daysListed || null,
+        price_reduced: r.priceReduced || r.price_reduced || false,
+        mls_number: r.mlsNumber || r.mls_number || '',
+        agent_name: r.listingAgent?.name || r.agent_name || r.agentName || '',
+        agent_phone: r.listingAgent?.phone || r.agent_phone || r.agentPhone || '',
+        agent_email: r.listingAgent?.email || r.agent_email || r.agentEmail || '',
+        agent_website: r.listingAgent?.website || r.agent_website || '',
+        office_name: r.listingOffice?.name || r.office_name || r.officeName || r.brokerage || '',
+        office_phone: r.listingOffice?.phone || r.office_phone || '',
+        office_email: r.listingOffice?.email || r.office_email || '',
+        latitude: r.latitude || null,
+        longitude: r.longitude || null,
       }));
 
       let payload: any = { listings };
@@ -380,9 +407,9 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
         if (!res.ok) { toast.error(`${name} error: ${data.error || `HTTP ${res.status}`}`); return; }
         const sent = data.sent ?? data.written ?? data.accepted ?? 0;
         const failed = data.failed ?? 0;
-        if (sent > 0) toast.success(`${sent} listing${sent !== 1 ? 's' : ''} sent to ${name}${failed > 0 ? ` (${failed} failed)` : ''}.`);
+        if (sent > 0) { toast.success(`${sent} listing${sent !== 1 ? 's' : ''} sent to ${name}${failed > 0 ? ` (${failed} failed)` : ''}.`); openIntegrationTab(integrationId, cfg); }
         else if (failed > 0) toast.error(`${name}: all ${failed} contacts failed.`);
-        else toast.success(`Listings sent to ${name}!`);
+        else { toast.success(`Listings sent to ${name}!`); openIntegrationTab(integrationId, cfg); }
       } catch (e: any) {
         toast.dismiss(toastId);
         toast.error(`Network error: ${e.message}`);
