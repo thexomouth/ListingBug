@@ -27,7 +27,7 @@ export interface PlanLimits {
 export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
   trial: {
     name: 'Trial',
-    automationSlots: 3,
+    automationSlots: 1,
     listingsCap: 1000,
     price: 0,
     features: {
@@ -40,7 +40,7 @@ export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
   },
   starter: {
     name: 'Starter',
-    automationSlots: 1,
+    automationSlots: 3,
     listingsCap: 4000,
     price: 49,
     features: {
@@ -53,7 +53,7 @@ export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
   },
   pro: {
     name: 'Professional',
-    automationSlots: 3,
+    automationSlots: 10,
     listingsCap: 10000,
     price: 99,
     features: {
@@ -84,7 +84,7 @@ export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
  */
 export function getCurrentPlan(): PlanType {
   const storedPlan = localStorage.getItem('listingbug_user_plan');
-  if (storedPlan && ['starter', 'pro', 'enterprise'].includes(storedPlan)) {
+  if (storedPlan && ['trial', 'starter', 'pro', 'enterprise'].includes(storedPlan)) {
     return storedPlan as PlanType;
   }
   
@@ -126,31 +126,33 @@ export function getPlanLimits(plan: PlanType): PlanLimits {
 /**
  * Check if user can create a new automation
  */
-export function canCreateAutomation(plan?: PlanType): { 
-  allowed: boolean; 
+export function canCreateAutomation(plan?: PlanType, actualCount?: number): {
+  allowed: boolean;
   reason?: string;
   currentCount?: number;
   maxSlots?: number;
 } {
   const currentPlan = plan || getCurrentPlan();
   const limits = getPlanLimits(currentPlan);
-  
-  // Get current automation count
-  const stored = localStorage.getItem('listingbug_automations');
-  let currentCount = 0;
-  
-  if (stored) {
-    try {
-      const automations = JSON.parse(stored);
-      currentCount = Array.isArray(automations) ? automations.length : 0;
-    } catch (e) {
-      currentCount = 0;
+
+  // Use provided count, or fall back to localStorage (legacy)
+  let currentCount = actualCount;
+  if (currentCount === undefined) {
+    const stored = localStorage.getItem('listingbug_automations');
+    currentCount = 0;
+    if (stored) {
+      try {
+        const automations = JSON.parse(stored);
+        currentCount = Array.isArray(automations) ? automations.length : 0;
+      } catch (e) {
+        currentCount = 0;
+      }
     }
   }
-  
+
   // Check if limit is reached
   const allowed = limits.automationSlots === Infinity || currentCount < limits.automationSlots;
-  
+
   return {
     allowed,
     reason: allowed ? undefined : `You've reached your plan limit of ${limits.automationSlots} automation${limits.automationSlots !== 1 ? 's' : ''}`,
