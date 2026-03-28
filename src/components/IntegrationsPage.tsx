@@ -113,6 +113,10 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   // Google Sheets state for settings modal
   const [settingsSpreadsheetId, setSettingsSpreadsheetId] = useState('');
   const [settingsSheetName, setSettingsSheetName] = useState('');
+  const [settingsSheets, setSettingsSheets] = useState<{id: string; name: string}[]>([]);
+  const [settingsSheetsLoading, setSettingsSheetsLoading] = useState(false);
+  const [settingsCreateNew, setSettingsCreateNew] = useState(false);
+  const [settingsNewSheetName, setSettingsNewSheetName] = useState('');
   // Send Test Contact state
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testContactResult, setTestContactResult] = useState<'success' | 'failed' | null>(null);
@@ -165,6 +169,25 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
       toast.error('Network error loading audiences — check your connection.');
     } finally {
       setSettingsAudiencesLoading(false);
+    }
+  };
+
+  const loadSettingsSheets = async () => {
+    setSettingsSheetsLoading(true);
+    try {
+      const token = await getEdgeToken();
+      if (!token) { toast.error('Not signed in — please refresh the page.'); return; }
+      const res = await fetch(
+        'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/list-google-sheets',
+        { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'list' }) },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(data.error ?? `Could not load spreadsheets (HTTP ${res.status})`); return; }
+      setSettingsSheets(data.sheets ?? []);
+    } catch {
+      toast.error('Network error loading spreadsheets — check your connection.');
+    } finally {
+      setSettingsSheetsLoading(false);
     }
   };
 
@@ -345,8 +368,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
           setSettingsListId(cfg.list_id ?? '');
           setSettingsTags(Array.isArray(cfg.tags) ? cfg.tags.join(', ') : (cfg.tags ?? ''));
           setSettingsDoubleOptIn(cfg.double_opt_in ?? false);
+          setSettingsCreateNew(false);
+          setSettingsNewSheetName('');
           setSettingsOpen(true);
           if (integrationId === 'mailchimp') setTimeout(() => loadSettingsAudiences(), 50);
+          else if (integrationId === 'google') setTimeout(() => loadSettingsSheets(), 50);
         }, 400);
       }
     });
@@ -413,8 +439,11 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               setSettingsListId(cfg.list_id ?? '');
               setSettingsTags(Array.isArray(cfg.tags) ? cfg.tags.join(', ') : (cfg.tags ?? ''));
               setSettingsDoubleOptIn(cfg.double_opt_in ?? false);
+              setSettingsCreateNew(false);
+              setSettingsNewSheetName('');
               setSettingsOpen(true);
               if (justConnected === 'mailchimp') setTimeout(() => loadSettingsAudiences(), 50);
+              else if (justConnected === 'google') setTimeout(() => loadSettingsSheets(), 50);
             }, 600);
           }
           return prev;
@@ -614,10 +643,14 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     setSettingsDoubleOptIn(cfg.double_opt_in ?? false);
     setSettingsSpreadsheetId(cfg.spreadsheet_id ?? '');
     setSettingsSheetName(cfg.sheet_name ?? '');
+    setSettingsCreateNew(false);
+    setSettingsNewSheetName('');
     setSettingsOpen(true);
-    // Auto-load Mailchimp audiences so the saved audience is visible immediately
+    // Auto-load options so saved values are visible immediately
     if (integration.id === 'mailchimp') {
       setTimeout(() => loadSettingsAudiences(), 50);
+    } else if (integration.id === 'google') {
+      setTimeout(() => loadSettingsSheets(), 50);
     }
   };
 
@@ -920,22 +953,42 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
               </>
             )}
 
-            {/* Google Sheets specific: spreadsheet URL/ID + sheet name */}
+            {/* Google Sheets specific: spreadsheet picker */}
             {selectedIntegration?.id === "google" && (
               <>
                 <div className="space-y-2">
-                  <Label>Spreadsheet URL or ID <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="Paste the Google Sheets URL or spreadsheet ID"
-                    value={settingsSpreadsheetId}
-                    onChange={e => {
-                      const val = e.target.value.trim();
-                      // Extract ID from full URL if pasted
-                      const match = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-                      setSettingsSpreadsheetId(match ? match[1] : val);
-                    }}
-                  />
-                  <p className="text-xs text-gray-400">You can paste the full URL — we'll extract the ID automatically. Make sure the sheet is shared with your Google account.</p>
+                  <Label>Destination Spreadsheet <span className="text-red-500">*</span></Label>
+                  {settingsSheetsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading your spreadsheets…
+                    </div>
+                  ) : (
+                    <select
+                      value={settingsCreateNew ? '__create__' : (settingsSpreadsheetId || '')}
+                      onChange={e => {
+                        if (e.target.value === '__create__') {
+                          setSettingsCreateNew(true);
+                          setSettingsSpreadsheetId('');
+                        } else {
+                          setSettingsCreateNew(false);
+                          setSettingsSpreadsheetId(e.target.value);
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-sm text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select a spreadsheet…</option>
+                      <option value="__create__">+ Create new spreadsheet</option>
+                      {settingsSheets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  )}
+                  {settingsCreateNew && (
+                    <Input
+                      placeholder="Spreadsheet name (e.g. ListingBug Leads)"
+                      value={settingsNewSheetName}
+                      onChange={e => setSettingsNewSheetName(e.target.value)}
+                    />
+                  )}
+                  <p className="text-xs text-gray-400">Listings are appended to this sheet. Column headers are written once automatically — never duplicated on repeat runs.</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Sheet (Tab) Name <span className="text-xs text-gray-400 font-normal">(optional)</span></Label>
@@ -1003,7 +1056,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
             <Button
               disabled={
                 (selectedIntegration?.id === "mailchimp" && !settingsListId) ||
-                (selectedIntegration?.id === "google" && !settingsSpreadsheetId)
+                (selectedIntegration?.id === "google" && !settingsSpreadsheetId && !(settingsCreateNew && settingsNewSheetName.trim()))
               }
               onClick={async () => {
                 if (!selectedIntegration) return;
@@ -1012,8 +1065,21 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
                   if (!session) { toast.error("Not signed in"); return; }
                   const tags = settingsTags ? settingsTags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
                   const isGoogle = selectedIntegration.id === "google";
+                  let spreadsheetId = settingsSpreadsheetId;
+                  if (isGoogle && settingsCreateNew) {
+                    const token = await getEdgeToken();
+                    const createRes = await fetch(
+                      'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/list-google-sheets',
+                      { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'create', name: settingsNewSheetName.trim() || 'ListingBug Export' }) },
+                    );
+                    const createData = await createRes.json().catch(() => ({}));
+                    if (!createRes.ok) { toast.error(createData.error ?? 'Failed to create spreadsheet'); return; }
+                    spreadsheetId = createData.spreadsheet_id;
+                    setSettingsSpreadsheetId(spreadsheetId);
+                    setSettingsCreateNew(false);
+                  }
                   const newConfig = isGoogle
-                    ? { ...connectedInfo[selectedIntegration.id]?.config, spreadsheet_id: settingsSpreadsheetId, sheet_name: settingsSheetName || 'Sheet1' }
+                    ? { ...connectedInfo[selectedIntegration.id]?.config, spreadsheet_id: spreadsheetId, sheet_name: settingsSheetName || 'Sheet1' }
                     : { ...connectedInfo[selectedIntegration.id]?.config, list_id: settingsListId, tags, double_opt_in: settingsDoubleOptIn };
                   await supabase.from("integration_connections").update({ config: newConfig }).eq("user_id", session.user.id).eq("integration_id", selectedIntegration.id);
                   setConnectedInfo(prev => ({ ...prev, [selectedIntegration.id]: { ...prev[selectedIntegration.id], config: newConfig } }));
