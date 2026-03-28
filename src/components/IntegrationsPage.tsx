@@ -329,11 +329,22 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   const handleConnectionComplete = (integrationId: string, credentials?: any) => {
     setConnectionModalOpen(false);
     setConnectionModalIntegration(null);
-    loadConnectedIntegrations().then(() => {
-      // Auto-open settings modal so user can finish setup in one go
+    loadConnectedIntegrations().then((infoMap) => {
       const integ = integrations.find(i => i.id === integrationId);
       if (integ) {
-        setTimeout(() => handleOpenSettings({ ...integ, connected: true, category: 'connected' }), 400);
+        setTimeout(() => {
+          // Use freshly-loaded infoMap directly — React state (connectedInfo) is still stale here
+          const cfg = infoMap[integrationId]?.config ?? {};
+          setSelectedIntegration({ ...integ, connected: true, category: 'connected' });
+          setConnectionTestResult(null);
+          setTestContactResult(null);
+          setTestContactDetail(null);
+          setSettingsListId(cfg.list_id ?? '');
+          setSettingsTags(Array.isArray(cfg.tags) ? cfg.tags.join(', ') : (cfg.tags ?? ''));
+          setSettingsDoubleOptIn(cfg.double_opt_in ?? false);
+          setSettingsOpen(true);
+          if (integrationId === 'mailchimp') setTimeout(() => loadSettingsAudiences(), 50);
+        }, 400);
       }
     });
     onConnect?.(integrationId);
@@ -345,14 +356,14 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
   };
 
   // ── Load real connected state from Supabase ──────────────────────────────
-  const loadConnectedIntegrations = async () => {
+  const loadConnectedIntegrations = async (): Promise<Record<string, { connectedAt: string; config: any }>> => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user?.id) return;
+    if (!session?.user?.id) return {};
     const { data, error } = await supabase
       .from('integration_connections')
       .select('integration_id, connected_at, config')
       .eq('user_id', session.user.id);
-    if (error || !data) return;
+    if (error || !data) return {};
     const connectedIds = new Set(data.map((r: any) => r.integration_id));
     const infoMap: Record<string, { connectedAt: string; config: any }> = {};
     data.forEach((r: any) => {
@@ -366,6 +377,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     })));
     // Collapse "Available" section when user already has connected integrations
     if (connectedIds.size > 0) setAvailableExpanded(false);
+    return infoMap;
   };
 
   useEffect(() => {
@@ -375,17 +387,27 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
     if (justConnected) {
       window.history.replaceState({}, '', window.location.pathname);
       // Reload connected state from DB then show success and auto-open settings
-      loadConnectedIntegrations().then(() => {
+      loadConnectedIntegrations().then((infoMap) => {
         const names: Record<string, string> = {
           google: 'Google Sheets', mailchimp: 'Mailchimp', hubspot: 'HubSpot',
           sendgrid: 'SendGrid', twilio: 'Twilio',
         };
         toast.success(`${names[justConnected] ?? justConnected} connected successfully!`);
-        // Auto-open settings so user can finish setup immediately
         setIntegrations(prev => {
           const integ = prev.find(i => i.id === justConnected);
           if (integ) {
-            setTimeout(() => handleOpenSettings({ ...integ, connected: true, category: 'connected' }), 600);
+            setTimeout(() => {
+              const cfg = infoMap[justConnected]?.config ?? {};
+              setSelectedIntegration({ ...integ, connected: true, category: 'connected' });
+              setConnectionTestResult(null);
+              setTestContactResult(null);
+              setTestContactDetail(null);
+              setSettingsListId(cfg.list_id ?? '');
+              setSettingsTags(Array.isArray(cfg.tags) ? cfg.tags.join(', ') : (cfg.tags ?? ''));
+              setSettingsDoubleOptIn(cfg.double_opt_in ?? false);
+              setSettingsOpen(true);
+              if (justConnected === 'mailchimp') setTimeout(() => loadSettingsAudiences(), 50);
+            }, 600);
           }
           return prev;
         });
@@ -1049,26 +1071,6 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
             <div>
               <h4 className="text-sm font-medium text-[#342e37] dark:text-white mb-3">Quick Actions</h4>
               <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    setIsSyncing(true);
-                    toast.success(`Syncing ${selectedIntegration?.name}...`);
-                    setTimeout(() => {
-                      setIsSyncing(false);
-                      setLastSyncTime('Just now');
-                      toast.success('Sync completed successfully!');
-                    }, 2000);
-                  }}
-                  disabled={isSyncing}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-white bg-white dark:bg-[#0F1115] border border-gray-200 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSyncing ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
-                </button>
                 <button
                   onClick={() => {
                     setEditModalOpen(false);
