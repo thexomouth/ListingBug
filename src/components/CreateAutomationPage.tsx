@@ -34,8 +34,8 @@ import {
   FileText,
   Download
 } from 'lucide-react';
-import { ActivateAutomationModal } from './ActivateAutomationModal';
 import { toast } from 'sonner@2.0.3';
+import { supabase } from '../lib/supabase';
 import { useWalkthrough } from './WalkthroughContext';
 import { WalkthroughOverlay, WalkthroughCompleteModal } from './WalkthroughOverlay';
 
@@ -74,7 +74,7 @@ export function CreateAutomationPage({
   const [syncFrequency, setSyncFrequency] = useState('daily');
   const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
   const [savedSearches, setSavedSearches] = useState<any[]>([]);
-  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
   const [automationName, setAutomationName] = useState('');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
 
@@ -186,8 +186,6 @@ export function CreateAutomationPage({
         webhook: { name: 'Custom Webhook', icon: Webhook, category: 'Developer' },
       };
       try {
-        // @ts-ignore
-        const { supabase } = await import('../lib/supabase');
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setIntegrations(baseIntegrations);
@@ -250,14 +248,69 @@ export function CreateAutomationPage({
     setFieldMappings(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleContinue = () => {
-    if (!selectedSearchId || !selectedDestination) {
-      return;
-    }
-    setShowActivateModal(true);
+  // Integrations that require a list/audience to be configured before activating
+  const REQUIRED_LIST_INTEGRATIONS: Record<string, string> = {
+    mailchimp: 'Add Audience in Mailchimp settings',
+    sendgrid: 'Add Contact List in SendGrid settings',
+    constantcontact: 'Add Contact List in Constant Contact settings',
   };
 
-  const canContinue = selectedSearchId && selectedDestination && fieldMappings.length > 0;
+  const handleActivate = async () => {
+    if (!selectedSearchId || !selectedDestination) return;
+    setIsActivating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) { toast.error('Not signed in'); return; }
+
+      // Fetch saved integration config from the integrations page
+      const { data: conn } = await supabase
+        .from('integration_connections')
+        .select('config')
+        .eq('integration_id', selectedDestination)
+        .single();
+
+      const config = conn?.config ?? {};
+
+      // Validate required fields for integrations that need a list/audience
+      const requiredListError = REQUIRED_LIST_INTEGRATIONS[selectedDestination];
+      if (requiredListError && !config.list_id) {
+        toast.error(requiredListError);
+        return;
+      }
+
+      const selectedSearch = getSelectedSearch();
+      const destIntegration = integrations.find((i: any) => i.id === selectedDestination);
+      const now = new Date().toISOString();
+
+      const { data: saved, error } = await supabase.from('automations').insert({
+        user_id: session.user.id,
+        name: automationName,
+        search_name: selectedSearch?.name ?? null,
+        destination_type: selectedDestination,
+        destination_label: destIntegration?.name ?? selectedDestination,
+        destination_config: config,
+        search_criteria: selectedSearch?.criteria ?? {},
+        schedule: syncFrequency,
+        schedule_time: '08:00',
+        active: true,
+        created_at: now,
+        updated_at: now,
+      }).select().single();
+
+      if (error) { console.error('[CreateAuto]', error); toast.error('Failed to save: ' + error.message); return; }
+
+      onAutomationCreated?.({ id: saved.id, name: automationName, searchName: selectedSearch?.name ?? '', destination: { type: selectedDestination, label: destIntegration?.name ?? '', config }, schedule: syncFrequency, active: true });
+      toast.success('Automation created: ' + automationName);
+      if (walkthroughStep3Active) { completeStep(3); setShowCompleteModal(true); }
+      setSelectedSearchId(''); setSelectedDestination(''); setSyncFrequency('daily'); setFieldMappings([]);
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to create automation');
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
+  const canContinue = !!(selectedSearchId && selectedDestination);
 
   // Group integrations by category
   const groupedIntegrations = integrations.reduce((acc, integration) => {
@@ -363,59 +416,19 @@ export function CreateAutomationPage({
           </section>
         )}
 
-        {/* Continue Button */}
+        {/* Create Button */}
         <div className="flex justify-end">
           <LBButton
-            onClick={handleContinue}
-            disabled={!canContinue}
+            onClick={handleActivate}
+            disabled={!canContinue || isActivating}
             className="min-w-[200px]"
           >
-            Continue to Preview
-            <ArrowRight className="w-4 h-4 ml-2" />
+            {isActivating ? 'Creating…' : 'Create Automation'}
+            {!isActivating && <ArrowRight className="w-4 h-4 ml-2" />}
           </LBButton>
         </div>
       </div>
 
-      {/* Activate Modal */}
-      <ActivateAutomationModal
-        isOpen={showActivateModal}
-        onClose={() => setShowActivateModal(false)}
-        automationName={automationName}
-        searchName={getSelectedSearch()?.name || ''}
-        destination={integrations.find(i => i.id === selectedDestination)}
-        fieldMappings={fieldMappings}
-        syncFrequency={syncFrequency}
-        onActivate={async (config) => {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.user?.id) { toast.error('Not signed in'); return; }
-            const selectedSearch = getSelectedSearch();
-            const destIntegration = integrations.find((i: any) => i.id === selectedDestination);
-            const now = new Date().toISOString();
-            const { data: saved, error } = await supabase.from('automations').insert({
-              user_id: session.user.id,
-              name: automationName,
-              search_name: selectedSearch?.name ?? null,
-              destination_type: selectedDestination,
-              destination_label: destIntegration?.name ?? selectedDestination,
-              destination_config: config ?? {},
-              search_criteria: selectedSearch?.criteria ?? {},
-              schedule: syncFrequency,
-              schedule_time: '08:00',
-              active: true,
-              created_at: now,
-              updated_at: now,
-            }).select().single();
-            if (error) { console.error('[CreateAuto]', error); toast.error('Failed to save: ' + error.message); return; }
-            onAutomationCreated?.({ id: saved.id, name: automationName, searchName: selectedSearch?.name ?? '', destination: { type: selectedDestination, label: destIntegration?.name ?? '', config }, schedule: syncFrequency, active: true });
-            toast.success('Automation created: ' + automationName);
-            if (walkthroughStep3Active) { completeStep(3); setShowCompleteModal(true); }
-            setShowActivateModal(false);
-            setSelectedSearchId(''); setSelectedDestination(''); setSyncFrequency('daily'); setFieldMappings([]);
-          } catch (err: any) { toast.error(err.message ?? 'Failed to create automation'); }
-        }}
-      />
-      
       {/* Walkthrough Complete Modal */}
       <WalkthroughCompleteModal
         isOpen={showCompleteModal}
