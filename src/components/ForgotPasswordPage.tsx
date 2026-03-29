@@ -106,7 +106,7 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToContactSuppo
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
 
-            <h1 className="font-bold text-2xl mb-3">Check Your Email</h1>
+            <h1 className="font-bold text-2xl mb-3 text-gray-900">Check Your Email</h1>
             <p className="text-gray-600 mb-6">
               We've sent password reset instructions to:
             </p>
