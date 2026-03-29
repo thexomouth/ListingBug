@@ -116,20 +116,29 @@ serve(async (req) => {
       propertyType, bedrooms, bathrooms, squareFootage, lotSize, yearBuilt, daysOld: rawDaysOld,
       minPrice, maxPrice, status = "Active", limit: resultLimit = 500, offset = 0 } = body;
 
-    // Validate daysOld: must be a single positive integer, never a range.
-    // Ranges like "10-30" would return weeks of data, burning usage on every call.
+    // Validate daysOld: must be a single positive integer from the client.
+    // We convert it server-side into a narrow decimal range (N-0.2)-(N+0.8)
+    // before sending to RentCast. Passing a plain integer like 7 returns ALL
+    // listings from the last 7 days; the decimal range targets only ~day N.
     let daysOld: number | undefined = undefined;
+    let daysOldRentcastParam: string | undefined = undefined;
     if (rawDaysOld !== undefined && rawDaysOld !== null && rawDaysOld !== "") {
       const raw = String(rawDaysOld).trim();
       if (!/^\d+$/.test(raw)) {
         console.error("[search-listings] invalid daysOld rejected:", raw);
-        return new Response(JSON.stringify({ error: "daysOld must be a single whole number (e.g. 1, 30, 200). Ranges are not allowed." }), { status: 400, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "daysOld must be a single whole number (e.g. 1, 7, 30). Ranges are not allowed." }), { status: 400, headers: corsHeaders });
       }
       const parsed = parseInt(raw, 10);
       if (parsed <= 0) {
         return new Response(JSON.stringify({ error: "daysOld must be greater than 0." }), { status: 400, headers: corsHeaders });
       }
       daysOld = parsed;
+      // Narrow decimal range trick: (N-0.2)-(N+0.8) targets only listings
+      // that are approximately N days old, not the cumulative 0-N window.
+      const lo = Math.max(0.1, parsed - 0.2);
+      const hi = parsed + 0.8;
+      daysOldRentcastParam = `${lo}-${hi}`;
+      console.log(`[search-listings] daysOld=${parsed} → RentCast param: ${daysOldRentcastParam}`);
     }
 
     console.log("[search-listings] search params:", JSON.stringify({ city, state, zipCode, address, propertyType, status, daysOld }));
@@ -154,7 +163,7 @@ serve(async (req) => {
     if (squareFootage) params.set("squareFootage", String(squareFootage));
     if (lotSize) params.set("lotSize", String(lotSize));
     if (yearBuilt) params.set("yearBuilt", String(yearBuilt));
-    if (daysOld != null && daysOld !== "") params.set("daysOld", String(daysOld));
+    if (daysOldRentcastParam) params.set("daysOld", daysOldRentcastParam);
 
     // Price: RentCast uses a range string e.g. "200000-500000" or "200000+"
     if (minPrice != null && maxPrice != null) params.set("price", `${minPrice}-${maxPrice}`);
@@ -183,8 +192,21 @@ serve(async (req) => {
     }
 
     const listings = await rentcastRes.json();
-    const listingArray = Array.isArray(listings) ? listings : [];
+    let listingArray = Array.isArray(listings) ? listings : [];
     console.log("[search-listings] RentCast returned", listingArray.length, "listings");
+
+    // Post-filter: if a specific daysOld was requested, only keep listings whose
+    // daysOnMarket is within ±1 of the target day. The decimal-range param already
+    // narrows the API window, but this removes any edge-case stragglers.
+    if (daysOld != null) {
+      const before = listingArray.length;
+      listingArray = listingArray.filter((l: any) => {
+        const dom = l.daysOnMarket;
+        if (dom == null) return true; // keep if field is missing
+        return dom >= daysOld! - 1 && dom <= daysOld! + 1;
+      });
+      console.log(`[search-listings] daysOld post-filter: ${before} → ${listingArray.length} listings`);
+    }
 
     // ── CACHE TO listings TABLE ───────────────────────────────────────────────
     if (!isPreview && listingArray.length > 0) {
