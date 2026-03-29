@@ -148,7 +148,7 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToContactSuppo
             Back to Login
           </button>
 
-          <h1 className="font-bold text-2xl mb-3 text-center">Reset Your Password</h1>
+          <h1 className="font-bold text-2xl mb-3 text-center text-gray-900">Reset Your Password</h1>
           <p className="text-gray-600 mb-6">
             Enter your email address and we'll send you instructions to reset your password.
           </p>
