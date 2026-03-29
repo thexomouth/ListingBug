@@ -2068,77 +2068,77 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                   <LBButton
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="h-8 px-3"
+                    className="h-8 px-3 text-white hover:bg-white/10"
                   >
                     Previous
                   </LBButton>
-                  
+
                   <div className="flex items-center gap-1">
                     {/* Show first page */}
                     {currentPage > 3 && (
                       <>
                         <LBButton
                           onClick={() => handlePageChange(1)}
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 p-0 text-white hover:bg-white/10"
                         >
                           1
                         </LBButton>
-                        {currentPage > 4 && <span className="text-gray-400 px-1">...</span>}
+                        {currentPage > 4 && <span className="text-white/40 px-1">...</span>}
                       </>
                     )}
-                    
+
                     {/* Show pages around current page */}
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
                       .filter(page => {
-                        return page === currentPage || 
-                               page === currentPage - 1 || 
+                        return page === currentPage ||
+                               page === currentPage - 1 ||
                                page === currentPage - 2 ||
-                               page === currentPage + 1 || 
+                               page === currentPage + 1 ||
                                page === currentPage + 2;
                       })
                       .map(page => (
                         <LBButton
                           key={page}
                           onClick={() => handlePageChange(page)}
-                          variant={currentPage === page ? "primary" : "outline"}
+                          variant={currentPage === page ? "primary" : "ghost"}
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className={`h-8 w-8 p-0 ${currentPage !== page ? 'text-white hover:bg-white/10' : ''}`}
                         >
                           {page}
                         </LBButton>
                       ))}
-                    
+
                     {/* Show last page */}
                     {currentPage < totalPages - 2 && (
                       <>
-                        {currentPage < totalPages - 3 && <span className="text-gray-400 px-1">...</span>}
+                        {currentPage < totalPages - 3 && <span className="text-white/40 px-1">...</span>}
                         <LBButton
                           onClick={() => handlePageChange(totalPages)}
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 p-0 text-white hover:bg-white/10"
                         >
                           {totalPages}
                         </LBButton>
                       </>
                     )}
                   </div>
-                  
+
                   <LBButton
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="h-8 px-3"
+                    className="h-8 px-3 text-white hover:bg-white/10"
                   >
                     Next
                   </LBButton>
-                  
-                  <span className="text-xs text-gray-600 ml-2">
+
+                  <span className="text-xs text-white/60 ml-2">
                     Page {currentPage} of {totalPages}
                   </span>
                 </div>

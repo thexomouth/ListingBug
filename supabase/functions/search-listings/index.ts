@@ -133,10 +133,10 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "daysOld must be greater than 0." }), { status: 400, headers: corsHeaders });
       }
       daysOld = parsed;
-      // Narrow decimal range trick: (N-0.2)-(N+0.8) targets only listings
+      // Narrow decimal range trick: (N-0.1)-(N+0.9) targets only listings
       // that are approximately N days old, not the cumulative 0-N window.
-      const lo = Math.max(0.1, parsed - 0.2);
-      const hi = parsed + 0.8;
+      const lo = Math.max(0.1, parsed - 0.1);
+      const hi = parsed + 0.9;
       daysOldRentcastParam = `${lo}-${hi}`;
       console.log(`[search-listings] daysOld=${parsed} → RentCast param: ${daysOldRentcastParam}`);
     }
