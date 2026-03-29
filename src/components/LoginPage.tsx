@@ -85,7 +85,7 @@ export function LoginPage({ onLogin, onNavigateToSignUp, onNavigateToForgotPassw
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" name="password" autoComplete="current-password" placeholder="��������" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Input id="password" type="password" name="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</> : 'Sign In'}
