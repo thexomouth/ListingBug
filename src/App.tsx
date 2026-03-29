@@ -206,6 +206,11 @@ export default function App() {
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === 'PASSWORD_RECOVERY') {
+        // Supabase has exchanged the recovery token for a session — send user to reset form
+        navigate(PAGE_TO_PATH['reset-password']);
+        return;
+      }
       if (session) {
         setIsLoggedIn(true);
         const publicPages = ['/login', '/signup', '/forgot-password'];
