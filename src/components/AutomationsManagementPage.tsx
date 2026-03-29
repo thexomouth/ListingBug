@@ -93,9 +93,10 @@ interface AutomationsManagementPageProps {
   onViewDetail?: (automation: Automation) => void;
   initialTab?: 'create' | 'automations' | 'history';
   onNavigate?: (page: string) => void;
+  onViewRunDetails?: (run: RunHistoryItem) => void;
 }
 
-export function AutomationsManagementPage({ onViewDetail, initialTab = 'create', onNavigate }: AutomationsManagementPageProps = {}) {
+export function AutomationsManagementPage({ onViewDetail, initialTab = 'create', onNavigate, onViewRunDetails }: AutomationsManagementPageProps = {}) {
   // Walkthrough integration
   const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
   const walkthroughStep3Active = isStepActive(3);
@@ -608,12 +609,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
             {/* Mobile Card View */}
             <div className="block lg:hidden space-y-3">
               {runHistory.map((run) => (
-                <div 
-  key={run.id} 
+                <div
+  key={run.id}
   className="bg-transparent rounded-lg p-4 space-y-3 cursor-pointer hover:bg-white/5 transition-colors"
   onClick={() => {
-    setSelectedRun(run);
-    setRunDetailsModalOpen(true);
+    if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); }
   }}
 >
   {/* Header Row - Status & Date */}
@@ -695,7 +695,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                   </LBTableHeader>
                   <LBTableBody>
                     {runHistory.map((run) => (
-                      <LBTableRow key={run.id} className="border-b border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => { setSelectedRun(run); setRunDetailsModalOpen(true); }}>
+                      <LBTableRow key={run.id} className="border-b border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}>
                         <LBTableCell className="font-medium text-white">
                           {new Date(run.runDate).toLocaleString()}
                         </LBTableCell>
@@ -720,7 +720,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                         </LBTableCell>
                         <LBTableCell>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedRun(run); setRunDetailsModalOpen(true); }}
+                            onClick={(e) => { e.stopPropagation(); if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}
                             className="flex items-center gap-1 text-[12px] text-[#FFCE0A] hover:text-[#FFCE0A]/80 font-medium transition-colors"
                           >
                             <Eye className="w-3.5 h-3.5" />

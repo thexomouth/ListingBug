@@ -16,6 +16,7 @@ import { SignUpPage } from "./components/SignUpPage";
 import { ForgotPasswordPage } from "./components/ForgotPasswordPage";
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import { Dashboard } from "./components/Dashboard";
+import { AutomationRunPage } from "./components/AutomationRunPage";
 
 // Lazy-loaded non-critical components
 const Footer = lazy(() => import("./components/Footer").then(m => ({ default: m.Footer })));
@@ -61,6 +62,7 @@ type Page =
   | "automation" | "pricing" | "login" | "signup" | "forgot-password"
   | "reset-password" | "welcome" | "quick-start-guide" | "dashboard"
   | "search-listings" | "search-results" | "automations" | "automation-detail"
+  | "automation-run-results"
   | "agents" | "saved-listings" | "account" | "design-system" | "api-documentation"
   | "api-setup" | "help-center" | "blog" | "changelog" | "about" | "careers"
   | "contact" | "contact-support" | "privacy" | "terms" | "billing"
@@ -75,6 +77,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "welcome": "/welcome", "quick-start-guide": "/quick-start", "dashboard": "/dashboard",
   "search-listings": "/listings", "search-results": "/listings/results",
   "automations": "/automations", "automation-detail": "/automations/detail",
+  "automation-run-results": "/automations/results",
   "agents": "/agents",
   "saved-listings": "/saved", "account": "/account", "design-system": "/design-system",
   "api-documentation": "/api-docs", "api-setup": "/api-setup", "help-center": "/help",
@@ -92,6 +95,7 @@ const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
 
 function pathToPage(pathname: string): Page {
   if (PATH_TO_PAGE[pathname]) return PATH_TO_PAGE[pathname];
+  if (pathname === '/automations/results') return 'automation-run-results';
   if (pathname.startsWith('/automations/')) return 'automation-detail';
   if (pathname.startsWith('/listings/')) return 'search-results';
   if (pathname.startsWith('/account')) return 'account';
@@ -149,6 +153,7 @@ export default function App() {
   const [selectedAutomation, setSelectedAutomation] = useState<any>(null);
   const [automationsInitialTab, setAutomationsInitialTab] = useState<'create' | 'automations' | 'history'>('create');
   const [selectedSearchRun, setSelectedSearchRun] = useState<any | null>(null);
+  const [selectedAutomationRun, setSelectedAutomationRun] = useState<any | null>(null);
   const [sampleReportZipcode, setSampleReportZipcode] = useState('');
   const [sampleReportListings, setSampleReportListings] = useState<any[]>([]);
   const [sampleReportError, setSampleReportError] = useState<string | null>(null);
@@ -328,7 +333,10 @@ export default function App() {
               navigateWithLoading('search-listings');
             }} />
         : <LoginPage onLogin={handleLogin} />;
-      case "automations": return isLoggedIn ? <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
+      case "automations": return isLoggedIn ? <AutomationsManagementPage onViewDetail={handleViewAutomationDetail} initialTab={automationsInitialTab} onNavigate={navigateWithLoading} onViewRunDetails={(run) => { setSelectedAutomationRun(run); navigateWithLoading('automation-run-results'); }} /> : <LoginPage onLogin={handleLogin} />;
+      case "automation-run-results": return isLoggedIn && selectedAutomationRun ? (
+        <AutomationRunPage run={selectedAutomationRun} onBack={() => { navigateWithLoading('automations'); }} />
+      ) : <LoginPage onLogin={handleLogin} />;
       case "automation-detail": return isLoggedIn && selectedAutomation ? (
         <AutomationDetailPage automation={selectedAutomation} onBack={handleBackToAutomations}
           onDelete={(id) => { const stored = localStorage.getItem('listingbug_automations'); if (stored) { try { const a = JSON.parse(stored); localStorage.setItem('listingbug_automations', JSON.stringify(a.filter((x: any) => x.id !== id))); } catch (e) {} } }}

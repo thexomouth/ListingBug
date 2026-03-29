@@ -587,7 +587,27 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
       />
 
       {selectedListing && (
-        <ListingDetailModal listing={selectedListing} onClose={() => setSelectedListing(null)} isSaved={true} />
+        <ListingDetailModal
+          listing={selectedListing}
+          onClose={() => setSelectedListing(null)}
+          isSaved={savedListings.some((l: any) => l.id === selectedListing?.id)}
+          onSaveListing={async (listing: any) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const alreadySaved = savedListings.some((l: any) => l.id === listing.id);
+            if (alreadySaved) {
+              await supabase.from('saved_listings').delete().eq('user_id', user.id).eq('listing_id', listing.id);
+              setSavedListings((prev: any[]) => prev.filter((l: any) => l.id !== listing.id));
+            } else {
+              await supabase.from('saved_listings').upsert(
+                { user_id: user.id, listing_id: listing.id, listing_data_json: listing, saved_at: new Date().toISOString() },
+                { onConflict: 'user_id,listing_id' }
+              );
+              setSavedListings((prev: any[]) => [...prev, listing]);
+            }
+            window.dispatchEvent(new Event('savedListingsUpdated'));
+          }}
+        />
       )}
 
       {isAutomationDrawerOpen && selectedAutomation && (
