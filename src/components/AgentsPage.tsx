@@ -47,6 +47,15 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setIsLoading(false); return; }
 
+      // Load saved listing IDs for this user so saved state renders correctly
+      const { data: savedRows } = await supabase
+        .from('saved_listings')
+        .select('listing_id')
+        .eq('user_id', user.id);
+      if (savedRows) {
+        setSavedListingIds(new Set(savedRows.map((r: any) => r.listing_id).filter(Boolean)));
+      }
+
       // Pull all listings with agent data from the cached listings table
       const { data, error } = await supabase
         .from('listings')
