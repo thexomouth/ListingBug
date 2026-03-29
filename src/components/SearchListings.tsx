@@ -1961,11 +1961,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                     <Search className="w-4 h-4" />
                     Search
                   </LBButton>
-                  {results.length > 0 && (
-                    <span className="text-xs text-gray-600 hidden md:inline">
-                      Showing {((currentPage-1)*resultsPerPage)+1}–{Math.min(currentPage*resultsPerPage, results.length)} of {results.length} listings
-                    </span>
-                  )}
                 </div>
                 {/* Listings synced footnote */}
                 <p className="text-[11px] text-gray-500 text-center">
