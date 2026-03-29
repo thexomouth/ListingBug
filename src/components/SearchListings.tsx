@@ -372,11 +372,11 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         .select('listing_data_json, saved_at')
         .eq('user_id', user.id)
         .order('saved_at', { ascending: false });
-      if (data && data.length > 0) {
-        const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
-        setSavedListings(listings);
-        localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
-      }
+      // Always override from Supabase for authenticated users — even an empty result clears
+      // stale localStorage that may belong to a different account on the same browser
+      const listings = (data ?? []).map((r: any) => r.listing_data_json).filter(Boolean);
+      setSavedListings(listings);
+      localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
     };
     loadSavedListings();
   }, []);

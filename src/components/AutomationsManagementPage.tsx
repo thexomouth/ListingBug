@@ -257,6 +257,25 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
+
+      // Check listing usage before running — same caps enforced server-side
+      const PLAN_CAPS: Record<string, number> = {
+        trial: 1000, starter: 4000, pro: 10000, professional: 10000, enterprise: Infinity,
+      };
+      const monthYear = new Date().toISOString().slice(0, 7);
+      const [{ data: profile }, { data: usageRow }] = await Promise.all([
+        supabase.from('users').select('plan').eq('id', session.user.id).single(),
+        supabase.from('usage_tracking').select('listings_fetched').eq('user_id', session.user.id).eq('month_year', monthYear).single(),
+      ]);
+      const cap = PLAN_CAPS[profile?.plan ?? 'trial'] ?? 1000;
+      const used = usageRow?.listings_fetched ?? 0;
+      if (cap !== Infinity && used >= cap) {
+        toast.error(`Monthly listing limit reached (${used.toLocaleString()} / ${cap.toLocaleString()}). Upgrade your plan to run automations.`);
+        setRunNowLoading(false);
+        setRunningAutomation(null);
+        return;
+      }
+
       const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation', {
         method: 'POST',
         headers: {

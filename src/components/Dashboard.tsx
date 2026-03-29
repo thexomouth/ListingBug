@@ -198,18 +198,11 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         .select('listing_data_json, saved_at')
         .eq('user_id', user.id)
         .order('saved_at', { ascending: false });
-      if (data && data.length > 0) {
-        const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
-        setSavedListings(listings);
-        localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
-        markLoaded();
-        return;
-      }
-      // Fallback to localStorage if Supabase has nothing yet
-      const saved = localStorage.getItem('listingbug_saved_listings');
-      if (saved) {
-        try { setSavedListings(JSON.parse(saved)); } catch (e) { setSavedListings([]); }
-      }
+      // Always use Supabase as source of truth — never fall back to localStorage for
+      // authenticated users, which would leak another account's listings
+      const listings = (data ?? []).map((r: any) => r.listing_data_json).filter(Boolean);
+      setSavedListings(listings);
+      localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
       markLoaded();
     };
     loadFromSupabase();

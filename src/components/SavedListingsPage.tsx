@@ -45,14 +45,15 @@ export function SavedListingsPage() {
           .select('listing_data_json, saved_at')
           .eq('user_id', user.id)
           .order('saved_at', { ascending: false });
-        if (data && data.length > 0) {
-          const listings = data.map((r: any) => r.listing_data_json).filter(Boolean);
-          setSavedListings(listings);
-          localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
-          setIsLoading(false);
-          return;
-        }
+        // Always use Supabase as source of truth for authenticated users — never fall back
+        // to localStorage which may contain a different user's listings
+        const listings = (data ?? []).map((r: any) => r.listing_data_json).filter(Boolean);
+        setSavedListings(listings);
+        localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
+        setIsLoading(false);
+        return;
       }
+      // Unauthenticated fallback only
       const stored = localStorage.getItem('listingbug_saved_listings');
       if (stored) {
         try { setSavedListings(JSON.parse(stored)); } catch (e) {}

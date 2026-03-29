@@ -152,7 +152,7 @@ export function IntegrationDetailsPanel({
               onClick={onClose}
               className="w-8 h-8 rounded-lg hover:bg-[#342e37]/10 flex items-center justify-center transition-colors flex-shrink-0 ml-4"
             >
-              <X className="w-5 h-5 text-[#342e37]" />
+              <X className="w-5 h-5 text-black" />
             </button>
           </div>
 
