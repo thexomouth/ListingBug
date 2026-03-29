@@ -450,19 +450,20 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         .order('searched_at', { ascending: false })
         .limit(50);
       if (loadError) console.error('[search_runs load]', loadError.message);
-      if (data && data.length > 0) {
-        setSearchHistory(data.map((r: any) => ({
-          id: r.id,
-          location: r.location,
-          searchName: r.search_name || null,
-          automationName: r.automation_name || null,
-          criteriaDescription: r.criteria_description,
-          criteria: r.criteria_json,
-          resultsCount: r.results_count,
-          searchDate: r.searched_at,
-          listings: r.results_json || [],
-        })));
-      }
+      // Always overwrite from Supabase for authenticated users — even empty clears stale localStorage
+      const history = (data ?? []).map((r: any) => ({
+        id: r.id,
+        location: r.location,
+        searchName: r.search_name || null,
+        automationName: r.automation_name || null,
+        criteriaDescription: r.criteria_description,
+        criteria: r.criteria_json,
+        resultsCount: r.results_count,
+        searchDate: r.searched_at,
+        listings: r.results_json || [],
+      }));
+      setSearchHistory(history);
+      localStorage.setItem('listingbug_search_history', JSON.stringify(history));
     };
     loadSearchHistory();
   }, []);

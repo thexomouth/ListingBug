@@ -56,65 +56,55 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
         setSavedListingIds(new Set(savedRows.map((r: any) => r.listing_id).filter(Boolean)));
       }
 
-      // Pull all listings with agent data from the cached listings table
-      const { data, error } = await supabase
-        .from('listings')
-        .select('id,agent_name,agent_phone,agent_email,agent_website,office_name,office_phone,office_email,price,days_on_market,price_reduced,zip_code,listed_date,address_line1,formatted_address,city,state,bedrooms,bathrooms,square_footage,status,property_type,year_built,lot_size,latitude,longitude,description,photos_json,history_json,mls_number,mls_name,hoa_fee,virtual_tour_url,listing_type_detail,garage,garage_spaces,pool,stories,created_date,last_seen_date,removed_date')
-        .not('agent_name', 'is', null)
-        .neq('agent_name', '');
+      // Build agent leaderboard from this user's own search runs only —
+      // the global `listings` table is a shared cache (no user_id) so we
+      // must use search_runs to keep data user-scoped
+      const { data: runs, error } = await supabase
+        .from('search_runs')
+        .select('results_json')
+        .eq('user_id', user.id)
+        .order('searched_at', { ascending: false })
+        .limit(20);
 
-      if (error || !data) { setIsLoading(false); return; }
+      if (error || !runs) { setIsLoading(false); return; }
 
-      // Aggregate by agent name
+      // Flatten all listings across runs, deduplicate by id
+      const seen = new Set<string>();
+      const allListings: any[] = [];
+      for (const run of runs) {
+        const arr: any[] = run.results_json || [];
+        for (const l of arr) {
+          const lid = String(l.id || '');
+          if (lid && !seen.has(lid)) { seen.add(lid); allListings.push(l); }
+        }
+      }
+
+      // Aggregate by agent name — listings already use camelCase from search results
       const map = new Map<string, Agent>();
-      for (const l of data) {
-        const key = l.agent_name;
+      for (const l of allListings) {
+        if (!l.agentName) continue;
+        const key = l.agentName;
         if (!map.has(key)) {
           map.set(key, {
-            agentName: l.agent_name,
-            agentPhone: l.agent_phone,
-            agentEmail: l.agent_email,
-            agentWebsite: l.agent_website,
-            officeName: l.office_name,
-            officePhone: l.office_phone,
-            officeEmail: l.office_email,
+            agentName: l.agentName,
+            agentPhone: l.agentPhone || null,
+            agentEmail: l.agentEmail || null,
+            agentWebsite: l.agentWebsite || null,
+            officeName: l.officeName || null,
+            officePhone: l.officePhone || null,
+            officeEmail: l.officeEmail || null,
             listingCount: 0, avgPrice: 0, avgDom: 0, priceDrops: 0,
             zipCodes: [], lastListed: null, listings: [],
           });
         }
         const a = map.get(key)!;
         a.listingCount++;
-        a.listings.push({
-          id: l.id,
-          address: l.address_line1 || l.formatted_address || '',
-          formattedAddress: l.formatted_address || '',
-          city: l.city || '', state: l.state || '', zip: l.zip_code || '',
-          price: l.price || 0, bedrooms: l.bedrooms || 0,
-          bathrooms: l.bathrooms || 0, sqft: l.square_footage || 0,
-          daysListed: l.days_on_market || 0, status: l.status || 'Active',
-          propertyType: l.property_type || '', yearBuilt: l.year_built || 0,
-          lotSize: l.lot_size || 0, latitude: l.latitude || 0,
-          longitude: l.longitude || 0, description: l.description || '',
-          photos: l.photos_json || [], history: l.history_json || null,
-          mlsNumber: l.mls_number || '', mlsName: l.mls_name || '',
-          hoaFee: l.hoa_fee, virtualTourUrl: l.virtual_tour_url || '',
-          listingTypeDetail: l.listing_type_detail || '',
-          garage: l.garage, garageSpaces: l.garage_spaces,
-          pool: l.pool, stories: l.stories,
-          priceDrop: l.price_reduced || false, priceDropAmount: 0, priceDropPercent: 0,
-          listedDate: l.listed_date || '', removedDate: l.removed_date || '',
-          createdDate: l.created_date || '', lastSeenDate: l.last_seen_date || '',
-          agentName: l.agent_name || '', agentPhone: l.agent_phone || '',
-          agentEmail: l.agent_email || '', agentWebsite: l.agent_website || '',
-          brokerage: l.office_name || '', officeName: l.office_name || '',
-          officePhone: l.office_phone || '', officeEmail: l.office_email || '',
-          reList: false,
-        });
+        a.listings.push(l);
         if (l.price) a.avgPrice += l.price;
-        if (l.days_on_market) a.avgDom += l.days_on_market;
-        if (l.price_reduced) a.priceDrops++;
-        if (l.zip_code && !a.zipCodes.includes(l.zip_code)) a.zipCodes.push(l.zip_code);
-        if (l.listed_date && (!a.lastListed || l.listed_date > a.lastListed)) a.lastListed = l.listed_date;
+        if (l.daysListed) a.avgDom += l.daysListed;
+        if (l.priceDrop) a.priceDrops++;
+        if (l.zip && !a.zipCodes.includes(l.zip)) a.zipCodes.push(l.zip);
+        if (l.listedDate && (!a.lastListed || l.listedDate > a.lastListed)) a.lastListed = l.listedDate;
       }
 
       const result: Agent[] = [];
