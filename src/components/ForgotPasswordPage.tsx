@@ -5,6 +5,7 @@ import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { CheckCircle, ArrowLeft, Mail } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { supabase } from '../lib/supabase';
 import headerLogo from 'figma:asset/507fab16b51ccf6be96c685cf4c76a6b2a4bb7b0.png';
 
 /**
@@ -59,32 +60,18 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToContactSuppo
 
     setIsLoading(true);
 
-    try {
-      // BACKEND INTEGRATION:
-      // Replace with actual API call
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://www.thelistingbug.com/reset-password',
+    });
 
-      const data = await response.json();
+    setIsLoading(false);
 
-      if (!data.success) {
-        setError(data.error?.message || 'Failed to send reset email. Please try again.');
-        return;
-      }
-
-      // Show success state
-      setSuccess(true);
-    } catch (err) {
-      // For demo purposes, show success anyway
-      // In production, handle actual errors
-      console.log('Mock: Password reset email sent to:', email);
-      setSuccess(true);
-    } finally {
-      setIsLoading(false);
+    if (resetError) {
+      setError(resetError.message);
+      return;
     }
+
+    setSuccess(true);
   };
 
   if (success) {
