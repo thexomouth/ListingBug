@@ -328,7 +328,7 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <User className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account</h1>
           </div>
         </div>
       </div>

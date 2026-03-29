@@ -2744,9 +2744,9 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
               />
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-[13px] text-gray-600 mb-2">Current criteria:</p>
-              <p className="text-[13px] text-gray-800">
+            <div className="rounded-lg p-3 border border-gray-600">
+              <p className="text-[13px] text-gray-400 mb-2">Current criteria:</p>
+              <p className="text-[13px] text-white">
                 {[criteria.city, criteria.state].filter(Boolean).join(', ') || 'Custom search'} • 
                 {criteria.propertyType || 'All types'} • 
                 {criteria.minPrice || criteria.maxPrice 

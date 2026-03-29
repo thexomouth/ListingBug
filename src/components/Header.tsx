@@ -496,7 +496,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 <ImageWithFallback 
                   src={headerLogoWhite} 
                   alt="ListingBug" 
-                  className={isLoggedIn ? "h-10 w-10 object-contain" : "h-12 w-auto object-contain"}
+                  className={isLoggedIn ? "h-12 w-auto object-contain" : "h-12 w-auto object-contain"}
                 />
               </button>
               <button
@@ -577,6 +577,12 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
               ) : (
                 <>
                   <button
+                    onClick={() => handleNavigate('dashboard')}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'dashboard' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                  >
+                    Dashboard
+                  </button>
+                  <button
                     onClick={() => handleNavigate('search-listings')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'search-listings' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
                   >
@@ -607,7 +613,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('account')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'account' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
                   >
-                    Account Settings
+                    Account
                   </button>
                 </>
               )}
