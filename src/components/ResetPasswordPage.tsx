@@ -145,7 +145,7 @@ export function ResetPasswordPage({
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm">
-          <h1 className="font-bold text-2xl mb-2 text-center">Set New Password</h1>
+          <h1 className="font-bold text-2xl mb-2 text-center text-gray-900">Set New Password</h1>
           <p className="text-gray-600 mb-6 text-center">Enter your new password below.</p>
 
           {error && (
@@ -165,7 +165,7 @@ export function ResetPasswordPage({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter new password"
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 text-gray-900 placeholder:text-gray-400"
                   disabled={isLoading}
                   required
                 />
@@ -190,7 +190,7 @@ export function ResetPasswordPage({
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 text-gray-900 placeholder:text-gray-400"
                   disabled={isLoading}
                   required
                 />
