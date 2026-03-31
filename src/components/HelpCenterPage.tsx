@@ -36,42 +36,42 @@ export function HelpCenterPage({ onNavigateToContactSupport }: HelpCenterPagePro
 
   const guides = [
     {
-      title: "Creating Your First Report",
-      description: "Learn how to search for properties and save your first report in under 5 minutes.",
+      title: "Creating Your First Search",
+      description: "Search for new listings in your target market and get listing agent contact info in under 5 minutes.",
       steps: [
-        "Navigate to 'Search Listings' from the main dashboard",
-        "Enter your desired location (city, state, or ZIP code)",
-        "Select property types you're interested in (Single Family, Condo, etc.)",
-        "Set your price range and other filters (bedrooms, bathrooms, square footage)",
-        "Click 'Search Properties' to see results",
-        "Review the listings and click 'Save as Report' at the bottom",
-        "Name your report and optionally enable automation"
+        "Click 'Listings' in the left navigation to open the Search Listings page",
+        "Enter your target location — city, state, or ZIP code — in the location field",
+        "Set your filters: property type, price range, bedrooms, bathrooms, and days on market",
+        "Click 'Search' to run the search and see matching listings",
+        "Review results — each row includes the property address, price, days on market, and listing agent contact info",
+        "Click the save icon on any listing to bookmark it, or use 'Export CSV' to download all results",
+        "To save your search criteria for later, click 'Save Search' and give it a name"
       ]
     },
     {
-      title: "Setting Up Automated Alerts",
-      description: "Get notified instantly when new properties match your criteria.",
+      title: "Setting Up Your First Automation",
+      description: "Schedule a search to run automatically and push new listing data straight into your tools.",
       steps: [
-        "Create or edit an existing search from Saved Searches",
-        "In the search modal, click on the 'View/Edit' tab",
-        "Toggle 'Automated Report' to ON",
-        "Choose your frequency: Daily, Weekly, or Monthly",
-        "Enable 'Email Notifications' to receive alerts",
-        "Click 'Save Changes'",
-        "You'll now receive alerts whenever new matching properties are listed"
+        "Go to 'Automations' in the left navigation and click 'Create Automation'",
+        "Name your automation and configure your search criteria — location, property type, price range, and any other filters",
+        "Choose a schedule: Daily, Every 12 Hours, or Weekly",
+        "Select a destination: choose your connected integration (HubSpot, Mailchimp, Google Sheets, Zapier, etc.) or CSV Download",
+        "Click 'Save' — your automation is now active and will run on the schedule you chose",
+        "View past runs any time under the 'History' tab in Automations",
+        "Toggle an automation off at any time using the active/inactive switch on your automations list"
       ]
     },
     {
-      title: "Connecting Your CRM",
-      description: "Sync leads from ListingBug directly to your CRM system.",
+      title: "Connecting Your Workflow",
+      description: "Push new listing data automatically into your CRM, email platform, or automation tools.",
       steps: [
-        "Go to Account settings and click the 'API' tab",
-        "Find your CRM in the list (Salesforce, HubSpot, etc.)",
-        "Click 'Connect' and authorize ListingBug to access your CRM",
-        "Configure field mappings (address, price, contact info, etc.)",
-        "Enable auto-sync for new leads from your reports",
-        "Test the connection with a sample listing",
-        "All future report matches will automatically sync to your CRM"
+        "Go to 'Account' → 'Integrations' tab to see all available integrations",
+        "Click 'Connect' next to your preferred tool — HubSpot, Salesforce, Zoho CRM, Mailchimp, Constant Contact, SendGrid, Zapier, Make, n8n, or Webhook",
+        "Follow the authorization flow — OAuth integrations (HubSpot, Salesforce, Mailchimp) will redirect you to authorize access; API key integrations (SendGrid, Zapier webhooks) will prompt you for your key or URL",
+        "Once connected, the integration appears as 'Connected' in your integrations list",
+        "Create or edit an automation and select your connected tool as the destination",
+        "Each time the automation runs, new listing results — including agent contact info — are pushed directly to your chosen platform",
+        "To disconnect or reconfigure an integration, click 'Manage' next to it in the Integrations tab"
       ]
     },
     {
@@ -107,7 +107,7 @@ export function HelpCenterPage({ onNavigateToContactSupport }: HelpCenterPagePro
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
-          <HelpCircle className="w-7 h-7 text-[#342e37]" />
+          <HelpCircle className="w-7 h-7 text-[#FFCE0A]" />
           <h1 className="font-bold text-[33px]">Help Center</h1>
         </div>
         <p className="text-gray-600 text-[15px]">
@@ -118,7 +118,7 @@ export function HelpCenterPage({ onNavigateToContactSupport }: HelpCenterPagePro
       {/* FAQs Section */}
       <section className="mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <HelpCircle className="w-6 h-6 text-[#342e37]" />
+          <HelpCircle className="w-6 h-6 text-[#FFCE0A]" />
           <h2 className="font-bold text-[24px]">Frequently Asked Questions</h2>
         </div>
         
@@ -159,7 +159,7 @@ export function HelpCenterPage({ onNavigateToContactSupport }: HelpCenterPagePro
       {/* Getting Started Guides Section */}
       <section className="mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <BookOpen className="w-6 h-6 text-[#342e37]" />
+          <BookOpen className="w-6 h-6 text-[#FFCE0A]" />
           <h2 className="font-bold text-[24px]">Getting Started Guides</h2>
         </div>
         
@@ -175,11 +175,11 @@ export function HelpCenterPage({ onNavigateToContactSupport }: HelpCenterPagePro
                 <p className="text-gray-600 mb-4 text-[15px]">
                   {guide.description}
                 </p>
-                <ol className="space-y-2 text-[14px] text-gray-700">
+                <ol className="space-y-2 text-[14px] text-gray-700 dark:text-[#EBF2FA]/80">
                   {guide.steps.map((step, stepIndex) => (
                     <li key={stepIndex} className="flex gap-3">
-                      <span className="font-medium text-[#342e37] flex-shrink-0">
-                        {stepIndex + 1}.
+                      <span className="font-bold text-white bg-[#342e37] dark:bg-[#FFCE0A] dark:text-[#342e37] rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-[11px] mt-0.5">
+                        {stepIndex + 1}
                       </span>
                       <span>{step}</span>
                     </li>
@@ -194,7 +194,7 @@ export function HelpCenterPage({ onNavigateToContactSupport }: HelpCenterPagePro
       {/* Contact Support Section */}
       <section className="bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-gray-700 rounded-lg p-8">
         <div className="flex items-center gap-3 mb-4">
-          <MessageCircle className="w-6 h-6 text-[#342e37]" />
+          <MessageCircle className="w-6 h-6 text-[#FFCE0A]" />
           <h2 className="font-bold text-[24px]">Need More Help?</h2>
         </div>
         <p className="text-gray-600 mb-6 text-[15px]">

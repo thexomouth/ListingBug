@@ -34,8 +34,16 @@ export function IntegrationsMarketingPage({ onNavigate }: IntegrationsMarketingP
             <h1 className="mb-0 text-4xl font-bold text-[33px] dark:text-white">Integrations</h1>
           </div>
           <p className="text-gray-600 dark:text-[#EBF2FA] max-w-3xl leading-relaxed text-[14px] p-[0px]">
-            Set it and forget it—Let ListingBug transfer data to the tools you use most, totally on autopilot. 
+            Set it and forget it—Let ListingBug transfer data to the tools you use most, totally on autopilot.
             Connect your CRM, email marketing platform, spreadsheets, and more.
+          </p>
+          <p className="text-[14px] mt-2">
+            <button
+              onClick={() => onNavigate?.('integration-guide')}
+              className="text-[#FFCE0A] hover:underline font-medium"
+            >
+              View our Setup &amp; Workflow Guide for step-by-step instructions to get started →
+            </button>
           </p>
         </div>
 

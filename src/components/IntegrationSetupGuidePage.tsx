@@ -332,7 +332,7 @@ export function IntegrationSetupGuidePage({ onBack }: IntegrationSetupGuidePageP
           </Button>
         )}
         <div className="flex items-center gap-3 mb-2">
-          <BookOpen className="w-7 h-7 text-[#342e37]" />
+          <BookOpen className="w-7 h-7 text-[#FFCE0A]" />
           <h1 className="font-bold text-[33px]">Integration Setup & Workflow Guides</h1>
         </div>
         <p className="text-gray-600 text-[15px]">

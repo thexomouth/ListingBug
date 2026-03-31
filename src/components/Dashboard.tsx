@@ -498,9 +498,9 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             </div>
           ) : (
             <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-6">
-              <div className="space-y-3">
+              <div className="divide-y divide-gray-100 dark:divide-white/5">
               {activeAutomations.map((automation) => (
-                <div key={automation.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-all rounded-lg py-3" onClick={() => { setSelectedAutomation(automation); setIsAutomationDrawerOpen(true); }}>
+                <div key={automation.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-all rounded-lg py-3 first:pt-0 last:pb-0" onClick={() => { setSelectedAutomation(automation); setIsAutomationDrawerOpen(true); }}>
                   <div className="flex items-center justify-between gap-6">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-[#342e37] dark:text-white truncate">{automation.name}</h3>
