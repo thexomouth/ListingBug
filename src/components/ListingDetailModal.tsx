@@ -289,10 +289,16 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                 <h2 className="text-[21px] font-bold text-[#342e37] mb-1 truncate">
                   {viewMode === 'property-record' && 'Property Record'}
                   {viewMode === 'valuation' && 'Property Valuation'}
-                  {viewMode === 'listing' && listing.address}
+                  {viewMode === 'listing' && (
+                    listing.address ||
+                    listing.formattedAddress ||
+                    `${listing.city ?? ''}, ${listing.state ?? ''} ${listing.zip ?? ''}`.trim()
+                  )}
                 </h2>
                 <p className="text-[14px] text-[#342e37]/80 truncate">
-                  {viewMode === 'listing' ? `${listing.city}, ${listing.state} ${listing.zip}` : listing.address}
+                  {viewMode === 'listing'
+                    ? [listing.city, listing.state, listing.zip].filter(Boolean).join(', ')
+                    : (listing.address || listing.formattedAddress || '')}
                 </p>
               </div>
             </div>
@@ -733,28 +739,42 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
               </div>
             ) : (
               <div className="px-3 md:px-6 py-6 space-y-6">
-                {/* PHOTO / STREET VIEW */}
+                {/* PHOTO / STREET VIEW / PLACEHOLDER */}
                 {(() => {
                   const hasPhoto = listing.photos && listing.photos.length > 0 && listing.photos[0];
                   const hasLatLng = listing.latitude && listing.longitude;
-                  if (!hasPhoto && !hasLatLng) return null;
-                  return (
-                    <div className="rounded-lg overflow-hidden">
-                      {hasPhoto ? (
+                  if (hasPhoto) {
+                    return (
+                      <div className="rounded-lg overflow-hidden">
                         <img src={listing.photos[0]} alt={listing.address} className="w-full h-64 object-cover"
                           onError={(e) => {
                             const t = e.currentTarget;
-                            if (hasLatLng) t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`;
-                            else t.parentElement!.style.display = 'none';
+                            if (hasLatLng) {
+                              t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`;
+                            } else {
+                              t.parentElement!.style.display = 'none';
+                            }
                           }} />
-                      ) : (
+                      </div>
+                    );
+                  }
+                  if (hasLatLng) {
+                    return (
+                      <div className="rounded-lg overflow-hidden">
                         <div className="relative w-full h-64 bg-gray-100 overflow-hidden">
                           <img src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`}
                             alt={`Street view of ${listing.address}`} className="w-full h-64 object-cover"
                             onError={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }} />
                           <span className="absolute bottom-2 right-2 text-[10px] bg-black/50 text-white px-1.5 py-0.5 rounded">Street View</span>
                         </div>
-                      )}
+                      </div>
+                    );
+                  }
+                  // No photo, no lat/lng — show placeholder thumbnail
+                  return (
+                    <div className="rounded-lg overflow-hidden w-full h-48 bg-gray-100 dark:bg-white/5 flex flex-col items-center justify-center gap-2">
+                      <Home className="w-10 h-10 text-gray-300 dark:text-white/20" />
+                      <span className="text-[12px] text-gray-400 dark:text-white/30">No photo available</span>
                     </div>
                   );
                 })()}

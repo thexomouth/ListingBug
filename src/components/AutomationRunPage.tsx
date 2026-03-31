@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
 import { LBButton } from './design-system/LBButton';
 import { ListingDetailModal } from './ListingDetailModal';
+import { normalizeListing } from './utils/normalizeListing';
 import { toast } from 'react-toastify';
 
 interface AutomationRunPageProps {
@@ -23,119 +24,6 @@ interface AutomationRunPageProps {
   onBack: () => void;
 }
 
-/**
- * Normalise a snake_case listing_data row (from automation_run_listings)
- * into the camelCase shape that ListingDetailModal expects.
- */
-function normalizeListing(raw: any): any {
-  if (!raw) return raw;
-
-  // Detect which format we have. If it already has camelCase keys like
-  // "addressLine1" or "formattedAddress", leave it mostly as-is.
-  const isAlreadyCamel =
-    'formattedAddress' in raw ||
-    'addressLine1' in raw ||
-    'daysOnMarket' in raw;
-
-  if (isAlreadyCamel) {
-    // Still map the few fields the modal reads under different names
-    return {
-      ...raw,
-      address: raw.address ?? raw.addressLine1 ?? raw.address_line1 ?? '',
-      zip: raw.zip ?? raw.zipCode ?? raw.zip_code ?? '',
-      sqft: raw.sqft ?? raw.squareFootage ?? raw.square_footage ?? 0,
-      daysListed: raw.daysListed ?? raw.daysOnMarket ?? raw.days_on_market ?? null,
-      photos: raw.photos ?? raw.photosJson ?? raw.photos_json ?? [],
-      history: raw.history ?? raw.historyJson ?? raw.history_json ?? null,
-      agentName: raw.agentName ?? raw.listingAgent?.name ?? raw.agent_name ?? null,
-      agentPhone: raw.agentPhone ?? raw.listingAgent?.phone ?? raw.agent_phone ?? null,
-      agentEmail: raw.agentEmail ?? raw.listingAgent?.email ?? raw.agent_email ?? null,
-      agentWebsite: raw.agentWebsite ?? raw.listingAgent?.website ?? raw.agent_website ?? null,
-      officeName: raw.officeName ?? raw.listingOffice?.name ?? raw.office_name ?? null,
-      officePhone: raw.officePhone ?? raw.listingOffice?.phone ?? raw.office_phone ?? null,
-      officeEmail: raw.officeEmail ?? raw.listingOffice?.email ?? raw.office_email ?? null,
-      officeWebsite: raw.officeWebsite ?? raw.listingOffice?.website ?? raw.office_website ?? null,
-      brokerage: raw.brokerage ?? raw.listingOffice?.name ?? raw.office_name ?? null,
-      priceDrop: raw.priceDrop ?? raw.priceReduced ?? raw.price_reduced ?? false,
-      hoaFee: raw.hoaFee ?? raw.hoa?.fee ?? raw.hoa_fee ?? null,
-      propertyType: raw.propertyType ?? raw.property_type ?? null,
-      yearBuilt: raw.yearBuilt ?? raw.year_built ?? null,
-      lotSize: raw.lotSize ?? raw.lot_size ?? null,
-      garageSpaces: raw.garageSpaces ?? raw.garage_spaces ?? null,
-      virtualTourUrl: raw.virtualTourUrl ?? raw.virtual_tour_url ?? null,
-      mlsNumber: raw.mlsNumber ?? raw.mls_number ?? null,
-      mlsName: raw.mlsName ?? raw.mls_name ?? null,
-      listingType: raw.listingType ?? raw.listing_type ?? null,
-      listingTypeDetail: raw.listingTypeDetail ?? raw.listing_type_detail ?? null,
-      listedDate: raw.listedDate ?? raw.listed_date ?? null,
-      lastSeenDate: raw.lastSeenDate ?? raw.last_seen_date ?? null,
-      removedDate: raw.removedDate ?? raw.removed_date ?? null,
-      formattedAddress: raw.formattedAddress ?? raw.formatted_address ?? null,
-      stateFips: raw.stateFips ?? raw.state_fips ?? null,
-      countyFips: raw.countyFips ?? raw.county_fips ?? null,
-    };
-  }
-
-  // snake_case DB format → camelCase for modal
-  const photos = raw.photos_json ?? raw.photos ?? [];
-  const history = raw.history_json ?? raw.history ?? null;
-
-  return {
-    id: raw.id,
-    // Address fields
-    address: raw.address_line1 ?? raw.address ?? '',
-    formattedAddress: raw.formatted_address ?? null,
-    city: raw.city ?? null,
-    state: raw.state ?? null,
-    zip: raw.zip_code ?? raw.zip ?? null,
-    county: raw.county ?? null,
-    stateFips: raw.state_fips ?? null,
-    countyFips: raw.county_fips ?? null,
-    latitude: raw.latitude ?? null,
-    longitude: raw.longitude ?? null,
-    // Listing fields
-    price: raw.price ?? null,
-    status: raw.status ?? null,
-    listingType: raw.listing_type ?? null,
-    listingTypeDetail: raw.listing_type_detail ?? null,
-    mlsNumber: raw.mls_number ?? null,
-    mlsName: raw.mls_name ?? null,
-    priceDrop: raw.price_reduced ?? false,
-    listedDate: raw.listed_date ?? null,
-    removedDate: raw.removed_date ?? null,
-    lastSeenDate: raw.last_seen_date ?? null,
-    daysListed: raw.days_on_market ?? null,
-    virtualTourUrl: raw.virtual_tour_url ?? null,
-    // Property fields
-    propertyType: raw.property_type ?? null,
-    bedrooms: raw.bedrooms ?? null,
-    bathrooms: raw.bathrooms ?? null,
-    sqft: raw.square_footage ?? raw.sqft ?? 0,
-    lotSize: raw.lot_size ?? null,
-    yearBuilt: raw.year_built ?? null,
-    garage: raw.garage ?? null,
-    garageSpaces: raw.garage_spaces ?? null,
-    pool: raw.pool ?? null,
-    stories: raw.stories ?? null,
-    hoaFee: raw.hoa_fee ?? null,
-    description: raw.description ?? null,
-    // Agent & office
-    agentName: raw.agent_name ?? null,
-    agentPhone: raw.agent_phone ?? null,
-    agentEmail: raw.agent_email ?? null,
-    agentWebsite: raw.agent_website ?? null,
-    officeName: raw.office_name ?? null,
-    officePhone: raw.office_phone ?? null,
-    officeEmail: raw.office_email ?? null,
-    officeWebsite: raw.office_website ?? null,
-    brokerage: raw.broker_name ?? raw.office_name ?? null,
-    // Media & history
-    photos: Array.isArray(photos) ? photos : [],
-    history: history,
-    // Internal flag
-    _transferred: raw._transferred,
-  };
-}
 
 export function AutomationRunPage({ run, onBack }: AutomationRunPageProps) {
   const [listings, setListings] = useState<any[]>([]);

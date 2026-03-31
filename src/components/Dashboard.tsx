@@ -6,6 +6,7 @@ import { InteractiveWalkthroughOverlay } from './InteractiveWalkthroughOverlay';
 import { getUserDataState, initializeEmptyUserData } from './utils/userDataUtils';
 import { migrateSavedListings } from './utils/sandboxDataUtils';
 import { ListingDetailModal } from './ListingDetailModal';
+import { normalizeListing } from './utils/normalizeListing';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ListingImageWithFallback } from './ListingImageWithFallback';
 import { ViewEditAutomationDrawer } from './ViewEditAutomationDrawer';
@@ -200,7 +201,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         .order('saved_at', { ascending: false });
       // Always use Supabase as source of truth — never fall back to localStorage for
       // authenticated users, which would leak another account's listings
-      const listings = (data ?? []).map((r: any) => r.listing_data_json).filter(Boolean);
+      const listings = (data ?? []).map((r: any) => normalizeListing(r.listing_data_json)).filter(Boolean);
       setSavedListings(listings);
       localStorage.setItem('listingbug_saved_listings', JSON.stringify(listings));
       markLoaded();
