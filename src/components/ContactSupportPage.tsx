@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageCircle, Mail, Send, Phone, MapPin, CheckCircle } from 'lucide-react';
+import { MessageCircle, Mail, Send, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -165,7 +165,7 @@ export function ContactSupportPage() {
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
-          <MessageCircle className="w-7 h-7 text-[#342e37]" />
+          <MessageCircle className="w-7 h-7 text-[#FFCE0A]" />
           <h1 className="font-bold text-[33px]">Contact Support</h1>
         </div>
         <p className="text-gray-600 text-[15px]">
@@ -321,7 +321,7 @@ export function ContactSupportPage() {
               <div className="space-y-4">
                 {/* General Support */}
                 <div className="flex gap-3">
-                  <Mail className="w-5 h-5 text-[#342e37] flex-shrink-0 mt-0.5" />
+                  <Mail className="w-5 h-5 text-[#FFCE0A] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-[14px]">General Support</p>
                     <a
@@ -335,7 +335,7 @@ export function ContactSupportPage() {
 
                 {/* Sales */}
                 <div className="flex gap-3">
-                  <Mail className="w-5 h-5 text-[#342e37] flex-shrink-0 mt-0.5" />
+                  <Mail className="w-5 h-5 text-[#FFCE0A] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-[14px]">Sales Inquiries</p>
                     <a
@@ -349,7 +349,7 @@ export function ContactSupportPage() {
 
                 {/* Billing */}
                 <div className="flex gap-3">
-                  <Mail className="w-5 h-5 text-[#342e37] flex-shrink-0 mt-0.5" />
+                  <Mail className="w-5 h-5 text-[#FFCE0A] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-[14px]">Billing Support</p>
                     <a
@@ -363,7 +363,7 @@ export function ContactSupportPage() {
 
                 {/* Technical */}
                 <div className="flex gap-3">
-                  <Mail className="w-5 h-5 text-[#342e37] flex-shrink-0 mt-0.5" />
+                  <Mail className="w-5 h-5 text-[#FFCE0A] flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-[14px]">Technical Support</p>
                     <a
@@ -375,55 +375,10 @@ export function ContactSupportPage() {
                   </div>
                 </div>
 
-                {/* Phone */}
-                <div className="flex gap-3">
-                  <Phone className="w-5 h-5 text-[#342e37] flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-[14px]">Phone Support</p>
-                    <a
-                      href="tel:+18005551234"
-                      className="text-[#342e37] hover:underline text-[14px]"
-                    >
-                      1-800-555-1234
-                    </a>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Mon-Fri, 9am-6pm EST
-                    </p>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Office Address Card */}
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="font-bold text-[17px] mb-4">Office Location</h3>
-              <div className="flex gap-3">
-                <MapPin className="w-5 h-5 text-[#342e37] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[14px] text-gray-700">
-                    ListingBug, Inc.<br />
-                    123 Real Estate Blvd<br />
-                    Suite 400<br />
-                    Austin, TX 78701<br />
-                    United States
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Response Time Card */}
-          <Card className="bg-[#FFD447]/10 border-[#FFD447]">
-            <CardContent className="pt-6">
-              <h3 className="font-bold text-[17px] mb-3">Response Time</h3>
-              <p className="text-[14px] text-gray-700">
-                We aim to respond to all support requests within <strong>24 hours</strong> during business days. 
-                Urgent technical issues are prioritized and typically receive a response within <strong>2-4 hours</strong>.
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
