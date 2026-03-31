@@ -1677,7 +1677,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-0.5">
           <Search className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
-          <h1 className="mb-0 text-2xl md:text-4xl font-bold text-[33px]">Listings</h1>
+          <h1 className="mb-0 text-2xl font-bold">Listings</h1>
         </div>
         <p className="text-gray-600 text-[13px] md:text-sm">
           Search, save, and manage property listings with custom criteria

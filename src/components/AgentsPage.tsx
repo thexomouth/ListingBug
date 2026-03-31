@@ -63,8 +63,7 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
         .from('search_runs')
         .select('results_json')
         .eq('user_id', user.id)
-        .order('searched_at', { ascending: false })
-        .limit(20);
+        .order('searched_at', { ascending: false });
 
       if (error || !runs) { setIsLoading(false); return; }
 

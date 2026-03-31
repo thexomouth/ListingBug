@@ -140,6 +140,184 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
   const [showRequestIntegrationPage, setShowRequestIntegrationPage] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Compliance tab state
+  const [suppressionList, setSuppressionList] = useState<{id: string; email: string; created_at: string}[]>([]);
+  const [suppressionEmail, setSuppressionEmail] = useState('');
+  const [isAddingSuppression, setIsAddingSuppression] = useState(false);
+  const [isLoadingSuppression, setIsLoadingSuppression] = useState(false);
+  const [auditStartDate, setAuditStartDate] = useState('');
+  const [auditEndDate, setAuditEndDate] = useState('');
+  const [isExportingAudit, setIsExportingAudit] = useState(false);
+
+  // Load suppression list when compliance tab is active
+  useEffect(() => {
+    if (activeTab !== 'compliance') return;
+    const loadSuppression = async () => {
+      setIsLoadingSuppression(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) { setIsLoadingSuppression(false); return; }
+      const { data } = await supabase
+        .from('suppression_list')
+        .select('id, email, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      setSuppressionList(data || []);
+      setIsLoadingSuppression(false);
+    };
+    loadSuppression();
+  }, [activeTab]);
+
+  const handleAddSuppression = async () => {
+    if (!suppressionEmail.trim()) return;
+    setIsAddingSuppression(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) { toast.error('Not authenticated'); setIsAddingSuppression(false); return; }
+    const { error } = await supabase.from('suppression_list').insert({
+      user_id: user.id,
+      email: suppressionEmail.trim().toLowerCase(),
+    });
+    if (error) {
+      if (error.code === '23505') toast.error('Email already in suppression list');
+      else toast.error('Failed to add email');
+    } else {
+      toast.success('Email added to suppression list');
+      setSuppressionEmail('');
+      const { data } = await supabase.from('suppression_list').select('id, email, created_at').eq('user_id', user.id).order('created_at', { ascending: false });
+      setSuppressionList(data || []);
+    }
+    setIsAddingSuppression(false);
+  };
+
+  const handleRemoveSuppression = async (id: string) => {
+    const { error } = await supabase.from('suppression_list').delete().eq('id', id);
+    if (error) { toast.error('Failed to remove email'); return; }
+    setSuppressionList(prev => prev.filter(s => s.id !== id));
+    toast.success('Email removed from suppression list');
+  };
+
+  const handleExportSuppression = () => {
+    if (suppressionList.length === 0) { toast.error('No emails to export'); return; }
+    const csv = ['email,added_at', ...suppressionList.map(s => `${s.email},${s.created_at}`)].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `suppression-list-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportSuppression = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const emails: string[] = [];
+      for (const line of lines) {
+        if (line.toLowerCase().startsWith('email')) continue;
+        const emailVal = line.split(',')[0].trim().toLowerCase();
+        if (emailVal && emailVal.includes('@')) emails.push(emailVal);
+      }
+      if (emails.length === 0) { toast.error('No valid emails found in CSV'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) { toast.error('Not authenticated'); return; }
+      const rows = emails.map(emailVal => ({ user_id: user.id, email: emailVal }));
+      const { error } = await supabase.from('suppression_list').upsert(rows, { onConflict: 'user_id,email' });
+      if (error) { toast.error('Failed to import some emails'); }
+      else {
+        toast.success(`Imported ${emails.length} email(s)`);
+        const { data } = await supabase.from('suppression_list').select('id, email, created_at').eq('user_id', user.id).order('created_at', { ascending: false });
+        setSuppressionList(data || []);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleExportAuditLogs = async () => {
+    if (!auditStartDate || !auditEndDate) {
+      toast.error('Please select both a start and end date');
+      return;
+    }
+    setIsExportingAudit(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) { toast.error('Not authenticated'); setIsExportingAudit(false); return; }
+    const { data, error } = await supabase
+      .from('automation_runs')
+      .select('id, automation_name, run_date, status, listings_found, listings_sent, destination, details')
+      .eq('user_id', user.id)
+      .gte('run_date', auditStartDate)
+      .lte('run_date', auditEndDate + 'T23:59:59Z')
+      .order('run_date', { ascending: false });
+    if (error || !data) { toast.error('Failed to export audit logs'); setIsExportingAudit(false); return; }
+    if (data.length === 0) { toast.error('No automation runs found in that date range'); setIsExportingAudit(false); return; }
+    const headers = ['automation_id', 'automation_name', 'run_timestamp', 'status', 'listings_found', 'listings_sent', 'destination_type', 'details'];
+    const rows = data.map(r => [
+      r.id,
+      `"${(r.automation_name || '').replace(/"/g, '""')}"`,
+      r.run_date, r.status,
+      r.listings_found, r.listings_sent,
+      `"${(r.destination || '').replace(/"/g, '""')}"`,
+      `"${(r.details || '').replace(/"/g, '""')}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-log-${auditStartDate}-to-${auditEndDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setIsExportingAudit(false);
+    toast.success(`Exported ${data.length} run(s)`);
+  };
+
+  const handleDownloadDPA = () => {
+    const dpaText = `DATA PROCESSING AGREEMENT
+
+This Data Processing Agreement ("DPA") is entered into between ListingBug ("Processor") and you ("Controller") as part of your ListingBug subscription.
+
+1. DEFINITIONS
+"Personal Data" means any information relating to identified or identifiable natural persons processed under this agreement.
+"Processing" means any operation performed on Personal Data.
+
+2. SCOPE AND PURPOSE
+ListingBug processes Personal Data solely to provide the services described in the Terms of Service, including property listing search, automation, and CRM integration features.
+
+3. DATA CONTROLLER OBLIGATIONS
+You, as data controller, are responsible for ensuring you have a lawful basis for processing and sharing contact data with ListingBug.
+
+4. PROCESSOR OBLIGATIONS
+ListingBug will: (a) process data only on your documented instructions; (b) implement appropriate technical and organizational security measures; (c) assist you in fulfilling data subject rights requests; (d) delete or return all Personal Data upon termination.
+
+5. SUBPROCESSORS
+ListingBug uses the following subprocessors: Supabase (database/auth), RentCast (property data), SendGrid (email delivery), Stripe (payments), Vercel (hosting), Cloudflare (CDN). All subprocessors are bound by equivalent data protection obligations.
+
+6. SECURITY
+ListingBug maintains appropriate technical measures including encryption at rest and in transit, access controls, and regular security assessments.
+
+7. DATA RETENTION
+Personal Data is retained for the duration of your subscription plus 90 days following termination, unless earlier deletion is requested.
+
+8. GOVERNING LAW
+This DPA is governed by the laws of the United States.
+
+Accepted: ${createdAt ? new Date(createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'at account creation'}
+Account: ${email}
+
+ListingBug — support@thelistingbug.com
+`;
+    const blob = new Blob([dpaText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ListingBug-DPA.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSave = async () => {
     const updates: Record<string, string> = { updated_at: new Date().toISOString() };
     if (name.trim()) updates.name = name.trim();
@@ -654,16 +832,11 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
                   </div>
 
                   <div className="flex flex-col xs:flex-row gap-2">
-                    <Button variant="outline" size="sm" className="w-full xs:w-auto" onClick={() => {
-                      // API: GET /api/compliance/dpa/download
-                      toast.info('Downloading DPA document...');
-                    }}>
+                    <Button variant="outline" size="sm" className="w-full xs:w-auto" onClick={handleDownloadDPA}>
                       <Download className="w-4 h-4 mr-2 flex-shrink-0" />
                       <span className="truncate">Download DPA</span>
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full xs:w-auto" onClick={() => {
-                      window.open('https://listingbug.com/legal/dpa', '_blank');
-                    }}>
+                    <Button variant="outline" size="sm" className="w-full xs:w-auto" onClick={() => onNavigate?.('legal-dpa')}>
                       <FileText className="w-4 h-4 mr-2 flex-shrink-0" />
                       <span className="truncate">View Full Terms</span>
                     </Button>
@@ -675,52 +848,43 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-[18px] font-bold">Subprocessors</CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 dark:text-[#EBF2FA]/70 mt-1">
                     Third-party services that process data on behalf of ListingBug
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="border border-gray-300 rounded-lg overflow-hidden">
+                  <div className="border border-gray-200 dark:border-white/10 rounded-lg overflow-hidden">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-100 border-b border-gray-300">
+                      <thead className="bg-gray-50 dark:bg-[#1a1a1f] border-b border-gray-200 dark:border-white/10">
                         <tr>
-                          <th className="px-4 py-3 text-left font-bold text-gray-700">Service</th>
-                          <th className="px-4 py-3 text-left font-bold text-gray-700">Purpose</th>
-                          <th className="px-4 py-3 text-left font-bold text-gray-700">Location</th>
+                          <th className="px-4 py-3 text-left font-bold text-gray-700 dark:text-white">Service</th>
+                          <th className="px-4 py-3 text-left font-bold text-gray-700 dark:text-white">Purpose</th>
+                          <th className="px-4 py-3 text-left font-bold text-gray-700 dark:text-white">Location</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium">AWS (Amazon Web Services)</td>
-                          <td className="px-4 py-3 text-gray-600">Cloud hosting & data storage</td>
-                          <td className="px-4 py-3 text-gray-600">United States</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium">SendGrid</td>
-                          <td className="px-4 py-3 text-gray-600">Email delivery services</td>
-                          <td className="px-4 py-3 text-gray-600">United States</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium">Stripe</td>
-                          <td className="px-4 py-3 text-gray-600">Payment processing</td>
-                          <td className="px-4 py-3 text-gray-600">United States</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium">Cloudflare</td>
-                          <td className="px-4 py-3 text-gray-600">CDN & security</td>
-                          <td className="px-4 py-3 text-gray-600">Global</td>
-                        </tr>
+                      <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                        {[
+                          { name: 'Supabase', purpose: 'Database, authentication & edge functions', location: 'United States' },
+                          { name: 'RentCast', purpose: 'Property listing data API', location: 'United States' },
+                          { name: 'SendGrid (Twilio)', purpose: 'Transactional email delivery', location: 'United States' },
+                          { name: 'Stripe', purpose: 'Payment processing & billing', location: 'United States' },
+                          { name: 'Vercel', purpose: 'Frontend hosting & CDN', location: 'Global' },
+                          { name: 'Cloudflare', purpose: 'DNS & DDoS protection', location: 'Global' },
+                        ].map(row => (
+                          <tr key={row.name} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                            <td className="px-4 py-3 font-medium">{row.name}</td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-[#EBF2FA]/70">{row.purpose}</td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-[#EBF2FA]/70">{row.location}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
-                  
-                  <div className="mt-3 text-xs text-gray-600">
-                    <p>
-                      <strong>Note:</strong> All subprocessors are GDPR-compliant and have executed Data Processing Agreements with ListingBug. 
-                      <a href="https://listingbug.com/legal/subprocessors" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
-                        View full subprocessor disclosure →
-                      </a>
-                    </p>
+                  <div className="mt-3 text-xs text-gray-600 dark:text-[#EBF2FA]/60">
+                    All subprocessors are GDPR-compliant and have executed Data Processing Agreements with ListingBug.{' '}
+                    <button onClick={() => onNavigate?.('legal-subprocessors')} className="text-[#FFCE0A] hover:underline">
+                      View full subprocessor disclosure →
+                    </button>
                   </div>
                 </CardContent>
               </Card>
@@ -729,38 +893,47 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-[18px] font-bold">Audit Logs</CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Export data transfer logs for compliance and auditing purposes
+                  <p className="text-sm text-gray-600 dark:text-[#EBF2FA]/70 mt-1">
+                    Export automation run logs for compliance and auditing purposes
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-xs text-blue-900">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                    <p className="text-xs text-blue-900 dark:text-blue-300">
                       <Info className="w-3 h-3 inline mr-1" />
-                      All automation runs and data transfers are logged with timestamps, destination info, and contact counts.
+                      All automation runs are logged with timestamps, destination info, and listing counts. Both dates are required before export.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="log-date-range">Select Date Range</Label>
+                    <Label>Select Date Range</Label>
                     <div className="grid grid-cols-2 gap-2">
-                      <Input type="date" placeholder="Start date" />
-                      <Input type="date" placeholder="End date" />
+                      <Input
+                        type="date"
+                        value={auditStartDate}
+                        onChange={e => setAuditStartDate(e.target.value)}
+                        placeholder="Start date"
+                      />
+                      <Input
+                        type="date"
+                        value={auditEndDate}
+                        onChange={e => setAuditEndDate(e.target.value)}
+                        placeholder="End date"
+                      />
                     </div>
                   </div>
 
-                  <Button variant="outline" onClick={() => {
-                    // API: POST /api/compliance/audit-logs/export
-                    // Request body: { start_date, end_date }
-                    // Response: CSV download
-                    toast.success('Audit log export started. Download will begin shortly.');
-                  }}>
+                  <Button
+                    variant="outline"
+                    onClick={handleExportAuditLogs}
+                    disabled={isExportingAudit || !auditStartDate || !auditEndDate}
+                  >
                     <Download className="w-4 h-4 mr-2" />
-                    Export as CSV
+                    {isExportingAudit ? 'Exporting…' : 'Export as CSV'}
                   </Button>
 
-                  <div className="text-xs text-gray-600">
-                    <strong>Export includes:</strong> automation_id, run_timestamp, destination_type, contact_count, sync_status, error_logs
+                  <div className="text-xs text-gray-600 dark:text-[#EBF2FA]/60">
+                    <strong>Export includes:</strong> automation_id, automation_name, run_timestamp, status, listings_found, listings_sent, destination_type, details
                   </div>
                 </CardContent>
               </Card>
@@ -769,59 +942,68 @@ export function AccountPage({ onLogout, defaultTab = 'profile', isDarkMode = fal
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-[18px] font-bold">Suppression List</CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Manage contacts that should never be synced to marketing destinations
+                  <p className="text-sm text-gray-600 dark:text-[#EBF2FA]/70 mt-1">
+                    Contacts excluded from all marketing automations
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-xs text-amber-900">
-                      <strong>3 contacts currently suppressed</strong> - These contacts will be automatically excluded from all marketing automations.
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/20 rounded-lg p-3">
+                    <p className="text-xs text-amber-900 dark:text-amber-300">
+                      {isLoadingSuppression
+                        ? 'Loading suppression list…'
+                        : <><strong>{suppressionList.length} contact{suppressionList.length !== 1 ? 's' : ''} currently suppressed</strong> — automatically excluded from all automations.</>
+                      }
                     </p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="add-suppression">Add Email to Suppression List</Label>
                     <div className="flex gap-2">
-                      <Input 
-                        id="add-suppression" 
-                        type="email" 
+                      <Input
+                        id="add-suppression"
+                        type="email"
                         placeholder="email@example.com"
+                        value={suppressionEmail}
+                        onChange={e => setSuppressionEmail(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddSuppression(); }}
                       />
-                      <Button onClick={() => {
-                        // API: POST /api/compliance/suppression-list
-                        // Request body: { email }
-                        toast.success('Email added to suppression list');
-                      }}>
-                        Add
+                      <Button onClick={handleAddSuppression} disabled={isAddingSuppression || !suppressionEmail.trim()}>
+                        {isAddingSuppression ? 'Adding…' : 'Add'}
                       </Button>
                     </div>
                   </div>
 
+                  {suppressionList.length > 0 && (
+                    <div className="border border-gray-200 dark:border-white/10 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                      {suppressionList.map(item => (
+                        <div key={item.id} className="flex items-center justify-between px-3 py-2 text-sm border-b border-gray-100 dark:border-white/5 last:border-0 hover:bg-gray-50 dark:hover:bg-white/5">
+                          <span className="font-mono text-[13px]">{item.email}</span>
+                          <button
+                            onClick={() => handleRemoveSuppression(item.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
+                            aria-label={`Remove ${item.email}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex flex-col md:flex-row gap-2">
-                    <Button variant="outline" size="sm" onClick={() => {
-                      // API: GET /api/compliance/suppression-list/export
-                      toast.info('Downloading suppression list...');
-                    }}>
+                    <Button variant="outline" size="sm" onClick={handleExportSuppression} disabled={suppressionList.length === 0}>
                       <Download className="w-4 h-4 mr-2" />
                       Export List
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => {
-                      // API: POST /api/compliance/suppression-list/import
-                      toast.info('Upload CSV file to import suppressions');
-                    }}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      Import CSV
-                    </Button>
-                  </div>
-
-                  <div className="text-xs text-gray-600">
-                    <strong>API Endpoints:</strong>
-                    <ul className="list-disc list-inside mt-1 space-y-0.5 font-mono">
-                      <li>POST /api/compliance/suppression-list - Add email</li>
-                      <li>DELETE /api/compliance/suppression-list/{'{'}email{'}'} - Remove email</li>
-                      <li>GET /api/compliance/suppression-list/export - Download CSV</li>
-                    </ul>
+                    <label className="cursor-pointer">
+                      <Button variant="outline" size="sm" asChild>
+                        <span>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Import CSV
+                        </span>
+                      </Button>
+                      <input type="file" accept=".csv" className="hidden" onChange={handleImportSuppression} />
+                    </label>
                   </div>
                 </CardContent>
               </Card>

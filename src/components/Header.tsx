@@ -705,10 +705,10 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0"
                     aria-label="Back to account menu"
                   >
-                    <ChevronLeft className="w-5 h-5 text-[#342e37]" />
+                    <ChevronLeft className="w-5 h-5 text-[#FFCE0A]" />
                   </button>
                   <div className="flex items-center gap-2 flex-1">
-                    <Bell className="w-5 h-5 text-[#342e37]" />
+                    <Bell className="w-5 h-5 text-[#FFCE0A]" />
                     <p className="font-bold text-sm">Notifications</p>
                   </div>
                   <button
@@ -716,7 +716,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0"
                     aria-label="Close menu"
                   >
-                    <X className="w-5 h-5 text-[#342e37]" />
+                    <X className="w-5 h-5 text-[#FFCE0A]" />
                   </button>
                 </div>
 

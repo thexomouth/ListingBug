@@ -59,6 +59,7 @@ const IntegrationSetupGuidePage = lazy(() => import("./components/IntegrationSet
 const BlogPostPage = lazy(() => import("./components/BlogPostPage").then(m => ({ default: m.BlogPostPage })));
 const PersonaPage = lazy(() => import("./components/PersonaPage").then(m => ({ default: m.PersonaPage })));
 const ComparisonPage = lazy(() => import("./components/ComparisonPage").then(m => ({ default: m.ComparisonPage })));
+const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -71,7 +72,8 @@ type Page =
   | "contact" | "contact-support" | "privacy" | "terms" | "billing"
   | "microcopy-pack" | "consent-panel-demo" | "consent-modal-demo"
   | "sample-report-results" | "request-integration" | "integration-guide"
-  | "blog-post" | "persona-page" | "comparison-page";
+  | "blog-post" | "persona-page" | "comparison-page"
+  | "legal-dpa" | "legal-subprocessors";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -94,6 +96,8 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "blog-post": "/blog/automate-agent-outreach",
   "persona-page": "/for/mortgage-brokers",
   "comparison-page": "/vs/zillow",
+  "legal-dpa": "/legal/dpa",
+  "legal-subprocessors": "/legal/subprocessors",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -110,6 +114,10 @@ function pathToPage(pathname: string): Page {
   if (pathname.startsWith('/blog/')) return 'blog-post';
   if (pathname.startsWith('/for/')) return 'persona-page';
   if (pathname.startsWith('/vs/')) return 'comparison-page';
+  if (pathname.startsWith('/legal/')) {
+    if (pathname === '/legal/dpa') return 'legal-dpa';
+    if (pathname === '/legal/subprocessors') return 'legal-subprocessors';
+  }
   return 'home';
 }
 
@@ -380,6 +388,8 @@ export default function App() {
       case "blog-post": return <BlogPostPage />;
       case "persona-page": return <PersonaPage />;
       case "comparison-page": return <ComparisonPage />;
+      case "legal-dpa": return <LegalPage />;
+      case "legal-subprocessors": return <LegalPage />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
