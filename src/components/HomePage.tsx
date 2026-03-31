@@ -386,6 +386,10 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                     <span className="text-[11px] font-medium whitespace-nowrap">4,000</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
+                    <span className="text-[11px] text-gray-600 flex-1 min-w-0">Automations</span>
+                    <span className="text-[11px] font-medium whitespace-nowrap">1</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
                     <span className="text-[11px] text-gray-600 flex-1 min-w-0">Search Filters</span>
                     <span className="text-[11px] font-medium whitespace-nowrap">Basic</span>
                   </div>
@@ -433,6 +437,10 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                     <span className="text-[11px] font-medium whitespace-nowrap">10,000</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
+                    <span className="text-[11px] text-gray-600 flex-1 min-w-0">Automations</span>
+                    <span className="text-[11px] font-medium whitespace-nowrap">3</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
                     <span className="text-[11px] text-gray-600 flex-1 min-w-0">Search Filters</span>
                     <span className="text-[11px] font-medium whitespace-nowrap">Advanced</span>
                   </div>
@@ -477,6 +485,10 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                 <div className="space-y-2">
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
                     <span className="text-[11px] text-gray-600 flex-1 min-w-0">Listings per month</span>
+                    <span className="text-[11px] font-medium whitespace-nowrap">Unlimited</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
+                    <span className="text-[11px] text-gray-600 flex-1 min-w-0">Automations</span>
                     <span className="text-[11px] font-medium whitespace-nowrap">Unlimited</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
@@ -535,6 +547,12 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                     <td className="py-3 px-4 text-[14px]">Listings per month</td>
                     <td className="text-center py-3 px-4 text-[14px]">4,000</td>
                     <td className="text-center py-3 px-4 text-[14px] bg-[#FFCE0A]/5">10,000</td>
+                    <td className="text-center py-3 px-4 text-[14px]">Unlimited</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-3 px-4 text-[14px]">Automations</td>
+                    <td className="text-center py-3 px-4 text-[14px]">1</td>
+                    <td className="text-center py-3 px-4 text-[14px] bg-[#FFCE0A]/5">3</td>
                     <td className="text-center py-3 px-4 text-[14px]">Unlimited</td>
                   </tr>
                   <tr className="border-b border-gray-100">
