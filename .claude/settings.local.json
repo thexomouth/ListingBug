@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(powershell -Command \"Test-Path ''C:/Users/User/Downloads/ListingBug FIGMA MVP/.git/index.lock''\")",
+      "Bash(powershell -Command \"Set-Location ''C:/Users/User/Downloads/ListingBug FIGMA MVP''; git commit -m ''fix: contact support page cleanup''; git push origin main\")",
+      "Bash(powershell -Command \"Set-Location ''C:/Users/User/Downloads/ListingBug FIGMA MVP''; git add src/components/HomePage.tsx; git commit -m ''fix: update plan comparison row — Listings per month with correct values \\(4000/10000\\)''; git push origin main\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Read(//c/Users/User/.claude/**)",
+      "Bash(powershell -Command \"Get-Content ''C:/Users/User/.claude/settings.json''\")",
+      "Bash(find C:/Users/User/.claude/plugins -name settings.json -o -name *.json)",
+      "Bash(powershell -Command \"Set-Location ''C:/Users/User/Downloads/ListingBug FIGMA MVP''; git add src/components/HomePage.tsx .claude/settings.json; git commit -m ''fix: add Automations row to plan comparison table \\(1/3/Unlimited\\)''; git push origin main\")",
+      "Bash(powershell -Command \"Set-Location ''C:/Users/User/Downloads/ListingBug FIGMA MVP''; git add src/components/ForgotPasswordPage.tsx; git commit -m ''fix: redesign forgot-password page to match login page theme''; git push origin main\")",
+      "Bash(powershell -Command \"Set-Location ''C:/Users/User/Downloads/ListingBug FIGMA MVP''; git add src/components/utils/normalizeListing.ts src/components/AutomationRunPage.tsx src/components/Dashboard.tsx src/components/ListingDetailModal.tsx; git commit -m ''fix: universal listing detail modal — shared normalization, photo fallback, robust header''; git push origin main\")",
+      "Bash(\"C:/Program Files/Git/bin/git.exe\" add src/main.tsx src/components/BlogPostPage.tsx src/components/BlogPage.tsx src/components/PersonaPage.tsx src/components/ComparisonPage.tsx src/components/HomePage.tsx src/components/HowItWorksPage.tsx src/components/UseCasesPage.tsx index.html package.json package-lock.json build/)",
+      "Bash(\"C:/Program Files/Git/bin/git.exe\":*)",
+      "Bash(powershell -Command \"Remove-Item ''C:/Users/User/Downloads/ListingBug FIGMA MVP/.git/index.lock'' -Force\")",
+      "Bash(\"C:/Program Files/Git/bin/git.exe\" status --short)",
+      "Bash(\"C:/Program Files/Git/bin/git.exe\" add -A)",
+      "Bash(powershell -Command \"Get-Process | Where-Object { $_Name -like ''*git*'' }\")",
+      "Bash(\"C:/Program Files/Git/bin/git.exe\" commit -m \"feat: per-page SEO meta tags, JSON-LD schema, internal links:*)"
+    ]
+  }
+}

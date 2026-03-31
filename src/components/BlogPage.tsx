@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { posts } from "./BlogPostPage";
 import { Clock, ArrowRight, BookOpen } from "lucide-react";
 
@@ -15,6 +16,17 @@ export function BlogPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>Blog — Real Estate Listing Alerts & Automation | ListingBug</title>
+        <meta name="description" content="Guides, strategies, and use cases for real estate service providers using listing alerts and workflow automation to grow their business." />
+        <link rel="canonical" href="https://thelistingbug.com/blog" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Blog — Real Estate Listing Alerts & Automation | ListingBug" />
+        <meta property="og:description" content="Guides, strategies, and use cases for real estate service providers using listing alerts and workflow automation to grow their business." />
+        <meta property="og:url" content="https://thelistingbug.com/blog" />
+        <meta property="og:site_name" content="ListingBug" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
 
       {/* Hero */}
       <div className="bg-gray-50 dark:bg-[#141418] border-b border-gray-200 dark:border-white/10 py-16 px-6">

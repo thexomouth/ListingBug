@@ -1,9 +1,11 @@
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  RefreshCw, 
-  TrendingUp, 
+import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import {
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
+  TrendingUp,
   Users,
   Clock,
   Target,
@@ -20,6 +22,14 @@ interface HowItWorksPageProps {
 export function HowItWorksPage({ onNavigate }: HowItWorksPageProps) {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>How It Works — Real Estate Listing Alerts | ListingBug</title>
+        <meta name="description" content="Learn how ListingBug monitors real estate markets, delivers new listings to your workflows, and triggers automated outreach — all on a schedule you control." />
+        <link rel="canonical" href="https://thelistingbug.com/how-it-works" />
+        <meta property="og:title" content="How It Works — Real Estate Listing Alerts | ListingBug" />
+        <meta property="og:description" content="Learn how ListingBug monitors real estate markets, delivers new listings to your workflows, and triggers automated outreach — all on a schedule you control." />
+        <meta property="og:url" content="https://thelistingbug.com/how-it-works" />
+      </Helmet>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-[33px] px-[12px]">
         {/* Page Header */}
@@ -436,6 +446,28 @@ export function HowItWorksPage({ onNavigate }: HowItWorksPageProps) {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Role-specific guides */}
+        <div className="mt-12 mb-6">
+          <h2 className="font-bold text-[20px] text-[#342e37] dark:text-white mb-2">Built for your profession</h2>
+          <p className="text-[14px] text-gray-600 dark:text-[#EBF2FA]/70 mb-5">Read our step-by-step guides for your specific role.</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { href: "/for/mortgage-brokers", label: "Mortgage Brokers" },
+              { href: "/for/property-service-providers", label: "Inspectors & Stagers" },
+              { href: "/for/home-improvement-pros", label: "Contractors & Tradespeople" },
+              { href: "/for/transaction-services", label: "Insurance & Title" },
+            ].map(item => (
+              <Link
+                key={item.href}
+                to={item.href}
+                className="block px-4 py-3 bg-gray-50 dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg text-[13px] font-medium text-[#342e37] dark:text-white hover:border-[#FFCE0A] hover:text-[#FFCE0A] transition-all"
+              >
+                {item.label} →
+              </Link>
+            ))}
           </div>
         </div>
 

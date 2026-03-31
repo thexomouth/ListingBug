@@ -1,4 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import {
   ArrowRight, CheckCircle2, Zap, Bell, Database, Users,
   BarChart3, Clock, TrendingUp, Shield, Star, ChevronRight
@@ -470,8 +471,45 @@ export function PersonaPage() {
     );
   }
 
+  const canonicalUrl = `https://thelistingbug.com/for/${persona.slug}`;
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>{persona.metaTitle}</title>
+        <meta name="description" content={persona.subheadline} />
+        <link rel="canonical" href={canonicalUrl} />
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={persona.metaTitle} />
+        <meta property="og:description" content={persona.subheadline} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content="ListingBug" />
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={persona.metaTitle} />
+        <meta name="twitter:description" content={persona.subheadline} />
+        {/* JSON-LD */}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": persona.metaTitle,
+          "description": persona.subheadline,
+          "url": canonicalUrl,
+          "publisher": {
+            "@type": "Organization",
+            "name": "ListingBug",
+            "url": "https://thelistingbug.com",
+          },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://thelistingbug.com" },
+              { "@type": "ListItem", "position": 2, "name": persona.badge, "item": canonicalUrl },
+            ],
+          },
+        })}</script>
+      </Helmet>
 
       {/* Hero */}
       <section className="px-6 py-20 md:py-28 max-w-5xl mx-auto text-center">

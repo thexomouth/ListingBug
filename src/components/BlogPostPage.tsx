@@ -1,4 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { ArrowRight, ChevronRight, Clock, Calendar, Tag, CheckCircle2 } from "lucide-react";
 
 interface ContentBlock {
@@ -870,8 +871,48 @@ export function BlogPostPage() {
     .filter(Boolean)
     .slice(0, 3);
 
+  const canonicalUrl = `https://thelistingbug.com/blog/${post.slug}`;
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>{post.title} | ListingBug</title>
+        <meta name="description" content={post.metaDescription} />
+        <link rel="canonical" href={canonicalUrl} />
+        {/* Open Graph */}
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={post.title} />
+        <meta property="og:description" content={post.metaDescription} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content="ListingBug" />
+        <meta property="article:author" content={post.author} />
+        <meta property="article:published_time" content={new Date(post.date).toISOString()} />
+        <meta property="article:section" content={post.category} />
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={post.title} />
+        <meta name="twitter:description" content={post.metaDescription} />
+        {/* JSON-LD BlogPosting */}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          "headline": post.title,
+          "description": post.metaDescription,
+          "author": { "@type": "Organization", "name": post.author, "url": "https://thelistingbug.com" },
+          "publisher": {
+            "@type": "Organization",
+            "name": "ListingBug",
+            "url": "https://thelistingbug.com",
+            "logo": { "@type": "ImageObject", "url": "https://thelistingbug.com/logo.png" }
+          },
+          "datePublished": new Date(post.date).toISOString(),
+          "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl },
+          "url": canonicalUrl,
+          "articleSection": post.category,
+          "keywords": ["real estate listing alerts", "listing data", post.category.toLowerCase(), "ListingBug"],
+        })}</script>
+      </Helmet>
+
       {/* Header */}
       <div className="bg-gray-50 dark:bg-[#141418] border-b border-gray-200 dark:border-white/10 py-12 px-6">
         <div className="max-w-3xl mx-auto">

@@ -8,6 +8,7 @@ import { HowItWorksSection } from './home/HowItWorksSection';
 import { TestimonialsSection } from './home/TestimonialsSection';
 import { TrialCTASection } from './home/TrialCTASection';
 import { BottomCTASection } from './home/BottomCTASection';
+import { Helmet } from 'react-helmet-async';
 import { SampleReportModal } from './SampleReportModal';
 import { SampleReportLoading } from './SampleReportLoading';
 import { SampleListing } from '../types/listing';
@@ -164,6 +165,14 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
   if (page === 'data-sets') {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Helmet>
+          <title>Real Estate Listing Data Sets | ListingBug</title>
+          <meta name="description" content="Access comprehensive real estate listing data: property details, agent contacts, pricing, days on market, and status — updated daily from live MLS sources." />
+          <link rel="canonical" href="https://thelistingbug.com/data-sets" />
+          <meta property="og:title" content="Real Estate Listing Data Sets | ListingBug" />
+          <meta property="og:description" content="Access comprehensive real estate listing data: property details, agent contacts, pricing, days on market, and status — updated daily from live MLS sources." />
+          <meta property="og:url" content="https://thelistingbug.com/data-sets" />
+        </Helmet>
         <h1 className="mb-8">Data Sets</h1>
         <div className="grid md:grid-cols-2 gap-6">
           <Card>
@@ -196,6 +205,14 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
   if (page === 'use-cases') {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Helmet>
+          <title>Use Cases — Real Estate Service Providers | ListingBug</title>
+          <meta name="description" content="See how mortgage brokers, home inspectors, stagers, contractors, insurance agents, and other real estate service providers use ListingBug to automate outreach and grow referral networks." />
+          <link rel="canonical" href="https://thelistingbug.com/use-cases" />
+          <meta property="og:title" content="Use Cases — Real Estate Service Providers | ListingBug" />
+          <meta property="og:description" content="See how mortgage brokers, home inspectors, stagers, contractors, insurance agents, and other real estate service providers use ListingBug to automate outreach and grow referral networks." />
+          <meta property="og:url" content="https://thelistingbug.com/use-cases" />
+        </Helmet>
         <h1 className="mb-8">Use Cases</h1>
         <div className="grid md:grid-cols-3 gap-6">
           <Card>
@@ -239,6 +256,22 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
   if (page === 'pricing') {
     return (
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 p-[33px] px-[18px] py-[33px]">
+        <Helmet>
+          <title>Pricing — Real Estate Listing Alerts & Automation | ListingBug</title>
+          <meta name="description" content="ListingBug plans start at $19/month. Get real-time listing alerts, agent contact data, CRM integrations, and scheduled automation. 14-day free trial, no credit card required." />
+          <link rel="canonical" href="https://thelistingbug.com/pricing" />
+          <meta property="og:title" content="Pricing — Real Estate Listing Alerts & Automation | ListingBug" />
+          <meta property="og:description" content="ListingBug plans start at $19/month. Get real-time listing alerts, agent contact data, CRM integrations, and scheduled automation. 14-day free trial, no credit card required." />
+          <meta property="og:url" content="https://thelistingbug.com/pricing" />
+          <script type="application/ld+json">{JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": "ListingBug Pricing",
+            "description": "Pricing plans for ListingBug — real estate listing alerts and workflow automation.",
+            "url": "https://thelistingbug.com/pricing",
+            "publisher": { "@type": "Organization", "name": "ListingBug", "url": "https://thelistingbug.com" },
+          })}</script>
+        </Helmet>
         {/* Page Header */}
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-3">
@@ -904,6 +937,27 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
   // Home page
   return (
     <>
+      <Helmet>
+        <title>ListingBug — Real Estate Listing Alerts & Workflow Automation</title>
+        <meta name="description" content="ListingBug sends new real estate listings straight into your workflows the moment they hit the market. Built for mortgage brokers, inspectors, stagers, contractors, and other service providers." />
+        <link rel="canonical" href="https://thelistingbug.com/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="ListingBug — Real Estate Listing Alerts & Workflow Automation" />
+        <meta property="og:description" content="ListingBug sends new real estate listings straight into your workflows the moment they hit the market. Built for mortgage brokers, inspectors, stagers, contractors, and other service providers." />
+        <meta property="og:url" content="https://thelistingbug.com/" />
+        <meta property="og:site_name" content="ListingBug" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "ListingBug",
+          "applicationCategory": "BusinessApplication",
+          "description": "Real estate listing alerts and workflow automation for service providers. Monitor markets, get new listings instantly, and trigger outreach automations.",
+          "url": "https://thelistingbug.com",
+          "offers": { "@type": "Offer", "price": "19", "priceCurrency": "USD", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "19", "priceCurrency": "USD", "unitText": "MONTH" }},
+          "publisher": { "@type": "Organization", "name": "ListingBug", "url": "https://thelistingbug.com" },
+        })}</script>
+      </Helmet>
       <div className="px-[12px] py-[0px]">
         <HeroSection onNavigate={onNavigate} onGenerateSample={handleGenerateSample} />
         <TrialCTASection onNavigate={onNavigate} />

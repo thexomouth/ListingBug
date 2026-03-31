@@ -1,4 +1,5 @@
 import { useLocation, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { CheckCircle2, XCircle, ArrowRight, ChevronRight } from "lucide-react";
 
 interface ComparisonRow {
@@ -101,8 +102,31 @@ export function ComparisonPage() {
     );
   }
 
+  const canonicalUrl = `https://thelistingbug.com/vs/${data.slug}`;
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>{data.metaTitle}</title>
+        <meta name="description" content={data.subheadline} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={data.metaTitle} />
+        <meta property="og:description" content={data.subheadline} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content="ListingBug" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={data.metaTitle} />
+        <meta name="twitter:description" content={data.subheadline} />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": data.metaTitle,
+          "description": data.subheadline,
+          "url": canonicalUrl,
+          "publisher": { "@type": "Organization", "name": "ListingBug", "url": "https://thelistingbug.com" },
+        })}</script>
+      </Helmet>
 
       {/* Hero */}
       <section className="bg-gray-50 dark:bg-[#141418] border-b border-gray-200 dark:border-white/10 py-16 px-6">

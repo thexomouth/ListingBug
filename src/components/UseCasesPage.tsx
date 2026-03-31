@@ -18,8 +18,10 @@ import {
   Phone,
   Hammer
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { LBButton, LBCard, LBCardContent } from "./design-system";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { Helmet } from "react-helmet-async";
 
 interface UseCase {
   id: string;
@@ -97,6 +99,14 @@ interface UseCasesPageProps {
 export function UseCasesPage({ onNavigate }: UseCasesPageProps = {}) {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>Use Cases — Real Estate Service Providers | ListingBug</title>
+        <meta name="description" content="Mortgage brokers, home inspectors, stagers, contractors, photographers, insurance agents, and movers use ListingBug to find new listings and reach listing agents first." />
+        <link rel="canonical" href="https://thelistingbug.com/use-cases" />
+        <meta property="og:title" content="Use Cases — Real Estate Service Providers | ListingBug" />
+        <meta property="og:description" content="Mortgage brokers, home inspectors, stagers, contractors, photographers, insurance agents, and movers use ListingBug to find new listings and reach listing agents first." />
+        <meta property="og:url" content="https://thelistingbug.com/use-cases" />
+      </Helmet>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-[33px] px-[12px]">
         {/* Page Header */}
@@ -232,6 +242,29 @@ export function UseCasesPage({ onNavigate }: UseCasesPageProps = {}) {
                 </li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        {/* Deep Dives by Role */}
+        <div className="mb-12">
+          <h2 className="font-bold text-[22px] text-[#342e37] dark:text-white mb-2">See how it works for your role</h2>
+          <p className="text-gray-600 dark:text-[#EBF2FA]/70 text-[14px] mb-6">Step-by-step guides tailored to your profession.</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { href: "/for/mortgage-brokers", label: "Mortgage Brokers & Lenders", desc: "Win listing agent referrals" },
+              { href: "/for/property-service-providers", label: "Inspectors, Stagers & Cleaners", desc: "Land pre-sale service jobs" },
+              { href: "/for/home-improvement-pros", label: "Contractors & Tradespeople", desc: "Find motivated sellers first" },
+              { href: "/for/transaction-services", label: "Insurance, Title & Closing", desc: "Be the first call on every deal" },
+            ].map(item => (
+              <Link
+                key={item.href}
+                to={item.href}
+                className="block p-4 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg hover:border-[#FFCE0A] hover:shadow-md transition-all group"
+              >
+                <p className="font-bold text-[14px] text-[#342e37] dark:text-white group-hover:text-[#FFCE0A] transition-colors">{item.label}</p>
+                <p className="text-[12px] text-gray-500 dark:text-[#EBF2FA]/50 mt-1">{item.desc} →</p>
+              </Link>
+            ))}
           </div>
         </div>
 
