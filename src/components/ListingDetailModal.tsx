@@ -750,9 +750,17 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                           onError={(e) => {
                             const t = e.currentTarget;
                             if (hasLatLng) {
+                              // Try Street View; if that also fails, show placeholder
                               t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`;
+                              t.onerror = () => {
+                                const parent = t.parentElement!;
+                                t.remove();
+                                parent.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2 bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`;
+                              };
                             } else {
-                              t.parentElement!.style.display = 'none';
+                              const parent = t.parentElement!;
+                              t.remove();
+                              parent.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2 bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`;
                             }
                           }} />
                       </div>
@@ -761,10 +769,15 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   if (hasLatLng) {
                     return (
                       <div className="rounded-lg overflow-hidden">
-                        <div className="relative w-full h-64 bg-gray-100 overflow-hidden">
+                        <div className="relative w-full h-64 bg-gray-100 dark:bg-white/5 overflow-hidden">
                           <img src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`}
                             alt={`Street view of ${listing.address}`} className="w-full h-64 object-cover"
-                            onError={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }} />
+                            onError={(e) => {
+                              // Replace failed image with placeholder instead of hiding
+                              const parent = e.currentTarget.parentElement!;
+                              e.currentTarget.remove();
+                              parent.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`;
+                            }} />
                           <span className="absolute bottom-2 right-2 text-[10px] bg-black/50 text-white px-1.5 py-0.5 rounded">Street View</span>
                         </div>
                       </div>

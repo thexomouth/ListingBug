@@ -59,7 +59,7 @@ export function normalizeListing(raw: any): any {
     mlsNumber:        raw.mlsNumber        ?? raw.mls_number         ?? null,
     mlsName:          raw.mlsName          ?? raw.mls_name           ?? null,
     priceDrop:        raw.priceDrop        ?? raw.priceReduced       ?? raw.price_reduced ?? false,
-    listedDate:       raw.listedDate       ?? raw.listed_date        ?? null,
+    listedDate:       raw.listedDate       ?? raw.listingDate        ?? raw.listed_date        ?? raw.listing_date ?? null,
     removedDate:      raw.removedDate      ?? raw.removed_date       ?? null,
     lastSeenDate:     raw.lastSeenDate     ?? raw.last_seen_date     ?? null,
     daysListed:       raw.daysListed       ?? raw.daysOnMarket       ?? raw.days_on_market ?? null,
