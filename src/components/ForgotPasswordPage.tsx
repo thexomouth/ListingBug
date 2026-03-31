@@ -2,30 +2,11 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Alert, AlertDescription } from './ui/alert';
-import { CheckCircle, ArrowLeft, Mail } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { ArrowLeft, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import headerLogo from 'figma:asset/507fab16b51ccf6be96c685cf4c76a6b2a4bb7b0.png';
-
-/**
- * FORGOT PASSWORD PAGE
- * 
- * PURPOSE: Allow users to request a password reset email
- * 
- * BACKEND INTEGRATION:
- * - API Endpoint: POST /api/auth/forgot-password
- * - Request: { email: string }
- * - Response: { success: boolean, message: string }
- * 
- * FLOW:
- * 1. User enters email address
- * 2. Frontend validates email format
- * 3. POST to /api/auth/forgot-password
- * 4. Backend sends reset email with token
- * 5. Show success message to user
- * 6. User clicks link in email → ResetPasswordPage
- */
+import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
+import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 
 interface ForgotPasswordPageProps {
   onNavigateToLogin: () => void;
@@ -47,7 +28,6 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToContactSuppo
     e.preventDefault();
     setError('');
 
-    // Validation
     if (!email) {
       setError('Please enter your email address');
       return;
@@ -76,138 +56,116 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToContactSuppo
 
   if (success) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <ImageWithFallback 
-              src={headerLogo} 
-              alt="ListingBug" 
-              className="h-24 w-auto"
-            />
-          </div>
+      <div className="min-h-[calc(100vh-4rem)] px-2 pt-4 pb-6 md:pt-0 md:pb-0 md:flex md:items-center md:justify-center relative">
+        <div className="absolute inset-0 opacity-[0.33] dark:opacity-0 pointer-events-none" style={{ backgroundImage: `url(${patternBgLight})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
+        <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
 
-          {/* Success Card */}
-          <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+        <div className="max-w-md md:max-w-lg mx-auto w-full relative z-10">
+          <Card className="w-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-3xl font-bold text-center">Check Your Email</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <p className="text-gray-600 dark:text-[#EBF2FA] mb-2">
+                  We've sent password reset instructions to:
+                </p>
+                <p className="font-medium text-[#342E37] dark:text-white mb-6">{email}</p>
+                <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">
+                  If you don't see the email, check your spam folder or try again with a different email address.
+                </p>
+                <Button onClick={onNavigateToLogin} className="w-full">
+                  Back to Login
+                </Button>
+              </div>
+
+              <div className="mt-4 text-center text-sm text-gray-600 dark:text-[#EBF2FA]">
+                <button className="text-[#342e37] dark:text-white hover:underline text-[14px] underline" onClick={() => setSuccess(false)}>
+                  Didn't receive the email? Try again
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {onNavigateToContactSupport && (
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 dark:text-[#EBF2FA]">
+                Need help?{' '}
+                <button className="text-[#342E37] dark:text-white hover:underline font-medium" onClick={onNavigateToContactSupport}>
+                  Contact Support
+                </button>
+              </p>
             </div>
-
-            <h1 className="font-bold text-2xl mb-3 text-gray-900">Check Your Email</h1>
-            <p className="text-gray-600 mb-6">
-              We've sent password reset instructions to:
-            </p>
-            <p className="font-medium text-[#342E37] mb-6">{email}</p>
-            <p className="text-sm text-gray-500 mb-6">
-              If you don't see the email, check your spam folder or try again with a different email address.
-            </p>
-
-            <Button
-              onClick={onNavigateToLogin}
-              className="w-full bg-[#FFD447] hover:bg-[#FFD447]/90 text-[#342E37]"
-            >
-              Back to Login
-            </Button>
-          </div>
-
-          {/* Resend Link */}
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setSuccess(false)}
-              className="text-sm text-[#342E37] hover:underline"
-            >
-              Didn't receive the email? Try again
-            </button>
-          </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <ImageWithFallback 
-            src={headerLogo} 
-            alt="ListingBug" 
-            className="h-24 w-auto"
-          />
-        </div>
+    <div className="min-h-[calc(100vh-4rem)] px-2 pt-4 pb-6 md:pt-0 md:pb-0 md:flex md:items-center md:justify-center relative">
+      <div className="absolute inset-0 opacity-[0.33] dark:opacity-0 pointer-events-none" style={{ backgroundImage: `url(${patternBgLight})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
+      <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
 
-        {/* Form Card */}
-        <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm">
-          {/* Back Button */}
-          <button
-            onClick={onNavigateToLogin}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#342E37] mb-6 transition-colors"
-            aria-label="Back to login"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Login
-          </button>
+      <div className="max-w-md md:max-w-lg mx-auto w-full relative z-10">
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-3xl font-bold text-center">Reset Your Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
 
-          <h1 className="font-bold text-2xl mb-3 text-center text-gray-900">Reset Your Password</h1>
-          <p className="text-gray-600 mb-6">
-            Enter your email address and we'll send you instructions to reset your password.
-          </p>
+            <p className="text-gray-600 dark:text-[#EBF2FA] mb-6 text-sm">
+              Enter your email address and we'll send you instructions to reset your password.
+            </p>
 
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Input */}
-            <div>
-              <Label htmlFor="email">
-                Email Address <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative mt-2">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="placeholder:text-gray-400"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="pl-10"
                   disabled={isLoading}
                   required
-                  aria-required="true"
-                  aria-invalid={!!error}
-                  aria-describedby={error ? 'email-error' : undefined}
                 />
               </div>
-              {error && (
-                <p id="email-error" className="text-sm text-red-600 mt-2" role="alert">
-                  {error}
-                </p>
-              )}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending...</> : 'Send Reset Instructions'}
+              </Button>
+            </form>
+
+            <div className="mt-4 text-center text-sm text-gray-600 dark:text-[#EBF2FA]">
+              <button className="flex items-center gap-1 mx-auto text-[#342e37] dark:text-white hover:underline text-[14px]" onClick={onNavigateToLogin}>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to Login
+              </button>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full bg-[#FFD447] hover:bg-[#FFD447]/90 text-[#342E37]"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Sending...' : 'Send Reset Instructions'}
-            </Button>
-          </form>
-        </div>
-
-        {/* Additional Help - Bottom Center */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Need help?{' '}
-            <button className="text-[#342E37] hover:underline font-medium" onClick={onNavigateToContactSupport}>
-              Contact Support
-            </button>
-          </p>
-        </div>
+        {onNavigateToContactSupport && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 dark:text-[#EBF2FA]">
+              Need help?{' '}
+              <button className="text-[#342E37] dark:text-white hover:underline font-medium" onClick={onNavigateToContactSupport}>
+                Contact Support
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
