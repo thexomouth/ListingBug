@@ -42,7 +42,7 @@ export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
     name: 'Starter',
     automationSlots: 3,
     listingsCap: 4000,
-    price: 49,
+    price: 19,
     features: {
       crmIntegrations: false,
       automationPlatforms: false,
