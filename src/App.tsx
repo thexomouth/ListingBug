@@ -56,6 +56,9 @@ const SampleReportPage = lazy(() => import("./components/SampleReportPage").then
 const SearchResultsPage = lazy(() => import("./components/SearchResultsPage").then(m => ({ default: m.SearchResultsPage })));
 const AgentsPage = lazy(() => import("./components/AgentsPage").then(m => ({ default: m.AgentsPage })));
 const IntegrationSetupGuidePage = lazy(() => import("./components/IntegrationSetupGuidePage").then(m => ({ default: m.IntegrationSetupGuidePage })));
+const BlogPostPage = lazy(() => import("./components/BlogPostPage").then(m => ({ default: m.BlogPostPage })));
+const PersonaPage = lazy(() => import("./components/PersonaPage").then(m => ({ default: m.PersonaPage })));
+const ComparisonPage = lazy(() => import("./components/ComparisonPage").then(m => ({ default: m.ComparisonPage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -67,7 +70,8 @@ type Page =
   | "api-setup" | "help-center" | "blog" | "changelog" | "about" | "careers"
   | "contact" | "contact-support" | "privacy" | "terms" | "billing"
   | "microcopy-pack" | "consent-panel-demo" | "consent-modal-demo"
-  | "sample-report-results" | "request-integration" | "integration-guide";
+  | "sample-report-results" | "request-integration" | "integration-guide"
+  | "blog-post" | "persona-page" | "comparison-page";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -87,6 +91,9 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "consent-panel-demo": "/consent-panel", "consent-modal-demo": "/consent-modal",
   "sample-report-results": "/sample-report", "request-integration": "/request-integration",
   "integration-guide": "/integrations/guide",
+  "blog-post": "/blog/automate-agent-outreach",
+  "persona-page": "/for/mortgage-brokers",
+  "comparison-page": "/vs/zillow",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -100,6 +107,9 @@ function pathToPage(pathname: string): Page {
   if (pathname.startsWith('/listings/')) return 'search-results';
   if (pathname.startsWith('/account')) return 'account';
   if (pathname.startsWith('/integrations/guide')) return 'integration-guide';
+  if (pathname.startsWith('/blog/')) return 'blog-post';
+  if (pathname.startsWith('/for/')) return 'persona-page';
+  if (pathname.startsWith('/vs/')) return 'comparison-page';
   return 'home';
 }
 
@@ -367,6 +377,9 @@ export default function App() {
       case "sample-report-results": return <SampleReportPage zipcode={sampleReportZipcode} listings={sampleReportListings} isLoading={sampleReportLoading} error={sampleReportError} onNavigate={handleSmartNavigate} />;
       case "request-integration": return <RequestIntegrationPage onBack={() => navigateWithLoading('integrations')} isMember={false} />;
       case "integration-guide": return <IntegrationSetupGuidePage onBack={() => navigateWithLoading('integrations')} />;
+      case "blog-post": return <BlogPostPage />;
+      case "persona-page": return <PersonaPage />;
+      case "comparison-page": return <ComparisonPage />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
