@@ -243,7 +243,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-3">
             <DollarSign className="w-7 h-7 text-[#342e37] dark:text-[#FFCE0A]" />
-            <h1 className="mb-0 text-4xl font-bold text-[33px] font-[Work_Sans]">Pricing</h1>
+            <h1 className="mb-0 text-4xl font-bold text-[33px]">Pricing</h1>
           </div>
           <p className="text-gray-600 max-w-2xl leading-relaxed text-[14px]">
             Choose the plan that fits your business needs. All plans include access to comprehensive listing data, 
@@ -254,9 +254,9 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
         <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto px-[9px] py-[0px]">
           <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="pt-[12px] pr-[24px] pb-[0px] pl-[24px]">
-              <CardTitle className="text-[27px] font-bold font-normal font-[Work_Sans]">Starter</CardTitle>
+              <CardTitle className="text-[27px] font-bold">Starter</CardTitle>
               <div className="mt-4 text-[15px]">
-                <span className="text-4xl text-[45px] font-bold font-[Work_Sans]">$49</span>
+                <span className="text-4xl text-[45px] font-bold">$19</span>
                 <span className="text-gray-600 text-[15px] font-bold">/month</span>
               </div>
             </CardHeader>
@@ -288,9 +288,9 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
           </Card>
           <Card className="border-2 border-[#FFCE0A] transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="pt-[12px] pr-[24px] pb-[0px] pl-[24px]">
-              <CardTitle className="text-[27px] font-[Work_Sans]">Professional</CardTitle>
+              <CardTitle className="text-[27px]">Professional</CardTitle>
               <div className="mt-4">
-                <span className="text-4xl text-[45px] font-bold">$99</span>
+                <span className="text-4xl text-[45px] font-bold">$49</span>
                 <span className="text-gray-600 text-[15px] font-bold">/month</span>
               </div>
             </CardHeader>
@@ -322,9 +322,9 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
           </Card>
           <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="pt-[12px] pr-[24px] pb-[0px] pl-[24px]">
-              <CardTitle className="text-[27px] font-[Work_Sans]">Enterprise</CardTitle>
+              <CardTitle className="text-[27px]">Enterprise</CardTitle>
               <div className="mt-4">
-                <span className="text-3xl font-bold text-[#342e37]">Contact Us</span>
+                <span className="text-3xl font-bold text-white">Contact Us</span>
               </div>
             </CardHeader>
             <CardContent>
@@ -350,7 +350,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                   <span className="text-[14px]">Dedicated account manager</span>
                 </li>
               </ul>
-              <Button className="w-full mt-6" variant="outline" onClick={() => window.location.href = 'mailto:sales@listingbug.com'}>Contact Our Team</Button>
+              <Button className="w-full mt-6" variant="outline" onClick={() => onNavigate?.('contact-support')}>Contact Our Team</Button>
             </CardContent>
           </Card>
         </div>
@@ -367,8 +367,8 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
           <div className="border-[12px] md:border-[24px] border-[#FFCE0A] rounded-none p-4 md:p-8">
             <div className="mb-6 md:mb-8 text-center">
               <div className="flex items-center justify-center gap-3 mb-3">
-                <BarChart3 className="w-5 h-5 md:w-6 md:h-6 text-[#342e37]" />
-                <h2 className="mb-0 md:text-[36px] font-bold text-center text-[27px] font-[Work_Sans]">Plan Comparison</h2>
+                <BarChart3 className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
+                <h2 className="mb-0 md:text-[36px] font-bold text-center text-[27px]">Plan Comparison</h2>
               </div>
               <p className="text-gray-600 text-[14px]">
                 Compare all features across plans to find the perfect fit for your needs
