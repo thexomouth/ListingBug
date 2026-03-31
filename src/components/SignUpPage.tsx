@@ -53,6 +53,14 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
         const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
         await supabase.from('signup_fingerprints').insert({ user_id: data?.user?.id, fingerprint_hash: hash });
       } catch {}
+      // Google Ads conversion tracking — Sign-up
+      try {
+        (window as any).gtag?.('event', 'conversion', {
+          send_to: 'AW-18050632133/_BUTCLKOmpIcEMWTm59D',
+          value: 1.0,
+          currency: 'USD',
+        });
+      } catch {}
       toast.success('Account created! Check your email to confirm your account.');
       setIsSubmitting(false);
       setIsVerificationStep(true);
