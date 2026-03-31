@@ -27,7 +27,7 @@ export interface PlanLimits {
 export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
   trial: {
     name: 'Trial',
-    automationSlots: 1,
+    automationSlots: 3,
     listingsCap: 1000,
     price: 0,
     features: {
@@ -53,9 +53,9 @@ export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
   },
   pro: {
     name: 'Professional',
-    automationSlots: 10,
+    automationSlots: 9,
     listingsCap: 10000,
-    price: 99,
+    price: 49,
     features: {
       crmIntegrations: true,
       automationPlatforms: true,
@@ -231,8 +231,8 @@ export function getNextPlan(currentPlan: PlanType): {
     return {
       plan: 'pro',
       name: 'Professional',
-      automationSlots: 3,
-      price: '$99/mo'
+      automationSlots: 9,
+      price: '$49/mo'
     };
   }
   

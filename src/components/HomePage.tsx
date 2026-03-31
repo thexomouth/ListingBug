@@ -268,19 +268,15 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">1 automation</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">All 9 integrations</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">Email notifications</span>
+                  <span className="text-[14px]">3 automations</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
                   <span className="text-[14px]">CSV exports</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="text-[14px]">All 9 integrations</span>
                 </li>
               </ul>
               <Button className="w-full mt-6" onClick={() => onNavigate?.('signup')}>Get Started</Button>
@@ -302,19 +298,15 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">Property valuations</span>
-                </li>
-                <li className="flex items-center gap-2 text-[14px]">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Relisted property alerts</span>
+                  <span className="text-[14px]">9 automations</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">Priority support</span>
+                  <span className="text-[14px]">CSV exports</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">Advanced search filters</span>
+                  <span className="text-[14px]">All 9 integrations</span>
                 </li>
               </ul>
               <Button className="w-full mt-6" onClick={() => onNavigate?.('signup')}>Get Started</Button>
@@ -335,15 +327,11 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">Property valuations</span>
+                  <span className="text-[14px]">Unlimited Automations</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">Relisted property alerts</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-[14px]">Team collaboration (10 users)</span>
+                  <span className="text-[14px]">Enriched Property Data</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
@@ -387,7 +375,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
                     <span className="text-[11px] text-gray-600 flex-1 min-w-0">Automations</span>
-                    <span className="text-[11px] font-medium whitespace-nowrap">1</span>
+                    <span className="text-[11px] font-medium whitespace-nowrap">3</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
                     <span className="text-[11px] text-gray-600 flex-1 min-w-0">Search Filters</span>
@@ -438,7 +426,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
                     <span className="text-[11px] text-gray-600 flex-1 min-w-0">Automations</span>
-                    <span className="text-[11px] font-medium whitespace-nowrap">3</span>
+                    <span className="text-[11px] font-medium whitespace-nowrap">9</span>
                   </div>
                   <div className="flex justify-between items-center py-1.5 border-b border-gray-100 gap-3">
                     <span className="text-[11px] text-gray-600 flex-1 min-w-0">Search Filters</span>
@@ -551,8 +539,8 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="py-3 px-4 text-[14px]">Automations</td>
-                    <td className="text-center py-3 px-4 text-[14px]">1</td>
-                    <td className="text-center py-3 px-4 text-[14px] bg-[#FFCE0A]/5">3</td>
+                    <td className="text-center py-3 px-4 text-[14px]">3</td>
+                    <td className="text-center py-3 px-4 text-[14px] bg-[#FFCE0A]/5">9</td>
                     <td className="text-center py-3 px-4 text-[14px]">Unlimited</td>
                   </tr>
                   <tr className="border-b border-gray-100">

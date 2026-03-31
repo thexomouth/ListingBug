@@ -226,8 +226,8 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
 
   const planConfig = {
     trial: { listingsCap: 1000, automationSlots: 3, price: 0, name: 'Trial' },
-    starter: { listingsCap: 4000, automationSlots: 1, price: 49, name: 'Starter' },
-    pro: { listingsCap: 10000, automationSlots: 3, price: 99, name: 'Professional' },
+    starter: { listingsCap: 4000, automationSlots: 3, price: 19, name: 'Starter' },
+    pro: { listingsCap: 10000, automationSlots: 9, price: 49, name: 'Professional' },
     enterprise: { listingsCap: Infinity, automationSlots: Infinity, price: null, name: 'Enterprise' }
   };
   const currentPlanConfig = planConfig[currentPlan];
