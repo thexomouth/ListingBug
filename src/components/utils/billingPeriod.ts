@@ -3,8 +3,8 @@
  *
  * Computes the current billing period based on account creation date.
  * Billing periods are anchored to the day-of-month the user signed up,
- * not calendar months. This means a user who signed up on March 21
- * has a billing period of March 21 → April 20, NOT April 1 → April 30.
+ * not calendar months. A user who signed up on March 21 has a billing
+ * period of March 21 → April 20, NOT April 1 → April 30.
  *
  * Returns the month_year strings (YYYY-MM format) that overlap with the
  * current billing period, so we can sum usage_tracking rows correctly
@@ -41,9 +41,10 @@ export function getBillingPeriod(createdAt: string | null | undefined): BillingP
       daysInPeriod: end.getDate(),
       daysElapsed: now.getDate(),
       daysRemaining: end.getDate() - now.getDate(),
-      label: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-             ' – ' +
-             end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      label:
+        start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+        ' \u2013 ' +
+        end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     };
   }
 
@@ -51,7 +52,6 @@ export function getBillingPeriod(createdAt: string | null | undefined): BillingP
   const anchorDay = created.getDate(); // e.g. 21
 
   // Find the most recent billing period start on or before today
-  // Try: same year/month with anchorDay
   let periodStart = new Date(now.getFullYear(), now.getMonth(), anchorDay);
 
   // If that start is in the future, go back one month
@@ -59,8 +59,15 @@ export function getBillingPeriod(createdAt: string | null | undefined): BillingP
     periodStart = new Date(now.getFullYear(), now.getMonth() - 1, anchorDay);
   }
 
-  // Period end = one month after start, minus one day
-  const periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, anchorDay - 1, 23, 59, 59);
+  // Period end = one month after start, minus one day (end of that day)
+  const periodEnd = new Date(
+    periodStart.getFullYear(),
+    periodStart.getMonth() + 1,
+    anchorDay - 1,
+    23,
+    59,
+    59
+  );
 
   // Collect all YYYY-MM strings that overlap this period
   const monthYears: string[] = [];
@@ -78,8 +85,38 @@ export function getBillingPeriod(createdAt: string | null | undefined): BillingP
 
   const label =
     periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ' – ' +
+    ' \u2013 ' +
     periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return { start: periodStart, end: periodEnd, monthYears, daysInPeriod, daysElapsed, daysRemaining, label };
+}
+
+/**
+ * Convenience: fetch billing-period usage total from Supabase.
+ * Returns the sum of listings_fetched across all usage_tracking rows
+ * that fall within the current billing period.
+ */
+export async function getBillingPeriodUsage(
+  supabase: any,
+  userId: string,
+  createdAt: string | null | undefined
+): Promise<{ total: number; period: BillingPeriod }> {
+  const period = getBillingPeriod(createdAt);
+
+  if (period.monthYears.length === 0) {
+    return { total: 0, period };
+  }
+
+  const { data } = await supabase
+    .from('usage_tracking')
+    .select('listings_fetched')
+    .eq('user_id', userId)
+    .in('month_year', period.monthYears);
+
+  const total = (data ?? []).reduce(
+    (sum: number, r: any) => sum + (r.listings_fetched ?? 0),
+    0
+  );
+
+  return { total, period };
 }
