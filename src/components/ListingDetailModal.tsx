@@ -5,6 +5,11 @@ import { createPortal } from 'react-dom';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 
+// Google Maps API key — set VITE_GOOGLE_MAPS_API_KEY in your .env / Vercel env vars
+// The key must have Street View Static API enabled in Google Cloud Console
+// and HTTP referrer restrictions must allow thelistingbug.com/*
+const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628';
+
 interface ListingDetailModalProps {
   listing: any;
   onClose: () => void;
@@ -504,7 +509,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                         </div>
                         <div className="flex items-center gap-4 text-xs text-gray-600">
                           <span>{permit.type}</span>
-                          <span>â€¢</span>
+                          <span>&bull;</span>
                           <span>{new Date(permit.date).toLocaleDateString()}</span>
                         </div>
                       </div>
@@ -555,7 +560,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Estimated Market Value</p>
-                      <p className="font-bold text-[28px] text-[#342e37]">${valuation.estimatedValue.toLocaleString()}</p>
+                      <p className="font-bold text-[28px] text-[#342e37]">$ {valuation.estimatedValue.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-600 mb-1">Confidence Score</p>
@@ -568,7 +573,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     <p className="text-xs text-gray-600 mb-2">Value Range</p>
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">${valuation.valueRange.low.toLocaleString()}</span>
-                      <span className="text-gray-400">â€”</span>
+                      <span className="text-gray-400">&ndash;</span>
                       <span className="font-medium">${valuation.valueRange.high.toLocaleString()}</span>
                     </div>
                   </div>
@@ -640,7 +645,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                       <p className="text-xs text-gray-600 mb-2">Rental Range</p>
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium">${valuation.rentalEstimate.low.toLocaleString()}</span>
-                        <span className="text-gray-400">â€”</span>
+                        <span className="text-gray-400">&ndash;</span>
                         <span className="font-medium">${valuation.rentalEstimate.high.toLocaleString()}</span>
                       </div>
                     </div>
@@ -685,7 +690,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                         </div>
                         <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100 text-xs text-gray-600">
                           <span>Sold: {new Date(comp.soldDate).toLocaleDateString()}</span>
-                          <span>â€¢</span>
+                          <span>&bull;</span>
                           <span>{comp.daysOnMarket} days on market</span>
                         </div>
                       </div>
@@ -751,7 +756,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                             const t = e.currentTarget;
                             if (hasLatLng) {
                               // Try Street View; if that also fails, show placeholder
-                              t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`;
+                              t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=${GMAPS_KEY}`;
                               t.onerror = () => {
                                 const parent = t.parentElement!;
                                 t.remove();
@@ -770,14 +775,17 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     return (
                       <div className="rounded-lg overflow-hidden">
                         <div className="relative w-full h-64 bg-gray-100 dark:bg-white/5 overflow-hidden">
-                          <img src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628`}
-                            alt={`Street view of ${listing.address}`} className="w-full h-64 object-cover"
+                          <img
+                            src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=${GMAPS_KEY}`}
+                            alt={`Street view of ${listing.address}`}
+                            className="w-full h-64 object-cover"
                             onError={(e) => {
                               // Replace failed image with placeholder instead of hiding
                               const parent = e.currentTarget.parentElement!;
                               e.currentTarget.remove();
                               parent.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`;
-                            }} />
+                            }}
+                          />
                           <span className="absolute bottom-2 right-2 text-[10px] bg-black/50 text-white px-1.5 py-0.5 rounded">Street View</span>
                         </div>
                       </div>

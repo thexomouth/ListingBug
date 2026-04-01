@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
 import { LBButton } from './design-system/LBButton';
@@ -367,14 +367,14 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       {/* Content Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-4">
+        <div className="border-b border-gray-200 dark:border-white/10 mb-4">
           <nav className="flex">
             <button
               onClick={() => setActiveTab('create')}
               className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${
                 activeTab === 'create'
                   ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               Create
@@ -384,7 +384,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
               className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${
                 activeTab === 'automations'
                   ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               My Automations
@@ -394,7 +394,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
               className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${
                 activeTab === 'history'
                   ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               History
@@ -451,7 +451,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         ) : activeTab === 'automations' ? (
           <div className="pb-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[18px]">Your Automations ({automations.length})</h3>
+              <h3 className="font-bold text-[18px] text-gray-900 dark:text-white">Your Automations ({automations.length})</h3>
             </div>
 
             {automationsLoading ? (
@@ -553,7 +553,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                               <span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span>
                               <span className="text-[11px] text-gray-400">listings found</span>
                             </div>
-                          ) : <span className="text-[12px] text-gray-400">�</span>}
+                          ) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
                           {lastRun ? (
@@ -570,7 +570,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                                 </>
                               )}
                             </div>
-                          ) : <span className="text-[12px] text-gray-400">�</span>}
+                          ) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
                         {/* Play/Trash column (rightmost) */}
                         <LBTableCell className="text-right">
@@ -604,73 +604,73 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         ) : (
           /* Run History Tab */
           <div>
-            <h3 className="font-bold text-[18px] mb-4">Run History</h3>
+            <h3 className="font-bold text-[18px] mb-4 text-gray-900 dark:text-white">Run History</h3>
             
             {/* Mobile Card View */}
             <div className="block lg:hidden space-y-3">
               {runHistory.map((run) => (
                 <div
-  key={run.id}
-  className="bg-transparent rounded-lg p-4 space-y-3 cursor-pointer hover:bg-white/5 transition-colors"
-  onClick={() => {
-    if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); }
-  }}
->
-  {/* Header Row - Status & Date */}
-  <div className="flex items-start justify-between gap-3">
-    <div className="flex-1">
-      <div className="flex items-center gap-2 mb-1">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium ${
-          run.status === 'success'
-            ? ' text-green-800'
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {run.status === 'success' ? (
-            <CheckCircle className="w-3.5 h-3.5" />
-          ) : (
-            <XCircle className="w-3.5 h-3.5" />
-          )}
-          {run.status === 'success' ? 'Success' : 'Failed'}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5 text-[13px] text-gray-400">
-        <Clock className="w-3.5 h-3.5" />
-        {new Date(run.runDate).toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        })}
-      </div>
-    </div>
-    <div className="text-right">
-      <div className="text-[20px] font-bold text-white">{run.listingsSent}</div>
-      <div className="text-[11px] text-gray-400 uppercase tracking-wide">Listings</div>
-    </div>
-  </div>
-  {/* Automation Name */}
-  <div>
-    <div className="text-[11px] text-gray-400 uppercase tracking-wide mb-0.5">Automation</div>
-    <div className="font-medium text-[14px] text-white">{run.automationName}</div>
-  </div>
-  {/* Destination */}
-  <div>
-    <div className="text-[11px] text-gray-400 uppercase tracking-wide mb-0.5">Destination</div>
-    <div className="font-medium text-[14px] text-gray-300">{run.destination}</div>
-  </div>
-  {/* Details */}
-  {run.details && (
-    <div className="pt-2 border-t border-white/10">
-      <div className="text-[13px] text-gray-400">{run.details}</div>
-    </div>
-  )}
-</div>
+                  key={run.id}
+                  className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-4 space-y-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                  onClick={() => {
+                    if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); }
+                  }}
+                >
+                  {/* Header Row - Status & Date */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium ${
+                          run.status === 'success'
+                            ? 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400'
+                            : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-400'
+                        }`}>
+                          {run.status === 'success' ? (
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5" />
+                          )}
+                          {run.status === 'success' ? 'Success' : 'Failed'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[13px] text-gray-500 dark:text-gray-400">
+                        <Clock className="w-3.5 h-3.5" />
+                        {new Date(run.runDate).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[20px] font-bold text-gray-900 dark:text-white">{run.listingsSent}</div>
+                      <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listings</div>
+                    </div>
+                  </div>
+                  {/* Automation Name */}
+                  <div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Automation</div>
+                    <div className="font-medium text-[14px] text-gray-900 dark:text-white">{run.automationName}</div>
+                  </div>
+                  {/* Destination */}
+                  <div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Destination</div>
+                    <div className="font-medium text-[14px] text-gray-700 dark:text-gray-300">{run.destination}</div>
+                  </div>
+                  {/* Details */}
+                  {run.details && (
+                    <div className="pt-2 border-t border-gray-100 dark:border-white/10">
+                      <div className="text-[13px] text-gray-500 dark:text-gray-400">{run.details}</div>
+                    </div>
+                  )}
+                </div>
               ))}
               
               {runHistory.length === 0 && (
                 <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-white dark:bg-[#0F1115]">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]">
                     <Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
                   </div>
                   <p className="text-gray-600 dark:text-white font-medium">No run history yet</p>
@@ -681,31 +681,35 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
 
             {/* Desktop Table View */}
             <div className="hidden lg:block">
-              <div className="w-full overflow-auto rounded-lg border border-white/10 bg-[#1a1a1a]">
-                <LBTable className="bg-[#1a1a1a]">
-                  <LBTableHeader className="bg-[#252525] border-b border-white/10">
+              <div className="w-full overflow-auto rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a]">
+                <LBTable className="bg-white dark:bg-[#1a1a1a]">
+                  <LBTableHeader className="bg-gray-50 dark:bg-[#252525] border-b border-gray-200 dark:border-white/10">
                     <LBTableRow>
-                      <LBTableHead className="text-gray-300">Date & Time</LBTableHead>
-                      <LBTableHead className="text-gray-300">Automation</LBTableHead>
-                      <LBTableHead className="text-gray-300">Destination</LBTableHead>
-                      <LBTableHead className="text-gray-300">Status</LBTableHead>
-                      <LBTableHead className="text-right text-gray-300">Listings Sent</LBTableHead>
-                      <LBTableHead className="text-gray-300 w-[80px]"></LBTableHead>
+                      <LBTableHead className="text-gray-600 dark:text-gray-300">Date & Time</LBTableHead>
+                      <LBTableHead className="text-gray-600 dark:text-gray-300">Automation</LBTableHead>
+                      <LBTableHead className="text-gray-600 dark:text-gray-300">Destination</LBTableHead>
+                      <LBTableHead className="text-gray-600 dark:text-gray-300">Status</LBTableHead>
+                      <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Listings Sent</LBTableHead>
+                      <LBTableHead className="text-gray-600 dark:text-gray-300 w-[80px]"></LBTableHead>
                     </LBTableRow>
                   </LBTableHeader>
                   <LBTableBody>
                     {runHistory.map((run) => (
-                      <LBTableRow key={run.id} className="border-b border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}>
-                        <LBTableCell className="font-medium text-white">
+                      <LBTableRow
+                        key={run.id}
+                        className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer"
+                        onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}
+                      >
+                        <LBTableCell className="font-medium text-gray-900 dark:text-white">
                           {new Date(run.runDate).toLocaleString()}
                         </LBTableCell>
-                        <LBTableCell className="text-white">{run.automationName}</LBTableCell>
-                        <LBTableCell className="text-gray-300">{run.destination}</LBTableCell>
+                        <LBTableCell className="text-gray-900 dark:text-white">{run.automationName}</LBTableCell>
+                        <LBTableCell className="text-gray-600 dark:text-gray-300">{run.destination}</LBTableCell>
                         <LBTableCell>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                             run.status === 'success'
-                              ? 'bg-green-500/20 text-green-400'
-                              : 'bg-red-500/20 text-red-400'
+                              ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
+                              : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
                           }`}>
                             {run.status === 'success' ? (
                               <CheckCircle className="w-3 h-3" />
@@ -715,7 +719,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                             {run.status === 'success' ? 'Success' : 'Failed'}
                           </span>
                         </LBTableCell>
-                        <LBTableCell className="text-right font-medium text-white">
+                        <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">
                           {run.listingsSent}
                         </LBTableCell>
                         <LBTableCell>
@@ -735,7 +739,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
               
               {runHistory.length === 0 && (
                 <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-white dark:bg-[#0F1115]">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]">
                     <Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
                   </div>
                   <p className="text-gray-600 dark:text-white font-medium">No run history yet</p>
