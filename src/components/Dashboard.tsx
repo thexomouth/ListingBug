@@ -66,7 +66,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const [isAutomationDrawerOpen, setIsAutomationDrawerOpen] = useState(false);
   const [alertCount, setAlertCount] = useState(0);
   const [connectedIntegrations, setConnectedIntegrations] = useState<Array<{ id: string; name: string; category: string }>>([]);
-  // Real usage data from Supabase
+  // Real usage data from Supabase — all-time totals, never reset
   const [listingsImported, setListingsImported] = useState(0);
   const [listingsExported, setListingsExported] = useState(0);
   const [listingsThisMonth, setListingsThisMonth] = useState(0);
@@ -90,8 +90,19 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     const fetchUsage = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { markLoaded(); return; }
-      const monthYear = new Date().toISOString().slice(0, 7);
 
+      // All-time listings imported — read from users.total_listings_fetched (never resets)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('total_listings_fetched')
+        .eq('id', user.id)
+        .single();
+      if (userData) {
+        setListingsImported(userData.total_listings_fetched ?? 0);
+      }
+
+      // Monthly usage for the progress bar only
+      const monthYear = new Date().toISOString().slice(0, 7);
       const { data: usageData } = await supabase
         .from('usage_tracking')
         .select('listings_fetched')
@@ -99,15 +110,14 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         .eq('month_year', monthYear)
         .single();
       if (usageData) {
-        setListingsImported(usageData.listings_fetched ?? 0);
         setListingsThisMonth(usageData.listings_fetched ?? 0);
       }
 
+      // All-time listings exported — sum across all automation_runs (no date filter)
       const { data: runData } = await supabase
         .from('automation_runs')
         .select('listings_sent')
-        .eq('user_id', user.id)
-        .gte('run_date', monthYear + '-01');
+        .eq('user_id', user.id);
       if (runData) {
         const total = runData.reduce((sum: number, r: any) => sum + (r.listings_sent ?? 0), 0);
         setListingsExported(total);
@@ -295,7 +305,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
               <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h2>
             </div>
-            <p className="text-sm text-gray-600">Track your monthly listing usage and market activity</p>
+            <p className="text-sm text-gray-600">Track your listing activity and market performance</p>
           </div>
 
           {/* Snapshot Cards */}
@@ -311,7 +321,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center mb-2">
                   <Upload className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsImported}</div>}
+                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsImported.toLocaleString()}</div>}
                 <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Listings Imported</div>
               </CardContent>
             </Card>
@@ -327,7 +337,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center mb-2">
                   <Download className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
                 </div>
-                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsExported}</div>}
+                {isDashboardLoading ? <div className="h-7 w-10 rounded bg-gray-100 dark:bg-white/[0.06] animate-pulse mb-1" /> : <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{snapshotData.listingsExported.toLocaleString()}</div>}
                 <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Listings Exported</div>
               </CardContent>
             </Card>
@@ -365,7 +375,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             </Card>
           </div>
 
-          {/* Data Usage */}
+          {/* Data Usage This Month */}
           <div className="mt-4">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -446,7 +456,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 {savedListings.slice(0, 4).map((listing) => (
                   <div key={listing.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-all cursor-pointer overflow-hidden rounded-lg border border-gray-200 dark:border-white/10" onClick={() => setSelectedListing(listing)}>
                     <div className="relative w-full aspect-[4/3] bg-gray-100">
-                      {/* Multi-level fallback: RentCast photo, then Street View, then bookmark icon */}
                       <ListingImageWithFallback listing={listing} />
                       <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium ${listing.status === 'Active' ? 'bg-green-100 text-green-800' : listing.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>{listing.status}</span>
                     </div>
