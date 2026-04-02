@@ -55,10 +55,8 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const [isAutomationDrawerOpen, setIsAutomationDrawerOpen] = useState(false);
   const [alertCount, setAlertCount] = useState(0);
   const [connectedIntegrations, setConnectedIntegrations] = useState<Array<{ id: string; name: string; category: string }>>([]);
-  // All-time counters (never reset)
   const [listingsImported, setListingsImported] = useState(0);
   const [listingsExported, setListingsExported] = useState(0);
-  // Billing-period usage (for progress bar)
   const [listingsThisPeriod, setListingsThisPeriod] = useState(0);
   const [billingPeriodLabel, setBillingPeriodLabel] = useState('this billing period');
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
@@ -68,19 +66,25 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     if (pendingLoads.current <= 0) setIsDashboardLoading(false);
   };
 
+  // Reset any stuck body scroll lock left over from modals on other pages
+  useEffect(() => {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+  }, []);
+
   useEffect(() => {
     const dataState = getUserDataState();
     if (dataState.isFirstTimeUser) initializeEmptyUserData();
     setUserDataState(dataState);
   }, []);
 
-  // Fetch usage data
   useEffect(() => {
     const fetchUsage = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { markLoaded(); return; }
 
-      // Fetch user profile for all-time counter + created_at for billing period
       const { data: userData } = await supabase
         .from('users')
         .select('total_listings_fetched, created_at')
@@ -90,11 +94,9 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
       if (userData) {
         setListingsImported(userData.total_listings_fetched ?? 0);
 
-        // Compute billing period from account creation date
         const period = getBillingPeriod(userData.created_at);
         setBillingPeriodLabel(period.label);
 
-        // Sum usage_tracking rows that fall within this billing period
         if (period.monthYears.length > 0) {
           const { data: usageRows } = await supabase
             .from('usage_tracking')
@@ -103,14 +105,12 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             .in('month_year', period.monthYears);
 
           if (usageRows) {
-            // Filter rows to only count fetches within the billing period window
             const total = usageRows.reduce((sum: number, r: any) => sum + (r.listings_fetched ?? 0), 0);
             setListingsThisPeriod(total);
           }
         }
       }
 
-      // All-time exports
       const { data: runData } = await supabase
         .from('automation_runs')
         .select('listings_sent')
@@ -125,7 +125,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     fetchUsage();
   }, []);
 
-  // Load automations
   useEffect(() => {
     const loadAutomations = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -160,7 +159,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     loadAutomations();
   }, []);
 
-  // Load integrations
   useEffect(() => {
     const INTEGRATION_META: Record<string, { name: string; category: string }> = {
       salesforce: { name: 'Salesforce', category: 'CRM' },
@@ -188,7 +186,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     fetchConnected();
   }, []);
 
-  // Load saved listings
   useEffect(() => {
     migrateSavedListings();
     const loadFromSupabase = async () => {
@@ -260,7 +257,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
 
-        {/* HEADER */}
         <div className="mb-8">
           <div className="mb-4">
             <div className="flex items-center gap-2">
@@ -270,7 +266,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             <p className="text-sm text-gray-600 dark:text-gray-400">Track your listing activity and market performance</p>
           </div>
 
-          {/* Snapshot Cards */}
           <div className="flex gap-2 md:gap-3 mb-4">
             <Card className="cursor-pointer transition-all border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700 flex-1" onClick={() => { sessionStorage.setItem('listingbug_open_tab', 'history'); onNavigate?.('search-listings'); }}>
               <CardContent className="p-3 md:p-4 flex flex-col items-center">
@@ -305,7 +300,6 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             </Card>
           </div>
 
-          {/* Billing Period Usage */}
           <div className="mt-4">
             <div className="flex items-start justify-between mb-3">
               <div>
