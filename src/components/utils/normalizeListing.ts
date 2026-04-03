@@ -154,6 +154,31 @@ export function normalizeListing(raw: any): any {
       raw.office_name ??
       null,
 
+    // ── Builder / Development ────────────────────────────────────────────
+    // RentCast returns these as top-level camelCase fields when present.
+    builderName:
+      raw.builderName ??
+      raw.builder_name ??
+      null,
+    builderPhone:
+      raw.builderPhone ??
+      raw.builder_phone ??
+      null,
+    builderEmail:
+      raw.builderEmail ??
+      raw.builder_email ??
+      null,
+    builderWebsite:
+      raw.builderWebsite ??
+      raw.builder_website ??
+      null,
+    builderDevelopmentName:
+      raw.builderDevelopmentName ??
+      raw.builder_development_name ??
+      raw.developmentName ??
+      raw.development_name ??
+      null,
+
     // ── Media & history ──────────────────────────────────────────────────
     photos,
     history,

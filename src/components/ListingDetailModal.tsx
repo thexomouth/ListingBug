@@ -1,4 +1,4 @@
-import { X, MapPin, Home, TrendingUp, TrendingDown, Phone, Mail, Building2, FileText, DollarSign, Calendar, Ruler, Bed, Bath, Target, Sparkles, Save, ChevronLeft, Shield, AlertTriangle, CheckCircle2, Clock, Activity, BarChart3, User, Globe, Key, Hash, History, Tag, Layers } from 'lucide-react';
+import { X, MapPin, Home, TrendingUp, TrendingDown, Phone, Mail, Building2, FileText, DollarSign, Calendar, Ruler, Bed, Bath, Target, Sparkles, Save, ChevronLeft, Shield, AlertTriangle, CheckCircle2, Clock, Activity, BarChart3, User, Globe, Key, Hash, History, Tag, Layers, HardHat } from 'lucide-react';
 import { LBButton } from './design-system/LBButton';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -57,42 +57,32 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
   // Enable swipe-to-close on mobile (swipe right to close)
   useSwipeGesture({
     onSwipeRight: () => {
-      // Only close on swipe right if we're at the left edge of content
       onClose();
     },
-    threshold: 80, // Require 80px swipe
-    velocityThreshold: 0.4, // Or fast swipe
+    threshold: 80,
+    velocityThreshold: 0.4,
   });
 
   // CRITICAL: Proper scroll lock that works on mobile and desktop
   useEffect(() => {
-    // Save current scroll position
     const scrollY = window.scrollY;
-    
-    // Get original body overflow and position values
     const originalOverflow = document.body.style.overflow;
     const originalPosition = document.body.style.position;
     const originalTop = document.body.style.top;
     const originalWidth = document.body.style.width;
-    
-    // Lock body scroll completely - prevents background scrolling
     document.body.style.overflow = 'hidden';
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
     document.body.style.left = '0';
     document.body.style.right = '0';
-    
     return () => {
-      // Restore body scroll - use stored values or defaults
       document.body.style.overflow = originalOverflow;
       document.body.style.position = originalPosition;
       document.body.style.top = originalTop;
       document.body.style.width = originalWidth;
       document.body.style.left = '';
       document.body.style.right = '';
-      
-      // Restore scroll position
       window.scrollTo(0, scrollY);
     };
   }, []);
@@ -108,7 +98,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
         }
       }
     };
-
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose, viewMode]);
@@ -249,7 +238,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
 
   const handleLoadReport = (type: 'property-record' | 'valuation') => {
     setIsLoadingReport(true);
-    // Simulate API call
     setTimeout(() => {
       setViewMode(type);
       setIsLoadingReport(false);
@@ -259,26 +247,28 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
   const propertyRecord = generatePropertyRecord();
   const valuation = generateValuation();
 
+  // Whether this listing has any builder data
+  const hasBuilderInfo = !!(listing.builderName || listing.builderPhone || listing.builderEmail || listing.builderWebsite || listing.builderDevelopmentName);
+
   // Render modal content
   const modalContent = (
     <>
-      {/* Backdrop - Fixed positioning, click to close */}
+      {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/50 z-[9998]"
         onClick={() => viewMode === 'listing' ? onClose() : setViewMode('listing')}
         aria-hidden="true"
       />
       
-      {/* Modal - Side Drawer with proper overflow handling */}
+      {/* Modal - Side Drawer */}
       <div 
         className="fixed right-0 top-0 h-screen w-[calc(100%-12px)] md:w-[650px] lg:w-[800px] bg-white dark:bg-[#0F1115] z-[9999] shadow-2xl overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        {/* Wrapper for flex layout */}
         <div className="h-full flex flex-col">
-          {/* Header - Fixed */}
+          {/* Header */}
           <div className="flex-shrink-0 bg-[#ffd447] border-b border-[#ffd447]/20 px-3 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {viewMode !== 'listing' && (
@@ -538,7 +528,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </div>
                 </div>
 
-                {/* Bottom Padding */}
                 <div className="pt-4 pb-2"></div>
               </div>
             ) : viewMode === 'valuation' ? (
@@ -739,11 +728,11 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   </p>
                 </div>
 
-                {/* Bottom Padding */}
                 <div className="pt-4 pb-2"></div>
               </div>
             ) : (
               <div className="px-3 md:px-6 py-6 space-y-6">
+
                 {/* PHOTO / STREET VIEW / PLACEHOLDER */}
                 {(() => {
                   const hasPhoto = listing.photos && listing.photos.length > 0 && listing.photos[0];
@@ -755,7 +744,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                           onError={(e) => {
                             const t = e.currentTarget;
                             if (hasLatLng) {
-                              // Try Street View; if that also fails, show placeholder
                               t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=${GMAPS_KEY}`;
                               t.onerror = () => {
                                 const parent = t.parentElement!;
@@ -780,7 +768,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                             alt={`Street view of ${listing.address}`}
                             className="w-full h-64 object-cover"
                             onError={(e) => {
-                              // Replace failed image with placeholder instead of hiding
                               const parent = e.currentTarget.parentElement!;
                               e.currentTarget.remove();
                               parent.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`;
@@ -791,7 +778,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                       </div>
                     );
                   }
-                  // No photo, no lat/lng — show placeholder thumbnail
                   return (
                     <div className="rounded-lg overflow-hidden w-full h-48 bg-gray-100 dark:bg-white/5 flex flex-col items-center justify-center gap-2">
                       <Home className="w-10 h-10 text-gray-300 dark:text-white/20" />
@@ -852,6 +838,39 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   )}
                 </div>
 
+                {/* BUILDER & DEVELOPMENT — only shown when data is present */}
+                {hasBuilderInfo && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <HardHat className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                      <h3 className="font-bold text-[16px] text-amber-900 dark:text-amber-300">Builder & Development</h3>
+                    </div>
+                    {listing.builderDevelopmentName && (
+                      <p className="text-amber-800 dark:text-amber-200 font-semibold text-[15px]">{listing.builderDevelopmentName}</p>
+                    )}
+                    {listing.builderName && (
+                      <p className="text-amber-700 dark:text-amber-300 text-[14px]">{listing.builderName}</p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {listing.builderPhone && (
+                        <a href={`tel:${listing.builderPhone}`} className="flex items-center gap-1.5 bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold px-3 py-1.5 rounded-lg text-[13px] hover:bg-amber-300 dark:hover:bg-amber-700 transition-colors">
+                          <Phone className="w-3.5 h-3.5" />{listing.builderPhone}
+                        </a>
+                      )}
+                      {listing.builderEmail && (
+                        <a href={`mailto:${listing.builderEmail}`} className="flex items-center gap-1.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-3 py-1.5 rounded-lg text-[13px] hover:bg-amber-200 dark:hover:bg-amber-800/60 transition-colors">
+                          <Mail className="w-3.5 h-3.5" />{listing.builderEmail}
+                        </a>
+                      )}
+                      {listing.builderWebsite && (
+                        <a href={listing.builderWebsite} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-3 py-1.5 rounded-lg text-[13px] hover:bg-amber-200 dark:hover:bg-amber-800/60 transition-colors">
+                          <Globe className="w-3.5 h-3.5" />Builder Website
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* PRICE & LISTING */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
@@ -873,7 +892,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">Days on Market</p>
-                      <p className={`font-semibold ${listing.daysListed > 30 ? 'text-orange-600' : listing.daysListed > 14 ? 'text-amber-600' : 'dark:text-white'}`}>{listing.daysListed}d</p>
+                      <p className={`font-semibold ${listing.daysListed > 30 ? 'text-orange-600' : listing.daysListed > 14 ? 'text-amber-600' : 'dark:text-white'}`}>{listing.daysListed ?? '--'}d</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-0.5">Listed Date</p>
@@ -907,6 +926,12 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                         <span className="text-red-700 text-[13px] font-medium">Price Reduced</span>
                       </div>
                     )}
+                    {listing.reList && (
+                      <div className="col-span-2 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                        <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <span className="text-blue-700 text-[13px] font-medium">Re-listed Property</span>
+                      </div>
+                    )}
                     {listing.virtualTourUrl && (
                       <div className="col-span-2">
                         <a href={listing.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
@@ -926,8 +951,8 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   <div className="grid grid-cols-2 gap-3 text-[14px]">
                     <div><p className="text-gray-500 mb-0.5">Property Type</p><p className="font-medium dark:text-white">{listing.propertyType || '--'}</p></div>
                     <div><p className="text-gray-500 mb-0.5">Year Built</p><p className="font-medium dark:text-white">{listing.yearBuilt || '--'}</p></div>
-                    <div><p className="text-gray-500 mb-0.5">Bedrooms</p><p className="font-semibold text-[16px] dark:text-white">{listing.bedrooms}</p></div>
-                    <div><p className="text-gray-500 mb-0.5">Bathrooms</p><p className="font-semibold text-[16px] dark:text-white">{listing.bathrooms}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Bedrooms</p><p className="font-semibold text-[16px] dark:text-white">{listing.bedrooms ?? '--'}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Bathrooms</p><p className="font-semibold text-[16px] dark:text-white">{listing.bathrooms ?? '--'}</p></div>
                     <div><p className="text-gray-500 mb-0.5">Living Area</p><p className="font-medium dark:text-white">{listing.sqft > 0 ? `${listing.sqft.toLocaleString()} sq ft` : '--'}</p></div>
                     <div><p className="text-gray-500 mb-0.5">Lot Size</p><p className="font-medium dark:text-white">{listing.lotSize > 0 ? `${listing.lotSize.toLocaleString()} sq ft` : '--'}</p></div>
                     {listing.stories != null && <div><p className="text-gray-500 mb-0.5">Stories</p><p className="font-medium dark:text-white">{listing.stories}</p></div>}
@@ -1029,7 +1054,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
       </div>
     </>
   );
-
 
   return createPortal(modalContent, document.body);
 }
