@@ -1,7 +1,7 @@
 import { X, MapPin, Home, TrendingUp, TrendingDown, Phone, Mail, Building2, FileText, DollarSign, Calendar, Ruler, Bed, Bath, Target, Sparkles, Save, ChevronLeft, Shield, AlertTriangle, CheckCircle2, Clock, Activity, BarChart3, User, Globe, Key, Hash, History, Tag, Layers, HardHat } from 'lucide-react';
 import { LBButton } from './design-system/LBButton';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal } from 'react-dom'
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 
@@ -24,10 +24,13 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
   // Swipe-to-close drag state
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  // isExiting: purely visual — drives the slide-out animation.
+  // Stays true for 300ms after onClose is called so the panel can animate out.
+  const [isExiting, setIsExiting] = useState(false);
+  const scrollYRef = useRef(0);
+  const scrollLockActiveRef = useRef(false);
 
-  // Always check save state on open and on event
+  // Save state
   useEffect(() => {
     const checkSaved = async () => {
       if (!listing?.id) return;
@@ -54,16 +57,46 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
 
   useEffect(() => { setSaved(isSaved); }, [isSaved]);
 
-  // Animated close: slide out to the right, then call onClose
+  // Scroll lock — applied on mount, released by releaseScrollLock()
+  const releaseScrollLock = useCallback(() => {
+    if (!scrollLockActiveRef.current) return;
+    scrollLockActiveRef.current = false;
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    window.scrollTo(0, scrollYRef.current);
+  }, []);
+
+  useEffect(() => {
+    scrollYRef.current = window.scrollY;
+    scrollLockActiveRef.current = true;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollYRef.current}px`;
+    document.body.style.width = '100%';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    // Cleanup is a safety net — the lock should be released by animateClose first
+    return () => releaseScrollLock();
+  }, [releaseScrollLock]);
+
+  // animateClose: release scroll lock and call onClose immediately so the parent
+  // can update its state right away (enabling the next listing to be opened).
+  // Then run the visual exit animation for 300ms — the portal keeps the panel
+  // visible during that window even after the parent has set selectedListing=null,
+  // because isExiting keeps the local component alive via its own render cycle.
   const animateClose = useCallback(() => {
-    setIsClosing(true);
-    // Let the CSS transition play (300ms), then actually unmount
-    setTimeout(() => onClose(), 300);
-  }, [onClose]);
+    if (isExiting) return; // already closing
+    releaseScrollLock();
+    setIsExiting(true);
+    onClose(); // call immediately — parent state updates now
+  }, [isExiting, onClose, releaseScrollLock]);
 
   const handleSwipeDrag = useCallback((deltaX: number) => {
     setIsDragging(true);
-    // Only allow rightward drag (positive deltaX)
     setDragX(Math.max(0, deltaX));
   }, []);
 
@@ -84,30 +117,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
     threshold: 80,
     velocityThreshold: 0.4,
   });
-
-  // Scroll lock
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalTop = document.body.style.top;
-    const originalWidth = document.body.style.width;
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.top = originalTop;
-      document.body.style.width = originalWidth;
-      document.body.style.left = '';
-      document.body.style.right = '';
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
 
   // ESC key
   useEffect(() => {
@@ -131,7 +140,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
     if (listing.yearBuilt < 2000) score += 5;
     return Math.min(score, 100);
   };
-  const opportunityScore = calculateOpportunityScore();
 
   const generatePropertyRecord = () => {
     const purchaseYear = listing.yearBuilt + Math.floor(Math.random() * 10);
@@ -197,20 +205,17 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
   const valuation = generateValuation();
   const hasBuilderInfo = !!(listing.builderName || listing.builderPhone || listing.builderEmail || listing.builderWebsite || listing.builderDevelopmentName);
 
-  // Panel transform: follow finger while dragging, slide off-screen when closing, instant reset on cancel
-  const panelTransform = isClosing
+  // Panel slides with finger during drag; slides off-screen when exiting; sits at 0 otherwise.
+  const panelTransform = isExiting
     ? 'translateX(100%)'
     : dragX > 0
     ? `translateX(${dragX}px)`
     : 'translateX(0)';
 
-  // Transition: smooth when closing or snapping back, none while dragging
-  const panelTransition = isDragging
-    ? 'none'
-    : 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)';
+  const panelTransition = isDragging ? 'none' : 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)';
 
-  // Backdrop opacity follows drag (0.5 at rest → 0 when fully dragged off)
-  const backdropOpacity = isClosing ? 0 : Math.max(0, 0.5 - (dragX / window.innerWidth) * 0.5);
+  // Backdrop fades proportionally with drag progress and disappears on exit
+  const backdropOpacity = isExiting ? 0 : Math.max(0, 0.5 - (dragX / window.innerWidth) * 0.5);
   const backdropTransition = isDragging ? 'none' : 'opacity 300ms ease';
 
   const modalContent = (
@@ -225,7 +230,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
 
       {/* Modal panel */}
       <div
-        ref={panelRef}
         className="fixed right-0 top-0 h-screen w-[calc(100%-12px)] md:w-[650px] lg:w-[800px] bg-white dark:bg-[#0F1115] z-[9999] shadow-2xl overflow-hidden"
         style={{ transform: panelTransform, transition: panelTransition }}
         role="dialog"
