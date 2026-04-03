@@ -236,7 +236,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       sessionStorage.removeItem('listingbug_automations_tab');
     }
   }, []);
-  // ── Handler functions ────────────────────────────────────────────────────
+  // ── Handler functions ────────────────────────────────────────────
 
   const handleToggleAutomation = async (id: string) => {
     const automation = automations.find(a => a.id === id);
@@ -253,8 +253,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
   };
 
   const handleRunNow = async (automation: any) => {
-    setRunNowLoading(true);
-    setRunningAutomation(automation);
+    // Do all pre-flight checks BEFORE setting loading state.
+    // Setting loading state first causes RunAutomationLoading to mount mid-logic,
+    // which triggers a React re-render that can abort the in-flight fetch in some
+    // browser environments — showing "load failed" even though the preflight OPTIONS
+    // succeeded (verifiable in Supabase edge function logs).
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -272,17 +275,23 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       const used = usageRow?.listings_fetched ?? 0;
       if (cap !== Infinity && used >= cap) {
         toast.error(`Monthly listing limit reached (${used.toLocaleString()} / ${cap.toLocaleString()}). Upgrade your plan to run automations.`);
-        setRunNowLoading(false);
-        setRunningAutomation(null);
         return;
       }
+
+      // All checks passed — NOW show the loading modal and fire the fetch.
+      // The token is captured in this closure so the re-render from setRunNowLoading
+      // cannot invalidate it.
+      const token = session.access_token;
+      const userId = session.user.id;
+      setRunNowLoading(true);
+      setRunningAutomation(automation);
 
       const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'X-Automation-User-Id': session.user.id,
+          'Authorization': `Bearer ${token}`,
+          'X-Automation-User-Id': userId,
         },
         body: JSON.stringify({ automation_id: automation.id }),
       });
@@ -293,7 +302,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       if (status === 'failed') {
         toast.error(`"${automation.name}" failed: ${(details ?? 'Unknown error').slice(0, 120)}`);
       } else {
-        toast.success(`"${automation.name}" complete \u2014 ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
+        toast.success(`"${automation.name}" complete — ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
       }
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -301,7 +310,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
           userId: user.id,
           type: status === 'failed' ? 'error' : 'success',
           title: status === 'failed' ? `Automation failed: ${automation.name}` : `Automation run complete: ${automation.name}`,
-          message: status === 'failed' ? (details ?? 'The automation encountered an error.') : listings_sent > 0 ? `${listings_found} listings found \u2014 ${listings_sent} sent to ${destLabel}` : `${listings_found} listings found.`,
+          message: status === 'failed' ? (details ?? 'The automation encountered an error.') : listings_sent > 0 ? `${listings_found} listings found — ${listings_sent} sent to ${destLabel}` : `${listings_found} listings found.`,
         });
       }
       await loadRunHistory();
