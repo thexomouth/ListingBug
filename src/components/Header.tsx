@@ -1,4 +1,4 @@
-﻿import { Menu, User, X, Bell, ChevronLeft, CheckCircle2, AlertCircle, Info, Trash2, ChevronDown } from 'lucide-react';
+﻿import { Menu, User, X, Bell, ChevronLeft, CheckCircle2, AlertCircle, Info, Trash2, ChevronDown, Moon, Sun } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import headerLogoFull from 'figma:asset/507fab16b51ccf6be96c685cf4c76a6b2a4bb7b0.png';
 import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
@@ -685,6 +685,41 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   >
                     API
                   </button>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+
+                  {/* Dark Mode Toggle */}
+                  {onToggleDarkMode && (
+                    <div className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <div className="flex items-center gap-2">
+                        {isDarkMode ? (
+                          <Moon className="w-4 h-4 text-[#342e37] dark:text-white" />
+                        ) : (
+                          <Sun className="w-4 h-4 text-[#342e37] dark:text-white" />
+                        )}
+                        <span className="font-bold text-sm text-[#342e37] dark:text-white">
+                          {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={onToggleDarkMode}
+                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                          isDarkMode ? 'bg-[#342e37]' : 'bg-gray-300'
+                        }`}
+                        aria-label="Toggle dark mode"
+                        role="switch"
+                        aria-checked={isDarkMode}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                            isDarkMode ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Divider */}
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
                   
