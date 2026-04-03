@@ -1,32 +1,25 @@
 /**
- * Normalize any listing object from RentCast API (camelCase),
- * Supabase DB (snake_case), or saved listing_data_json blobs into the
- * consistent camelCase shape ListingDetailModal expects.
+ * Normalize any listing object from:
+ *   - RentCast API response (camelCase, e.g. yearBuilt, squareFootage, listingAgent.name)
+ *   - Supabase DB row (snake_case, e.g. year_built, square_footage, agent_name)
+ *   - automation_run_listings.listing_data blobs (raw RentCast JSON stored as-is)
+ *   - saved_listings.listing_data_json blobs (previously normalized or raw)
+ *
+ * Strategy: for every field, always check BOTH camelCase and snake_case variants,
+ * plus any known nested shapes. Never branch on isAlreadyCamel — that heuristic
+ * fails silently when a listing happens to lack the trigger keys (no agent, no
+ * formattedAddress, etc.) which causes fields like yearBuilt/lotSize to drop to null.
+ *
+ * This is the SINGLE source of truth for field mapping.
+ * Update here to fix data display across all consumers.
  */
 export function normalizeListing(raw: any): any {
   if (!raw) return raw;
 
-  const isAlreadyCamel =
-    'formattedAddress' in raw ||
-    'addressLine1' in raw ||
-    'daysOnMarket' in raw ||
-    'agentName' in raw ||
-    'listingAgent' in raw ||
-    'squareFootage' in raw;
-
-  const photos = isAlreadyCamel
-    ? (raw.photos ?? raw.photosJson ?? raw.photos_json ?? [])
-    : (raw.photos_json ?? raw.photos ?? []);
-
-  const history = isAlreadyCamel
-    ? (raw.history ?? raw.historyJson ?? raw.history_json ?? null)
-    : (raw.history_json ?? raw.history ?? null);
-
-  // Resolve lat/lng from multiple shapes:
-  // 1. Top-level numbers (standard RentCast / Dashboard path)
-  // 2. Top-level strings (some stored blobs stringify coords)
-  // 3. Nested location object: { location: { latitude, longitude } }
-  // 4. Nested location object with lat/lng keys: { location: { lat, lng } }
+  // ── Coordinates ──────────────────────────────────────────────────────────
+  // Check top-level, nested location object, and lat/lng shorthand keys.
+  // Coerce strings to numbers (some blobs serialize coords as strings).
+  // Reject 0,0 (null island) and NaN as missing.
   const rawLat =
     raw.latitude ??
     raw.location?.latitude ??
@@ -39,17 +32,25 @@ export function normalizeListing(raw: any): any {
     raw.location?.lng ??
     raw.lng ??
     null;
+  const _lat = rawLat != null ? Number(rawLat) : null;
+  const _lng = rawLng != null ? Number(rawLng) : null;
+  const validLatitude  = _lat != null && !isNaN(_lat)  && _lat  !== 0 ? _lat  : null;
+  const validLongitude = _lng != null && !isNaN(_lng) && _lng !== 0 ? _lng : null;
 
-  const latitude  = rawLat  != null ? Number(rawLat)  : null;
-  const longitude = rawLng  != null ? Number(rawLng)  : null;
+  // ── Photos ───────────────────────────────────────────────────────────────
+  // RentCast: raw.photos (array)
+  // DB row:   raw.photos_json
+  // Blobs:    either of the above
+  const photosRaw = raw.photos ?? raw.photosJson ?? raw.photos_json ?? [];
+  const photos = Array.isArray(photosRaw) ? photosRaw : [];
 
-  // Treat 0,0 (null island) or NaN as missing coords
-  const validLatitude  = latitude  != null && !isNaN(latitude)  && latitude  !== 0 ? latitude  : null;
-  const validLongitude = longitude != null && !isNaN(longitude) && longitude !== 0 ? longitude : null;
+  // ── History ──────────────────────────────────────────────────────────────
+  const history = raw.history ?? raw.historyJson ?? raw.history_json ?? null;
 
   return {
     id: raw.id,
 
+    // ── Address ──────────────────────────────────────────────────────────
     address:
       raw.address ??
       raw.addressLine1 ??
@@ -61,41 +62,49 @@ export function normalizeListing(raw: any): any {
       raw.formattedAddress ??
       raw.formatted_address ??
       null,
-    city:    raw.city    ?? null,
-    state:   raw.state   ?? null,
-    zip:     raw.zip ?? raw.zipCode ?? raw.zip_code ?? null,
-    county:  raw.county  ?? null,
-    stateFips:  raw.stateFips  ?? raw.state_fips  ?? null,
-    countyFips: raw.countyFips ?? raw.county_fips ?? null,
-    latitude:  validLatitude,
-    longitude: validLongitude,
+    city:       raw.city        ?? null,
+    state:      raw.state       ?? null,
+    zip:        raw.zip ?? raw.zipCode ?? raw.zip_code ?? null,
+    county:     raw.county      ?? null,
+    stateFips:  raw.stateFips   ?? raw.state_fips   ?? null,
+    countyFips: raw.countyFips  ?? raw.county_fips  ?? null,
+    latitude:   validLatitude,
+    longitude:  validLongitude,
 
-    price:            raw.price            ?? null,
-    status:           raw.status           ?? null,
-    listingType:      raw.listingType      ?? raw.listing_type       ?? null,
-    listingTypeDetail:raw.listingTypeDetail?? raw.listing_type_detail?? null,
-    mlsNumber:        raw.mlsNumber        ?? raw.mls_number         ?? null,
-    mlsName:          raw.mlsName          ?? raw.mls_name           ?? null,
-    priceDrop:        raw.priceDrop        ?? raw.priceReduced       ?? raw.price_reduced ?? false,
-    listedDate:       raw.listedDate       ?? raw.listingDate        ?? raw.listed_date   ?? raw.listing_date ?? null,
-    removedDate:      raw.removedDate      ?? raw.removed_date       ?? null,
-    lastSeenDate:     raw.lastSeenDate     ?? raw.last_seen_date     ?? null,
-    daysListed:       raw.daysListed       ?? raw.daysOnMarket       ?? raw.days_on_market ?? null,
-    virtualTourUrl:   raw.virtualTourUrl   ?? raw.virtual_tour_url   ?? null,
+    // ── Listing ──────────────────────────────────────────────────────────
+    price:             raw.price             ?? null,
+    status:            raw.status            ?? null,
+    listingType:       raw.listingType       ?? raw.listing_type        ?? null,
+    listingTypeDetail: raw.listingTypeDetail ?? raw.listing_type_detail ?? null,
+    mlsNumber:         raw.mlsNumber         ?? raw.mls_number          ?? null,
+    mlsName:           raw.mlsName           ?? raw.mls_name            ?? null,
+    priceDrop:         raw.priceDrop         ?? raw.priceReduced        ?? raw.price_reduced ?? false,
+    listedDate:        raw.listedDate        ?? raw.listingDate         ?? raw.listed_date   ?? raw.listing_date ?? null,
+    removedDate:       raw.removedDate       ?? raw.removed_date        ?? null,
+    createdDate:       raw.createdDate       ?? raw.created_date        ?? raw.createdAt     ?? raw.created_at  ?? null,
+    lastSeenDate:      raw.lastSeenDate      ?? raw.last_seen_date      ?? null,
+    daysListed:        raw.daysListed        ?? raw.daysOnMarket        ?? raw.days_on_market ?? null,
+    virtualTourUrl:    raw.virtualTourUrl    ?? raw.virtual_tour_url    ?? null,
+    reList:            raw.reList            ?? raw.re_list             ?? false,
 
-    propertyType: raw.propertyType ?? raw.property_type ?? null,
+    // ── Property ─────────────────────────────────────────────────────────
+    propertyType: raw.propertyType ?? raw.property_type   ?? null,
     bedrooms:     raw.bedrooms     ?? null,
     bathrooms:    raw.bathrooms    ?? null,
+    // squareFootage is the RentCast camelCase key; square_footage is the DB key; sqft is our canonical name
     sqft:         raw.sqft ?? raw.squareFootage ?? raw.square_footage ?? 0,
-    lotSize:      raw.lotSize      ?? raw.lot_size       ?? null,
-    yearBuilt:    raw.yearBuilt    ?? raw.year_built     ?? null,
+    lotSize:      raw.lotSize      ?? raw.lot_size         ?? null,
+    yearBuilt:    raw.yearBuilt    ?? raw.year_built       ?? null,
     garage:       raw.garage       ?? null,
-    garageSpaces: raw.garageSpaces ?? raw.garage_spaces  ?? null,
+    garageSpaces: raw.garageSpaces ?? raw.garage_spaces    ?? null,
     pool:         raw.pool         ?? null,
     stories:      raw.stories      ?? null,
-    hoaFee:       raw.hoaFee       ?? raw.hoa?.fee       ?? raw.hoa_fee ?? null,
+    hoaFee:       raw.hoaFee       ?? raw.hoa?.fee         ?? raw.hoa_fee ?? null,
     description:  raw.description  ?? null,
 
+    // ── Agent ─────────────────────────────────────────────────────────────
+    // RentCast nests agent under listingAgent object; DB has flat agent_* columns;
+    // some blobs have flat agentName from a prior normalization pass.
     agentName:
       raw.agentName ??
       raw.listingAgent?.name ??
@@ -117,6 +126,7 @@ export function normalizeListing(raw: any): any {
       raw.agent_website ??
       null,
 
+    // ── Office / Brokerage ───────────────────────────────────────────────
     officeName:
       raw.officeName ??
       raw.listingOffice?.name ??
@@ -144,9 +154,11 @@ export function normalizeListing(raw: any): any {
       raw.office_name ??
       null,
 
-    photos:  Array.isArray(photos) ? photos : [],
-    history: history,
+    // ── Media & history ──────────────────────────────────────────────────
+    photos,
+    history,
 
+    // ── Pass-through extras ──────────────────────────────────────────────
     _transferred: raw._transferred,
   };
 }
