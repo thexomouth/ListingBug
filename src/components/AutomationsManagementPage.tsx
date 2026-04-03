@@ -72,9 +72,14 @@ interface RunHistoryItem {
   runDate: string;
   status: 'success' | 'failed';
   listingsFound: number;
+  listingsFetched: number;
   listingsSent: number;
   destination: string;
   details?: string;
+  contactsSkipped?: number;
+  contactsFailed?: number;
+  destinationCountBefore?: number;
+  destinationCountAfter?: number;
 }
 
 interface Integration {
@@ -101,15 +106,27 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
   const walkthroughStep3Active = isStepActive(3);
   
   const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(() => {
+    // One-shot navigation intent takes priority over last-visited tab memory
+    const navIntent = sessionStorage.getItem('listingbug_automations_tab');
+    if (navIntent && ['create', 'automations', 'history'].includes(navIntent)) {
+      return navIntent as 'create' | 'automations' | 'history';
+    }
     const lastTab = sessionStorage.getItem('listingbug_automations_last_tab');
-    if (lastTab && ['create','automations','history'].includes(lastTab)) {
+    if (lastTab && ['create', 'automations', 'history'].includes(lastTab)) {
       return lastTab as 'create' | 'automations' | 'history';
     }
     return initialTab;
   });
+
+  // Clear the one-shot nav intent after consuming it
+  useEffect(() => {
+    sessionStorage.removeItem('listingbug_automations_tab');
+  }, []);
+
   useEffect(() => {
     sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
   }, [activeTab]);
+
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
   const [expandedAutomations, setExpandedAutomations] = useState<Set<string>>(new Set());
@@ -153,14 +170,39 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) { console.error('[Automations] load error:', error.message); setAutomationsLoading(false); return; }
-    const mapped = (data || []).map((row: any) => ({
-      id: row.id, name: row.name, searchName: row.search_name ?? '',
-      schedule: [row.schedule, row.schedule_time ? `at ${row.schedule_time}` : ''].filter(Boolean).join(' '),
-      destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
-      searchCriteria: row.search_criteria ?? {}, active: row.active ?? true, status: 'idle',
-      lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
-      nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
-    }));
+
+    // Fetch last run metrics for each automation from automation_runs
+    const automationIds = (data || []).map((r: any) => r.id);
+    let lastRunMap: Record<string, any> = {};
+    if (automationIds.length > 0) {
+      const { data: runsData } = await supabase
+        .from('automation_runs')
+        .select('automation_id,status,listings_sent,listings_fetched,run_date')
+        .in('automation_id', automationIds)
+        .order('run_date', { ascending: false });
+      // Keep only the most recent run per automation
+      (runsData || []).forEach((run: any) => {
+        if (!lastRunMap[run.automation_id]) {
+          lastRunMap[run.automation_id] = run;
+        }
+      });
+    }
+
+    const mapped = (data || []).map((row: any) => {
+      const lastRun = lastRunMap[row.id];
+      return {
+        id: row.id, name: row.name, searchName: row.search_name ?? '',
+        schedule: [row.schedule, row.schedule_time ? `at ${row.schedule_time}` : ''].filter(Boolean).join(' '),
+        destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
+        searchCriteria: row.search_criteria ?? {}, active: row.active ?? true, status: 'idle',
+        lastRun: lastRun ? {
+          date: lastRun.run_date,
+          status: lastRun.status === 'success' ? 'success' : 'failed',
+          listingsSent: lastRun.listings_sent ?? 0,
+        } : row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
+        nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+      };
+    });
     if (data !== null) setAutomations(mapped);
     setAutomationsLoading(false);
   };
@@ -171,7 +213,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     if (!userId) { setRunHistory([]); return; }
     const { data, error } = await supabase
       .from('automation_runs')
-      .select('id,automation_name,run_date,status,listings_found,listings_sent,destination,details')
+      .select('id,automation_name,run_date,status,listings_fetched,listings_sent,destination,details,contacts_skipped,contacts_failed,destination_count_before,destination_count_after')
       .eq('user_id', userId)
       .order('run_date', { ascending: false })
       .limit(50);
@@ -180,8 +222,14 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       id: run.id, automationName: run.automation_name || 'Unknown',
       runDate: run.run_date || new Date().toISOString(),
       status: run.status || 'failed',
-      listingsFound: run.listings_found || 0, listingsSent: run.listings_sent || 0,
+      listingsFound: run.listings_fetched || run.listings_sent || 0,
+      listingsFetched: run.listings_fetched || 0,
+      listingsSent: run.listings_sent || 0,
       destination: run.destination || '', details: run.details || '',
+      contactsSkipped: run.contacts_skipped || 0,
+      contactsFailed: run.contacts_failed || 0,
+      destinationCountBefore: run.destination_count_before,
+      destinationCountAfter: run.destination_count_after,
     })));
   }, []);
 
@@ -208,11 +256,6 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         sessionStorage.removeItem('listingbug_prefill_automation');
         toast.info(`Ready to automate "${searchName}"`);
       } catch (e) { console.error('Failed to parse prefill data:', e); }
-    }
-    const tabPref = sessionStorage.getItem('listingbug_automations_tab');
-    if (tabPref === 'automations' || tabPref === 'history') {
-      setActiveTab(tabPref as any);
-      sessionStorage.removeItem('listingbug_automations_tab');
     }
   }, []);
 
@@ -241,7 +284,6 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       const monthYear = new Date().toISOString().slice(0, 7);
       const [{ data: profile }, { data: usageRow }] = await Promise.all([
         supabase.from('users').select('plan').eq('id', session.user.id).single(),
-        // maybeSingle() returns null (not 406) when no row exists for this month
         supabase.from('usage_tracking').select('listings_fetched').eq('user_id', session.user.id).eq('month_year', monthYear).maybeSingle(),
       ]);
       const cap = PLAN_CAPS[profile?.plan ?? 'trial'] ?? 1000;
@@ -251,17 +293,13 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         return;
       }
 
-      // All checks passed — show loading modal and fire the fetch
       const token = session.access_token;
       setRunNowLoading(true);
       setRunningAutomation(automation);
 
       const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ automation_id: automation.id }),
       });
       const result = await res.json();
@@ -283,7 +321,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         });
       }
       await loadRunHistory();
-      setAutomations(prev => prev.map(a => a.id === automation.id ? { ...a, lastRun: { status: status === 'failed' ? 'failed' : 'success', date: new Date().toISOString(), listingsSent: listings_sent ?? 0, details: details ?? '' } } : a));
+      setAutomations(prev => prev.map(a => a.id === automation.id ? { ...a, lastRun: { status: status === 'failed' ? 'failed' : 'success', date: new Date().toISOString(), listingsSent: listings_sent ?? 0 } } : a));
     } catch (err: any) {
       const msg = err.message ?? 'Unknown error';
       toast.error(`Run failed: ${msg}`);
@@ -390,11 +428,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                 <LBTableHeader><LBTableRow><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Export Results</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>
                   {automations.map((automation) => {
-                    const lastRun = runHistory.find(r => r.automationName === automation.name);
-                    const lastRunStatus = lastRun?.status;
-                    const lastRunDate = lastRun?.runDate;
-                    const lastRunFound = lastRun?.listingsFound ?? 0;
-                    const lastRunSent = lastRun?.listingsSent ?? 0;
+                    const lastRunStatus = automation.lastRun?.status;
+                    const lastRunDate = automation.lastRun?.date;
+                    const lastRunSent = automation.lastRun?.listingsSent ?? 0;
+                    const lastRunFromHistory = runHistory.find(r => r.automationName === automation.name);
+                    const lastRunFound = lastRunFromHistory?.listingsFetched ?? lastRunFromHistory?.listingsFound ?? 0;
                     return (
                       <LBTableRow key={automation.id} onClick={() => { setSelectedAutomation(automation); setEditModalOpen(true); }} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
                         <LBTableCell className="text-right">
@@ -406,7 +444,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                         </LBTableCell>
                         <LBTableCell>
                           <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
-                          {lastRun && (
+                          {automation.lastRun && (
                             <div className="flex items-center gap-2 mt-1 md:hidden">
                               <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded ${lastRunStatus === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                 {lastRunStatus === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
@@ -417,24 +455,23 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                           )}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
-                          {lastRun ? (
+                          {automation.lastRun ? (
                             <div className="flex flex-col gap-1">
                               <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full w-fit ${lastRunStatus === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
                                 {lastRunStatus === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                                 {lastRunStatus === 'success' ? 'Success' : 'Failed'}
                               </span>
                               <span className="text-[11px] text-gray-400">{formatDate(lastRunDate ?? '')}</span>
-                              {lastRunStatus === 'failed' && lastRun.details && (<span className="text-[11px] text-red-500 max-w-[180px] truncate" title={lastRun.details}>{lastRun.details}</span>)}
                             </div>
                           ) : (<span className="text-[12px] text-gray-400 italic">Never run</span>)}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
-                          {lastRun ? (<div className="flex flex-col gap-0.5"><span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span><span className="text-[11px] text-gray-400">listings found</span></div>) : <span className="text-[12px] text-gray-400">—</span>}
+                          {automation.lastRun ? (<div className="flex flex-col gap-0.5"><span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span><span className="text-[11px] text-gray-400">listings fetched</span></div>) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
-                          {lastRun ? (
+                          {automation.lastRun ? (
                             <div className="flex flex-col gap-0.5">
-                              {lastRunStatus === 'success' ? (<><span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span><span className="text-[11px] text-gray-400">exported</span></>) : (<><span className="font-bold text-[15px] text-red-500">0</span><span className="text-[11px] text-red-400">export failed</span></>)}
+                              {lastRunStatus === 'success' ? (<><span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span><span className="text-[11px] text-gray-400">confirmed</span></>) : (<><span className="font-bold text-[15px] text-red-500">0</span><span className="text-[11px] text-red-400">export failed</span></>)}
                             </div>
                           ) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
@@ -472,7 +509,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                         {new Date(run.runDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
                       </div>
                     </div>
-                    <div className="text-right"><div className="text-[20px] font-bold text-gray-900 dark:text-white">{run.listingsSent}</div><div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listings</div></div>
+                    <div className="text-right"><div className="text-[20px] font-bold text-gray-900 dark:text-white">{run.listingsSent}</div><div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Confirmed</div></div>
                   </div>
                   <div><div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Automation</div><div className="font-medium text-[14px] text-gray-900 dark:text-white">{run.automationName}</div></div>
                   <div><div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Destination</div><div className="font-medium text-[14px] text-gray-700 dark:text-gray-300">{run.destination}</div></div>
@@ -490,7 +527,8 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                       <LBTableHead className="text-gray-600 dark:text-gray-300">Automation</LBTableHead>
                       <LBTableHead className="text-gray-600 dark:text-gray-300">Destination</LBTableHead>
                       <LBTableHead className="text-gray-600 dark:text-gray-300">Status</LBTableHead>
-                      <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Listings Sent</LBTableHead>
+                      <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Fetched</LBTableHead>
+                      <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Confirmed</LBTableHead>
                       <LBTableHead className="text-gray-600 dark:text-gray-300 w-[80px]"></LBTableHead>
                     </LBTableRow>
                   </LBTableHeader>
@@ -506,6 +544,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                             {run.status === 'success' ? 'Success' : 'Failed'}
                           </span>
                         </LBTableCell>
+                        <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">{run.listingsFetched || run.listingsFound}</LBTableCell>
                         <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">{run.listingsSent}</LBTableCell>
                         <LBTableCell>
                           <button onClick={(e) => { e.stopPropagation(); if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }} className="flex items-center gap-1 text-[12px] text-[#FFCE0A] hover:text-[#FFCE0A]/80 font-medium transition-colors">
@@ -546,7 +585,21 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         </DialogContent>
       </Dialog>
 
-      <RunDetailsModal isOpen={runDetailsModalOpen} onClose={() => { setRunDetailsModalOpen(false); setSelectedRun(null); }} run={selectedRun ? { id: selectedRun.id, automation: selectedRun.automationName, date: selectedRun.runDate, status: selectedRun.status, listingsFound: selectedRun.listingsFound, exported: selectedRun.listingsSent, destination: selectedRun.destination, details: selectedRun.details } : null} />
+      <RunDetailsModal
+        isOpen={runDetailsModalOpen}
+        onClose={() => { setRunDetailsModalOpen(false); setSelectedRun(null); }}
+        run={selectedRun ? {
+          id: selectedRun.id,
+          automation: selectedRun.automationName,
+          date: selectedRun.runDate,
+          status: selectedRun.status,
+          listingsFetched: selectedRun.listingsFetched,
+          listingsFound: selectedRun.listingsFound,
+          exported: selectedRun.listingsSent,
+          destination: selectedRun.destination,
+          details: selectedRun.details,
+        } : null}
+      />
     </div>
   );
 }
