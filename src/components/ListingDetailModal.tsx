@@ -218,6 +218,17 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
   const backdropOpacity = isExiting ? 0 : Math.max(0, 0.5 - (dragX / window.innerWidth) * 0.5);
   const backdropTransition = isDragging ? 'none' : 'opacity 300ms ease';
 
+  // Guard: only use lat/lng if they are real non-zero numbers.
+  // null/undefined coords would produce ?location=null,null which Google returns
+  // as a valid gray "no imagery" thumbnail — visually misleading.
+  const lat = listing.latitude;
+  const lng = listing.longitude;
+  const hasLatLng =
+    lat != null && lng != null &&
+    typeof lat === 'number' && typeof lng === 'number' &&
+    !isNaN(lat) && !isNaN(lng) &&
+    lat !== 0 && lng !== 0;
+
   const modalContent = (
     <>
       {/* Backdrop */}
@@ -452,7 +463,6 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                 {/* PHOTO / STREET VIEW */}
                 {(() => {
                   const hasPhoto = listing.photos && listing.photos.length > 0 && listing.photos[0];
-                  const hasLatLng = listing.latitude && listing.longitude;
                   if (hasPhoto) {
                     return (
                       <div className="rounded-lg overflow-hidden">
@@ -460,7 +470,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                           onError={(e) => {
                             const t = e.currentTarget;
                             if (hasLatLng) {
-                              t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&key=${GMAPS_KEY}`;
+                              t.src = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${lat},${lng}&key=${GMAPS_KEY}`;
                               t.onerror = () => { const p = t.parentElement!; t.remove(); p.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2 bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`; };
                             } else { const p = t.parentElement!; t.remove(); p.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2 bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`; }
                           }} />
@@ -471,7 +481,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     return (
                       <div className="rounded-lg overflow-hidden">
                         <div className="relative w-full h-64 bg-gray-100 dark:bg-white/5 overflow-hidden">
-                          <img src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${listing.latitude},${listing.longitude}&fov=90&pitch=10&key=${GMAPS_KEY}`} alt={`Street view of ${listing.address}`} className="w-full h-64 object-cover"
+                          <img src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${lat},${lng}&fov=90&pitch=10&key=${GMAPS_KEY}`} alt={`Street view of ${listing.address}`} className="w-full h-64 object-cover"
                             onError={(e) => { const p = e.currentTarget.parentElement!; e.currentTarget.remove(); p.innerHTML = `<div class="flex flex-col items-center justify-center h-64 gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span class="text-xs text-gray-400">No photo available</span></div>`; }}
                           />
                           <span className="absolute bottom-2 right-2 text-[10px] bg-black/50 text-white px-1.5 py-0.5 rounded">Street View</span>
@@ -571,9 +581,9 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                     {listing.county && <div><p className="text-gray-500 mb-0.5">County</p><p className="font-medium dark:text-white">{listing.county}</p></div>}
                     {listing.stateFips && <div><p className="text-gray-500 mb-0.5">State FIPS</p><p className="font-mono text-[12px] dark:text-white">{listing.stateFips}</p></div>}
                     {listing.countyFips && <div><p className="text-gray-500 mb-0.5">County FIPS</p><p className="font-mono text-[12px] dark:text-white">{listing.countyFips}</p></div>}
-                    {listing.latitude && listing.longitude && (<><div><p className="text-gray-500 mb-0.5">Latitude</p><p className="font-mono text-[12px] dark:text-white">{listing.latitude}</p></div><div><p className="text-gray-500 mb-0.5">Longitude</p><p className="font-mono text-[12px] dark:text-white">{listing.longitude}</p></div></>)}
+                    {hasLatLng && (<><div><p className="text-gray-500 mb-0.5">Latitude</p><p className="font-mono text-[12px] dark:text-white">{lat}</p></div><div><p className="text-gray-500 mb-0.5">Longitude</p><p className="font-mono text-[12px] dark:text-white">{lng}</p></div></>)}
                   </div>
-                  {listing.latitude && listing.longitude && (<a href={`https://maps.google.com/?q=${listing.latitude},${listing.longitude}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline"><MapPin className="w-3.5 h-3.5" />View on Google Maps</a>)}
+                  {hasLatLng && (<a href={`https://maps.google.com/?q=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline"><MapPin className="w-3.5 h-3.5" />View on Google Maps</a>)}
                 </div>
 
                 {/* LISTING HISTORY */}
