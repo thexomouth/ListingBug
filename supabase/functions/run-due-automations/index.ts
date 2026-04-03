@@ -6,9 +6,16 @@
  * then sets next_run_at to the CORRECT next wall-clock time in
  * America/Los_Angeles.
  *
+ * Schedule: 3:00 AM PST / 3:00 AM PDT daily.
+ * This captures a full American workday's worth of new listings
+ * without firing during business hours.
+ *
  * IMPORTANT: automation_runs table does NOT have error_message column.
  * Only use columns: id, automation_id, user_id, automation_name, run_date,
  * status, listings_found, listings_sent, destination, details
+ *
+ * KEY DESIGN: next_run_at is set BEFORE the run executes so even if the
+ * function crashes or times out, the automation won't re-run next hour.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -72,22 +79,20 @@ async function fetchListings(searchCriteria: Record<string, unknown>): Promise<u
   if (city)         params.set("city", String(city));
   if (state)        params.set("state", String(state));
   if (zipCode)      params.set("zipCode", String(zipCode));
-  if (latitude != null && latitude !== "")  params.set("latitude", String(latitude));
+  if (latitude != null && latitude !== "")   params.set("latitude", String(latitude));
   if (longitude != null && longitude !== "") params.set("longitude", String(longitude));
-  if (radius != null && radius !== "")    params.set("radius", String(radius));
+  if (radius != null && radius !== "")       params.set("radius", String(radius));
   if (propertyType) params.set("propertyType", String(propertyType));
-  if (bedrooms != null && bedrooms !== "") params.set("bedrooms", String(bedrooms));
+  if (bedrooms != null && bedrooms !== "")   params.set("bedrooms", String(bedrooms));
   if (bathrooms != null && bathrooms !== "") params.set("bathrooms", String(bathrooms));
-  if (minPrice != null && maxPrice != null) params.set("price", `${minPrice}-${maxPrice}`);
+  if (minPrice != null && maxPrice != null)  params.set("price", `${minPrice}-${maxPrice}`);
   else if (minPrice != null) params.set("price", `${minPrice}+`);
   else if (maxPrice != null) params.set("price", `0-${maxPrice}`);
 
   if (rawDaysOld != null && rawDaysOld !== "") {
     const n = parseInt(String(rawDaysOld), 10);
     if (n > 0) {
-      const lo = Math.max(0.1, n - 0.1);
-      const hi = n + 0.9;
-      params.set("daysOld", `${lo}-${hi}`);
+      params.set("daysOld", `${Math.max(0.1, n - 0.1)}-${n + 0.9}`);
     }
   }
 
@@ -95,7 +100,7 @@ async function fetchListings(searchCriteria: Record<string, unknown>): Promise<u
   params.set("limit", String(Math.min(Number(resultLimit) || 500, 500)));
 
   const url = `${endpoint}?${params.toString()}`;
-  console.log("[run-due-automations] RentCast request:", url);
+  console.log("[run-due-automations] RentCast:", url);
 
   const res = await fetch(url, {
     headers: { "X-Api-Key": RENTCAST_API_KEY, "Accept": "application/json" },
@@ -103,7 +108,6 @@ async function fetchListings(searchCriteria: Record<string, unknown>): Promise<u
 
   if (!res.ok) {
     const text = await res.text();
-    console.error("[run-due-automations] RentCast error:", res.status, text);
     throw new Error(`RentCast ${res.status}: ${text}`);
   }
 
@@ -143,7 +147,6 @@ async function sendToDestination(
       const b = await r.json().catch(() => ({}));
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? `send-to-twilio ${r.status}` };
     }
-
     case "mailchimp": {
       if (!config.list_id) return { sent: 0, error: "Mailchimp audience not configured" };
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-mailchimp`, {
@@ -154,7 +157,6 @@ async function sendToDestination(
       const b = await r.json().catch(() => ({}));
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "Mailchimp error" };
     }
-
     case "hubspot": {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-hubspot`, {
         method: "POST",
@@ -164,7 +166,6 @@ async function sendToDestination(
       const b = await r.json().catch(() => ({}));
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "HubSpot error" };
     }
-
     case "sheets": {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-sheets`, {
         method: "POST",
@@ -174,7 +175,6 @@ async function sendToDestination(
       const b = await r.json().catch(() => ({}));
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "Sheets error" };
     }
-
     case "sendgrid": {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-sendgrid`, {
         method: "POST",
@@ -184,11 +184,7 @@ async function sendToDestination(
       const b = await r.json().catch(() => ({}));
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "SendGrid error" };
     }
-
-    case "webhook":
-    case "zapier":
-    case "make":
-    case "n8n": {
+    case "webhook": case "zapier": case "make": case "n8n": {
       const webhookUrl = String(config.webhook_url ?? "");
       if (!webhookUrl) return { sent: 0, error: "No webhook URL configured" };
       const res = await fetch(webhookUrl, {
@@ -203,17 +199,13 @@ async function sendToDestination(
       });
       return res.ok ? { sent: listings.length } : { sent: 0, error: `HTTP ${res.status}` };
     }
-
     default:
-      console.warn("[run-due-automations] Unknown destination type:", destType);
       return { sent: 0, error: `Unsupported destination: ${destType}` };
   }
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   const now = new Date();
@@ -238,15 +230,14 @@ serve(async (req) => {
   for (const automation of dueAutomations ?? []) {
     const automationId = automation.id as string;
     const automationName = automation.name as string;
-    const scheduleTime: string = (automation.schedule_time as string | null) ?? "08:00";
+    // Default 03:00 PST — captures full prior workday, fires before business hours
+    const scheduleTime: string = (automation.schedule_time as string | null) ?? "03:00";
 
     console.log(`[run-due-automations] running "${automationName}"`);
 
-    // Compute next_run_at BEFORE running — anchored to wall-clock, not actual run time
+    // Set next_run_at FIRST — before executing — so a crash can't cause a re-run next hour
     const nextRunAt = nextRunAtPacific(scheduleTime, now.getTime());
-    console.log(`[run-due-automations] next_run_at="${nextRunAt.toISOString()}" (schedule: ${scheduleTime} PT)`);
-
-    // Set next_run_at IMMEDIATELY so even if the run fails, it won't re-run next hour
+    console.log(`[run-due-automations] next_run_at="${nextRunAt.toISOString()}" (${scheduleTime} PT)`);
     await supabase.from("automations").update({
       next_run_at: nextRunAt.toISOString(),
       updated_at: now.toISOString(),
@@ -273,7 +264,7 @@ serve(async (req) => {
       errorMsg = e.message;
     }
 
-    // Log run — only columns that exist in automation_runs table
+    // Log — only valid automation_runs columns (no error_message)
     const { error: logErr } = await supabase.from("automation_runs").insert({
       automation_id: automationId,
       user_id: automation.user_id,
@@ -287,7 +278,7 @@ serve(async (req) => {
         ? `Sent ${listingsSent} listings to ${automation.destination_label ?? automation.destination_type}`
         : `Completed with issues: ${errorMsg ?? "unknown"}`,
     });
-    if (logErr) console.error(`[run-due-automations] log insert error for "${automationName}":`, logErr.message);
+    if (logErr) console.error(`[run-due-automations] log insert error:`, logErr.message);
 
     // Update last_run_at (next_run_at already set above)
     await supabase.from("automations").update({
