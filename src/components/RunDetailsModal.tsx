@@ -176,18 +176,18 @@ export function RunDetailsModal({
                   <div className="flex items-center gap-2 mb-1">
                     <Download className="w-4 h-4 text-blue-600" />
                     <p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                      Listings Imported
+                      Listings Fetched
                     </p>
                   </div>
                   <p className="font-bold text-[24px] text-[#342e37] dark:text-white">
-                    {run.listingsFound ?? 0}
+                    {run.listingsFetched ?? run.listingsFound ?? 0}
                   </p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Upload className="w-4 h-4 text-green-600" />
                     <p className="text-[11px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                      Listings Exported
+                      Confirmed Exported
                     </p>
                   </div>
                   <p className="font-bold text-[24px] text-[#342e37] dark:text-white">

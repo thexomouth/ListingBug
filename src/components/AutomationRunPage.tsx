@@ -17,6 +17,7 @@ interface AutomationRunPageProps {
     runDate: string;
     status: string;
     listingsFound: number;
+    listingsFetched?: number;
     listingsSent: number;
     destination: string;
     details?: string;
@@ -157,11 +158,11 @@ export function AutomationRunPage({ run, onBack }: AutomationRunPageProps) {
           </span>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FFCE0A]/20 rounded-full text-xs text-[#342e37] dark:text-[#FFCE0A] font-medium">
             <Download className="w-3 h-3" />
-            {run.listingsFound} listing{run.listingsFound !== 1 ? 's' : ''} imported
+            {run.listingsFetched ?? run.listingsFound} listing{(run.listingsFetched ?? run.listingsFound) !== 1 ? 's' : ''} fetched
           </span>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-white/10 rounded-full text-xs text-gray-700 dark:text-gray-300">
             <Send className="w-3 h-3" />
-            {run.listingsSent} exported → {run.destination || 'destination'}
+            {run.listingsSent} confirmed → {run.destination || 'destination'}
           </span>
         </div>
       </div>
@@ -177,6 +178,9 @@ export function AutomationRunPage({ run, onBack }: AutomationRunPageProps) {
           <p className="text-gray-500 dark:text-gray-400 font-medium">No listing data stored for this run</p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
             Listing-level detail is captured on runs after this feature was enabled.
+          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+            Future runs will show a full per-listing breakdown here.
           </p>
         </div>
       ) : (
