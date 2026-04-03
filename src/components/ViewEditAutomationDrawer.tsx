@@ -46,6 +46,7 @@ export function ViewEditAutomationDrawer({
   const [loadingConnections, setLoadingConnections] = useState(false);
   const [automationName, setAutomationName] = useState('');
   const [selectedDestination, setSelectedDestination] = useState('');
+  const [originalDestination, setOriginalDestination] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
   const [daysOld, setDaysOld] = useState('');
   const [city, setCity] = useState('');
@@ -78,6 +79,7 @@ export function ViewEditAutomationDrawer({
     if (isOpen && automation) {
       setAutomationName(automation.name ?? '');
       setSelectedDestination(automation.destination?.type ?? '');
+      setOriginalDestination(automation.destination?.type ?? '');
       setWebhookUrl(automation.destination?.config?.webhook_url ?? '');
       const c = automation.searchCriteria ?? {};
       setDaysOld(c.daysOld != null ? String(c.daysOld) : '');
@@ -105,6 +107,7 @@ export function ViewEditAutomationDrawer({
       toast.error(`Webhook URL is required for ${integration.name}`);
       return;
     }
+
     const updatedCriteria = {
       ...automation.searchCriteria,
       daysOld: parseInt(daysOld),
@@ -116,10 +119,34 @@ export function ViewEditAutomationDrawer({
       propertyType: propertyType || undefined,
       bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
     };
-    const destConfig = {
-      ...(automation.destination?.config ?? {}),
-      ...(integration?.webhookField ? { webhook_url: webhookUrl } : {}),
-    };
+
+    // If destination changed, fetch the fresh config for the new destination.
+    // Never inherit config from a different integration — the shapes are incompatible.
+    let destConfig: Record<string, any> = {};
+    if (selectedDestination !== originalDestination) {
+      // Destination changed — pull the stored config for the newly selected integration
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: connRow } = await supabase
+          .from('integration_connections')
+          .select('config')
+          .eq('user_id', user.id)
+          .eq('integration_id', selectedDestination)
+          .maybeSingle();
+        destConfig = connRow?.config ?? {};
+      }
+      // For webhook-based integrations, overlay the URL the user just entered
+      if (integration?.webhookField) {
+        destConfig = { ...destConfig, webhook_url: webhookUrl };
+      }
+    } else {
+      // Same destination — preserve existing config, just update webhook URL if applicable
+      destConfig = {
+        ...(automation.destination?.config ?? {}),
+        ...(integration?.webhookField ? { webhook_url: webhookUrl } : {}),
+      };
+    }
+
     const destLabel = integration?.name ?? selectedDestination;
 
     if (automation.id) {
@@ -241,7 +268,7 @@ export function ViewEditAutomationDrawer({
                 )}
               </div>
 
-              {/* Search criteria — always visible, never in a dropdown */}
+              {/* Search criteria */}
               <div>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Search Criteria</p>
                 {hasCriteria ? (
@@ -277,7 +304,7 @@ export function ViewEditAutomationDrawer({
                 )}
               </div>
 
-              {/* Error callout when last run failed */}
+              {/* Error callout */}
               {automation.lastRun?.status === 'failed' && (
                 <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl">
                   <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
@@ -318,7 +345,6 @@ export function ViewEditAutomationDrawer({
                   Edit these to fix failing automations. Days Listed is required.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Days Listed — full width, prominent */}
                   <div className="col-span-2 space-y-1">
                     <label className="text-[12px] font-medium text-gray-600 dark:text-gray-400">
                       Days Listed <span className="text-red-500">*</span>
@@ -386,6 +412,14 @@ export function ViewEditAutomationDrawer({
               {/* Destination */}
               <div className="space-y-3">
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Destination</p>
+                {selectedDestination !== originalDestination && selectedDestination && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-amber-700 dark:text-amber-400">
+                      Destination changed — the config for <strong>{LAUNCH_INTEGRATIONS.find(i => i.id === selectedDestination)?.name}</strong> will be loaded from your integration settings.
+                    </p>
+                  </div>
+                )}
 
                 {loadingConnections ? (
                   <p className="text-[13px] text-gray-400">Loading your integrations...</p>
