@@ -97,22 +97,19 @@ interface AutomationsManagementPageProps {
 }
 
 export function AutomationsManagementPage({ onViewDetail, initialTab = 'create', onNavigate, onViewRunDetails }: AutomationsManagementPageProps = {}) {
-  // Walkthrough integration
   const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
   const walkthroughStep3Active = isStepActive(3);
   
   const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(() => {
-    // Try to restore last tab from sessionStorage
     const lastTab = sessionStorage.getItem('listingbug_automations_last_tab');
     if (lastTab && ['create','automations','history'].includes(lastTab)) {
       return lastTab as 'create' | 'automations' | 'history';
     }
     return initialTab;
   });
-    // Persist activeTab to sessionStorage on change
-    useEffect(() => {
-      sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
-    }, [activeTab]);
+  useEffect(() => {
+    sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
+  }, [activeTab]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
   const [expandedAutomations, setExpandedAutomations] = useState<Set<string>>(new Set());
@@ -123,16 +120,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
   const [runDetailsModalOpen, setRunDetailsModalOpen] = useState(false);
   const [selectedRun, setSelectedRun] = useState<RunHistoryItem | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  
-  // Automation limit modal state
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<ReturnType<typeof getCurrentPlan>>(getCurrentPlan());
-
-  // Automations data state
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [automationsLoading, setAutomationsLoading] = useState(true);
 
-  // Compute usage from real Supabase count + real plan (not localStorage)
   const realCount = automations.length;
   const planLimits = getPlanLimits(currentPlan);
   const maxSlots = planLimits.automationSlots;
@@ -145,12 +137,10 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
   };
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
 
-  // Load automations from Supabase
   const loadAutomations = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) { setAutomationsLoading(false); return; }
     const userId = session.user.id;
-    // Fetch real plan from DB
     const { data: userData } = await supabase.from('users').select('plan').eq('id', userId).single();
     if (userData?.plan) {
       const planMap: Record<string, PlanType> = { trial: 'trial', starter: 'starter', professional: 'pro', enterprise: 'enterprise' };
@@ -195,31 +185,20 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     })));
   }, []);
 
-  // Load on mount + real-time subscription for new automation_runs
   useEffect(() => {
     loadAutomations();
     loadRunHistory();
-
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') { loadAutomations(); loadRunHistory(); }
       if (event === 'SIGNED_OUT') { setAutomations([]); setRunHistory([]); }
     });
-
-    // Real-time: reload run history whenever a new automation_run is inserted
     const runsSub = supabase
       .channel('automation_runs_changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'automation_runs' }, () => {
-        loadRunHistory();
-      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'automation_runs' }, () => { loadRunHistory(); })
       .subscribe();
-
-    return () => {
-      authSub.unsubscribe();
-      supabase.removeChannel(runsSub);
-    };
+    return () => { authSub.unsubscribe(); supabase.removeChannel(runsSub); };
   }, []);
 
-  // Handle prefill from saved search navigation
   useEffect(() => {
     const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
     if (prefillData) {
@@ -236,7 +215,6 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       sessionStorage.removeItem('listingbug_automations_tab');
     }
   }, []);
-  // ── Handler functions ────────────────────────────────────────────
 
   const handleToggleAutomation = async (id: string) => {
     const automation = automations.find(a => a.id === id);
@@ -253,23 +231,18 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
   };
 
   const handleRunNow = async (automation: any) => {
-    // Do all pre-flight checks BEFORE setting loading state.
-    // Setting loading state first causes RunAutomationLoading to mount mid-logic,
-    // which triggers a React re-render that can abort the in-flight fetch in some
-    // browser environments — showing "load failed" even though the preflight OPTIONS
-    // succeeded (verifiable in Supabase edge function logs).
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      // Check listing usage before running — same caps enforced server-side
       const PLAN_CAPS: Record<string, number> = {
         trial: 1000, starter: 4000, pro: 10000, professional: 10000, enterprise: Infinity,
       };
       const monthYear = new Date().toISOString().slice(0, 7);
       const [{ data: profile }, { data: usageRow }] = await Promise.all([
         supabase.from('users').select('plan').eq('id', session.user.id).single(),
-        supabase.from('usage_tracking').select('listings_fetched').eq('user_id', session.user.id).eq('month_year', monthYear).single(),
+        // maybeSingle() returns null (not 406) when no row exists for this month
+        supabase.from('usage_tracking').select('listings_fetched').eq('user_id', session.user.id).eq('month_year', monthYear).maybeSingle(),
       ]);
       const cap = PLAN_CAPS[profile?.plan ?? 'trial'] ?? 1000;
       const used = usageRow?.listings_fetched ?? 0;
@@ -278,11 +251,8 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         return;
       }
 
-      // All checks passed — NOW show the loading modal and fire the fetch.
-      // The token is captured in this closure so the re-render from setRunNowLoading
-      // cannot invalidate it.
+      // All checks passed — show loading modal and fire the fetch
       const token = session.access_token;
-      const userId = session.user.id;
       setRunNowLoading(true);
       setRunningAutomation(automation);
 
@@ -291,7 +261,6 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'X-Automation-User-Id': userId,
         },
         body: JSON.stringify({ automation_id: automation.id }),
       });
@@ -360,99 +329,41 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
-      {/* Header */}
       <div className="bg-white dark:bg-[#0f0f0f]">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-4">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
           </div>
-          <p className="text-gray-600 dark:text-gray-400 text-[15px]">
-            Automate your searches. Deliver listings to your tools.
-          </p>
+          <p className="text-gray-600 dark:text-gray-400 text-[15px]">Automate your searches. Deliver listings to your tools.</p>
         </div>
       </div>
 
-      {/* Content Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Tabs */}
         <div className="border-b border-gray-200 dark:border-white/10 mb-4">
           <nav className="flex">
-            <button
-              onClick={() => setActiveTab('create')}
-              className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${
-                activeTab === 'create'
-                  ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              Create
-            </button>
-            <button
-              onClick={() => setActiveTab('automations')}
-              className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${
-                activeTab === 'automations'
-                  ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              My Automations
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${
-                activeTab === 'history'
-                  ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              History
-            </button>
+            <button onClick={() => setActiveTab('create')} className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${activeTab === 'create' ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>Create</button>
+            <button onClick={() => setActiveTab('automations')} className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${activeTab === 'automations' ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>My Automations</button>
+            <button onClick={() => setActiveTab('history')} className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${activeTab === 'history' ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>History</button>
           </nav>
         </div>
 
-        {/* Content */}
         {activeTab === 'create' ? (
-          /* Create Tab - Check automation limits */
           automationUsage.isAtLimit && !walkthroughStep3Active ? (
-            // Show limit reached message instead of create form
             <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-amber-200 dark:border-amber-500/30 rounded-lg">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
-                <AlertTriangle className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-              </div>
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]"><AlertTriangle className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" /></div>
               <p className="text-gray-900 dark:text-white text-[18px] font-bold mb-2">Automation Limit Reached</p>
-              <p className="text-gray-600 dark:text-[#EBF2FA] text-[14px] mb-6">
-                You've used {automationUsage.current} of {automationUsage.max} automation slots on your {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan.
-              </p>
+              <p className="text-gray-600 dark:text-[#EBF2FA] text-[14px] mb-6">You've used {automationUsage.current} of {automationUsage.max} automation slots on your {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan.</p>
               <div className="flex items-center justify-center gap-3">
-                <LBButton 
-                  onClick={() => setLimitModalOpen(true)}
-                  className="bg-[#ffd447] hover:bg-[#ffd447]/90"
-                >
-                  View Options
-                </LBButton>
-                <Button
-                  variant="outline"
-                  onClick={() => setActiveTab('automations')}
-                >
-                  Manage Existing
-                </Button>
+                <LBButton onClick={() => setLimitModalOpen(true)} className="bg-[#ffd447] hover:bg-[#ffd447]/90">View Options</LBButton>
+                <Button variant="outline" onClick={() => setActiveTab('automations')}>Manage Existing</Button>
               </div>
             </div>
           ) : (
             <CreateAutomationPage
               onAutomationCreated={(automation) => {
-                // Check limit before creating (use real Supabase count)
                 const limitCheck = canCreateAutomation(currentPlan, automations.length);
-                
-                if (!limitCheck.allowed && !walkthroughStep3Active) {
-                  // Show limit modal
-                  setLimitModalOpen(true);
-                  toast.error('Automation limit reached');
-                  return;
-                }
-                
-                // Create automation (includes toast and tab switch)
+                if (!limitCheck.allowed && !walkthroughStep3Active) { setLimitModalOpen(true); toast.error('Automation limit reached'); return; }
                 handleAutomationCreated(automation);
               }}
             />
@@ -462,49 +373,21 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[18px] text-gray-900 dark:text-white">Your Automations ({automations.length})</h3>
             </div>
-
             {automationsLoading ? (
               <LBTable>
-                <LBTableHeader>
-                  <LBTableRow>
-                    <LBTableHead className="text-right"></LBTableHead>
-                    <LBTableHead>Name</LBTableHead>
-                    <LBTableHead className="hidden md:table-cell">Last Run</LBTableHead>
-                    <LBTableHead className="hidden md:table-cell">Search Results</LBTableHead>
-                    <LBTableHead className="hidden md:table-cell">Export Results</LBTableHead>
-                    <LBTableHead className="text-right"></LBTableHead>
-                  </LBTableRow>
-                </LBTableHeader>
-                <LBTableBody>
-                  {Array.from({ length: 4 }).map((_, i) => <SkeletonAutomationRow key={i} />)}
-                </LBTableBody>
+                <LBTableHeader><LBTableRow><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Export Results</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
+                <LBTableBody>{Array.from({ length: 4 }).map((_, i) => <SkeletonAutomationRow key={i} />)}</LBTableBody>
               </LBTable>
             ) : automations.length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
-                <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
-                  <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-                </div>
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]"><Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" /></div>
                 <p className="text-gray-600 dark:text-white text-[18px] mb-2 font-bold">No automations yet</p>
-                <p className="text-gray-500 dark:text-[#EBF2FA] text-[14px] mb-6">
-                  Automate a search to deliver listings to your CRM, email lists, or other tools
-                </p>
-                <LBButton onClick={() => setActiveTab('create')}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Automation
-                </LBButton>
+                <p className="text-gray-500 dark:text-[#EBF2FA] text-[14px] mb-6">Automate a search to deliver listings to your CRM, email lists, or other tools</p>
+                <LBButton onClick={() => setActiveTab('create')}><Plus className="w-4 h-4 mr-2" />Create Automation</LBButton>
               </div>
             ) : (
               <LBTable>
-                <LBTableHeader>
-                  <LBTableRow>
-                    <LBTableHead className="text-right"></LBTableHead>
-                    <LBTableHead>Name</LBTableHead>
-                    <LBTableHead className="hidden md:table-cell">Last Run</LBTableHead>
-                    <LBTableHead className="hidden md:table-cell">Search Results</LBTableHead>
-                    <LBTableHead className="hidden md:table-cell">Export Results</LBTableHead>
-                    <LBTableHead className="text-right"></LBTableHead>
-                  </LBTableRow>
-                </LBTableHeader>
+                <LBTableHeader><LBTableRow><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Export Results</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>
                   {automations.map((automation) => {
                     const lastRun = runHistory.find(r => r.automationName === automation.name);
@@ -513,21 +396,14 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                     const lastRunFound = lastRun?.listingsFound ?? 0;
                     const lastRunSent = lastRun?.listingsSent ?? 0;
                     return (
-                      <LBTableRow
-                        key={automation.id}
-                        onClick={() => { setSelectedAutomation(automation); setEditModalOpen(true); }}
-                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5"
-                      >
-                        {/* Toggle column (leftmost) */}
+                      <LBTableRow key={automation.id} onClick={() => { setSelectedAutomation(automation); setEditModalOpen(true); }} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
                         <LBTableCell className="text-right">
-                          <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }}
-                            className="inline-flex items-center cursor-pointer select-none justify-end">
+                          <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }} className="inline-flex items-center cursor-pointer select-none justify-end">
                             <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>
                               <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${automation.active ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
                           </div>
                         </LBTableCell>
-                        {/* Name and details */}
                         <LBTableCell>
                           <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
                           {lastRun && (
@@ -548,59 +424,26 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                                 {lastRunStatus === 'success' ? 'Success' : 'Failed'}
                               </span>
                               <span className="text-[11px] text-gray-400">{formatDate(lastRunDate ?? '')}</span>
-                              {lastRunStatus === 'failed' && lastRun.details && (
-                                <span className="text-[11px] text-red-500 max-w-[180px] truncate" title={lastRun.details}>{lastRun.details}</span>
-                              )}
+                              {lastRunStatus === 'failed' && lastRun.details && (<span className="text-[11px] text-red-500 max-w-[180px] truncate" title={lastRun.details}>{lastRun.details}</span>)}
                             </div>
-                          ) : (
-                            <span className="text-[12px] text-gray-400 italic">Never run</span>
-                          )}
+                          ) : (<span className="text-[12px] text-gray-400 italic">Never run</span>)}
+                        </LBTableCell>
+                        <LBTableCell className="hidden md:table-cell">
+                          {lastRun ? (<div className="flex flex-col gap-0.5"><span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span><span className="text-[11px] text-gray-400">listings found</span></div>) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
                           {lastRun ? (
                             <div className="flex flex-col gap-0.5">
-                              <span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span>
-                              <span className="text-[11px] text-gray-400">listings found</span>
+                              {lastRunStatus === 'success' ? (<><span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span><span className="text-[11px] text-gray-400">exported</span></>) : (<><span className="font-bold text-[15px] text-red-500">0</span><span className="text-[11px] text-red-400">export failed</span></>)}
                             </div>
                           ) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
-                        <LBTableCell className="hidden md:table-cell">
-                          {lastRun ? (
-                            <div className="flex flex-col gap-0.5">
-                              {lastRunStatus === 'success' ? (
-                                <>
-                                  <span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span>
-                                  <span className="text-[11px] text-gray-400">exported</span>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="font-bold text-[15px] text-red-500">0</span>
-                                  <span className="text-[11px] text-red-400">export failed</span>
-                                </>
-                              )}
-                            </div>
-                          ) : <span className="text-[12px] text-gray-400">—</span>}
-                        </LBTableCell>
-                        {/* Play/Trash column (rightmost) */}
                         <LBTableCell className="text-right">
                           <div className="inline-flex items-center justify-end gap-3">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleRunNow(automation); }}
-                              disabled={runNowLoading && runningAutomation?.id === automation.id}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50"
-                              title="Run now"
-                            >
-                              {runNowLoading && runningAutomation?.id === automation.id
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <Play className="w-4 h-4" />}
+                            <button onClick={(e) => { e.stopPropagation(); handleRunNow(automation); }} disabled={runNowLoading && runningAutomation?.id === automation.id} className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50" title="Run now">
+                              {runNowLoading && runningAutomation?.id === automation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                             </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(automation.id); }}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                              title="Delete automation"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(automation.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete automation"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </LBTableCell>
                       </LBTableRow>
@@ -611,84 +454,33 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
             )}
           </div>
         ) : (
-          /* Run History Tab */
           <div>
             <h3 className="font-bold text-[18px] mb-4 text-gray-900 dark:text-white">Run History</h3>
-            
-            {/* Mobile Card View */}
             <div className="block lg:hidden space-y-3">
               {runHistory.map((run) => (
-                <div
-                  key={run.id}
-                  className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-4 space-y-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                  onClick={() => {
-                    if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); }
-                  }}
-                >
-                  {/* Header Row - Status & Date */}
+                <div key={run.id} className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-4 space-y-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors" onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium ${
-                          run.status === 'success'
-                            ? 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400'
-                            : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-400'
-                        }`}>
-                          {run.status === 'success' ? (
-                            <CheckCircle className="w-3.5 h-3.5" />
-                          ) : (
-                            <XCircle className="w-3.5 h-3.5" />
-                          )}
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium ${run.status === 'success' ? 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400' : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-400'}`}>
+                          {run.status === 'success' ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                           {run.status === 'success' ? 'Success' : 'Failed'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-[13px] text-gray-500 dark:text-gray-400">
                         <Clock className="w-3.5 h-3.5" />
-                        {new Date(run.runDate).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
+                        {new Date(run.runDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-[20px] font-bold text-gray-900 dark:text-white">{run.listingsSent}</div>
-                      <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listings</div>
-                    </div>
+                    <div className="text-right"><div className="text-[20px] font-bold text-gray-900 dark:text-white">{run.listingsSent}</div><div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listings</div></div>
                   </div>
-                  {/* Automation Name */}
-                  <div>
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Automation</div>
-                    <div className="font-medium text-[14px] text-gray-900 dark:text-white">{run.automationName}</div>
-                  </div>
-                  {/* Destination */}
-                  <div>
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Destination</div>
-                    <div className="font-medium text-[14px] text-gray-700 dark:text-gray-300">{run.destination}</div>
-                  </div>
-                  {/* Details */}
-                  {run.details && (
-                    <div className="pt-2 border-t border-gray-100 dark:border-white/10">
-                      <div className="text-[13px] text-gray-500 dark:text-gray-400">{run.details}</div>
-                    </div>
-                  )}
+                  <div><div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Automation</div><div className="font-medium text-[14px] text-gray-900 dark:text-white">{run.automationName}</div></div>
+                  <div><div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Destination</div><div className="font-medium text-[14px] text-gray-700 dark:text-gray-300">{run.destination}</div></div>
+                  {run.details && (<div className="pt-2 border-t border-gray-100 dark:border-white/10"><div className="text-[13px] text-gray-500 dark:text-gray-400">{run.details}</div></div>)}
                 </div>
               ))}
-              
-              {runHistory.length === 0 && (
-                <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]">
-                    <Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-                  </div>
-                  <p className="text-gray-600 dark:text-white font-medium">No run history yet</p>
-                  <p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p>
-                </div>
-              )}
+              {runHistory.length === 0 && (<div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg"><div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]"><Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" /></div><p className="text-gray-600 dark:text-white font-medium">No run history yet</p><p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p></div>)}
             </div>
-
-            {/* Desktop Table View */}
             <div className="hidden lg:block">
               <div className="w-full overflow-auto rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a]">
                 <LBTable className="bg-white dark:bg-[#1a1a1a]">
@@ -704,40 +496,20 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                   </LBTableHeader>
                   <LBTableBody>
                     {runHistory.map((run) => (
-                      <LBTableRow
-                        key={run.id}
-                        className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer"
-                        onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}
-                      >
-                        <LBTableCell className="font-medium text-gray-900 dark:text-white">
-                          {new Date(run.runDate).toLocaleString()}
-                        </LBTableCell>
+                      <LBTableRow key={run.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer" onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}>
+                        <LBTableCell className="font-medium text-gray-900 dark:text-white">{new Date(run.runDate).toLocaleString()}</LBTableCell>
                         <LBTableCell className="text-gray-900 dark:text-white">{run.automationName}</LBTableCell>
                         <LBTableCell className="text-gray-600 dark:text-gray-300">{run.destination}</LBTableCell>
                         <LBTableCell>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                            run.status === 'success'
-                              ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400'
-                              : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
-                          }`}>
-                            {run.status === 'success' ? (
-                              <CheckCircle className="w-3 h-3" />
-                            ) : (
-                              <XCircle className="w-3 h-3" />
-                            )}
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${run.status === 'success' ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'}`}>
+                            {run.status === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                             {run.status === 'success' ? 'Success' : 'Failed'}
                           </span>
                         </LBTableCell>
-                        <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">
-                          {run.listingsSent}
-                        </LBTableCell>
+                        <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">{run.listingsSent}</LBTableCell>
                         <LBTableCell>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}
-                            className="flex items-center gap-1 text-[12px] text-[#FFCE0A] hover:text-[#FFCE0A]/80 font-medium transition-colors"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            View
+                          <button onClick={(e) => { e.stopPropagation(); if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }} className="flex items-center gap-1 text-[12px] text-[#FFCE0A] hover:text-[#FFCE0A]/80 font-medium transition-colors">
+                            <Eye className="w-3.5 h-3.5" />View
                           </button>
                         </LBTableCell>
                       </LBTableRow>
@@ -745,100 +517,28 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                   </LBTableBody>
                 </LBTable>
               </div>
-              
-              {runHistory.length === 0 && (
-                <div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg">
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]">
-                    <Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-                  </div>
-                  <p className="text-gray-600 dark:text-white font-medium">No run history yet</p>
-                  <p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p>
-                </div>
-              )}
+              {runHistory.length === 0 && (<div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg"><div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]"><Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" /></div><p className="text-gray-600 dark:text-white font-medium">No run history yet</p><p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p></div>)}
             </div>
           </div>
         )}
       </div>
 
-      {/* Edit Automation Modal */}
-      <ViewEditAutomationDrawer
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        automation={selectedAutomation}
-        onAutomationUpdated={handleAutomationUpdated}
-        onViewDetail={onViewDetail}
-      />
+      <ViewEditAutomationDrawer isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} automation={selectedAutomation} onAutomationUpdated={handleAutomationUpdated} onViewDetail={onViewDetail} />
 
-      {/* Run Now Loading Modal */}
       {runningAutomation && (
-        <RunAutomationLoading
-          isOpen={runNowLoading}
-          automationName={runningAutomation.name}
-          searchName={runningAutomation.searchName}
-          destinationType={runningAutomation.destination.type}
-          destinationLabel={runningAutomation.destination.label}
-          onCancel={() => {
-            setRunNowLoading(false);
-            setRunningAutomation(null);
-          }}
+        <RunAutomationLoading isOpen={runNowLoading} automationName={runningAutomation.name} searchName={runningAutomation.searchName} destinationType={runningAutomation.destination.type} destinationLabel={runningAutomation.destination.label}
+          onCancel={() => { setRunNowLoading(false); setRunningAutomation(null); }}
         />
       )}
-      
-      {/* Walkthrough Overlay - Step 3: Create Automation */}
-      <WalkthroughOverlay
-        isActive={walkthroughStep3Active}
-        step={3}
-        totalSteps={totalSteps}
-        title="Create your first automation"
-        description="Fill out the form above to create your first automation. Select the search you just saved, choose a schedule, and pick where you want the listings delivered. Then click 'Create Automation' at the bottom."
-        position="center"
-        ctaText="Got it"
-        onNext={() => {
-          // Just dismiss - user will complete by creating the automation
-        }}
-        onSkip={skipWalkthrough}
-      />
-      
-      {/* Walkthrough Overlay - Step 4: Connect Integration */}
-      <WalkthroughOverlay
-        isActive={isStepActive(4)}
-        step={4}
-        totalSteps={totalSteps}
-        title="All set! You're ready to go"
-        description="Your automation is active and will run on schedule. You've completed the setup! Remember to review compliance requirements in Settings to ensure your data handling meets regulations."
-        position="center"
-        ctaText="Finish walkthrough"
-        onNext={() => {
-          completeStep(4);
-        }}
-        onSkip={skipWalkthrough}
-      />
-      
-      {/* Automation Limit Modal */}
-      <AutomationLimitModal
-        isOpen={limitModalOpen}
-        onClose={() => setLimitModalOpen(false)}
-        currentPlan={currentPlan}
-        currentSlots={automationUsage.current}
-        maxSlots={automationUsage.max === Infinity ? 999 : automationUsage.max}
-        onUpgrade={() => {
-          sessionStorage.setItem('billing_open_change_plan', 'true');
-          onNavigate?.('billing');
-        }}
-        onContactSupport={() => {
-          onNavigate?.('contact-support');
-        }}
-      />
-      
-      {/* Delete Confirmation Dialog */}
+
+      <WalkthroughOverlay isActive={walkthroughStep3Active} step={3} totalSteps={totalSteps} title="Create your first automation" description="Fill out the form above to create your first automation. Select the search you just saved, choose a schedule, and pick where you want the listings delivered. Then click 'Create Automation' at the bottom." position="center" ctaText="Got it" onNext={() => {}} onSkip={skipWalkthrough} />
+      <WalkthroughOverlay isActive={isStepActive(4)} step={4} totalSteps={totalSteps} title="All set! You're ready to go" description="Your automation is active and will run on schedule. You've completed the setup! Remember to review compliance requirements in Settings to ensure your data handling meets regulations." position="center" ctaText="Finish walkthrough" onNext={() => { completeStep(4); }} onSkip={skipWalkthrough} />
+
+      <AutomationLimitModal isOpen={limitModalOpen} onClose={() => setLimitModalOpen(false)} currentPlan={currentPlan} currentSlots={automationUsage.current} maxSlots={automationUsage.max === Infinity ? 999 : automationUsage.max} onUpgrade={() => { sessionStorage.setItem('billing_open_change_plan', 'true'); onNavigate?.('billing'); }} onContactSupport={() => { onNavigate?.('contact-support'); }} />
+
       <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Automation</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this automation? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Delete Automation</DialogTitle><DialogDescription>Are you sure you want to delete this automation? This action cannot be undone.</DialogDescription></DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Back</Button>
             <Button variant="destructive" onClick={() => { if (deleteConfirmId) { handleDeleteAutomation(deleteConfirmId); setDeleteConfirmId(null); } }}>Yes, Delete</Button>
@@ -846,24 +546,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         </DialogContent>
       </Dialog>
 
-      {/* Run Details Modal */}
-      <RunDetailsModal
-        isOpen={runDetailsModalOpen}
-        onClose={() => {
-          setRunDetailsModalOpen(false);
-          setSelectedRun(null);
-        }}
-        run={selectedRun ? {
-          id: selectedRun.id,
-          automation: selectedRun.automationName,
-          date: selectedRun.runDate,
-          status: selectedRun.status,
-          listingsFound: selectedRun.listingsFound,
-          exported: selectedRun.listingsSent,
-          destination: selectedRun.destination,
-          details: selectedRun.details
-        } : null}
-      />
+      <RunDetailsModal isOpen={runDetailsModalOpen} onClose={() => { setRunDetailsModalOpen(false); setSelectedRun(null); }} run={selectedRun ? { id: selectedRun.id, automation: selectedRun.automationName, date: selectedRun.runDate, status: selectedRun.status, listingsFound: selectedRun.listingsFound, exported: selectedRun.listingsSent, destination: selectedRun.destination, details: selectedRun.details } : null} />
     </div>
   );
 }
