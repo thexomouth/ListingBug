@@ -116,10 +116,6 @@ serve(async (req) => {
       propertyType, bedrooms, bathrooms, squareFootage, lotSize, yearBuilt, daysOld: rawDaysOld,
       minPrice, maxPrice, status = "Active", limit: resultLimit = 500, offset = 0 } = body;
 
-    // Validate daysOld: must be a single positive integer from the client.
-    // We convert it server-side into a narrow decimal range (N-0.2)-(N+0.8)
-    // before sending to RentCast. Passing a plain integer like 7 returns ALL
-    // listings from the last 7 days; the decimal range targets only ~day N.
     let daysOld: number | undefined = undefined;
     let daysOldRentcastParam: string | undefined = undefined;
     if (rawDaysOld !== undefined && rawDaysOld !== null && rawDaysOld !== "") {
@@ -133,8 +129,6 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "daysOld must be greater than 0." }), { status: 400, headers: corsHeaders });
       }
       daysOld = parsed;
-      // Narrow decimal range trick: (N-0.1)-(N+0.9) targets only listings
-      // that are approximately N days old, not the cumulative 0-N window.
       const lo = Math.max(0.1, parsed - 0.1);
       const hi = parsed + 0.9;
       daysOldRentcastParam = `${lo}-${hi}`;
@@ -144,7 +138,6 @@ serve(async (req) => {
     console.log("[search-listings] search params:", JSON.stringify({ city, state, zipCode, address, propertyType, status, daysOld }));
 
     // ── BUILD RENTCAST REQUEST ────────────────────────────────────────────────
-    // RentCast Sale Listings: GET https://api.rentcast.io/v1/listings/sale
     const endpoint = listingType === "rental"
       ? "https://api.rentcast.io/v1/listings/rental/long-term"
       : "https://api.rentcast.io/v1/listings/sale";
@@ -165,7 +158,6 @@ serve(async (req) => {
     if (yearBuilt) params.set("yearBuilt", String(yearBuilt));
     if (daysOldRentcastParam) params.set("daysOld", daysOldRentcastParam);
 
-    // Price: RentCast uses a range string e.g. "200000-500000" or "200000+"
     if (minPrice != null && maxPrice != null) params.set("price", `${minPrice}-${maxPrice}`);
     else if (minPrice != null) params.set("price", `${minPrice}+`);
     else if (maxPrice != null) params.set("price", `0-${maxPrice}`);
@@ -195,14 +187,11 @@ serve(async (req) => {
     let listingArray = Array.isArray(listings) ? listings : [];
     console.log("[search-listings] RentCast returned", listingArray.length, "listings");
 
-    // Post-filter: if a specific daysOld was requested, only keep listings whose
-    // daysOnMarket is within ±1 of the target day. The decimal-range param already
-    // narrows the API window, but this removes any edge-case stragglers.
     if (daysOld != null) {
       const before = listingArray.length;
       listingArray = listingArray.filter((l: any) => {
         const dom = l.daysOnMarket;
-        if (dom == null) return true; // keep if field is missing
+        if (dom == null) return true;
         return dom >= daysOld! - 1 && dom <= daysOld! + 1;
       });
       console.log(`[search-listings] daysOld post-filter: ${before} → ${listingArray.length} listings`);
@@ -274,7 +263,7 @@ serve(async (req) => {
     }
 
     // ── UPDATE USAGE TRACKING ─────────────────────────────────────────────────
-    if (!isPreview && user) {
+    if (!isPreview && user && listingArray.length > 0) {
       const monthYear = new Date().toISOString().slice(0, 7);
       const newListingsTotal = currentUsage + listingArray.length;
 
@@ -293,6 +282,15 @@ serve(async (req) => {
 
       if (usageUpsertErr) console.error("[search-listings] usage_tracking upsert error:", usageUpsertErr.message);
       else console.log("[search-listings] usage updated:", newListingsTotal, "fetched,", newSearchCount, "searches");
+
+      // Increment all-time counter on users row for the Dashboard "Listings Imported" card.
+      // This is a running total across all months, all sources (search + automations).
+      const { error: totalErr } = await supabase.rpc("increment_total_listings_fetched", {
+        p_user_id: user.id,
+        p_amount: listingArray.length,
+      });
+      if (totalErr) console.error("[search-listings] increment_total_listings_fetched error:", totalErr.message);
+      else console.log("[search-listings] all-time total incremented by", listingArray.length);
     }
 
     return new Response(
