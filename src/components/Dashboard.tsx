@@ -66,12 +66,15 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     if (pendingLoads.current <= 0) setIsDashboardLoading(false);
   };
 
-  // Reset any stuck body scroll lock left over from modals on other pages
+  // Reset any stuck body scroll lock left over from modals on other pages.
+  // Clears ALL properties set by ListingDetailModal's scroll lock.
   useEffect(() => {
     document.body.style.overflow = '';
     document.body.style.position = '';
     document.body.style.top = '';
     document.body.style.width = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
   }, []);
 
   useEffect(() => {
@@ -389,7 +392,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Automations</h2>
               <p className={`text-sm ${currentPlan !== 'enterprise' && activeAutomations.length >= currentPlanConfig.automationSlots ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
-                {activeAutomations.length} of {currentPlanConfig.automationSlots === Infinity ? '∞' : currentPlanConfig.automationSlots} automation slots used
+                {activeAutomations.length} of {currentPlanConfig.automationSlots === Infinity ? '\u221e' : currentPlanConfig.automationSlots} automation slots used
               </p>
             </div>
             <button onClick={() => onNavigate?.('automations')} className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37]">
@@ -459,24 +462,30 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         </div>
       </div>
 
-      <ListingDetailModal
-        listing={selectedListing}
-        onClose={() => setSelectedListing(null)}
-        isSaved={savedListings.some((l: any) => l.id === selectedListing?.id)}
-        onSaveListing={async (listing: any) => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          const alreadySaved = savedListings.some((l: any) => l.id === listing.id);
-          if (alreadySaved) {
-            await supabase.from('saved_listings').delete().eq('user_id', user.id).eq('listing_id', listing.id);
-            setSavedListings((prev: any[]) => prev.filter((l: any) => l.id !== listing.id));
-          } else {
-            await supabase.from('saved_listings').upsert({ user_id: user.id, listing_id: listing.id, listing_data_json: listing, saved_at: new Date().toISOString() }, { onConflict: 'user_id,listing_id' });
-            setSavedListings((prev: any[]) => [...prev, listing]);
-          }
-          window.dispatchEvent(new Event('savedListingsUpdated'));
-        }}
-      />
+      {/* Only mount the modal when a listing is selected. This ensures the modal's
+          scroll lock useEffect cleanup always runs on unmount — gating here means
+          animateClose() has already called releaseScrollLock() before onClose()
+          sets selectedListing=null, so the body is never left in a frozen state. */}
+      {selectedListing && (
+        <ListingDetailModal
+          listing={selectedListing}
+          onClose={() => setSelectedListing(null)}
+          isSaved={savedListings.some((l: any) => l.id === selectedListing?.id)}
+          onSaveListing={async (listing: any) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const alreadySaved = savedListings.some((l: any) => l.id === listing.id);
+            if (alreadySaved) {
+              await supabase.from('saved_listings').delete().eq('user_id', user.id).eq('listing_id', listing.id);
+              setSavedListings((prev: any[]) => prev.filter((l: any) => l.id !== listing.id));
+            } else {
+              await supabase.from('saved_listings').upsert({ user_id: user.id, listing_id: listing.id, listing_data_json: listing, saved_at: new Date().toISOString() }, { onConflict: 'user_id,listing_id' });
+              setSavedListings((prev: any[]) => [...prev, listing]);
+            }
+            window.dispatchEvent(new Event('savedListingsUpdated'));
+          }}
+        />
+      )}
 
       {isAutomationDrawerOpen && selectedAutomation && (
         <ViewEditAutomationDrawer
