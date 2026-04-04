@@ -99,15 +99,18 @@ async function sendToDestination(
   const config = (automation.destination_config ?? {}) as Record<string, unknown>;
   const userId = String(automation.user_id);
 
-  // Load stored credentials
+  // Load stored credentials + config
   const { data: conn } = await supabase
     .from("integration_connections")
-    .select("credentials")
+    .select("credentials, config")
     .eq("user_id", userId)
     .eq("integration_id", destType)
     .maybeSingle();
 
   const credentials = (conn?.credentials ?? {}) as Record<string, unknown>;
+  const connConfig  = (conn?.config      ?? {}) as Record<string, unknown>;
+  // Merge: connection config provides live values (e.g. spreadsheet_id), destination_config overrides if set
+  const mergedConfig = { ...connConfig, ...config };
 
   switch (destType) {
     case "twilio": {
@@ -197,15 +200,22 @@ async function sendToDestination(
     }
 
     case "google": {
+      if (!mergedConfig.spreadsheet_id) return { sent: 0, error: "No spreadsheet configured. Set one in Integrations → Google Sheets settings." };
       const fnUrl = `${SUPABASE_URL}/functions/v1/send-to-sheets`;
       const res = await fetch(fnUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}` },
-        body: JSON.stringify({ user_id: userId, listings, config }),
+        body: JSON.stringify({
+          user_id: userId,
+          listings,
+          spreadsheet_id: mergedConfig.spreadsheet_id,
+          sheet_name: mergedConfig.sheet_name ?? "Sheet1",
+          write_mode: mergedConfig.write_mode ?? "append",
+        }),
       });
-      const body = await res.json();
-      if (!res.ok) return { sent: 0, error: body.error ?? "Sheets error" };
-      return { sent: listings.length };
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) return { sent: 0, error: b.error ?? "Sheets error" };
+      return { sent: b.rows_written ?? listings.length };
     }
 
     default:

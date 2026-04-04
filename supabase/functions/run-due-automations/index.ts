@@ -167,13 +167,20 @@ async function sendToDestination(
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "HubSpot error" };
     }
     case "google": {
+      if (!config.spreadsheet_id) return { sent: 0, error: "No spreadsheet configured. Set one in Integrations → Google Sheets settings." };
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-sheets`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
-        body: JSON.stringify({ user_id: userId, listings, config }),
+        body: JSON.stringify({
+          user_id: userId,
+          listings,
+          spreadsheet_id: config.spreadsheet_id,
+          sheet_name: config.sheet_name ?? "Sheet1",
+          write_mode: config.write_mode ?? "append",
+        }),
       });
       const b = await r.json().catch(() => ({}));
-      return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "Sheets error" };
+      return r.ok ? { sent: b.rows_written ?? listings.length } : { sent: 0, error: b.error ?? "Sheets error" };
     }
     case "sendgrid": {
       const listIds: string[] = config.list_ids ?? (config.list_id ? [String(config.list_id)] : []);
