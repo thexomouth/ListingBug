@@ -1171,10 +1171,11 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                 {savedSearches.map((search) => (
                   <Card key={search.id} className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10 hover:shadow-sm transition-shadow">
                     <CardContent className="p-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-start gap-3">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-[14px] truncate">{search.name}</h4>
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.location}{search.criteriaDescription ? ` · ${search.criteriaDescription}` : ''}</p>
+                          {search.location && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.location}</p>}
+                          {search.criteriaDescription && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.criteriaDescription}</p>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <LBButton variant="outline" size="sm" onClick={() => handleLoadSavedSearch(search)}><Play className="w-3.5 h-3.5 mr-1" />Load</LBButton>
