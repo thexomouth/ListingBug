@@ -1246,7 +1246,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                       <div className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-[14px] truncate">{search.automationName || search.searchName || search.location}</p>
-                          <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.criteriaDescription ? `${search.criteriaDescription} · ` : ''}<span className="text-green-600 dark:text-green-400">{search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'}</span></p>
+                          {search.criteriaDescription && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.criteriaDescription}</p>}
+                          <p className="text-[12px] text-green-600 dark:text-green-400">{search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'}</p>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <LBButton variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); if (onViewSearchResults) onViewSearchResults(search); }}><Eye className="w-3.5 h-3.5 mr-1" />View</LBButton>
