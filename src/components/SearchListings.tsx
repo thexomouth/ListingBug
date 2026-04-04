@@ -288,7 +288,8 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         if (user.plan.toLowerCase() === 'enterprise') setListingsCap(999999);
       }
 
-      if (user.plan_status?.toLowerCase() === 'trialing' || user.trial_ends_at) {
+      const isTrialing = user.plan_status?.toLowerCase() === 'trialing' || user.plan?.toLowerCase() === 'trial';
+      if (isTrialing) {
         setIsTrialUser(true);
         const trialEnd = user.trial_ends_at ? new Date(user.trial_ends_at) : null;
         if (trialEnd) {
