@@ -1171,7 +1171,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                 {savedSearches.map((search) => (
                   <Card key={search.id} className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10 hover:shadow-sm transition-shadow">
                     <CardContent className="p-3">
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-[14px] truncate">{search.name}</h4>
                           {search.location && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.location}</p>}
