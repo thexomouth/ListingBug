@@ -775,7 +775,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
             <div className="hidden md:flex gap-1.5">
               <button
                 onClick={() => { setSelectedIntegration(integration); setEditModalOpen(true); }}
-                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-medium text-gray-700 dark:text-white bg-white dark:bg-[#0F1115] border border-gray-200 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-medium text-[#342e37] bg-[#ffd447] rounded hover:bg-[#ffd447]/90 transition-colors"
               >
                 <Eye className="w-3 h-3" />
                 View
@@ -792,7 +792,7 @@ export function IntegrationsPage({ onConnect, onManage, onNavigate }: Integratio
         ) : !isFuture ? (
           <button
             onClick={() => handleConnectClick(integration.id)}
-            className="w-full px-2 py-1.5 text-[11px] font-bold text-gray-700 dark:text-white/90 bg-white dark:bg-[#0F1115] border border-gray-200 dark:border-white/20 rounded hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+            className="w-full px-2 py-1.5 text-[11px] font-bold text-[#342e37] bg-[#ffd447] rounded hover:bg-[#ffd447]/90 transition-colors"
           >
             Connect
           </button>
