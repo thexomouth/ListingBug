@@ -446,7 +446,12 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                         <LBTableCell>
                           <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
                           {automation.lastRun
-                            ? <span className="text-[11px] text-gray-400 mt-0.5 block">{formatDate(lastRunDate ?? '')}</span>
+                            ? <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 mt-0.5">
+                                {lastRunStatus === 'success'
+                                  ? <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                                  : <XCircle className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                                {formatDate(lastRunDate ?? '')}
+                              </span>
                             : <span className="text-[11px] text-gray-400 italic mt-0.5 block">Never run</span>
                           }
                         </LBTableCell>
