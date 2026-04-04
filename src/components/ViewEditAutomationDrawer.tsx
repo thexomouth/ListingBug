@@ -47,6 +47,7 @@ export function ViewEditAutomationDrawer({
   const [automationName, setAutomationName] = useState('');
   const [selectedDestination, setSelectedDestination] = useState('');
   const [originalDestination, setOriginalDestination] = useState('');
+  const [originalDestinationLabel, setOriginalDestinationLabel] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
   const [daysOld, setDaysOld] = useState('');
   const [city, setCity] = useState('');
@@ -80,6 +81,7 @@ export function ViewEditAutomationDrawer({
       setAutomationName(automation.name ?? '');
       setSelectedDestination(automation.destination?.type ?? '');
       setOriginalDestination(automation.destination?.type ?? '');
+      setOriginalDestinationLabel(automation.destination?.label ?? automation.destination?.type ?? '');
       setWebhookUrl(automation.destination?.config?.webhook_url ?? '');
       const c = automation.searchCriteria ?? {};
       setDaysOld(c.daysOld != null ? String(c.daysOld) : '');
@@ -92,6 +94,24 @@ export function ViewEditAutomationDrawer({
       setBedrooms(c.bedrooms != null ? String(c.bedrooms) : '');
     }
   }, [isOpen, automation]);
+
+  // When the user picks a different destination, update the automation name
+  // if it still contains the old destination label (i.e. was auto-generated).
+  // This prevents the name from becoming stale like "Daily Seattle to Mailchimp"
+  // when the destination is now Twilio.
+  const handleDestinationChange = (newDestId: string) => {
+    setSelectedDestination(newDestId);
+    if (newDestId === originalDestination) return; // no change
+    const newIntegration = LAUNCH_INTEGRATIONS.find(i => i.id === newDestId);
+    if (!newIntegration) return;
+    const newLabel = newIntegration.name;
+    // Only auto-update if the name currently ends with " to <old destination>"
+    // to avoid clobbering names the user has customised.
+    const suffix = ` to ${originalDestinationLabel}`;
+    if (automationName.endsWith(suffix)) {
+      setAutomationName(automationName.slice(0, -suffix.length) + ` to ${newLabel}`);
+    }
+  };
 
   const handleClose = () => { setIsEditing(false); onClose(); };
 
@@ -121,10 +141,8 @@ export function ViewEditAutomationDrawer({
     };
 
     // If destination changed, fetch the fresh config for the new destination.
-    // Never inherit config from a different integration — the shapes are incompatible.
     let destConfig: Record<string, any> = {};
     if (selectedDestination !== originalDestination) {
-      // Destination changed — pull the stored config for the newly selected integration
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: connRow } = await supabase
@@ -135,12 +153,10 @@ export function ViewEditAutomationDrawer({
           .maybeSingle();
         destConfig = connRow?.config ?? {};
       }
-      // For webhook-based integrations, overlay the URL the user just entered
       if (integration?.webhookField) {
         destConfig = { ...destConfig, webhook_url: webhookUrl };
       }
     } else {
-      // Same destination — preserve existing config, just update webhook URL if applicable
       destConfig = {
         ...(automation.destination?.config ?? {}),
         ...(integration?.webhookField ? { webhook_url: webhookUrl } : {}),
@@ -443,7 +459,7 @@ export function ViewEditAutomationDrawer({
                       return (
                         <button
                           key={integration.id}
-                          onClick={() => setSelectedDestination(integration.id)}
+                          onClick={() => handleDestinationChange(integration.id)}
                           className={`flex items-center gap-3 p-3 border-2 rounded-xl text-left transition-all ${
                             isSelected
                               ? 'border-[#FFCE0A] bg-[#FFCE0A]/10'
