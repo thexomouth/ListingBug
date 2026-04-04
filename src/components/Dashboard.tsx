@@ -222,6 +222,8 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const currentPlanConfig = planConfig[currentPlan];
   const listingsPercentage = currentPlan === 'enterprise' ? 0 : (listingsThisPeriod / currentPlanConfig.listingsCap) * 100;
   const isNearingCap = listingsPercentage >= 90;
+  // Trial accounts are hard-blocked at 100% — show a stronger warning
+  const isTrialOverLimit = currentPlan === 'trial' && listingsPercentage >= 100;
 
   useEffect(() => {
     const updateAlertCount = () => {
@@ -330,11 +332,22 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 </div>
               </div>
             )}
-            {isNearingCap && currentPlan !== 'enterprise' && (
+            {/* Trial hard-block warning — shown when trial account has hit 100% of limit */}
+            {isTrialOverLimit && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-900 dark:text-red-200 font-medium mb-1">Your free trial listing limit has been reached. Search and automation features are paused until you upgrade.</p>
+                  <button onClick={() => onNavigate?.('pricing')} className="mt-2 text-sm font-medium text-red-900 dark:text-red-200 hover:text-red-700 underline">Upgrade to continue →</button>
+                </div>
+              </div>
+            )}
+            {/* Near-cap warning for non-trial plans (paid accounts can overage) */}
+            {isNearingCap && !isTrialOverLimit && currentPlan !== 'enterprise' && (
               <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                 <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm text-amber-900 dark:text-amber-200 font-medium mb-1">You're at {listingsPercentage.toFixed(0)}% of your listings — upgrade for more.</p>
+                  <p className="text-sm text-amber-900 dark:text-amber-200 font-medium mb-1">You're at {listingsPercentage.toFixed(0)}% of your listings — upgrading can help avoid overrages</p>
                   <button onClick={() => onNavigate?.('pricing')} className="mt-2 text-sm font-medium text-amber-900 dark:text-amber-200 hover:text-amber-700 underline">Upgrade Now →</button>
                 </div>
               </div>
