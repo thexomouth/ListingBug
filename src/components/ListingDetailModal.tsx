@@ -142,9 +142,15 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
   };
 
   const generatePropertyRecord = () => {
-    const purchaseYear = listing.yearBuilt + Math.floor(Math.random() * 10);
-    const purchasePrice = Math.floor(listing.price * (0.6 + Math.random() * 0.2));
-    const taxAssessment = Math.floor(listing.price * 0.85);
+    // Safe fallbacks so math never produces NaN or crashes on null fields
+    const safePrice = listing.price ?? 300000;
+    const safeYearBuilt = listing.yearBuilt ?? 2000;
+    const safeCity = listing.city ?? 'UNKNOWN';
+    const safePropertyType = listing.propertyType ?? '';
+
+    const purchaseYear = safeYearBuilt + Math.floor(Math.random() * 10);
+    const purchasePrice = Math.floor(safePrice * (0.6 + Math.random() * 0.2));
+    const taxAssessment = Math.floor(safePrice * 0.85);
     const landValue = Math.floor(taxAssessment * 0.25);
     const improvementValue = taxAssessment - landValue;
     const annualTax = Math.floor(taxAssessment * 0.012);
@@ -155,12 +161,12 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
       purchasePrice,
       taxAssessment: { total: taxAssessment, land: landValue, improvements: improvementValue },
       annualTax,
-      legalDescription: `LOT 12, BLOCK 5, ${listing.city?.toUpperCase()} HEIGHTS SUBDIVISION, ACCORDING TO THE PLAT THEREOF RECORDED IN VOLUME 47 OF PLATS, PAGE 23`,
+      legalDescription: `LOT 12, BLOCK 5, ${safeCity.toUpperCase()} HEIGHTS SUBDIVISION, ACCORDING TO THE PLAT THEREOF RECORDED IN VOLUME 47 OF PLATS, PAGE 23`,
       parcelNumber: `${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`,
-      zoning: listing.propertyType === 'Commercial' ? 'C-2 (General Commercial)' : listing.propertyType === 'Multi-Family' ? 'R-3 (Multi-Family Residential)' : 'R-1 (Single Family Residential)',
+      zoning: safePropertyType === 'Commercial' ? 'C-2 (General Commercial)' : safePropertyType === 'Multi-Family' ? 'R-3 (Multi-Family Residential)' : 'R-1 (Single Family Residential)',
       deedType: 'Warranty Deed',
       recordedDate: `${purchaseYear}-04-02`,
-      liens: Math.random() > 0.7 ? [{ type: 'Mortgage Lien', amount: Math.floor(listing.price * 0.7), holder: 'First National Bank', recorded: `${purchaseYear}-04-02` }] : [],
+      liens: Math.random() > 0.7 ? [{ type: 'Mortgage Lien', amount: Math.floor(safePrice * 0.7), holder: 'First National Bank', recorded: `${purchaseYear}-04-02` }] : [],
       permits: [
         { type: 'Building Permit', description: 'Roof Replacement', date: '2021-06-15', status: 'Completed' },
         { type: 'Building Permit', description: 'HVAC Installation', date: '2019-03-22', status: 'Completed' },
@@ -168,21 +174,27 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
       salesHistory: [
         { date: `${purchaseYear}-03-15`, price: purchasePrice, type: 'Sale' },
         { date: `${purchaseYear - 8}-07-20`, price: Math.floor(purchasePrice * 0.75), type: 'Sale' },
-        { date: `${listing.yearBuilt}-01-10`, price: Math.floor(purchasePrice * 0.45), type: 'New Construction' },
+        { date: `${safeYearBuilt}-01-10`, price: Math.floor(purchasePrice * 0.45), type: 'New Construction' },
       ],
     };
   };
 
   const generateValuation = () => {
-    const estimatedValue = Math.floor(listing.price * (0.95 + Math.random() * 0.1));
+    // Safe fallbacks — sqft must be > 0 to avoid division by zero
+    const safePrice = listing.price ?? 300000;
+    const safeSqft = (listing.sqft && listing.sqft > 0) ? listing.sqft : 1500;
+    const safeBeds = listing.bedrooms ?? 3;
+    const safeBaths = listing.bathrooms ?? 2;
+
+    const estimatedValue = Math.floor(safePrice * (0.95 + Math.random() * 0.1));
     const lowRange = Math.floor(estimatedValue * 0.92);
     const highRange = Math.floor(estimatedValue * 1.08);
-    const pricePerSqFt = Math.floor(estimatedValue / listing.sqft);
+    const pricePerSqFt = Math.floor(estimatedValue / safeSqft);
     const rentEstimate = Math.floor(estimatedValue * 0.008);
     const comps = [
-      { address: '1456 Maple Ave', distance: '0.3 mi', price: Math.floor(estimatedValue * 0.98), beds: listing.bedrooms, baths: listing.bathrooms, sqft: listing.sqft + Math.floor(Math.random() * 200 - 100), soldDate: '2024-11-15', daysOnMarket: 12 },
-      { address: '892 Birch Street', distance: '0.5 mi', price: Math.floor(estimatedValue * 1.02), beds: listing.bedrooms, baths: listing.bathrooms, sqft: listing.sqft + Math.floor(Math.random() * 200 - 100), soldDate: '2024-10-28', daysOnMarket: 8 },
-      { address: '2134 Cedar Lane', distance: '0.7 mi', price: Math.floor(estimatedValue * 0.96), beds: listing.bedrooms === 3 ? 4 : listing.bedrooms, baths: listing.bathrooms, sqft: listing.sqft + Math.floor(Math.random() * 300 - 150), soldDate: '2024-10-05', daysOnMarket: 15 },
+      { address: '1456 Maple Ave', distance: '0.3 mi', price: Math.floor(estimatedValue * 0.98), beds: safeBeds, baths: safeBaths, sqft: safeSqft + Math.floor(Math.random() * 200 - 100), soldDate: '2024-11-15', daysOnMarket: 12 },
+      { address: '892 Birch Street', distance: '0.5 mi', price: Math.floor(estimatedValue * 1.02), beds: safeBeds, baths: safeBaths, sqft: safeSqft + Math.floor(Math.random() * 200 - 100), soldDate: '2024-10-28', daysOnMarket: 8 },
+      { address: '2134 Cedar Lane', distance: '0.7 mi', price: Math.floor(estimatedValue * 0.96), beds: safeBeds === 3 ? 4 : safeBeds, baths: safeBaths, sqft: safeSqft + Math.floor(Math.random() * 300 - 150), soldDate: '2024-10-05', daysOnMarket: 15 },
     ];
     return {
       estimatedValue, confidenceScore: 87,
@@ -193,6 +205,8 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
       comparables: comps,
       marketConditions: { avgDaysOnMarket: 24, listToSaleRatio: 98.2, inventoryLevel: 'Low', marketTrend: 'Appreciating' },
       equity: estimatedValue - Math.floor(estimatedValue * 0.7),
+      // store safePrice so JSX can reference it without re-accessing listing.price
+      safePrice,
     };
   };
 
@@ -405,8 +419,8 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                   <div className="grid grid-cols-2 gap-3 text-[14px]">
                     <div><p className="text-gray-600 mb-1">Property Price/SF</p><p className="font-medium text-[16px]">${valuation.pricePerSqFt}/sf</p></div>
                     <div><p className="text-gray-600 mb-1">Market Avg Price/SF</p><p className="font-medium text-[16px]">${valuation.marketPricePerSqFt}/sf</p></div>
-                    <div><p className="text-gray-600 mb-1">Current List Price</p><p className="font-medium">${listing.price?.toLocaleString()}</p></div>
-                    <div><p className="text-gray-600 mb-1">Est. vs. List</p><p className={`font-medium ${valuation.estimatedValue > listing.price ? 'text-green-600' : 'text-red-600'}`}>{valuation.estimatedValue > listing.price ? '+' : ''}{(((valuation.estimatedValue - listing.price) / listing.price) * 100).toFixed(1)}%</p></div>
+                    <div><p className="text-gray-600 mb-1">Current List Price</p><p className="font-medium">{valuation.safePrice > 0 ? `$${valuation.safePrice.toLocaleString()}` : '—'}</p></div>
+                    <div><p className="text-gray-600 mb-1">Est. vs. List</p><p className={`font-medium ${valuation.estimatedValue > valuation.safePrice ? 'text-green-600' : 'text-red-600'}`}>{valuation.estimatedValue > valuation.safePrice ? '+' : ''}{(((valuation.estimatedValue - valuation.safePrice) / valuation.safePrice) * 100).toFixed(1)}%</p></div>
                   </div>
                 </div>
                 <div>
@@ -434,7 +448,7 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                         <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
                           <div><p className="text-gray-500">Beds/Baths</p><p className="font-medium text-gray-900">{comp.beds} / {comp.baths}</p></div>
                           <div><p className="text-gray-500">Sq Ft</p><p className="font-medium text-gray-900">{comp.sqft.toLocaleString()}</p></div>
-                          <div><p className="text-gray-500">$/SF</p><p className="font-medium text-gray-900">${Math.floor(comp.price / comp.sqft)}</p></div>
+                          <div><p className="text-gray-500">$/SF</p><p className="font-medium text-gray-900">${comp.sqft > 0 ? Math.floor(comp.price / comp.sqft) : '—'}</p></div>
                         </div>
                         <div className="flex items-center gap-4 mt-2 pt-2 border-t border-gray-100 text-xs text-gray-600"><span>Sold: {new Date(comp.soldDate).toLocaleDateString()}</span><span>&bull;</span><span>{comp.daysOnMarket} days on market</span></div>
                       </div>
@@ -537,9 +551,9 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                 <div>
                   <div className="flex items-center gap-2 mb-3"><DollarSign className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" /><h3 className="font-bold text-[18px] dark:text-white">Price & Listing</h3></div>
                   <div className="grid grid-cols-2 gap-3 text-[14px]">
-                    <div><p className="text-gray-500 mb-0.5">List Price</p><p className="font-bold text-[20px] text-[#342e37] dark:text-white">${listing.price?.toLocaleString()}</p></div>
-                    <div><p className="text-gray-500 mb-0.5">Price / Sq Ft</p><p className="font-bold text-[18px] dark:text-white">{listing.sqft > 0 ? `$${Math.round(listing.price / listing.sqft).toLocaleString()}` : '--'}</p></div>
-                    <div><p className="text-gray-500 mb-0.5">Status</p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${listing.status === 'Active' ? 'bg-green-100 text-green-800' : listing.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{listing.status}</span></div>
+                    <div><p className="text-gray-500 mb-0.5">List Price</p><p className="font-bold text-[20px] text-[#342e37] dark:text-white">{listing.price != null ? `$${listing.price.toLocaleString()}` : '—'}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Price / Sq Ft</p><p className="font-bold text-[18px] dark:text-white">{listing.sqft > 0 && listing.price != null ? `$${Math.round(listing.price / listing.sqft).toLocaleString()}` : '--'}</p></div>
+                    <div><p className="text-gray-500 mb-0.5">Status</p><span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${listing.status === 'Active' ? 'bg-green-100 text-green-800' : listing.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{listing.status || '—'}</span></div>
                     <div><p className="text-gray-500 mb-0.5">Days on Market</p><p className={`font-semibold ${listing.daysListed > 30 ? 'text-orange-600' : listing.daysListed > 14 ? 'text-amber-600' : 'dark:text-white'}`}>{listing.daysListed ?? '--'}d</p></div>
                     <div><p className="text-gray-500 mb-0.5">Listed Date</p><p className="font-medium dark:text-white">{listing.listedDate ? new Date(listing.listedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}</p></div>
                     <div><p className="text-gray-500 mb-0.5">Last Seen</p><p className="font-medium dark:text-white">{listing.lastSeenDate ? new Date(listing.lastSeenDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '--'}</p></div>
