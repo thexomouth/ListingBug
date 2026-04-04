@@ -363,8 +363,6 @@ export function CreateAutomationPage({
             <h2 className="text-[21px] font-bold text-[#0F1115] dark:text-white">Create Automation</h2>
           </div>
 
-
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Select Search */}
             <div className="space-y-2">
@@ -427,20 +425,17 @@ export function CreateAutomationPage({
           </div>
         </section>
 
-        {/* Step 3: Map Fields - REMOVED */}
-        {/* Field mappings section hidden as requested */}
-
         {/* Audit & Compliance Info */}
         {selectedDestination && (
-          <section className="">
+          <section>
             <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="space-y-2">
-                <p className="text-[13px] text-[#ffffff]">
-                  <strong className="text-[#ffffff]">Audit Reference:</strong> All transfers are logged in Account {'>'} Compliance
+              <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">
+                  <strong className="text-gray-700 dark:text-gray-200">Audit Reference:</strong> All transfers are logged in Account &gt; Compliance
                 </p>
-                <p className="text-[13px] text-[#ffffff]">
-                  <strong className="text-[#ffffff]">Data Controller Notice:</strong> You are the data controller; ListingBug processes data on your behalf.
+                <p className="text-[13px] text-gray-600 dark:text-gray-300">
+                  <strong className="text-gray-700 dark:text-gray-200">Data Controller Notice:</strong> You are the data controller; ListingBug processes data on your behalf.
                 </p>
               </div>
             </div>
@@ -465,7 +460,6 @@ export function CreateAutomationPage({
         isOpen={showCompleteModal}
         onClose={() => {
           setShowCompleteModal(false);
-          // Navigate to dashboard or wherever appropriate
         }}
       />
     </div>
