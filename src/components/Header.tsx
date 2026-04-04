@@ -137,26 +137,26 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
   const getNotificationStyle = (type: string, isRead: boolean) => {
     const baseStyles = {
       success: {
-        bg: isRead ? 'bg-green-50/50' : 'bg-green-50',
-        border: isRead ? 'border-green-200/50' : 'border-green-200',
+        bg: isRead ? 'bg-gray-50 dark:bg-white/5' : 'bg-white dark:bg-white/8',
+        border: isRead ? 'border-gray-200 dark:border-white/10' : 'border-gray-300 dark:border-white/20',
         dot: 'bg-green-500',
         icon: CheckCircle2
       },
       error: {
-        bg: isRead ? 'bg-red-50/50' : 'bg-red-50',
-        border: isRead ? 'border-red-200/50' : 'border-red-200',
+        bg: isRead ? 'bg-gray-50 dark:bg-white/5' : 'bg-white dark:bg-white/8',
+        border: isRead ? 'border-gray-200 dark:border-white/10' : 'border-gray-300 dark:border-white/20',
         dot: 'bg-red-500',
         icon: AlertCircle
       },
       info: {
-        bg: isRead ? 'bg-blue-50/50' : 'bg-blue-50',
-        border: isRead ? 'border-blue-200/50' : 'border-blue-200',
+        bg: isRead ? 'bg-gray-50 dark:bg-white/5' : 'bg-white dark:bg-white/8',
+        border: isRead ? 'border-gray-200 dark:border-white/10' : 'border-gray-300 dark:border-white/20',
         dot: 'bg-blue-500',
         icon: Info
       },
       warning: {
-        bg: isRead ? 'bg-amber-50/50' : 'bg-amber-50',
-        border: isRead ? 'border-amber-200/50' : 'border-amber-200',
+        bg: isRead ? 'bg-gray-50 dark:bg-white/5' : 'bg-white dark:bg-white/8',
+        border: isRead ? 'border-gray-200 dark:border-white/10' : 'border-gray-300 dark:border-white/20',
         dot: 'bg-amber-500',
         icon: AlertCircle
       }
@@ -722,21 +722,21 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             ) : (
               <>
                 {/* Notifications View */}
-                <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+                <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
                   <button
                     onClick={handleBackToAccount}
-                    className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0"
+                    className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors flex-shrink-0"
                     aria-label="Back to account menu"
                   >
                     <ChevronLeft className="w-5 h-5 text-[#FFCE0A]" />
                   </button>
                   <div className="flex items-center gap-2 flex-1">
                     <Bell className="w-5 h-5 text-[#FFCE0A]" />
-                    <p className="font-bold text-sm">Notifications</p>
+                    <p className="font-bold text-sm text-black dark:text-white">Notifications</p>
                   </div>
                   <button
                     onClick={handleCloseAccountMenu}
-                    className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0"
+                    className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors flex-shrink-0"
                     aria-label="Close menu"
                   >
                     <X className="w-5 h-5 text-[#FFCE0A]" />
@@ -749,7 +749,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   {notifications.length > 0 && notifications.some(n => n.read) && (
                     <button
                       onClick={clearAllRead}
-                      className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-bold text-[#342e37]"
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors text-sm font-bold text-black dark:text-white"
                     >
                       <Trash2 className="w-4 h-4" />
                       Clear All Read
@@ -759,18 +759,18 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 {/* Notifications */}
                 {notifications.length === 0 ? (
                   <div className="text-center py-8">
-                    <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="font-bold text-gray-600">No notifications yet</p>
-                    <p className="text-sm text-gray-500 mt-1">You'll get notifications when your searches and automations run</p>
+                    <Bell className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="font-bold text-black dark:text-white">No notifications yet</p>
+                    <p className="text-sm text-black/60 dark:text-white/60 mt-1">You'll get notifications when your searches and automations run</p>
                   </div>
                 ) : (
                   notifications.map(notif => {
                     const style = getNotificationStyle(notif.type, notif.read);
                     const Icon = style.icon;
-                    
+
                     return (
-                      <div 
-                        key={notif.id} 
+                      <div
+                        key={notif.id}
                         className={`relative p-3 border rounded-lg transition-all ${style.bg} ${style.border} ${notif.read ? 'opacity-70' : ''}`}
                       >
                         <div className="flex items-start gap-2 mb-1">
@@ -778,20 +778,20 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                             <div className={`w-2 h-2 rounded-full ${style.dot} mt-1.5 flex-shrink-0`} />
                           )}
                           {notif.read && (
-                            <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
+                            <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 mt-1.5 flex-shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className={`font-bold text-sm ${notif.read ? 'text-gray-600' : 'text-[#342e37]'}`}>
+                            <p className={`font-bold text-sm ${notif.read ? 'text-black/60 dark:text-white/60' : 'text-black dark:text-white'}`}>
                               {notif.title}
                             </p>
                             {notif.message && (
-                              <p className={`text-xs mt-1 ${notif.read ? 'text-gray-500' : 'text-gray-600'}`}>
+                              <p className={`text-xs mt-1 ${notif.read ? 'text-black/50 dark:text-white/50' : 'text-black/70 dark:text-white/70'}`}>
                                 {notif.message}
                               </p>
                             )}
                             <div className="flex items-center gap-2 mt-2">
-                              <Icon className={`w-3 h-3 ${notif.read ? 'text-gray-400' : 'text-gray-500'}`} />
-                              <p className={`text-xs ${notif.read ? 'text-gray-400' : 'text-gray-500'}`}>
+                              <Icon className={`w-3 h-3 ${notif.read ? 'text-black/40 dark:text-white/40' : 'text-black/50 dark:text-white/50'}`} />
+                              <p className={`text-xs ${notif.read ? 'text-black/40 dark:text-white/40' : 'text-black/50 dark:text-white/50'}`}>
                                 {formatTimestamp(notif.created_at)}
                               </p>
                             </div>
@@ -801,10 +801,10 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                               e.stopPropagation();
                               dismissNotification(notif.id);
                             }}
-                            className="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center transition-colors flex-shrink-0"
+                            className="w-6 h-6 rounded-full hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center transition-colors flex-shrink-0"
                             aria-label="Dismiss notification"
                           >
-                            <X className="w-4 h-4 text-gray-500" />
+                            <X className="w-4 h-4 text-black/50 dark:text-white/50" />
                           </button>
                         </div>
                       </div>
