@@ -314,7 +314,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {currentPlan === 'enterprise'
                     ? 'Unlimited listings on your plan'
-                    : `${listingsThisPeriod.toLocaleString()} of ${currentPlanConfig.listingsCap.toLocaleString()} listings used · ${billingPeriodLabel}`
+                    : (<><span>{listingsThisPeriod.toLocaleString()} of {currentPlanConfig.listingsCap.toLocaleString()} listings used</span><span className="hidden sm:inline"> · {billingPeriodLabel}</span><span className="block sm:hidden text-xs">{billingPeriodLabel}</span></>)
                   }
                 </p>
               </div>
