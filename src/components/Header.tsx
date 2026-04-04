@@ -486,25 +486,25 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
       {isMenuOpen && (
         <>
           {/* Sidebar */}
-          <div ref={menuRef} className="fixed top-0 left-0 h-full w-64 bg-[#252525] z-50 shadow-xl md:hidden transform transition-transform duration-300 ease-out">
+          <div ref={menuRef} className="fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#252525] z-50 shadow-xl md:hidden transform transition-transform duration-300 ease-out">
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => handleNavigate('home')}
                 className="flex items-center hover:opacity-80 transition-opacity"
               >
-                <ImageWithFallback 
-                  src={headerLogoWhite} 
-                  alt="ListingBug" 
-                  className={isLoggedIn ? "h-12 w-auto object-contain" : "h-12 w-auto object-contain"}
+                <ImageWithFallback
+                  src={isDarkMode ? headerLogoWhite : headerLogoFull}
+                  alt="ListingBug"
+                  className="h-12 w-auto object-contain"
                 />
               </button>
               <button
                 onClick={() => setIsMenuOpen(false)}
-                className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors"
                 aria-label="Close menu"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-5 h-5 text-[#342e37] dark:text-white" />
               </button>
             </div>
 
@@ -512,24 +512,12 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             <nav className="flex flex-col p-4">
               {!isLoggedIn ? (
                 <>
-                  {/* TEMPORARILY REMOVED - Holding for potential re-addition
-                  <button
-                    onClick={() => handleNavigate('how-it-works')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
-                      currentPage === 'how-it-works'
-                        ? 'bg-[#342e37]/10 text-[#342e37]'
-                        : 'text-[#342e37] hover:bg-gray-100'
-                    }`}
-                  >
-                    How It Works
-                  </button>
-                  */}
                   <button
                     onClick={() => handleNavigate('data-sets')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'data-sets'
-                        ? 'bg-white/10 text-white'
-                        : 'text-white hover:text-white/80'
+                        ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
+                        : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
                     Listing Data
@@ -538,8 +526,8 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('integrations')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'integrations'
-                        ? 'bg-white/10 text-white'
-                        : 'text-white hover:text-white/80'
+                        ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
+                        : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
                     Integrations
@@ -548,8 +536,8 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('use-cases')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'use-cases'
-                        ? 'bg-white/10 text-white'
-                        : 'text-white hover:text-white/80'
+                        ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
+                        : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
                     Use Cases
@@ -558,18 +546,18 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     onClick={() => handleNavigate('pricing')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'pricing'
-                        ? 'bg-white/10 text-white'
-                        : 'text-white hover:text-white/80'
+                        ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
+                        : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
                     Pricing
                   </button>
-                  
-                  <div className="border-t border-gray-200 my-4" />
-                  
+
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
+
                   <button
                     onClick={() => handleNavigate('login')}
-                    className="text-left py-3 px-4 rounded-lg font-bold text-white hover:text-white/80 transition-colors"
+                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Login / Sign Up
                   </button>
@@ -578,40 +566,40 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 <>
                   <button
                     onClick={() => handleNavigate('dashboard')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'dashboard' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'dashboard' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Dashboard
                   </button>
                   <button
                     onClick={() => handleNavigate('search-listings')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'search-listings' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'search-listings' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Listings
                   </button>
                   <button
                     onClick={() => handleNavigate('agents')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'agents' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'agents' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Agents
                   </button>
                   <button
                     onClick={() => handleNavigate('automations')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'automations' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'automations' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Automations
                   </button>
                   <button
                     onClick={() => handleNavigate('integrations')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'integrations' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'integrations' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Integrations
                   </button>
-                  
-                  <div className="border-t border-gray-200 my-4" />
-                  
+
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
+
                   <button
                     onClick={() => handleNavigate('account')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${ currentPage === 'account' ? 'bg-[#342e37]/10 text-[#342e37]' : 'text-[#342e37] hover:bg-gray-100' } text-[#ffffff]`}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'account' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Account
                   </button>
