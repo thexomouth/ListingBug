@@ -276,8 +276,17 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
 
   const handleRunNow = async (automation: any) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
+      // Refresh token if expired or expiring within 10 s
+      try {
+        const b64 = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const { exp } = JSON.parse(atob(b64));
+        if (exp && exp <= Math.floor(Date.now() / 1000) + 10) {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          if (refreshed.session) session = refreshed.session;
+        }
+      } catch { /* non-critical — fall through with current token */ }
 
       const PLAN_CAPS: Record<string, number> = {
         trial: 1000, starter: 4000, pro: 10000, professional: 10000, enterprise: Infinity,
