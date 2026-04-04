@@ -196,7 +196,7 @@ async function sendToDestination(
       return { sent: listings.length };
     }
 
-    case "sheets": {
+    case "google": {
       const fnUrl = `${SUPABASE_URL}/functions/v1/send-to-sheets`;
       const res = await fetch(fnUrl, {
         method: "POST",

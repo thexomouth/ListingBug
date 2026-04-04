@@ -166,7 +166,7 @@ async function sendToDestination(
       const b = await r.json().catch(() => ({}));
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "HubSpot error" };
     }
-    case "sheets": {
+    case "google": {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-sheets`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },

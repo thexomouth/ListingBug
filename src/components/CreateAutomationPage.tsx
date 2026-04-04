@@ -198,7 +198,7 @@ export function CreateAutomationPage({
         hubspot: { name: 'HubSpot', icon: Database, category: 'CRM' },
         mailchimp: { name: 'Mailchimp', icon: Mail, category: 'Email Marketing' },
         constantcontact: { name: 'Constant Contact', icon: Mail, category: 'Email Marketing' },
-        sheets: { name: 'Google Sheets', icon: FileSpreadsheet, category: 'Spreadsheets' },
+        google: { name: 'Google Sheets', icon: FileSpreadsheet, category: 'Spreadsheets' },
         airtable: { name: 'Airtable', icon: Database, category: 'Spreadsheets' },
         twilio: { name: 'Twilio', icon: MessageSquare, category: 'SMS' },
         zapier: { name: 'Zapier', icon: Zap, category: 'Automation' },

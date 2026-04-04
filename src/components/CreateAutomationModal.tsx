@@ -328,17 +328,12 @@ export function CreateAutomationModal({
       ]
     },
     // Spreadsheets & Databases
-    { 
-      id: 'google', 
-      name: 'Google Sheets', 
-      icon: FileSpreadsheet, 
-      connected: connectedIds.has('google'), 
-      requiresSetup: true,
-      setupFields: [
-        { key: 'spreadsheet_id', label: 'Spreadsheet ID', placeholder: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms', hint: 'In your Google Sheets URL between /d/ and /edit' },
-        { key: 'sheet_name', label: 'Sheet Tab Name', placeholder: 'Sheet1', hint: 'The tab name at the bottom of your spreadsheet' },
-        { key: 'write_mode', label: 'Write Mode', type: 'select', options: [{value:'append',label:'Append rows each run'},{value:'overwrite',label:'Overwrite each run'}] }
-      ]
+    {
+      id: 'google',
+      name: 'Google Sheets',
+      icon: FileSpreadsheet,
+      connected: connectedIds.has('google'),
+      requiresSetup: false,
     },
     { 
       id: 'airtable', 
