@@ -198,8 +198,9 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         lastRun: lastRun ? {
           date: lastRun.run_date,
           status: lastRun.status === 'success' ? 'success' : 'failed',
+          listingsFetched: lastRun.listings_fetched ?? 0,
           listingsSent: lastRun.listings_sent ?? 0,
-        } : row.last_run_at ? { date: row.last_run_at, status: 'success', listingsSent: 0 } : undefined,
+        } : row.last_run_at ? { date: row.last_run_at, status: 'success', listingsFetched: 0, listingsSent: 0 } : undefined,
         nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
       };
     });
