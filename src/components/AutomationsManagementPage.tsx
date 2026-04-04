@@ -445,26 +445,18 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                         </LBTableCell>
                         <LBTableCell>
                           <div className="font-bold text-[14px] text-gray-900 dark:text-white">{automation.name}</div>
-                          {automation.lastRun && (
-                            <div className="flex items-center gap-2 mt-1 md:hidden">
-                              <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded ${lastRunStatus === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {lastRunStatus === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                                {lastRunStatus === 'success' ? 'Success' : 'Failed'}
-                              </span>
-                              <span className="text-[11px] text-gray-400">{formatDate(lastRunDate ?? '')}</span>
-                            </div>
-                          )}
+                          {automation.lastRun
+                            ? <span className="text-[11px] text-gray-400 mt-0.5 block">{formatDate(lastRunDate ?? '')}</span>
+                            : <span className="text-[11px] text-gray-400 italic mt-0.5 block">Never run</span>
+                          }
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
                           {automation.lastRun ? (
-                            <div className="flex flex-col gap-1">
-                              <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full w-fit ${lastRunStatus === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
-                                {lastRunStatus === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                                {lastRunStatus === 'success' ? 'Success' : 'Failed'}
-                              </span>
-                              <span className="text-[11px] text-gray-400">{formatDate(lastRunDate ?? '')}</span>
-                            </div>
-                          ) : (<span className="text-[12px] text-gray-400 italic">Never run</span>)}
+                            <span className={`inline-flex items-center gap-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full w-fit ${lastRunStatus === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
+                              {lastRunStatus === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                              {lastRunStatus === 'success' ? 'Success' : 'Failed'}
+                            </span>
+                          ) : (<span className="text-[12px] text-gray-400 italic">—</span>)}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
                           {automation.lastRun ? (<div className="flex flex-col gap-0.5"><span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span><span className="text-[11px] text-gray-400">listings fetched</span></div>) : <span className="text-[12px] text-gray-400">—</span>}
