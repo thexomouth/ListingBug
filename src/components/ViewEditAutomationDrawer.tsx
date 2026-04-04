@@ -242,7 +242,7 @@ export function ViewEditAutomationDrawer({
               <div>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Search Criteria</p>
                 {hasCriteria ? (
-                  <div className="bg-gray-50 dark:bg-white/5 rounded-xl px-4 py-1">
+                  <div>
                     <CriteriaRow label="Location" value={[criteria.city, criteria.state].filter(Boolean).join(', ') || criteria.zipCode} />
                     {!criteria.city && <CriteriaRow label="ZIP Code" value={criteria.zipCode} />}
                     <CriteriaRow label="Days Listed" value={criteria.daysOld} />
