@@ -237,42 +237,6 @@ export function ViewEditAutomationDrawer({
                     <span className="text-[11px] text-gray-500 font-mono ml-4 max-w-[220px] truncate">{automation.destination.config.webhook_url}</span>
                   </div>
                 )}
-                {automation.lastRun && (() => {
-                  const found = automation.lastRun.listingsFetched ?? 0;
-                  const exported = automation.lastRun.listingsSent ?? 0;
-                  const failed = Math.max(0, found - exported);
-                  return (
-                    <>
-                      <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
-                        <span className="text-[13px] text-gray-500">Last Run</span>
-                        <div className="flex items-center gap-1.5">
-                          {automation.lastRun.status === 'success' ? <CheckCircle className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
-                          <span className={`text-[12px] font-medium ${automation.lastRun.status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
-                            {automation.lastRun.status === 'success' ? 'Success' : 'Failed'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
-                        <span className="text-[13px] text-gray-500">Run Time</span>
-                        <span className="text-[13px] font-medium text-gray-900 dark:text-white">
-                          {automation.lastRun.date ? new Date(automation.lastRun.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '—'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
-                        <span className="text-[13px] text-gray-500">Listings Found</span>
-                        <span className="text-[13px] font-medium text-gray-900 dark:text-white">{found}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
-                        <span className="text-[13px] text-gray-500">Listings Exported</span>
-                        <span className="text-[13px] font-medium text-green-600 dark:text-green-400">{exported}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2.5">
-                        <span className="text-[13px] text-gray-500">Listings Failed</span>
-                        <span className={`text-[13px] font-medium ${failed > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{failed}</span>
-                      </div>
-                    </>
-                  );
-                })()}
               </div>
 
               <div>
@@ -298,6 +262,44 @@ export function ViewEditAutomationDrawer({
                   <p className="text-[13px] text-gray-400 italic">No search criteria stored. Edit this automation to configure the search.</p>
                 )}
               </div>
+
+              {automation.lastRun && (() => {
+                const found = automation.lastRun.listingsFetched ?? 0;
+                const exported = automation.lastRun.listingsSent ?? 0;
+                const failed = Math.max(0, found - exported);
+                return (
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Last Run</p>
+                    <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
+                      <span className="text-[13px] text-gray-500">Status</span>
+                      <div className="flex items-center gap-1.5">
+                        {automation.lastRun.status === 'success' ? <CheckCircle className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                        <span className={`text-[12px] font-medium ${automation.lastRun.status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                          {automation.lastRun.status === 'success' ? 'Success' : 'Failed'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
+                      <span className="text-[13px] text-gray-500">Run Time</span>
+                      <span className="text-[13px] font-medium text-gray-900 dark:text-white">
+                        {automation.lastRun.date ? new Date(automation.lastRun.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
+                      <span className="text-[13px] text-gray-500">Listings Found</span>
+                      <span className="text-[13px] font-medium text-gray-900 dark:text-white">{found}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/5">
+                      <span className="text-[13px] text-gray-500">Listings Exported</span>
+                      <span className="text-[13px] font-medium text-green-600 dark:text-green-400">{exported}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2.5">
+                      <span className="text-[13px] text-gray-500">Listings Failed</span>
+                      <span className={`text-[13px] font-medium ${failed > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{failed}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {automation.lastRun?.status === 'failed' && (
                 <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl">
