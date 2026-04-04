@@ -145,40 +145,15 @@ async function sendToDestination(
     }
 
     case "sendgrid": {
-      const apiKey  = String(credentials.api_key ?? credentials.apiKey ?? "");
-      const toEmail = String(config.to_email ?? config.email ?? "");
-      if (!apiKey || !toEmail) return { sent: 0, error: "SendGrid API key or destination email missing" };
-
-      const subject = listings.length === 0
-        ? `No new listings — ${automation.name}`
-        : `${listings.length} new listing${listings.length > 1 ? "s" : ""} — ${automation.name}`;
-
-      const rows = (listings as Record<string, unknown>[])
-        .map(l => `<tr><td>${l.formatted_address ?? ""}</td><td>$${(l.price as number)?.toLocaleString() ?? ""}</td><td>${l.bedrooms ?? ""}bd/${l.bathrooms ?? ""}ba</td><td>${l.agent_name ?? ""}</td><td>${l.agent_email ?? ""}</td></tr>`)
-        .join("");
-
-      const html = listings.length === 0
-        ? `<p>No listings matched your search for <strong>${automation.name}</strong> today.</p>`
-        : `<table border="1" cellpadding="6" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">
-             <thead><tr><th>Address</th><th>Price</th><th>Beds/Baths</th><th>Agent</th><th>Agent Email</th></tr></thead>
-             <tbody>${rows}</tbody>
-           </table>`;
-
-      const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      const listIds: string[] = config.list_ids ?? (config.list_id ? [String(config.list_id)] : []);
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-sendgrid`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: toEmail }] }],
-          from: { email: "noreply@thelistingbug.com", name: "ListingBug" },
-          subject,
-          content: [{ type: "text/html", value: html }],
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
+        body: JSON.stringify({ user_id: userId, listings, list_ids: listIds }),
       });
-      if (!sgRes.ok && sgRes.status !== 202) {
-        const err = await sgRes.text();
-        return { sent: 0, error: err };
-      }
-      return { sent: listings.length };
+      const b = await r.json().catch(() => ({}));
+      if (!r.ok) return { sent: 0, error: b.error ?? "SendGrid error" };
+      return { sent: b.confirmed ?? b.sent ?? b.accepted ?? listings.length };
     }
 
     case "webhook": {

@@ -176,13 +176,15 @@ async function sendToDestination(
       return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "Sheets error" };
     }
     case "sendgrid": {
+      const listIds: string[] = config.list_ids ?? (config.list_id ? [String(config.list_id)] : []);
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-sendgrid`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
-        body: JSON.stringify({ user_id: userId, listings, config, credentials }),
+        body: JSON.stringify({ user_id: userId, listings, list_ids: listIds }),
       });
       const b = await r.json().catch(() => ({}));
-      return r.ok ? { sent: listings.length } : { sent: 0, error: b.error ?? "SendGrid error" };
+      if (!r.ok) return { sent: 0, error: b.error ?? "SendGrid error" };
+      return { sent: b.confirmed ?? b.sent ?? b.accepted ?? listings.length };
     }
     case "webhook": case "zapier": case "make": case "n8n": {
       const webhookUrl = String(config.webhook_url ?? "");
