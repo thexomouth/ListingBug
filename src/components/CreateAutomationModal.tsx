@@ -143,29 +143,56 @@ export function CreateAutomationModal({
   // Walkthrough integration
   const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
 
-  // Load saved searches from localStorage
+  // Load saved searches from localStorage AND Supabase
+  // Supabase is the source of truth; localStorage is a cache that may be stale
   useEffect(() => {
-    const stored = localStorage.getItem('listingbug_saved_searches');
-    if (stored) {
+    const loadSearches = async () => {
+      // Try localStorage first for immediate render
+      const stored = localStorage.getItem('listingbug_saved_searches');
+      if (stored) {
+        try {
+          const searches = JSON.parse(stored);
+          setSavedSearches(searches);
+        } catch (e) {
+          console.error('Failed to parse saved searches from localStorage:', e);
+        }
+      }
+
+      // Then fetch from Supabase and merge/override
       try {
-        const searches = JSON.parse(stored);
-        setSavedSearches(searches);
-        
-        if (savedSearch) {
-          const matchingSearch = searches.find((s: any) => s.id === savedSearch.id);
-          if (matchingSearch) {
-            setSelectedSearchId(matchingSearch.id);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: rows } = await supabase
+            .from('searches')
+            .select('id, name, location, filters_json, created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+          if (rows && rows.length > 0) {
+            const searches = rows.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              location: r.location,
+              criteria: r.filters_json?.criteria ?? {},
+              activeFilters: r.filters_json?.activeFilters ?? [],
+              criteriaDescription: r.filters_json?.criteriaDescription ?? r.location,
+            }));
+            setSavedSearches(searches);
+            // Keep localStorage in sync
+            localStorage.setItem('listingbug_saved_searches', JSON.stringify(searches));
           }
         }
       } catch (e) {
-        console.error('Failed to parse saved searches:', e);
+        console.error('[CreateAutomationModal] Supabase search load failed:', e);
       }
-    }
-    
-    // If currentCriteria is provided but no saved searches, create a temporary "Current Search" option
-    if (currentCriteria && !savedSearch) {
-      setSelectedSearchId('current-search');
-    }
+
+      // Auto-select the passed-in saved search if provided
+      if (savedSearch) {
+        setSelectedSearchId(savedSearch.id);
+      } else if (currentCriteria) {
+        setSelectedSearchId('current-search');
+      }
+    };
+    if (isOpen) loadSearches();
   }, [isOpen, savedSearch, currentCriteria]);
 
   // Auto-generate automation name
@@ -886,6 +913,26 @@ export function CreateAutomationModal({
       if (!session?.user?.id) { toast.error('Not signed in'); return; }
 
       const selectedSearch = getSelectedSearch();
+
+      // Guard: never save an automation with empty search criteria — it will flood RentCast
+      // with an unconstrained query and return up to 500 listings with no location filter.
+      const criteria = selectedSearch?.criteria ?? {};
+      const hasLocation = criteria.city || criteria.state || criteria.zipCode || criteria.address;
+      if (!hasLocation && selectedSearchId !== 'current-search') {
+        console.error('[CreateAutomation] Refusing to save automation — search criteria is missing location:', criteria);
+        toast.error('This search has no location set. Please edit it in Saved Searches before automating.');
+        return;
+      }
+      // currentCriteria path: validate it too
+      if (selectedSearchId === 'current-search' && currentCriteria) {
+        const hasCurrentLocation = currentCriteria.city || currentCriteria.state || currentCriteria.zipCode || currentCriteria.address;
+        if (!hasCurrentLocation) {
+          toast.error('Please enter a city or ZIP before automating the current search.');
+          return;
+        }
+      }
+
+      console.log('[CreateAutomation] Saving with criteria:', criteria);
       const now = new Date().toISOString();
 
       // Save automation to Supabase
@@ -896,7 +943,7 @@ export function CreateAutomationModal({
         destination_type: selectedDestination,
         destination_label: selectedIntegration?.name ?? selectedDestination,
         destination_config: destinationConfig ?? {},
-        search_criteria: selectedSearch?.criteria ?? {},
+        search_criteria: selectedSearch?.criteria ?? criteria,
         active_filters: selectedSearch?.activeFilters ?? [],
         schedule: schedule,
         schedule_time: scheduleTime,
