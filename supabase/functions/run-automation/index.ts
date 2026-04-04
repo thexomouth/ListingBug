@@ -31,14 +31,19 @@ const corsHeaders = {
 async function fetchListings(searchCriteria: Record<string, unknown>): Promise<unknown[]> {
   const {
     listingType = "sale",
-    city, state, zipCode, address,
+    city, state, address,
     latitude, longitude, radius,
-    propertyType, bedrooms, bathrooms,
+    propertyType,
     minPrice, maxPrice,
     daysOld: rawDaysOld,
     status = "Active",
     limit: resultLimit = 500,
   } = searchCriteria;
+
+  // Support both camelCase (zipCode/bedrooms/bathrooms) and SearchListings shorthand (zip/beds/baths)
+  const zipCode   = (searchCriteria.zipCode   ?? searchCriteria.zip)      as string | undefined;
+  const bedrooms  = (searchCriteria.bedrooms  ?? searchCriteria.beds)     as string | number | undefined;
+  const bathrooms = (searchCriteria.bathrooms ?? searchCriteria.baths)    as string | number | undefined;
 
   const endpoint =
     listingType === "rental"
@@ -54,7 +59,7 @@ async function fetchListings(searchCriteria: Record<string, unknown>): Promise<u
   if (longitude != null) params.set("longitude", String(longitude));
   if (radius != null)    params.set("radius", String(radius));
   if (propertyType) params.set("propertyType", String(propertyType));
-  if (bedrooms != null && bedrooms !== "") params.set("bedrooms", String(bedrooms));
+  if (bedrooms  != null && bedrooms  !== "") params.set("bedrooms",  String(bedrooms));
   if (bathrooms != null && bathrooms !== "") params.set("bathrooms", String(bathrooms));
   if (minPrice != null && maxPrice != null) params.set("price", `${minPrice}-${maxPrice}`);
   else if (minPrice != null) params.set("price", `${minPrice}+`);
