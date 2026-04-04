@@ -1178,7 +1178,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                           {search.criteriaDescription && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.criteriaDescription}</p>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <LBButton variant="outline" size="sm" onClick={() => handleLoadSavedSearch(search)}><Play className="w-3.5 h-3.5 mr-1" />Load</LBButton>
+                          <LBButton variant="outline" size="sm" onClick={() => handleLoadSavedSearch(search)}><Play className="w-3.5 h-3.5" /></LBButton>
                           <LBButton variant="primary" size="sm" onClick={() => {
                             sessionStorage.setItem('listingbug_automations_tab', 'create');
                             sessionStorage.setItem('listingbug_prefill_automation', JSON.stringify({ searchId: search.id, searchName: search.name }));
