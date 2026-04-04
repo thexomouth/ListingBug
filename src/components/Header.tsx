@@ -496,7 +496,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 <ImageWithFallback
                   src={isDarkMode ? headerLogoWhite : headerLogoFull}
                   alt="ListingBug"
-                  className="h-12 w-auto object-contain"
+                  className={isDarkMode ? "h-6 w-auto object-contain" : "h-12 w-auto object-contain"}
                 />
               </button>
               <button
