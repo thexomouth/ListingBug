@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CREATE AUTOMATION PAGE - Processor Stance
  * 
  * Shared automation setup:
@@ -78,38 +78,58 @@ export function CreateAutomationPage({
   const [automationName, setAutomationName] = useState('');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
 
-  // Load saved searches
+  // Load saved searches from Supabase (authoritative source).
+  // localStorage is NOT used — it can be stale or store a different shape,
+  // causing search_criteria to arrive empty when creating an automation.
   useEffect(() => {
-    const stored = localStorage.getItem('listingbug_saved_searches');
-    if (stored) {
+    const loadSearches = async () => {
       try {
-        const searches = JSON.parse(stored);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('searches')
+          .select('id, name, location, filters_json')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error || !data) {
+          console.error('[CreateAutomationPage] failed to load searches:', error?.message);
+          return;
+        }
+
+        // Normalise the shape: criteria lives in filters_json.criteria
+        const searches = data.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          location: row.location,
+          criteria: row.filters_json?.criteria ?? row.filters_json ?? {},
+        }));
+
         setSavedSearches(searches);
-        
-        // Check for prefilled automation data from search page
+
+        // Auto-select if prefill data is present (coming from "Automate" on search page)
         const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
         if (prefillData) {
           try {
             const { searchId } = JSON.parse(prefillData);
-            const matchingSearch = searches.find((s: any) => s.id === searchId);
-            if (matchingSearch) {
-              setSelectedSearchId(matchingSearch.id);
-            }
-            // Don't clear it here - let AutomationsManagementPage handle it
+            const match = searches.find((s: any) => s.id === searchId);
+            if (match) setSelectedSearchId(match.id);
+            // Don't clear here — let AutomationsManagementPage handle it
           } catch (e) {
             console.error('Failed to parse prefill data:', e);
           }
         } else if (savedSearch) {
-          const matchingSearch = searches.find((s: any) => s.id === savedSearch.id);
-          if (matchingSearch) {
-            setSelectedSearchId(matchingSearch.id);
-          }
+          const match = searches.find((s: any) => s.id === savedSearch.id);
+          if (match) setSelectedSearchId(match.id);
         }
       } catch (e) {
-        console.error('Failed to parse saved searches:', e);
+        console.error('[CreateAutomationPage] loadSearches exception:', e);
       }
-    }
-    
+    };
+
+    loadSearches();
+
     if (currentCriteria && !savedSearch) {
       setSelectedSearchId('current-search');
     }
@@ -279,6 +299,17 @@ export function CreateAutomationPage({
       }
 
       const selectedSearch = getSelectedSearch();
+      const criteria = selectedSearch?.criteria ?? {};
+
+      // Guard: block automation creation if criteria has no location.
+      // Without city/state/zip/address, run-automation will fetch up to 500
+      // unconstrained results from RentCast — wasting API quota and producing bad data.
+      const hasLocation = !!(criteria.city || criteria.state || criteria.zipCode || criteria.zip || criteria.address);
+      if (!hasLocation) {
+        toast.error('The selected search has no location (city, state, or zip). Please re-save the search with a location before automating it.');
+        return;
+      }
+
       const destIntegration = integrations.find((i: any) => i.id === selectedDestination);
       const now = new Date().toISOString();
 
@@ -289,7 +320,7 @@ export function CreateAutomationPage({
         destination_type: selectedDestination,
         destination_label: destIntegration?.name ?? selectedDestination,
         destination_config: config,
-        search_criteria: selectedSearch?.criteria ?? {},
+        search_criteria: criteria,
         schedule: syncFrequency,
         schedule_time: '08:00',
         active: true,
@@ -406,7 +437,7 @@ export function CreateAutomationPage({
               <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="text-[13px] text-[#ffffff]">
-                  <strong className="text-[#ffffff]">Audit Reference:</strong> All transfers are logged in Account {'>'}  Compliance
+                  <strong className="text-[#ffffff]">Audit Reference:</strong> All transfers are logged in Account {'>'} Compliance
                 </p>
                 <p className="text-[13px] text-[#ffffff]">
                   <strong className="text-[#ffffff]">Data Controller Notice:</strong> You are the data controller; ListingBug processes data on your behalf.
