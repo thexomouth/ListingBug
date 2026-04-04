@@ -145,7 +145,7 @@ async function sendToDestination(
     }
 
     case "sendgrid": {
-      const apiKey  = String(credentials.apiKey ?? "");
+      const apiKey  = String(credentials.api_key ?? credentials.apiKey ?? "");
       const toEmail = String(config.to_email ?? config.email ?? "");
       if (!apiKey || !toEmail) return { sent: 0, error: "SendGrid API key or destination email missing" };
 
