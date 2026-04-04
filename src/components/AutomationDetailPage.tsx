@@ -641,14 +641,14 @@ export function AutomationDetailPage({
                       onChange={(e) => setEditedSchedule(e.target.value)}
                     >
                       <option value="realtime">Real-time (when new matches appear)</option>
-                      <option value="daily">Daily at 8:00 AM PST</option>
-                      <option value="weekly">Weekly on Monday at 9:00 AM PST</option>
-                      <option value="monthly">Monthly on the 1st at 10:00 AM PST</option>
+                      <option value="daily">Daily at 3:00 AM PST</option>
+                      <option value="weekly">Weekly on Monday at 3:00 AM PST</option>
+                      <option value="monthly">Monthly on the 1st at 3:00 AM PST</option>
                     </LBSelect>
                   </div>
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <p className="text-sm text-blue-800">
-                      <strong>Next run preview:</strong> Tomorrow at 8:00 AM PST
+                      <strong>Next run preview:</strong> Tomorrow at 3:00 AM PST
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

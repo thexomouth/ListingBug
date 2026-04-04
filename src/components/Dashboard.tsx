@@ -49,6 +49,7 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const [currentPlan, setCurrentPlan] = useState<PlanType>(getUserPlan());
   const [userDataState, setUserDataState] = useState(getUserDataState());
   const [activeAutomations, setActiveAutomations] = useState<any[]>([]);
+  const [totalAutomationCount, setTotalAutomationCount] = useState(0);
   const [savedListings, setSavedListings] = useState<any[]>([]);
   const [selectedListing, setSelectedListing] = useState<any | null>(null);
   const [selectedAutomation, setSelectedAutomation] = useState<any | null>(null);
@@ -143,10 +144,9 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
         .from('automations')
         .select('id,name,destination_type,destination_label,destination_config,active,last_run_at,next_run_at,schedule')
         .eq('user_id', user.id)
-        .eq('active', true)
         .order('created_at', { ascending: false });
       if (!error && data) {
-        setActiveAutomations(data.map((row: any) => ({
+        const mapped = data.map((row: any) => ({
           id: row.id,
           name: row.name,
           destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
@@ -155,7 +155,9 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
           nextRun: row.next_run_at,
           schedule: row.schedule,
           active: row.active,
-        })));
+        }));
+        setTotalAutomationCount(mapped.length);
+        setActiveAutomations(mapped.filter(a => a.active));
       }
       markLoaded();
     };
@@ -404,8 +406,8 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
           <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Automations</h2>
-              <p className={`text-sm ${currentPlan !== 'enterprise' && activeAutomations.length >= currentPlanConfig.automationSlots ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
-                {activeAutomations.length} of {currentPlanConfig.automationSlots === Infinity ? '\u221e' : currentPlanConfig.automationSlots} automation slots used
+              <p className={`text-sm ${currentPlan !== 'enterprise' && totalAutomationCount >= currentPlanConfig.automationSlots ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
+                {totalAutomationCount} of {currentPlanConfig.automationSlots === Infinity ? '\u221e' : currentPlanConfig.automationSlots} automation slots used
               </p>
             </div>
             <button onClick={() => onNavigate?.('automations')} className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#342e37]">

@@ -1169,21 +1169,20 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
               <div className="grid gap-4">
                 {savedSearches.map((search) => (
                   <Card key={search.id} className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10 hover:shadow-sm transition-shadow">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1"><h4 className="font-bold text-[16px] mb-1">{search.name}</h4><p className="text-[13px] text-gray-600 dark:text-gray-400 mb-1">{search.location}</p><p className="text-[13px] text-gray-500 dark:text-gray-500">{search.criteriaDescription}</p></div>
-                        <LBButton variant="ghost" size="sm" onClick={() => handleDeleteSavedSearch(search.id)} className="-mt-1 -mr-1"><Trash2 className="w-3.5 h-3.5 text-red-600" /></LBButton>
-                      </div>
-                      <div className="flex items-center justify-end pt-3 border-t border-gray-100 dark:border-white/10">
-                        <div className="flex items-center gap-2">
-                          <LBButton variant="outline" size="sm" onClick={() => handleLoadSavedSearch(search)}><Play className="w-3.5 h-3.5 mr-1.5" />Load</LBButton>
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-[14px] truncate">{search.name}</h4>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.location}{search.criteriaDescription ? ` · ${search.criteriaDescription}` : ''}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <LBButton variant="outline" size="sm" onClick={() => handleLoadSavedSearch(search)}><Play className="w-3.5 h-3.5 mr-1" />Load</LBButton>
                           <LBButton variant="primary" size="sm" onClick={() => {
-                            // FIX: write searchId to sessionStorage so CreateAutomationPage
-                            // auto-selects this search in the dropdown on arrival.
                             sessionStorage.setItem('listingbug_automations_tab', 'create');
                             sessionStorage.setItem('listingbug_prefill_automation', JSON.stringify({ searchId: search.id, searchName: search.name }));
                             if (onNavigate) onNavigate('automations');
-                          }}><Zap className="w-3.5 h-3.5 mr-1.5" />Automate</LBButton>
+                          }}><Zap className="w-3.5 h-3.5 mr-1" />Automate</LBButton>
+                          <LBButton variant="ghost" size="sm" onClick={() => handleDeleteSavedSearch(search.id)}><Trash2 className="w-3.5 h-3.5 text-red-500" /></LBButton>
                         </div>
                       </div>
                     </CardContent>
@@ -1242,15 +1241,16 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
               <div className="grid gap-4 pb-[100px]">
                 {searchHistory.map((search) => (
                   <Card key={search.id} className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10 hover:shadow-sm transition-shadow cursor-pointer" onClick={() => { if (onViewSearchResults) onViewSearchResults(search); }}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1"><p className="font-bold text-[16px] mb-1">{search.automationName || search.searchName || search.location}</p><p className="text-[13px] text-gray-600 dark:text-gray-400 mb-1">{search.criteriaDescription}</p><p className="text-[13px] text-green-600 dark:text-green-400">{search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'} found</p></div>
-                        <LBButton variant="ghost" size="sm" className="-mt-1 -mr-1" onClick={(e) => { e.stopPropagation(); setSearchHistory(prev => prev.filter(s => s.id !== search.id)); toast.success('Removed from history'); }}><Trash2 className="w-3.5 h-3.5 text-red-600" /></LBButton>
-                      </div>
-                      <div className="flex items-center justify-end pt-3 border-t border-gray-100 dark:border-white/10">
-                        <div className="flex items-center gap-2">
-                          <LBButton variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); if (onViewSearchResults) onViewSearchResults(search); }}><Eye className="w-3.5 h-3.5 mr-1.5" />View</LBButton>
-                          <LBButton variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setCriteria(search.criteria); setActiveFilters(search.activeFilters || []); setActiveTab('search'); toast.success('Search criteria loaded'); }}><Play className="w-3.5 h-3.5 mr-1.5" />Run</LBButton>
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-[14px] truncate">{search.automationName || search.searchName || search.location}</p>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.criteriaDescription ? `${search.criteriaDescription} · ` : ''}<span className="text-green-600 dark:text-green-400">{search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'}</span></p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <LBButton variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); if (onViewSearchResults) onViewSearchResults(search); }}><Eye className="w-3.5 h-3.5 mr-1" />View</LBButton>
+                          <LBButton variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setCriteria(search.criteria); setActiveFilters(search.activeFilters || []); setActiveTab('search'); toast.success('Search criteria loaded'); }}><Play className="w-3.5 h-3.5 mr-1" />Run</LBButton>
+                          <LBButton variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSearchHistory(prev => prev.filter(s => s.id !== search.id)); toast.success('Removed from history'); }}><Trash2 className="w-3.5 h-3.5 text-red-500" /></LBButton>
                         </div>
                       </div>
                     </CardContent>

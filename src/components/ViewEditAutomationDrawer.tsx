@@ -13,6 +13,7 @@ interface ViewEditAutomationDrawerProps {
   automation: any;
   onAutomationUpdated?: (automation: any) => void;
   onViewDetail?: (automation: any) => void;
+  onViewHistory?: () => void;
 }
 
 const LAUNCH_INTEGRATIONS = [
@@ -39,7 +40,7 @@ function CriteriaRow({ label, value }: { label: string; value: any }) {
 }
 
 export function ViewEditAutomationDrawer({
-  isOpen, onClose, automation, onAutomationUpdated,
+  isOpen, onClose, automation, onAutomationUpdated, onViewHistory,
 }: ViewEditAutomationDrawerProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>([]);
@@ -425,9 +426,16 @@ export function ViewEditAutomationDrawer({
           {!isEditing ? (
             <>
               <button onClick={handleClose} className="px-4 py-2 text-[14px] font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Close</button>
-              <button onClick={() => setIsEditing(true)} className="inline-flex items-center gap-2 px-5 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] font-bold text-[14px] rounded-lg transition-colors">
-                <Edit2 className="w-4 h-4" />Edit Automation
-              </button>
+              <div className="flex items-center gap-2">
+                {onViewHistory && (
+                  <button onClick={() => { handleClose(); onViewHistory(); }} className="px-4 py-2 text-[14px] font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                    History
+                  </button>
+                )}
+                <button onClick={() => setIsEditing(true)} className="inline-flex items-center gap-2 px-5 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] font-bold text-[14px] rounded-lg transition-colors">
+                  <Edit2 className="w-4 h-4" />Edit Automation
+                </button>
+              </div>
             </>
           ) : (
             <>

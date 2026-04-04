@@ -1,9 +1,12 @@
 import { X, MapPin, Home, TrendingUp, TrendingDown, Phone, Mail, Building2, FileText, DollarSign, Calendar, Ruler, Bed, Bath, Target, Sparkles, Save, ChevronLeft, Shield, AlertTriangle, CheckCircle2, Clock, Activity, BarChart3, User, Globe, Key, Hash, History, Tag, Layers } from 'lucide-react';
 import { LBButton } from './design-system/LBButton';
+import { ExportDropdown } from './ExportDropdown';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
+import { supabase } from '../lib/supabase';
+import { toast } from 'sonner@2.0.3';
 
 interface ListingDetailModalProps {
   listing: any;
@@ -48,6 +51,59 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
 
   // Also update if parent prop changes
   useEffect(() => { setSaved(isSaved); }, [isSaved]);
+
+  // Export handlers
+  const handleExportCSV = () => {
+    if (!listing) return;
+    const l = listing;
+    const headers = ['Address', 'City', 'State', 'Zip', 'Price', 'Bedrooms', 'Bathrooms', 'Sq Ft', 'Lot Size', 'Year Built', 'Property Type', 'Status', 'Days on Market', 'Listed Date', 'Agent Name', 'Agent Phone', 'Agent Email', 'Office Name'];
+    const q = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const row = [l.address || l.formattedAddress || '', l.city || '', l.state || '', l.zip || l.zipCode || '', l.price || '', l.bedrooms || '', l.bathrooms || '', l.squareFootage || l.sqft || '', l.lotSize || '', l.yearBuilt || '', l.propertyType || '', l.status || '', l.daysOnMarket || l.daysListed || '', l.listedDate || '', l.listingAgent?.name || l.agentName || '', l.listingAgent?.phone || l.agentPhone || '', l.listingAgent?.email || l.agentEmail || '', l.listingOffice?.name || l.officeName || ''].map(q);
+    const csv = [headers.map(q).join(','), row.join(',')].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `listing-${(l.address || l.id || 'export').replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSendToIntegration = async (integrationId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) { toast.error('Not signed in'); return; }
+    const token = session.access_token;
+    const userId = session.user.id;
+    const { data: conn } = await supabase.from('integration_connections').select('config').eq('user_id', userId).eq('integration_id', integrationId).single();
+    const config = conn?.config ?? {};
+    const l = listing;
+    const listings = [{ id: l.id, formatted_address: l.formattedAddress || l.address || '', city: l.city || '', state: l.state || '', zip_code: l.zipCode || l.zip || '', county: l.county || '', price: l.price || null, bedrooms: l.bedrooms || null, bathrooms: l.bathrooms || null, square_footage: l.squareFootage || l.sqft || null, lot_size: l.lotSize || null, year_built: l.yearBuilt || null, property_type: l.propertyType || '', status: l.status || 'Active', listed_date: l.listedDate || '', days_on_market: l.daysOnMarket || l.daysListed || null, price_reduced: l.priceReduced || false, listing_type: l.listingType || 'sale', mls_number: l.mlsNumber || '', agent_name: l.listingAgent?.name || l.agentName || '', agent_phone: l.listingAgent?.phone || l.agentPhone || '', agent_email: l.listingAgent?.email || l.agentEmail || '', agent_website: l.listingAgent?.website || '', office_name: l.listingOffice?.name || l.officeName || '', office_phone: l.listingOffice?.phone || '', office_email: l.listingOffice?.email || '', latitude: l.latitude || null, longitude: l.longitude || null }];
+    const BASE = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    const DISPATCH_MAP: Record<string, string> = { mailchimp: 'send-to-mailchimp', hubspot: 'send-to-hubspot', sheets: 'send-to-sheets', google: 'send-to-sheets', sendgrid: 'send-to-sendgrid', twilio: 'send-to-twilio', zapier: 'webhook-push', make: 'webhook-push', webhook: 'webhook-push' };
+    const fn = DISPATCH_MAP[integrationId];
+    if (!fn) { toast.error(`Export to ${integrationId} is not yet supported`); return; }
+    let payload: any = { listings };
+    if (integrationId === 'mailchimp') { if (!config.list_id) { toast.error('No Mailchimp audience configured — open Integrations and save settings first.'); return; } payload = { ...payload, list_id: config.list_id, tags: config.tags ?? [], double_opt_in: config.double_opt_in ?? false }; }
+    else if (integrationId === 'hubspot') { payload = { ...payload, object_type: config.object_type ?? 'contacts' }; }
+    else if (integrationId === 'sheets' || integrationId === 'google') { if (!config.spreadsheet_id) { toast.error('No Google Sheets spreadsheet ID configured — open Integrations and save settings first.'); return; } payload = { ...payload, spreadsheet_id: config.spreadsheet_id, sheet_name: config.sheet_name ?? 'Sheet1', write_mode: config.write_mode ?? 'append' }; }
+    else if (integrationId === 'sendgrid') { payload = { ...payload, mode: config.mode ?? 'contacts', list_ids: config.list_ids ?? [] }; }
+    else if (integrationId === 'twilio') { payload = { ...payload, list_unique_name: config.list_unique_name ?? 'listingbug_contacts' }; }
+    else if (['zapier', 'make', 'n8n', 'webhook'].includes(integrationId)) { if (!config.webhook_url) { toast.error('No webhook URL configured — open Integrations and save settings first.'); return; } payload = { ...payload, webhook_url: config.webhook_url, send_mode: config.send_mode ?? 'batch' }; }
+    const integrationName = { mailchimp: 'Mailchimp', hubspot: 'HubSpot', sheets: 'Google Sheets', google: 'Google Sheets', sendgrid: 'SendGrid', twilio: 'Twilio', zapier: 'Zapier', make: 'Make', n8n: 'n8n', webhook: 'Webhook' }[integrationId] ?? integrationId;
+    const toastId = toast.loading(`Sending listing to ${integrationName}…`);
+    try {
+      const res = await fetch(`${BASE}/${fn}`, { method: 'POST', headers, body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      toast.dismiss(toastId);
+      if (!res.ok) { toast.error(`Export failed: ${data.error ?? `HTTP ${res.status}`}`); return; }
+      const sent = data.sent ?? data.written ?? data.accepted ?? 0;
+      const failed = data.failed ?? 0;
+      if (sent > 0) { toast.success(`Listing sent to ${integrationName}!`); }
+      else if (failed > 0 && sent === 0) { const err = data.errors?.[0] ?? 'Export failed'; toast.error(typeof err === 'string' ? err : JSON.stringify(err)); }
+      else { toast.success(`Listing sent to ${integrationName}!`); }
+    } catch (e: any) { toast.dismiss(toastId); toast.error(e.message ?? 'Network error during export'); }
+  };
 
   // Enable swipe-to-close on mobile (swipe right to close)
   useSwipeGesture({
@@ -268,9 +324,9 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
               {viewMode === 'listing' && onSaveListing && (
                 <button
                   onClick={() => onSaveListing(listing)}
-                  className={`p-2 rounded-lg transition-colors ${ 
-                    saved 
-                      ? 'bg-[#342e37] text-[#FFD447] hover:bg-[#342e37]/90' 
+                  className={`p-2 rounded-lg transition-colors ${
+                    saved
+                      ? 'bg-[#342e37] text-[#FFD447] hover:bg-[#342e37]/90'
                       : 'hover:bg-[#342e37]/10'
                   }`}
                   aria-label={saved ? "Unsave listing" : "Save listing"}
@@ -278,6 +334,12 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
                 >
                   <Save className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
                 </button>
+              )}
+              {viewMode === 'listing' && (
+                <ExportDropdown
+                  onExportCSV={handleExportCSV}
+                  onSendToIntegration={handleSendToIntegration}
+                />
               )}
               <button
                 onClick={onClose}

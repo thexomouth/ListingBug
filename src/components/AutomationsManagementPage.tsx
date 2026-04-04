@@ -192,7 +192,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       const lastRun = lastRunMap[row.id];
       return {
         id: row.id, name: row.name, searchName: row.search_name ?? '',
-        schedule: [row.schedule, row.schedule_time ? `at ${row.schedule_time}` : ''].filter(Boolean).join(' '),
+        schedule: row.schedule ? `${row.schedule.charAt(0).toUpperCase() + row.schedule.slice(1)} at 3:00 AM PST` : 'Daily at 3:00 AM PST',
         destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
         searchCriteria: row.search_criteria ?? {}, active: row.active ?? true, status: 'idle',
         lastRun: lastRun ? {
@@ -495,25 +495,32 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
             <h3 className="font-bold text-[18px] mb-4 text-gray-900 dark:text-white">Run History</h3>
             <div className="block lg:hidden space-y-3">
               {runHistory.map((run) => (
-                <div key={run.id} className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-4 space-y-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors" onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-medium ${run.status === 'success' ? 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400' : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-400'}`}>
-                          {run.status === 'success' ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                          {run.status === 'success' ? 'Success' : 'Failed'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[13px] text-gray-500 dark:text-gray-400">
-                        <Clock className="w-3.5 h-3.5" />
-                        {new Date(run.runDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
-                      </div>
+                <div key={run.id} className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 rounded-lg p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors" onClick={() => { if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }}>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[13px] text-gray-900 dark:text-white truncate">{run.automationName}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{run.destination} · {new Date(run.runDate).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</p>
                     </div>
-                    <div className="text-right"><div className="text-[20px] font-bold text-gray-900 dark:text-white">{run.listingsSent}</div><div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Confirmed</div></div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium flex-shrink-0 ${run.status === 'success' ? 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400' : 'bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-400'}`}>
+                      {run.status === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                      {run.status === 'success' ? 'Success' : 'Failed'}
+                    </span>
                   </div>
-                  <div><div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Automation</div><div className="font-medium text-[14px] text-gray-900 dark:text-white">{run.automationName}</div></div>
-                  <div><div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">Destination</div><div className="font-medium text-[14px] text-gray-700 dark:text-gray-300">{run.destination}</div></div>
-                  {run.details && (<div className="pt-2 border-t border-gray-100 dark:border-white/10"><div className="text-[13px] text-gray-500 dark:text-gray-400">{run.details}</div></div>)}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100 dark:border-white/10">
+                    <div className="text-center">
+                      <div className="text-[15px] font-bold text-gray-900 dark:text-white">{run.listingsFetched}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Found</div>
+                    </div>
+                    <div className="text-center border-l border-r border-gray-100 dark:border-white/10">
+                      <div className="text-[15px] font-bold text-green-600 dark:text-green-400">{run.listingsSent}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Confirmed</div>
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-[15px] font-bold ${run.listingsFetched - run.listingsSent > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{run.listingsFetched - run.listingsSent}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Failed</div>
+                    </div>
+                  </div>
+                  {run.details && (<p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-white/10 truncate">{run.details}</p>)}
                 </div>
               ))}
               {runHistory.length === 0 && (<div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg"><div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]"><Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" /></div><p className="text-gray-600 dark:text-white font-medium">No run history yet</p><p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p></div>)}
@@ -527,8 +534,9 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                       <LBTableHead className="text-gray-600 dark:text-gray-300">Automation</LBTableHead>
                       <LBTableHead className="text-gray-600 dark:text-gray-300">Destination</LBTableHead>
                       <LBTableHead className="text-gray-600 dark:text-gray-300">Status</LBTableHead>
-                      <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Fetched</LBTableHead>
+                      <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Found</LBTableHead>
                       <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Confirmed</LBTableHead>
+                      <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Failed</LBTableHead>
                       <LBTableHead className="text-gray-600 dark:text-gray-300 w-[80px]"></LBTableHead>
                     </LBTableRow>
                   </LBTableHeader>
@@ -544,8 +552,9 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                             {run.status === 'success' ? 'Success' : 'Failed'}
                           </span>
                         </LBTableCell>
-                        <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">{run.listingsFetched || run.listingsFound}</LBTableCell>
-                        <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">{run.listingsSent}</LBTableCell>
+                        <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">{run.listingsFetched}</LBTableCell>
+                        <LBTableCell className="text-right font-medium text-green-600 dark:text-green-400">{run.listingsSent}</LBTableCell>
+                        <LBTableCell className={`text-right font-medium ${run.listingsFetched - run.listingsSent > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{run.listingsFetched - run.listingsSent}</LBTableCell>
                         <LBTableCell>
                           <button onClick={(e) => { e.stopPropagation(); if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }} className="flex items-center gap-1 text-[12px] text-[#FFCE0A] hover:text-[#FFCE0A]/80 font-medium transition-colors">
                             <Eye className="w-3.5 h-3.5" />View
@@ -562,7 +571,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         )}
       </div>
 
-      <ViewEditAutomationDrawer isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} automation={selectedAutomation} onAutomationUpdated={handleAutomationUpdated} onViewDetail={onViewDetail} />
+      <ViewEditAutomationDrawer isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} automation={selectedAutomation} onAutomationUpdated={handleAutomationUpdated} onViewDetail={onViewDetail} onViewHistory={() => setActiveTab('history')} />
 
       {runningAutomation && (
         <RunAutomationLoading isOpen={runNowLoading} automationName={runningAutomation.name} searchName={runningAutomation.searchName} destinationType={runningAutomation.destination.type} destinationLabel={runningAutomation.destination.label}
