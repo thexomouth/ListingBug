@@ -155,7 +155,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
   };
   const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
 
-  const loadAutomations = async () => {
+  const loadAutomations = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) { setAutomationsLoading(false); return; }
     const userId = session.user.id;
@@ -208,7 +208,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     });
     if (data !== null) setAutomations(mapped);
     setAutomationsLoading(false);
-  };
+  }, []);
 
   const loadRunHistory = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -245,10 +245,19 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     });
     const runsSub = supabase
       .channel('automation_runs_changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'automation_runs' }, () => { loadRunHistory(); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'automation_runs' }, () => {
+        loadRunHistory();
+        loadAutomations();
+      })
       .subscribe();
     return () => { authSub.unsubscribe(); supabase.removeChannel(runsSub); };
-  }, []);
+  }, [loadAutomations, loadRunHistory]);
+
+  // Refresh data whenever the user switches to a tab that shows live data
+  useEffect(() => {
+    if (activeTab === 'automations') loadAutomations();
+    if (activeTab === 'history') loadRunHistory();
+  }, [activeTab, loadAutomations, loadRunHistory]);
 
   useEffect(() => {
     const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
