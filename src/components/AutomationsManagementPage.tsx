@@ -61,6 +61,7 @@ interface Automation {
   lastRun?: {
     date: string;
     status: 'success' | 'failed';
+    listingsFetched: number;
     listingsSent: number;
   };
   nextRun?: string;
@@ -168,6 +169,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       .from('automations')
       .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
       .eq('user_id', userId)
+      .order('last_run_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
     if (error) { console.error('[Automations] load error:', error.message); setAutomationsLoading(false); return; }
 
@@ -177,7 +179,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     if (automationIds.length > 0) {
       const { data: runsData } = await supabase
         .from('automation_runs')
-        .select('automation_id,status,listings_sent,listings_fetched,run_date')
+        .select('automation_id,status,listings_sent,listings_found,run_date')
         .in('automation_id', automationIds)
         .order('run_date', { ascending: false });
       // Keep only the most recent run per automation
@@ -198,7 +200,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         lastRun: lastRun ? {
           date: lastRun.run_date,
           status: lastRun.status === 'success' ? 'success' : 'failed',
-          listingsFetched: lastRun.listings_fetched ?? 0,
+          listingsFetched: lastRun.listings_found ?? 0,
           listingsSent: lastRun.listings_sent ?? 0,
         } : row.last_run_at ? { date: row.last_run_at, status: 'success', listingsFetched: 0, listingsSent: 0 } : undefined,
         nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
@@ -214,7 +216,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     if (!userId) { setRunHistory([]); return; }
     const { data, error } = await supabase
       .from('automation_runs')
-      .select('id,automation_name,run_date,status,listings_fetched,listings_sent,destination,details,contacts_skipped,contacts_failed,destination_count_before,destination_count_after')
+      .select('id,automation_name,run_date,status,listings_found,listings_sent,destination,details,contacts_skipped,contacts_failed,destination_count_before,destination_count_after')
       .eq('user_id', userId)
       .order('run_date', { ascending: false })
       .limit(50);
@@ -223,8 +225,8 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       id: run.id, automationName: run.automation_name || 'Unknown',
       runDate: run.run_date || new Date().toISOString(),
       status: run.status || 'failed',
-      listingsFound: run.listings_fetched || run.listings_sent || 0,
-      listingsFetched: run.listings_fetched || 0,
+      listingsFound: run.listings_found || run.listings_sent || 0,
+      listingsFetched: run.listings_found || 0,
       listingsSent: run.listings_sent || 0,
       destination: run.destination || '', details: run.details || '',
       contactsSkipped: run.contacts_skipped || 0,
@@ -331,7 +333,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
         });
       }
       await loadRunHistory();
-      setAutomations(prev => prev.map(a => a.id === automation.id ? { ...a, lastRun: { status: status === 'failed' ? 'failed' : 'success', date: new Date().toISOString(), listingsSent: listings_sent ?? 0 } } : a));
+      await loadAutomations();
     } catch (err: any) {
       const msg = err.message ?? 'Unknown error';
       toast.error(`Run failed: ${msg}`);
@@ -441,8 +443,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                     const lastRunStatus = automation.lastRun?.status;
                     const lastRunDate = automation.lastRun?.date;
                     const lastRunSent = automation.lastRun?.listingsSent ?? 0;
-                    const lastRunFromHistory = runHistory.find(r => r.automationName === automation.name);
-                    const lastRunFound = lastRunFromHistory?.listingsFetched ?? lastRunFromHistory?.listingsFound ?? 0;
+                    const lastRunFound = automation.lastRun?.listingsFetched ?? 0;
                     return (
                       <LBTableRow key={automation.id} onClick={() => { setSelectedAutomation(automation); setEditModalOpen(true); }} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
                         <LBTableCell className="text-right">

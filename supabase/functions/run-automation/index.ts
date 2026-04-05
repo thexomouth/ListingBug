@@ -55,9 +55,9 @@ async function fetchListings(searchCriteria: Record<string, unknown>): Promise<u
   if (city)         params.set("city", String(city));
   if (state)        params.set("state", String(state));
   if (zipCode)      params.set("zipCode", String(zipCode));
-  if (latitude != null)  params.set("latitude", String(latitude));
-  if (longitude != null) params.set("longitude", String(longitude));
-  if (radius != null)    params.set("radius", String(radius));
+  if (latitude != null && latitude !== "")   params.set("latitude", String(latitude));
+  if (longitude != null && longitude !== "") params.set("longitude", String(longitude));
+  if (radius != null && radius !== "")       params.set("radius", String(radius));
   if (propertyType) params.set("propertyType", String(propertyType));
   if (bedrooms  != null && bedrooms  !== "") params.set("bedrooms",  String(bedrooms));
   if (bathrooms != null && bathrooms !== "") params.set("bathrooms", String(bathrooms));
@@ -119,47 +119,29 @@ async function sendToDestination(
 
   switch (destType) {
     case "twilio": {
-      const sid   = String(credentials.accountSid   ?? Deno.env.get("TWILIO_ACCOUNT_SID")   ?? "");
-      const token = String(credentials.authToken    ?? Deno.env.get("TWILIO_AUTH_TOKEN")    ?? "");
-      const from  = String(credentials.fromNumber   ?? Deno.env.get("TWILIO_FROM_NUMBER")   ?? "");
-      const to    = String(config.to_number ?? config.phone ?? "");
-
-      if (!sid || !token || !from || !to) {
-        return { sent: 0, error: "Twilio credentials or destination number missing" };
-      }
-
-      const body = listings.length === 0
-        ? `ListingBug: No new listings matched your "${automation.name}" automation today.`
-        : `ListingBug: ${listings.length} new listing${listings.length > 1 ? "s" : ""} matched "${automation.name}". Log in to view details.`;
-
-      const form = new URLSearchParams({ From: from, To: to, Body: body });
-      const twilioRes = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: form,
-        }
-      );
-      if (!twilioRes.ok) {
-        const err = await twilioRes.text();
-        console.error("[run-automation] Twilio error:", err);
-        return { sent: 0, error: err };
-      }
-      return { sent: listings.length };
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-twilio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
+        body: JSON.stringify({
+          user_id: userId,
+          listings,
+          list_unique_name: mergedConfig.list_unique_name,
+          sync_service_sid: mergedConfig.sync_service_sid,
+        }),
+      });
+      const b = await r.json().catch(() => ({}));
+      return r.ok ? { sent: b.confirmed ?? b.sent ?? listings.length } : { sent: 0, error: b.error ?? `send-to-twilio ${r.status}` };
     }
 
     case "sendgrid": {
-      const listIds: string[] = config.list_ids ?? (config.list_id ? [String(config.list_id)] : []);
+      const listIds: string[] = mergedConfig.list_ids ?? (mergedConfig.list_id ? [String(mergedConfig.list_id)] : []);
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-to-sendgrid`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
         body: JSON.stringify({ user_id: userId, listings, list_ids: listIds }),
       });
       const b = await r.json().catch(() => ({}));
+      console.log(`[run-automation] SendGrid response: confirmed=${b.confirmed} skipped_no_email=${b.skipped_no_email} total=${b.total}`);
       if (!r.ok) return { sent: 0, error: b.error ?? "SendGrid error" };
       return { sent: b.confirmed ?? b.sent ?? b.accepted ?? listings.length };
     }
@@ -181,15 +163,21 @@ async function sendToDestination(
     }
 
     case "mailchimp": {
+      if (!mergedConfig.list_id) return { sent: 0, error: "Mailchimp audience not configured" };
       const fnUrl = `${SUPABASE_URL}/functions/v1/send-to-mailchimp`;
       const res = await fetch(fnUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}` },
-        body: JSON.stringify({ user_id: userId, listings, config }),
+        body: JSON.stringify({
+          user_id: userId,
+          listings,
+          list_id: mergedConfig.list_id,
+          tags: mergedConfig.tags,
+        }),
       });
-      const body = await res.json();
-      if (!res.ok) return { sent: 0, error: body.error ?? "Mailchimp error" };
-      return { sent: listings.length };
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) return { sent: 0, error: b.error ?? "Mailchimp error" };
+      return { sent: b.confirmed ?? b.sent ?? listings.length };
     }
 
     case "hubspot": {
