@@ -19,7 +19,8 @@ import {
   Target,
   Send,
   Download,
-  Upload
+  Upload,
+  AlertTriangle
 } from 'lucide-react';
 
 interface RunDetailsModalProps {
@@ -205,22 +206,27 @@ export function RunDetailsModal({
               </p>
             </div>
 
+            {/* Reason — shown whenever exports were missed */}
+            {run.details && (run.status !== 'success' || (run.contactsSkipped ?? 0) > 0 || ((run.listingsFetched ?? run.listingsFound ?? 0) > (run.exported ?? 0))) && (
+              <div className={`rounded-lg p-4 border ${run.status === 'failed' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${run.status === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`} />
+                  <p className={`text-[12px] font-medium uppercase tracking-wide ${run.status === 'failed' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                    {run.status === 'failed' ? 'Export Failed' : 'Partial Export — Reason'}
+                  </p>
+                </div>
+                <p className={`text-[14px] leading-relaxed ${run.status === 'failed' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                  {run.details}
+                </p>
+              </div>
+            )}
+
             {/* Search Details (if available) */}
             {run.searchName && (
               <div className="bg-gray-50 dark:bg-[#2F2F2F] rounded-lg p-4">
                 <p className="text-[12px] text-gray-600 dark:text-gray-400 mb-1">Saved Search</p>
                 <p className="font-medium text-[15px] text-[#342e37] dark:text-white">
                   {run.searchName}
-                </p>
-              </div>
-            )}
-
-            {/* Details/Notes */}
-            {run.details && (
-              <div className="bg-gray-50 dark:bg-[#2F2F2F] rounded-lg p-4">
-                <p className="text-[12px] text-gray-600 dark:text-gray-400 mb-1">Details</p>
-                <p className="text-[14px] text-[#342e37] dark:text-white">
-                  {run.details}
                 </p>
               </div>
             )}

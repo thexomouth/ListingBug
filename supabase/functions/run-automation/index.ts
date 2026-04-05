@@ -99,7 +99,7 @@ async function sendToDestination(
   supabase: ReturnType<typeof createClient>,
   automation: Record<string, unknown>,
   listings: unknown[]
-): Promise<{ sent: number; error?: string }> {
+): Promise<{ sent: number; skipped?: number; failed?: number; reason?: string; error?: string }> {
   const destType = String(automation.destination_type ?? "");
   const config = (automation.destination_config ?? {}) as Record<string, unknown>;
   const userId = String(automation.user_id);
@@ -130,7 +130,12 @@ async function sendToDestination(
         }),
       });
       const b = await r.json().catch(() => ({}));
-      return r.ok ? { sent: b.confirmed ?? b.sent ?? listings.length } : { sent: 0, error: b.error ?? `send-to-twilio ${r.status}` };
+      if (!r.ok) return { sent: 0, error: b.error ?? `send-to-twilio ${r.status}` };
+      const skipped = b.skipped_no_phone ?? 0;
+      const reason = skipped > 0
+        ? `${skipped} listing${skipped !== 1 ? "s" : ""} skipped — listing data did not include an agent phone number`
+        : undefined;
+      return { sent: b.confirmed ?? b.sent ?? listings.length, skipped, reason };
     }
 
     case "sendgrid": {
@@ -141,9 +146,12 @@ async function sendToDestination(
         body: JSON.stringify({ user_id: userId, listings, list_ids: listIds }),
       });
       const b = await r.json().catch(() => ({}));
-      console.log(`[run-automation] SendGrid response: confirmed=${b.confirmed} skipped_no_email=${b.skipped_no_email} total=${b.total}`);
       if (!r.ok) return { sent: 0, error: b.error ?? "SendGrid error" };
-      return { sent: b.confirmed ?? b.sent ?? b.accepted ?? listings.length };
+      const skipped = b.skipped_no_email ?? 0;
+      const reason = skipped > 0
+        ? `${skipped} listing${skipped !== 1 ? "s" : ""} skipped — listing data did not include an agent email address`
+        : undefined;
+      return { sent: b.confirmed ?? b.sent ?? b.accepted ?? listings.length, skipped, reason };
     }
 
     case "webhook": {
@@ -177,7 +185,12 @@ async function sendToDestination(
       });
       const b = await res.json().catch(() => ({}));
       if (!res.ok) return { sent: 0, error: b.error ?? "Mailchimp error" };
-      return { sent: b.confirmed ?? b.sent ?? listings.length };
+      const skipped = b.skipped_no_email ?? 0;
+      const failed = b.failed ?? 0;
+      const reason = skipped > 0
+        ? `${skipped} listing${skipped !== 1 ? "s" : ""} skipped — listing data did not include an agent email address`
+        : undefined;
+      return { sent: b.confirmed ?? b.sent ?? listings.length, skipped, failed, reason };
     }
 
     case "hubspot": {
@@ -269,6 +282,9 @@ serve(async (req) => {
     let runStatus: "success" | "failed" | "partial" = "success";
     let errorMsg: string | undefined;
     let listingsSent = 0;
+    let listingsSkipped = 0;
+    let listingsFailed = 0;
+    let skipReason: string | undefined;
 
     try {
       listings = await fetchListings(
@@ -307,9 +323,14 @@ serve(async (req) => {
       // 6. Dispatch to integration — listings is guaranteed non-empty here
       const result = await sendToDestination(supabase, automation as Record<string, unknown>, listings);
       listingsSent = result.sent;
+      listingsSkipped = result.skipped ?? 0;
+      listingsFailed = result.failed ?? 0;
+      skipReason = result.reason;
       if (result.error) {
-        runStatus = "partial";
+        runStatus = listingsSent > 0 ? "partial" : "failed";
         errorMsg = result.error;
+      } else if (listingsSkipped > 0 && listingsSent === 0) {
+        runStatus = "partial";
       }
     } catch (err: unknown) {
       const e = err as Error;
@@ -318,7 +339,23 @@ serve(async (req) => {
       errorMsg = e.message;
     }
 
-    // 7. Log run
+    // 7. Log run — build human-readable details that explain any skips/failures
+    const destLabel = String(automation.destination_label ?? automation.destination_type);
+    let runDetails: string;
+    if (runStatus === "failed") {
+      runDetails = `Export failed: ${errorMsg ?? "unknown error"}`;
+    } else if (listingsSkipped > 0 && listingsSent === 0) {
+      runDetails = skipReason
+        ? `0 exported — ${skipReason}`
+        : `0 exported — listings did not contain the required contact data for this destination`;
+    } else if (listingsSkipped > 0) {
+      runDetails = `${listingsSent} exported to ${destLabel}${skipReason ? `; ${skipReason}` : `, ${listingsSkipped} skipped`}`;
+    } else if (runStatus === "partial") {
+      runDetails = `Partial export: ${listingsSent} sent, error — ${errorMsg ?? "unknown"}`;
+    } else {
+      runDetails = `${listingsSent} listing${listingsSent !== 1 ? "s" : ""} exported to ${destLabel}`;
+    }
+
     await supabase.from("automation_runs").insert({
       automation_id: automation.id,
       user_id: user.id,
@@ -327,10 +364,10 @@ serve(async (req) => {
       status: runStatus,
       listings_found: listings.length,
       listings_sent: listingsSent,
+      contacts_skipped: listingsSkipped,
+      contacts_failed: listingsFailed,
       destination: automation.destination_type,
-      details: runStatus === "success"
-        ? `Sent ${listingsSent} listings to ${automation.destination_label ?? automation.destination_type}`
-        : `Completed with issues: ${errorMsg ?? "unknown"}`,
+      details: runDetails,
       error_message: errorMsg ?? null,
     });
 
@@ -345,7 +382,8 @@ serve(async (req) => {
         status: runStatus,
         listings_found: listings.length,
         listings_sent: listingsSent,
-        details: errorMsg ?? `Sent ${listingsSent} listings to ${automation.destination_label ?? automation.destination_type}`,
+        listings_skipped: listingsSkipped,
+        details: runDetails,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

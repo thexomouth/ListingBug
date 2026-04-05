@@ -528,7 +528,11 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                       <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide">Failed</div>
                     </div>
                   </div>
-                  {run.details && (<p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-white/10 truncate">{run.details}</p>)}
+                  {(run.status !== 'success' || run.listingsFetched > run.listingsSent) && run.details && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2 pt-2 border-t border-gray-100 dark:border-white/10 line-clamp-2">
+                      <span className="font-medium">Reason: </span>{run.details}
+                    </p>
+                  )}
                 </div>
               ))}
               {runHistory.length === 0 && (<div className="text-center py-12 bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg"><div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3 bg-gray-50 dark:bg-[#0F1115]"><Clock className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" /></div><p className="text-gray-600 dark:text-white font-medium">No run history yet</p><p className="text-[13px] text-gray-500 dark:text-[#EBF2FA] mt-1">Your automation runs will appear here</p></div>)}
@@ -545,6 +549,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                       <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Found</LBTableHead>
                       <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Confirmed</LBTableHead>
                       <LBTableHead className="text-right text-gray-600 dark:text-gray-300">Failed</LBTableHead>
+                      <LBTableHead className="text-gray-600 dark:text-gray-300">Reason</LBTableHead>
                       <LBTableHead className="text-gray-600 dark:text-gray-300 w-[80px]"></LBTableHead>
                     </LBTableRow>
                   </LBTableHeader>
@@ -563,6 +568,13 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
                         <LBTableCell className="text-right font-medium text-gray-900 dark:text-white">{run.listingsFetched}</LBTableCell>
                         <LBTableCell className="text-right font-medium text-green-600 dark:text-green-400">{run.listingsSent}</LBTableCell>
                         <LBTableCell className={`text-right font-medium ${run.listingsFetched - run.listingsSent > 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{run.listingsFetched - run.listingsSent}</LBTableCell>
+                        <LBTableCell className="max-w-[220px]">
+                          {(run.status !== 'success' || run.listingsFetched > run.listingsSent) && run.details ? (
+                            <span className="text-[11px] text-amber-700 dark:text-amber-400 leading-tight line-clamp-2" title={run.details}>
+                              {run.details}
+                            </span>
+                          ) : null}
+                        </LBTableCell>
                         <LBTableCell>
                           <button onClick={(e) => { e.stopPropagation(); if (onViewRunDetails) { onViewRunDetails(run); } else { setSelectedRun(run); setRunDetailsModalOpen(true); } }} className="flex items-center gap-1 text-[12px] text-[#FFCE0A] hover:text-[#FFCE0A]/80 font-medium transition-colors">
                             <Eye className="w-3.5 h-3.5" />View
@@ -613,6 +625,8 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
           listingsFetched: selectedRun.listingsFetched,
           listingsFound: selectedRun.listingsFound,
           exported: selectedRun.listingsSent,
+          contactsSkipped: selectedRun.contactsSkipped,
+          contactsFailed: selectedRun.contactsFailed,
           destination: selectedRun.destination,
           details: selectedRun.details,
         } : null}
