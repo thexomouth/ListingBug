@@ -355,7 +355,11 @@ serve(async (req) => {
       runDetails = `${listingsSent} listing${listingsSent !== 1 ? "s" : ""} exported to ${destLabel}`;
     }
 
+    // 7a. Pre-generate run ID so we can reference it in automation_run_listings
+    const runId = crypto.randomUUID();
+
     await supabase.from("automation_runs").insert({
+      id: runId,
       automation_id: automation.id,
       user_id: user.id,
       automation_name: automation.name,
@@ -367,7 +371,22 @@ serve(async (req) => {
       contacts_failed: listingsFailed,
       destination: automation.destination_type,
       details: runDetails,
+      error_message: errorMsg ?? null,
     });
+
+    // 7b. Persist each listing so the Results page can display them
+    if (listings.length > 0) {
+      const transferred = runStatus !== "failed" && listingsSent > 0;
+      await supabase.from("automation_run_listings").insert(
+        (listings as any[]).map((listing) => ({
+          automation_run_id: runId,
+          user_id: user.id,
+          listing_id: String((listing as any).id ?? (listing as any).formattedAddress ?? ""),
+          listing_data: listing,
+          transferred,
+        }))
+      );
+    }
 
     // 8. Update last_run_at
     await supabase.from("automations").update({
