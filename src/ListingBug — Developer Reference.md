@@ -1,6 +1,6 @@
 # **ListingBug — Developer Reference**
 
-Last Updated: March 29, 2026  
+Last Updated: April 4, 2026  
 Live Site: [https://thelistingbug.com](https://thelistingbug.com/)  
 GitHub: [https://github.com/thexomouth/ListingBug](https://github.com/thexomouth/ListingBug)  
 ---
@@ -81,7 +81,8 @@ Critical pattern: SubscriptionGate is inlined as a function declaration in App.t
 | saved\_listings | Bookmarked listings per user |
 | search\_runs | History of each search execution \+ result metadata |
 | automations | Automation config: criteria, schedule, integration destination. active (bool) controls on/off — never use status |
-| automation\_runs | Execution history for automations |
+| automation\_runs | Execution history for automations. Key cols: id (uuid, pre-generated), automation\_id, user\_id, automation\_name, run\_date, status, listings\_found, listings\_sent, contacts\_skipped, contacts\_failed, destination, details, error\_message |
+| automation\_run\_listings | Per-listing data for each run. Key cols: automation\_run\_id (FK → automation\_runs.id), user\_id, listing\_id, listing\_data (jsonb), transferred (bool). Powers /automations/results page. |
 | integration\_connections | OAuth tokens \+ API keys per user per service |
 | usage\_tracking | Monthly listing fetch counts per user |
 | api\_keys | User-generated API keys for external access |
@@ -99,6 +100,9 @@ Critical DB conventions:
 * Profile updates: always use .update() — never .upsert() on users table (causes ghost row bugs)  
 * Google integration ID is stored as 'google' (not 'sheets')  
 * Plan value 'professional' maps to display label 'pro'
+* **Silent INSERT failures**: Supabase/PostgreSQL silently rejects INSERTs with unknown columns — no error is surfaced to the caller unless you explicitly check the error return. Always destructure and check `const { error } = await supabase.from(...).insert(...)`. This caused automation run rows to be dropped silently for weeks.
+* **automation\_runs ↔ automation\_run\_listings**: Pre-generate the run UUID with `crypto.randomUUID()` before inserting to automation\_runs, then use that same ID as `automation_run_id` when inserting to automation\_run\_listings.
+* **Realtime subscriptions**: Tables must be added to the `supabase_realtime` publication or postgres\_changes events will never fire. Run: `ALTER PUBLICATION supabase_realtime ADD TABLE <table_name>;` as a migration. automation\_runs is already in the publication.
 
 ---
 
@@ -106,24 +110,77 @@ Critical DB conventions:
 
 All deployed to Supabase project ynqmisrlahjberhmlviz.
 
-| Function | Version | Purpose |
+| Function | Version (Apr 2026) | Purpose |
 | :---- | :---- | :---- |
 | search-listings | v34 | Core search: auth check, plan limit enforcement, RentCast call, usage tracking |
-| run-automation | v12 | Execute an automation: run search → dispatch to integration |
-| send-to-mailchimp | v3 | Push results to Mailchimp audience |
-| send-to-sheets | v3 | Push results to Google Sheets |
-| send-to-hubspot | v3 | Push results to HubSpot CRM |
-| send-to-sendgrid | v4 | Send via SendGrid |
-| send-to-twilio | v4 | SMS via Twilio |
+| run-automation | v69 | Execute an automation: run search → dispatch to integration → log to automation_runs + automation_run_listings |
+| run-due-automations | — | Scheduled trigger: finds due automations and calls run-automation for each |
+| send-to-mailchimp | v26 | Push results to Mailchimp audience |
+| send-to-sheets | v17 | Push results to Google Sheets |
+| send-to-hubspot | v27 | Push results to HubSpot CRM |
+| send-to-sendgrid | v18 | Send via SendGrid |
+| send-to-twilio | v17 | SMS via Twilio |
 | webhook-push | v3 | POST results to any webhook URL |
-| get-integration-options | v1 | Loads dynamic config (Mailchimp audiences, SendGrid lists) |
+| get-integration-options | v14 | Loads dynamic config (Mailchimp audiences, SendGrid lists) |
 | create-checkout-session | v3 | Stripe Checkout |
 | stripe-webhook | v3 | Subscription lifecycle → updates users table |
 | stripe-portal | v3 | Redirect to Stripe Customer Portal |
 | delete-user | v1 | Full account deletion |
 | update-password | — | Password change (uses native Supabase auth, not a custom edge fn) |
 
-RentCast warning: The account is in overages. Never call search-listings without explicit user intent.  
+RentCast warning: The account is in overages. Never call search-listings without explicit user intent.
+
+### CRITICAL: Edge Function Deployment Rules
+
+**Always deploy with `--no-verify-jwt`** (or `verify_jwt: false` in the MCP tool).  
+Every send-to-\* function and run-automation uses this flag. Without it, the Supabase gateway rejects the request with 401 before it reaches function code — even with a valid user JWT. This flag disables the *gateway-level* check only; functions still receive the Authorization header and do their own auth internally.
+
+Deploy via MCP tool (preferred — no CLI needed):
+```
+mcp__claude_ai_Supabase__deploy_edge_function
+  project_id: ynqmisrlahjberhmlviz
+  verify_jwt: false   ← ALWAYS false for all functions in this project
+```
+
+Deploy via CLI (fallback):
+```
+npx supabase functions deploy <function-name> --project-ref ynqmisrlahjberhmlviz --no-verify-jwt
+```
+
+**Do NOT omit `--no-verify-jwt` / `verify_jwt: false`.** Forgetting it in a redeploy will silently break all manual "Run Now" automation triggers and frontend export calls — they return 401 immediately.
+
+### Edge Function Auth Pattern
+
+All send-to-\* functions support two caller paths:
+
+```typescript
+if (body.user_id) {
+  userId = body.user_id;               // server-to-server (run-automation uses service key + passes user_id)
+} else if (authHeader) {
+  const { data: { user } } = await userClient.auth.getUser();  // browser calls use JWT
+  if (user) userId = user.id;
+}
+if (!userId) return 401;
+```
+
+Frontend calls (SearchListings, ListingDetailModal, SearchResultsPage) send the user JWT.  
+run-automation calls send-to-\* functions with the service role key + `user_id` in the body.
+
+### Frontend → Integration Dispatch Map
+
+Used in SearchListings, SearchResultsPage, and ListingDetailModal:
+
+| integration_id | Edge Function |
+| :---- | :---- |
+| mailchimp | send-to-mailchimp |
+| hubspot | send-to-hubspot |
+| sheets | send-to-sheets |
+| google | send-to-sheets |
+| sendgrid | send-to-sendgrid |
+| twilio | send-to-twilio |
+| zapier / make / webhook | webhook-push |
+
+Called directly from the browser with `Authorization: Bearer <user_jwt>`.  
 ---
 
 ## **6\. Plans & Billing**
@@ -446,4 +503,48 @@ Key config:
 * Supabase URL: https://ynqmisrlahjberhmlviz.supabase.co  
 * Vercel project ID: prj\_4D3zdZgjjaRmUkDwzgOh3RvxhvSK
 
-TDZ crash prevention: Never add a new top-level import to App.tsx for any component that itself imports from Supabase or shared modules. Use lazy() for all new components. If something must be synchronous, inline it as a function declaration after all imports.  
+TDZ crash prevention: Never add a new top-level import to App.tsx for any component that itself imports from Supabase or shared modules. Use lazy() for all new components. If something must be synchronous, inline it as a function declaration after all imports.
+
+---
+
+## **13\. Integration Delivery — Confirmed Count Logic**
+
+All send-to-\* functions return a `confirmed` field that run-automation stores as `listings_sent`. The rule across all integrations:
+
+**Use `apiReportedSent` (contacts the API accepted, new + updated) as the primary metric. Fall back to the member/contact count delta only if apiReportedSent is 0.**
+
+Why: Count delta only captures *net-new* contacts. When all contacts already exist and are just being updated with new listing data, the count doesn't change — but the upsert still succeeded. Using delta as primary caused `confirmed=0` even on fully successful runs.
+
+Pattern used in send-to-mailchimp and send-to-hubspot:
+```typescript
+const confirmed = apiReportedSent > 0
+  ? apiReportedSent
+  : (delta > 0 ? delta : 0);
+```
+
+run-automation HubSpot case must use `b.confirmed ?? b.sent ?? listings.length` — never hardcode `listings.length`, which ignores actual API results.
+
+---
+
+## **14\. UI Patterns & Known Gotchas**
+
+### Radix UI Dropdowns Inside Modals
+
+ListingDetailModal renders at `z-[9999]` with a backdrop at `z-[9998]`. Radix UI's DropdownMenuContent portals to document.body but defaults to `z-50`, which puts it *behind* the modal backdrop.
+
+**Fix:** Always add `className="z-[10000]"` to `DropdownMenuContent` when it may be used inside a high-z-index modal. This is already done in ExportDropdown.tsx.
+
+Any future modal rendered at a high z-index that contains a Radix dropdown, popover, tooltip, or select will need the same treatment.
+
+### ExportDropdown (src/components/ExportDropdown.tsx)
+
+Shared export component used in SearchListings, SearchResultsPage, and ListingDetailModal. Props:
+- `onExportCSV` — required
+- `onSendToIntegration(integrationId: string)` — called with the raw integration\_id from integration\_connections
+- `onExportPDF` — optional (shows "coming soon" toast if omitted)
+
+Fetches connected integrations from `integration_connections` on mount. Renders one menu item per connected integration. The `handleSendToIntegration` in each page builds the payload and calls the appropriate edge function directly from the browser using the user's JWT.
+
+### automation\_run\_listings → /automations/results
+
+AutomationRunPage.tsx reads from `automation_run_listings` filtered by `automation_run_id`. If this table is not populated during a run, the results page will show "No listing data stored for this run". run-automation (v69+) populates it using a pre-generated UUID shared with the automation\_runs insert.  
