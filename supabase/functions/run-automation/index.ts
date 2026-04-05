@@ -306,7 +306,6 @@ serve(async (req) => {
           listings_sent: 0,
           destination: automation.destination_type,
           details: "No listings matched the search criteria",
-          error_message: null,
         });
 
         await supabase.from("automations").update({
@@ -368,7 +367,6 @@ serve(async (req) => {
       contacts_failed: listingsFailed,
       destination: automation.destination_type,
       details: runDetails,
-      error_message: errorMsg ?? null,
     });
 
     // 8. Update last_run_at
