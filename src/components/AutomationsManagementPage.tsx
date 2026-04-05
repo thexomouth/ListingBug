@@ -332,27 +332,27 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
       } else {
         toast.success(`"${automation.name}" complete — ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
       }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await createNotification({
+      // Fire notification without blocking the refresh
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) createNotification({
           userId: user.id,
           type: status === 'failed' ? 'error' : 'success',
           title: status === 'failed' ? `Automation failed: ${automation.name}` : `Automation run complete: ${automation.name}`,
           message: status === 'failed' ? (details ?? 'The automation encountered an error.') : listings_sent > 0 ? `${listings_found} listings found — ${listings_sent} sent to ${destLabel}` : `${listings_found} listings found.`,
         });
-      }
-      await loadRunHistory();
-      await loadAutomations();
+      });
     } catch (err: any) {
       const msg = err.message ?? 'Unknown error';
       toast.error(`Run failed: ${msg}`);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await createNotification({ userId: user.id, type: 'error', title: `Automation failed: ${automation.name}`, message: msg });
-      }
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) createNotification({ userId: user.id, type: 'error', title: `Automation failed: ${automation.name}`, message: msg });
+      });
     } finally {
       setRunNowLoading(false);
       setRunningAutomation(null);
+      // Always refresh tables after any run attempt
+      loadRunHistory();
+      loadAutomations();
     }
   };
 
