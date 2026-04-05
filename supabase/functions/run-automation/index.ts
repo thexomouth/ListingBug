@@ -200,9 +200,11 @@ async function sendToDestination(
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}` },
         body: JSON.stringify({ user_id: userId, listings, config }),
       });
-      const body = await res.json();
-      if (!res.ok) return { sent: 0, error: body.error ?? "HubSpot error" };
-      return { sent: listings.length };
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) return { sent: 0, error: b.error ?? "HubSpot error" };
+      const skipped = b.skipped_no_contact ?? b.skipped_no_email ?? 0;
+      const failed = b.failed ?? 0;
+      return { sent: b.confirmed ?? b.sent ?? listings.length, skipped, failed };
     }
 
     case "google": {
