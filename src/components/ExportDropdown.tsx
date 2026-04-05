@@ -110,12 +110,12 @@ export function ExportDropdown({
           <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="end" 
+      <DropdownMenuContent
+        align="end"
         side="bottom"
         sideOffset={4}
         alignOffset={0}
-        className="w-[200px]"
+        className="w-[200px] z-[10000]"
       >
         <DropdownMenuLabel className="text-xs text-gray-600">
           Download
