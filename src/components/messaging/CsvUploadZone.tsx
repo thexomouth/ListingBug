@@ -99,14 +99,14 @@ const TEMPLATE_CSV =
   'Maria Garcia,maria@remax.com,303-555-0303,RE/MAX,Denver\n' +
   'Alex Johnson,alex@compass.com,415-555-0404,Compass,San Francisco';
 
-const COLUMNS: { name: string; badge: 'required' | 'either' | 'optional'; note: string }[] = [
-  { name: 'full_name',   badge: 'required', note: 'First and last name combined' },
-  { name: 'email',       badge: 'either',   note: 'Email address — required if no phone' },
-  { name: 'phone',       badge: 'either',   note: 'Any format — required if no email' },
-  { name: 'company',     badge: 'optional', note: 'Brokerage or company name' },
-  { name: 'city',        badge: 'optional', note: 'City or market area' },
-  { name: 'first_name',  badge: 'optional', note: 'Overrides split from full_name' },
-  { name: 'last_name',   badge: 'optional', note: 'Overrides split from full_name' },
+const COLUMNS: { name: string; aliases: string[]; badge: 'required' | 'either' | 'optional'; note: string }[] = [
+  { name: 'full_name',  aliases: ['name', 'contact_name', 'fullname'],                          badge: 'required', note: 'First and last name combined' },
+  { name: 'email',      aliases: ['email_address', 'e_mail'],                                   badge: 'either',   note: 'Required if no phone' },
+  { name: 'phone',      aliases: ['mobile', 'cell', 'telephone', 'phone_number'],               badge: 'either',   note: 'Any format — required if no email' },
+  { name: 'company',    aliases: ['company_name', 'brokerage', 'organization', 'firm'],         badge: 'optional', note: 'Brokerage or company name' },
+  { name: 'city',       aliases: ['state appended automatically if state column present'],       badge: 'optional', note: 'City or market area' },
+  { name: 'first_name', aliases: ['firstname', 'fname', 'first'],                               badge: 'optional', note: 'Overrides split from full_name' },
+  { name: 'last_name',  aliases: ['lastname', 'lname', 'last'],                                 badge: 'optional', note: 'Overrides split from full_name' },
 ];
 
 const BADGE_STYLES: Record<string, string> = {
@@ -274,14 +274,21 @@ export function CsvUploadZone({ onParsed }: CsvUploadZoneProps) {
 
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {COLUMNS.map(col => (
-              <div key={col.name} className="flex items-center justify-between px-4 py-2.5">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="font-mono text-xs text-zinc-800 dark:text-zinc-100 shrink-0">{col.name}</span>
-                  <span className="text-xs text-zinc-400 truncate hidden sm:block">{col.note}</span>
+              <div key={col.name} className="px-4 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-100 shrink-0">{col.name}</span>
+                    <span className="text-xs text-zinc-400 truncate hidden sm:block">{col.note}</span>
+                  </div>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wide ${BADGE_STYLES[col.badge]}`}>
+                    {col.badge === 'either' ? 'email or phone' : col.badge}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2 uppercase tracking-wide ${BADGE_STYLES[col.badge]}`}>
-                  {col.badge === 'either' ? 'email or phone' : col.badge}
-                </span>
+                {col.aliases.length > 0 && (
+                  <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500">
+                    also: <span className="font-mono">{col.aliases.join(', ')}</span>
+                  </p>
+                )}
               </div>
             ))}
           </div>
