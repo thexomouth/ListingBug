@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Send, Save, AlertCircle } from 'lucide-react';
+import { Send, Save, AlertCircle, TriangleAlert } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { MergeTagFooter } from './MergeTagFooter';
 import { TemplateDropdown } from './TemplateDropdown';
@@ -27,19 +27,22 @@ interface CreateTabProps {
   selectedRecipients: Recipient[];
   onClearRecipients: () => void;
   onCampaignSent: () => void;
+  onGoToSetup: () => void;
 }
 
-export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSent }: CreateTabProps) {
+export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSent, onGoToSetup }: CreateTabProps) {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [senderId, setSenderId] = useState('');
   const [senders, setSenders] = useState<Sender[]>([]);
   const [sendersLoading, setSendersLoading] = useState(true);
+  const [webhookConfigured, setWebhookConfigured] = useState<boolean | null>(null);
   const [sending, setSending] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [saveTemplateName, setSaveTemplateName] = useState('');
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [showWebhookWarning, setShowWebhookWarning] = useState(false);
   const [lastResult, setLastResult] = useState<{ sent: number; failed: number } | null>(null);
 
   useEffect(() => {
@@ -48,6 +51,8 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
+
+        // Load senders
         const res = await fetch(`${SUPABASE_FUNCTIONS}/get-marketing-config?action=senders`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
@@ -56,21 +61,40 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           setSenders(data.senders ?? []);
           if (data.senders?.length > 0) setSenderId(data.senders[0].id);
         }
+
+        // Check webhook_secret
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: mc } = await supabase
+            .from('messaging_config')
+            .select('config')
+            .eq('user_id', user.id)
+            .eq('platform', 'sendgrid')
+            .maybeSingle();
+          setWebhookConfigured(!!(mc?.config?.webhook_secret));
+        }
       } catch {
-        // Senders unavailable — key not yet configured
+        // SendGrid not yet configured
       }
       setSendersLoading(false);
     };
     load();
   }, []);
 
-  const handleSend = async () => {
-    if (!subject.trim() || !body.trim()) { toast.error('Subject and body are required.'); return; }
-    if (!senderId) { toast.error('Select a sender identity first.'); return; }
-    if (selectedRecipients.length === 0) { toast.error('No recipients selected. Choose contacts in the Contacts tab.'); return; }
+  // Validation: returns an error string or null if all clear
+  const validate = (): string | null => {
+    if (selectedRecipients.length === 0) return 'No recipients selected. Choose contacts in the Contacts tab.';
+    if (!senderId) return 'No sender selected. Add a sender identity in Setup.';
+    if (senders.length === 0) return 'No SendGrid sender configured. Go to Setup to connect SendGrid and verify a sender.';
+    if (!subject.trim()) return 'Subject is required.';
+    if (!body.trim()) return 'Body is required.';
+    return null;
+  };
 
+  const doSend = async () => {
     setSending(true);
     setLastResult(null);
+    setShowWebhookWarning(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error('Not authenticated.'); return; }
@@ -102,6 +126,19 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSend = async () => {
+    const err = validate();
+    if (err) { toast.error(err); return; }
+
+    // Warn if webhook not configured — performance metrics will be unavailable
+    if (!webhookConfigured) {
+      setShowWebhookWarning(true);
+      return;
+    }
+
+    await doSend();
   };
 
   const handleSaveTemplate = async () => {
@@ -182,8 +219,10 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         {sendersLoading ? (
           <div className="px-3 py-2 text-sm text-zinc-400 rounded-lg border border-zinc-200 dark:border-zinc-700">Loading sender identities…</div>
         ) : senders.length === 0 ? (
-          <div className="px-3 py-2 text-sm text-amber-600 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
-            No verified senders found. Add SENDGRID_ADMIN_KEY to Supabase secrets, then verify a sender in SendGrid.
+          <div className="px-3 py-2 text-sm text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
+            No verified senders found. Go to{' '}
+            <button onClick={onGoToSetup} className="underline font-medium hover:no-underline">Setup</button>
+            {' '}to connect SendGrid and verify a sender before sending.
           </div>
         ) : (
           <select
@@ -241,11 +280,49 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         </div>
       )}
 
+      {/* Webhook warning confirmation */}
+      {showWebhookWarning && (
+        <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <TriangleAlert size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Email performance metrics are not active for this account.
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                Delivery tracking, bounce alerts, and open rates won't be recorded.{' '}
+                <button
+                  onClick={() => { setShowWebhookWarning(false); onGoToSetup(); }}
+                  className="underline font-medium hover:no-underline"
+                >
+                  Setup is easy →
+                </button>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              onClick={() => setShowWebhookWarning(false)}
+              className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={doSend}
+              disabled={sending}
+              className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-500 text-zinc-900 text-sm font-semibold disabled:opacity-60 transition-colors"
+            >
+              {sending ? 'Sending…' : 'Send anyway'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-3 flex-wrap">
         <button
           onClick={handleSend}
-          disabled={sending}
+          disabled={sending || showWebhookWarning}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-zinc-900 font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           <Send size={15} />

@@ -161,6 +161,7 @@ export function MessagingPage() {
               selectedRecipients={recipients}
               onClearRecipients={() => { setSelectedEmails(new Set()); setSelectedContacts([]); }}
               onCampaignSent={() => setCampaignRefreshTrigger(n => n + 1)}
+              onGoToSetup={() => setActiveTab('setup')}
             />
           )}
           {activeTab === 'contacts' && (
