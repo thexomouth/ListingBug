@@ -3,13 +3,14 @@ import { Lock } from 'lucide-react';
 import { CreateTab, Recipient } from './messaging/CreateTab';
 import { ContactsTab, ContactRow } from './messaging/ContactsTab';
 import { CampaignsTable } from './messaging/CampaignsTable';
+import { AutomateTab } from './messaging/AutomateTab';
 import { SetupTab } from './messaging/SetupTab';
 import { MessagingResultsPage } from './MessagingResultsPage';
 
 const GATE_KEY = 'lb_msg_auth';
 const GATE_PASS = 'spitonthatthang';
 
-type Tab = 'create' | 'contacts' | 'campaigns' | 'setup';
+type Tab = 'create' | 'contacts' | 'campaigns' | 'automate' | 'setup';
 
 function PasswordGate({ onSubmit }: { onSubmit: (input: string) => void }) {
   const [value, setValue] = useState('');
@@ -96,6 +97,7 @@ export function MessagingPage() {
     { id: 'create', label: 'Create' },
     { id: 'contacts', label: 'Contacts' },
     { id: 'campaigns', label: 'Campaigns' },
+    { id: 'automate', label: 'Automate' },
     { id: 'setup', label: 'Setup' },
   ];
 
@@ -179,6 +181,7 @@ export function MessagingPage() {
               onViewResults={(id, name) => setViewingCampaign({ id, name })}
             />
           )}
+          {activeTab === 'automate' && <AutomateTab onGoToSetup={() => setActiveTab('setup')} />}
           {activeTab === 'setup' && <SetupTab />}
         </div>
       </div>
