@@ -3,7 +3,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const SENDGRID_ADMIN_KEY = Deno.env.get('SENDGRID_ADMIN_KEY');
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -17,15 +16,40 @@ function json(data: unknown, status = 200) {
   });
 }
 
-/** Replace {{tag}} in a string with values from a data map. */
 function applyMergeTags(template: string, data: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] ?? '');
+}
+
+/** Resolve SendGrid API key: messaging_config → integration_connections → env var */
+async function resolveSendGridKey(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string
+): Promise<string | null> {
+  // 1. messaging_config
+  const { data: mc } = await serviceClient
+    .from('messaging_config')
+    .select('config')
+    .eq('user_id', userId)
+    .eq('platform', 'sendgrid')
+    .maybeSingle();
+  if (mc?.config?.api_key) return mc.config.api_key;
+
+  // 2. integration_connections
+  const { data: conn } = await serviceClient
+    .from('integration_connections')
+    .select('credentials')
+    .eq('user_id', userId)
+    .eq('integration_id', 'sendgrid')
+    .maybeSingle();
+  if ((conn?.credentials as any)?.api_key) return (conn.credentials as any).api_key;
+
+  // 3. env var
+  return Deno.env.get('SENDGRID_ADMIN_KEY') ?? null;
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
-  // Auth: validate JWT manually
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401);
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -34,7 +58,7 @@ Deno.serve(async (req: Request) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: 'Unauthorized' }, 401);
 
-  if (!SENDGRID_ADMIN_KEY) return json({ error: 'SENDGRID_ADMIN_KEY not configured' }, 500);
+  const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   let body: any;
   try { body = await req.json(); } catch {
@@ -46,16 +70,18 @@ Deno.serve(async (req: Request) => {
   if (!subject || !emailBody) return json({ error: 'subject and body required' }, 400);
   if (!sender_id) return json({ error: 'sender_id required' }, 400);
 
-  const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  // Resolve API key via priority chain
+  const apiKey = await resolveSendGridKey(serviceClient, user.id);
+  if (!apiKey) return json({ error: 'No SendGrid API key configured. Add one in Messaging → Setup.' }, 400);
 
-  // Look up sender identity to get from email/name
+  // Look up sender identity
   const sendersRes = await fetch('https://api.sendgrid.com/v3/senders', {
-    headers: { Authorization: `Bearer ${SENDGRID_ADMIN_KEY}` },
+    headers: { Authorization: `Bearer ${apiKey}` },
   });
-  if (!sendersRes.ok) return json({ error: 'Failed to load sender identities' }, 502);
+  if (!sendersRes.ok) return json({ error: 'Failed to load sender identities from SendGrid.' }, 502);
   const sendersData: any[] = await sendersRes.json();
   const sender = sendersData.find((s: any) => String(s.id) === String(sender_id));
-  if (!sender) return json({ error: `Sender ID ${sender_id} not found` }, 400);
+  if (!sender) return json({ error: `Sender ID ${sender_id} not found in SendGrid.` }, 400);
 
   const fromEmail = sender.from?.email ?? '';
   const fromName = sender.from?.name ?? '';
@@ -73,7 +99,6 @@ Deno.serve(async (req: Request) => {
   });
   if (campErr) return json({ error: campErr.message }, 500);
 
-  // Send per recipient
   let sent = 0;
   let failed = 0;
   const errors: { email: string; error: string }[] = [];
@@ -103,7 +128,7 @@ Deno.serve(async (req: Request) => {
       const sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${SENDGRID_ADMIN_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
@@ -111,7 +136,7 @@ Deno.serve(async (req: Request) => {
 
       if (sgRes.ok || sgRes.status === 202) {
         sgMessageId = sgRes.headers.get('X-Message-Id');
-        status = 'pending'; // awaiting webhook delivery event
+        status = 'pending';
         sent++;
       } else {
         const errText = await sgRes.text();

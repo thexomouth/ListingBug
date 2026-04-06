@@ -5,8 +5,7 @@ import { MergeTagFooter } from './MergeTagFooter';
 import { TemplateDropdown } from './TemplateDropdown';
 import { toast } from 'sonner';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_FUNCTIONS = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
 
 export interface Recipient {
   email: string;
@@ -49,7 +48,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/get-marketing-config?action=senders`, {
+        const res = await fetch(`${SUPABASE_FUNCTIONS}/get-marketing-config?action=senders`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         if (res.ok) {
@@ -76,7 +75,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error('Not authenticated.'); return; }
 
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-marketing-email`, {
+      const res = await fetch(`${SUPABASE_FUNCTIONS}/send-marketing-email`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${session.access_token}`,

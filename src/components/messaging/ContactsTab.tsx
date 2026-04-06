@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Upload, X, CheckSquare, Square, UserCheck, ChevronDown } from 'lucide-react';
+import { Search, Upload, X, CheckSquare, Square, UserCheck, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ContactsListPanel, ContactList } from './ContactsListPanel';
 import { CsvUploadZone, ParsedContact } from './CsvUploadZone';
 import { toast } from 'sonner';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_FUNCTIONS = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
 
 export interface ContactRow {
   id?: string; // undefined for agent-source rows
@@ -22,7 +22,7 @@ export interface ContactRow {
   lists?: string[];
 }
 
-type SourceFilter = 'agents' | 'uploaded';
+type SourceFilter = 'agents' | 'uploaded' | 'mailchimp';
 
 interface ContactsTabProps {
   selectedEmails: Set<string>;
@@ -59,6 +59,11 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
   const [source, setSource] = useState<SourceFilter>('agents');
   const [agentContacts, setAgentContacts] = useState<ContactRow[]>([]);
   const [uploadedContacts, setUploadedContacts] = useState<ContactRow[]>([]);
+  const [mailchimpLists, setMailchimpLists] = useState<{ id: string; name: string; member_count: number }[]>([]);
+  const [mailchimpListId, setMailchimpListId] = useState('');
+  const [mailchimpContacts, setMailchimpContacts] = useState<ContactRow[]>([]);
+  const [mailchimpLoading, setMailchimpLoading] = useState(false);
+  const [mailchimpConnected, setMailchimpConnected] = useState(false);
   const [lists, setLists] = useState<ContactList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,12 +137,71 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       count: listCountMap.get(l.id) ?? 0,
     })));
 
+    // Check if Mailchimp is connected and load audience list
+    const { data: session } = await supabase.auth.getSession();
+    if (session.session) {
+      try {
+        const res = await fetch(`${SUPABASE_FUNCTIONS}/get-marketing-config?action=mailchimp-lists`, {
+          headers: { Authorization: `Bearer ${session.session.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setMailchimpLists(data.lists ?? []);
+          setMailchimpConnected(true);
+          if (data.lists?.length > 0 && !mailchimpListId) {
+            setMailchimpListId(data.lists[0].id);
+          }
+        }
+      } catch { /* Mailchimp not configured */ }
+    }
+
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, []);
 
-  const activeContacts = source === 'agents' ? agentContacts : uploadedContacts;
+  const loadMailchimpMembers = async (listId: string) => {
+    if (!listId) return;
+    setMailchimpLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) return;
+      const res = await fetch(
+        `${SUPABASE_FUNCTIONS}/get-marketing-config?action=mailchimp-members&list_id=${encodeURIComponent(listId)}`,
+        { headers: { Authorization: `Bearer ${session.session.access_token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setMailchimpContacts((data.members ?? []).map((m: any) => ({
+          email: m.email,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          city: m.city,
+          company: m.company,
+          phone: m.phone,
+          source: 'mailchimp' as const,
+        })));
+      } else {
+        toast.error('Failed to load Mailchimp audience members.');
+      }
+    } catch {
+      toast.error('Could not reach Mailchimp.');
+    } finally {
+      setMailchimpLoading(false);
+    }
+  };
+
+  // Auto-load Mailchimp members when switching to that source
+  useEffect(() => {
+    if (source === 'mailchimp' && mailchimpListId && mailchimpContacts.length === 0) {
+      loadMailchimpMembers(mailchimpListId);
+    }
+  }, [source, mailchimpListId]);
+
+  const activeContacts =
+    source === 'agents' ? agentContacts :
+    source === 'mailchimp' ? mailchimpContacts :
+    uploadedContacts;
 
   const filtered = useMemo(() => {
     let rows = activeContacts;
@@ -213,7 +277,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/import-marketing-contacts`, {
+      const res = await fetch(`${SUPABASE_FUNCTIONS}/import-marketing-contacts`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -256,18 +320,23 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
         <div className="flex items-center gap-2">
           {/* Source switcher */}
           <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-sm">
-            <button
-              onClick={() => setSource('agents')}
-              className={`px-3 py-1.5 transition-colors ${source === 'agents' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-            >
-              Agents
-            </button>
-            <button
-              onClick={() => setSource('uploaded')}
-              className={`px-3 py-1.5 border-l border-zinc-200 dark:border-zinc-700 transition-colors ${source === 'uploaded' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-            >
-              Uploaded
-            </button>
+            {([
+              { id: 'agents', label: 'Agents' },
+              { id: 'uploaded', label: 'Uploaded' },
+              ...(mailchimpConnected ? [{ id: 'mailchimp', label: 'Mailchimp' }] : []),
+            ] as { id: SourceFilter; label: string }[]).map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => setSource(s.id)}
+                className={`px-3 py-1.5 transition-colors ${i > 0 ? 'border-l border-zinc-200 dark:border-zinc-700' : ''} ${
+                  source === s.id
+                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
 
           {source === 'uploaded' && (
@@ -324,6 +393,37 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
 
       {/* Main content area */}
       <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden min-h-[400px]">
+        {/* Mailchimp audience selector */}
+        {source === 'mailchimp' && (
+          <div className="w-56 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col">
+            <div className="p-3 border-b border-zinc-200 dark:border-zinc-700">
+              <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">Audience</p>
+              <select
+                value={mailchimpListId}
+                onChange={e => {
+                  setMailchimpListId(e.target.value);
+                  setMailchimpContacts([]);
+                  loadMailchimpMembers(e.target.value);
+                }}
+                className="w-full text-sm rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-2 py-1.5 focus:outline-none"
+              >
+                {mailchimpLists.map(l => (
+                  <option key={l.id} value={l.id}>{l.name} ({l.member_count})</option>
+                ))}
+              </select>
+            </div>
+            <div className="p-3">
+              <button
+                onClick={() => { setMailchimpContacts([]); loadMailchimpMembers(mailchimpListId); }}
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+              >
+                <RefreshCw size={11} className={mailchimpLoading ? 'animate-spin' : ''} />
+                Reload members
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* List panel (uploaded only) */}
         {source === 'uploaded' && (
           <ContactsListPanel
@@ -355,13 +455,15 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
             </div>
           </div>
 
-          {loading ? (
+          {loading || (source === 'mailchimp' && mailchimpLoading) ? (
             <div className="flex-1 flex items-center justify-center text-sm text-zinc-400">Loading…</div>
           ) : filtered.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-zinc-400 p-8 text-center">
               {source === 'agents'
                 ? <><UserCheck size={32} className="mb-2 opacity-30" /><p>No agents found yet. Run a search or automation to populate agent data.</p></>
-                : <><Upload size={32} className="mb-2 opacity-30" /><p>No uploaded contacts. Import a CSV above.</p></>
+                : source === 'mailchimp'
+                  ? <><RefreshCw size={32} className="mb-2 opacity-30" /><p>No members loaded. Select an audience and click "Reload members".</p></>
+                  : <><Upload size={32} className="mb-2 opacity-30" /><p>No uploaded contacts. Import a CSV above.</p></>
               }
             </div>
           ) : (

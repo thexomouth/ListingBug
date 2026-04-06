@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SENDGRID_ADMIN_KEY = Deno.env.get('SENDGRID_ADMIN_KEY');
+const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +14,56 @@ function json(data: unknown, status = 200) {
     status,
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
+}
+
+/** Resolve SendGrid API key: messaging_config → integration_connections → env var */
+async function resolveSendGridKey(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string
+): Promise<{ key: string; source: 'messaging_config' | 'integration' | 'env' } | null> {
+  // 1. messaging_config (user-entered key via Setup UI)
+  const { data: mc } = await serviceClient
+    .from('messaging_config')
+    .select('config')
+    .eq('user_id', userId)
+    .eq('platform', 'sendgrid')
+    .maybeSingle();
+  if (mc?.config?.api_key) return { key: mc.config.api_key, source: 'messaging_config' };
+
+  // 2. integration_connections (existing connected SendGrid integration)
+  const { data: conn } = await serviceClient
+    .from('integration_connections')
+    .select('credentials')
+    .eq('user_id', userId)
+    .eq('integration_id', 'sendgrid')
+    .maybeSingle();
+  if ((conn?.credentials as any)?.api_key) return { key: (conn.credentials as any).api_key, source: 'integration' };
+
+  // 3. env var (admin fallback)
+  const envKey = Deno.env.get('SENDGRID_ADMIN_KEY');
+  if (envKey) return { key: envKey, source: 'env' };
+
+  return null;
+}
+
+/** Resolve Mailchimp credentials from integration_connections */
+async function resolveMailchimpCreds(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string
+): Promise<{ accessToken: string; dc: string } | null> {
+  const { data: conn } = await serviceClient
+    .from('integration_connections')
+    .select('credentials, config')
+    .eq('user_id', userId)
+    .eq('integration_id', 'mailchimp')
+    .maybeSingle();
+  if (!conn) return null;
+  const creds = conn.credentials as any;
+  const cfg = conn.config as any;
+  const accessToken = creds?.access_token;
+  const dc = cfg?.dc ?? creds?.dc ?? 'us1';
+  if (!accessToken) return null;
+  return { accessToken, dc };
 }
 
 Deno.serve(async (req: Request) => {
@@ -28,14 +78,63 @@ Deno.serve(async (req: Request) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: 'Unauthorized' }, 401);
 
+  const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
 
-  if (!SENDGRID_ADMIN_KEY) return json({ error: 'SENDGRID_ADMIN_KEY not configured' }, 500);
+  // ── action=platforms ─────────────────────────────────────────────────────
+  if (action === 'platforms') {
+    const [sgKey, mcCreds, hubspotConn, twilioConn] = await Promise.all([
+      resolveSendGridKey(serviceClient, user.id),
+      resolveMailchimpCreds(serviceClient, user.id),
+      serviceClient.from('integration_connections').select('credentials').eq('user_id', user.id).eq('integration_id', 'hubspot').maybeSingle(),
+      serviceClient.from('integration_connections').select('credentials').eq('user_id', user.id).eq('integration_id', 'twilio').maybeSingle(),
+    ]);
 
+    // For Mailchimp: get audience count
+    let mailchimpAudienceCount = 0;
+    if (mcCreds) {
+      try {
+        const res = await fetch(`https://${mcCreds.dc}.api.mailchimp.com/3.0/lists?count=100&fields=total_items`, {
+          headers: { Authorization: `Bearer ${mcCreds.accessToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          mailchimpAudienceCount = data.total_items ?? 0;
+        }
+      } catch { /* ignore */ }
+    }
+
+    return json({
+      sendgrid: {
+        connected: !!sgKey,
+        source: sgKey?.source ?? null,
+        // Mask the key — first 8 chars + asterisks
+        key_masked: sgKey ? `${sgKey.key.slice(0, 8)}${'*'.repeat(12)}` : null,
+      },
+      mailchimp: {
+        connected: !!mcCreds,
+        source: mcCreds ? 'integration' : null,
+        audience_count: mailchimpAudienceCount,
+      },
+      hubspot: {
+        connected: !!(hubspotConn.data),
+        source: hubspotConn.data ? 'integration' : null,
+      },
+      twilio: {
+        connected: !!(twilioConn.data),
+        source: twilioConn.data ? 'integration' : null,
+      },
+    });
+  }
+
+  // ── action=senders ───────────────────────────────────────────────────────
   if (action === 'senders') {
+    const sgKey = await resolveSendGridKey(serviceClient, user.id);
+    if (!sgKey) return json({ error: 'No SendGrid API key configured. Add one in Setup.' }, 400);
+
     const res = await fetch('https://api.sendgrid.com/v3/senders', {
-      headers: { Authorization: `Bearer ${SENDGRID_ADMIN_KEY}` },
+      headers: { Authorization: `Bearer ${sgKey.key}` },
     });
     if (!res.ok) {
       const text = await res.text();
@@ -48,7 +147,70 @@ Deno.serve(async (req: Request) => {
       from_email: s.from?.email ?? '',
       from_name: s.from?.name ?? '',
     }));
-    return json({ senders });
+    return json({ senders, key_source: sgKey.source });
+  }
+
+  // ── action=mailchimp-lists ───────────────────────────────────────────────
+  if (action === 'mailchimp-lists') {
+    const mcCreds = await resolveMailchimpCreds(serviceClient, user.id);
+    if (!mcCreds) return json({ error: 'Mailchimp not connected.' }, 400);
+
+    const res = await fetch(
+      `https://${mcCreds.dc}.api.mailchimp.com/3.0/lists?count=100&fields=lists.id,lists.name,lists.stats.member_count`,
+      { headers: { Authorization: `Bearer ${mcCreds.accessToken}` } }
+    );
+    if (!res.ok) return json({ error: `Mailchimp error: ${res.status}` }, 502);
+    const data = await res.json();
+    const lists = (data.lists ?? []).map((l: any) => ({
+      id: l.id,
+      name: l.name,
+      member_count: l.stats?.member_count ?? 0,
+    }));
+    return json({ lists });
+  }
+
+  // ── action=mailchimp-members ─────────────────────────────────────────────
+  if (action === 'mailchimp-members') {
+    const listId = url.searchParams.get('list_id');
+    if (!listId) return json({ error: 'list_id required' }, 400);
+
+    const mcCreds = await resolveMailchimpCreds(serviceClient, user.id);
+    if (!mcCreds) return json({ error: 'Mailchimp not connected.' }, 400);
+
+    const res = await fetch(
+      `https://${mcCreds.dc}.api.mailchimp.com/3.0/lists/${listId}/members?count=1000&status=subscribed&fields=members.email_address,members.status,members.merge_fields`,
+      { headers: { Authorization: `Bearer ${mcCreds.accessToken}` } }
+    );
+    if (!res.ok) return json({ error: `Mailchimp error: ${res.status}` }, 502);
+    const data = await res.json();
+    const members = (data.members ?? []).map((m: any) => ({
+      email: m.email_address,
+      first_name: m.merge_fields?.FNAME ?? '',
+      last_name: m.merge_fields?.LNAME ?? '',
+      company: m.merge_fields?.COMPANY ?? m.merge_fields?.BROKERAGE ?? '',
+      city: m.merge_fields?.CITY ?? '',
+      phone: m.merge_fields?.PHONE ?? '',
+    }));
+    return json({ members });
+  }
+
+  // ── action=mailchimp-templates ───────────────────────────────────────────
+  if (action === 'mailchimp-templates') {
+    const mcCreds = await resolveMailchimpCreds(serviceClient, user.id);
+    if (!mcCreds) return json({ error: 'Mailchimp not connected.' }, 400);
+
+    const res = await fetch(
+      `https://${mcCreds.dc}.api.mailchimp.com/3.0/templates?count=100&type=user&fields=templates.id,templates.name,templates.subject_line`,
+      { headers: { Authorization: `Bearer ${mcCreds.accessToken}` } }
+    );
+    if (!res.ok) return json({ error: `Mailchimp error: ${res.status}` }, 502);
+    const data = await res.json();
+    const templates = (data.templates ?? []).map((t: any) => ({
+      id: String(t.id),
+      name: t.name ?? '',
+      subject: t.subject_line ?? '',
+    }));
+    return json({ templates });
   }
 
   return json({ error: `Unknown action: ${action}` }, 400);
