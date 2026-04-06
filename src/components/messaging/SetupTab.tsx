@@ -463,9 +463,20 @@ export function SetupTab() {
 
             <li className="flex gap-3">
               <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">6</span>
+              <div className="pt-0.5">
+                <p className="text-zinc-600 dark:text-zinc-400">
+                  Under <span className="font-medium text-zinc-700 dark:text-zinc-300">Signature Verification</span>, toggle on{' '}
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Enable Signed Event Webhook</span> and click <span className="font-medium text-zinc-700 dark:text-zinc-300">Save</span>. This causes SendGrid to sign every payload so our endpoint can reject spoofed requests.
+                </p>
+                <p className="text-xs text-zinc-400 mt-1">Leave <span className="font-medium">OAuth Verification</span> off — not needed here.</p>
+              </div>
+            </li>
+
+            <li className="flex gap-3">
+              <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">7</span>
               <div className="flex-1">
                 <p className="text-zinc-600 dark:text-zinc-400 mb-2">
-                  Copy the <span className="font-medium text-zinc-700 dark:text-zinc-300">Webhook Signing Key</span> from SendGrid and save it here:
+                  Copy the <span className="font-medium text-zinc-700 dark:text-zinc-300">Verification Key</span> that appears after enabling signing, and save it here:
                 </p>
                 <div className="flex items-center gap-2">
                   <input
