@@ -17,6 +17,81 @@ interface CsvUploadZoneProps {
   onParsed: (contacts: ParsedContact[]) => void;
 }
 
+// Column header aliases → canonical field names
+const HEADER_ALIASES: Record<string, string> = {
+  // name variants
+  name:           'full_name',
+  full_name:      'full_name',
+  fullname:       'full_name',
+  contact_name:   'full_name',
+  // first / last
+  first_name:     'first_name',
+  firstname:      'first_name',
+  first:          'first_name',
+  fname:          'first_name',
+  last_name:      'last_name',
+  lastname:       'last_name',
+  last:           'last_name',
+  lname:          'last_name',
+  // email
+  email:          'email',
+  email_address:  'email',
+  e_mail:         'email',
+  // phone
+  phone:          'phone',
+  phone_number:   'phone',
+  mobile:         'phone',
+  mobile_number:  'phone',
+  cell:           'phone',
+  cell_phone:     'phone',
+  telephone:      'phone',
+  // company
+  company:        'company',
+  company_name:   'company',
+  brokerage:      'company',
+  organization:   'company',
+  firm:           'company',
+  // city / state
+  city:           'city',
+  state:          'state',
+  // misc passthrough
+  role:           'role',
+  tags:           'tags',
+  job_title:      'job_title', // preserved but unused
+};
+
+/**
+ * Splits raw CSV text into records, correctly handling newlines inside quoted fields.
+ * Returns [headerLine, ...dataLines] where each element is an array of raw cell strings.
+ */
+function splitCSVRecords(text: string): string[][] {
+  const records: string[][] = [];
+  let fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQuotes && text[i + 1] === '"') { current += '"'; i += 2; continue; } // escaped quote
+      inQuotes = !inQuotes;
+      i++; continue;
+    }
+    if (ch === ',' && !inQuotes) { fields.push(current); current = ''; i++; continue; }
+    if ((ch === '\n' || ch === '\r') && !inQuotes) {
+      fields.push(current); current = '';
+      if (fields.some(f => f.trim())) records.push(fields); // skip blank rows
+      fields = [];
+      if (ch === '\r' && text[i + 1] === '\n') i++; // CRLF
+      i++; continue;
+    }
+    current += ch; i++;
+  }
+  if (current || fields.length) { fields.push(current); if (fields.some(f => f.trim())) records.push(fields); }
+  return records;
+}
+
 const TEMPLATE_CSV =
   'full_name,email,phone,company,city\n' +
   'Jane Smith,jane@kwrealty.com,512-555-0101,Keller Williams,Austin\n' +
@@ -41,50 +116,50 @@ const BADGE_STYLES: Record<string, string> = {
 };
 
 function parseCSV(text: string): ParsedContact[] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
+  // Strip UTF-8 BOM if present
+  const cleaned = text.replace(/^\uFEFF/, '');
+  const records = splitCSVRecords(cleaned);
+  if (records.length < 2) return [];
 
-  const headers = lines[0].split(',').map(h =>
-    h.trim().toLowerCase().replace(/\s+/g, '_').replace(/^"(.*)"$/, '$1')
-  );
+  // Normalize headers through alias map
+  const rawHeaders = records[0];
+  const headers = rawHeaders.map(h => {
+    const key = h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    return HEADER_ALIASES[key] ?? key; // map through aliases; unknown cols kept as-is
+  });
 
-  return lines.slice(1).map(line => {
-    const values: string[] = [];
-    let inQuotes = false;
-    let current = '';
-    for (const ch of line) {
-      if (ch === '"') { inQuotes = !inQuotes; }
-      else if (ch === ',' && !inQuotes) { values.push(current.trim()); current = ''; }
-      else { current += ch; }
-    }
-    values.push(current.trim());
-
+  return records.slice(1).map(values => {
     const row: Record<string, string> = {};
-    headers.forEach((h, i) => { row[h] = (values[i] ?? '').replace(/^"(.*)"$/, '$1').trim(); });
+    headers.forEach((h, i) => { row[h] = (values[i] ?? '').trim(); });
 
-    // Resolve name: explicit first_name wins, otherwise split full_name
-    const fullName = row['full_name'] ?? row['name'] ?? '';
-    const nameParts = fullName.split(' ');
-    const first_name = row['first_name'] || row['firstname'] || nameParts[0] || '';
-    const last_name  = row['last_name']  || row['lastname']  || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined);
+    // Resolve name
+    const fullName = row['full_name'] ?? '';
+    const nameParts = fullName.trim().split(/\s+/);
+    const first_name = row['first_name'] || nameParts[0] || '';
+    const last_name  = row['last_name']  || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined);
 
     const email = (row['email'] ?? '').toLowerCase().trim();
-    const phone = row['phone'] ?? row['phone_number'] ?? row['mobile'] ?? undefined;
+    const phone = row['phone'] || undefined;
+
+    // City: append state if present for context
+    const city = row['city']
+      ? (row['state'] ? `${row['city']}, ${row['state']}` : row['city'])
+      : undefined;
 
     const contact: ParsedContact = {
       email,
       first_name,
-      last_name: last_name || undefined,
-      role:    row['role']    || undefined,
-      city:    row['city']    || undefined,
-      phone:   phone          || undefined,
-      company: row['company'] || row['brokerage'] || undefined,
-      tags:    row['tags']    || undefined,
+      last_name:  last_name  || undefined,
+      role:       row['role']    || undefined,
+      city,
+      phone,
+      company:    row['company'] || undefined,
+      tags:       row['tags']    || undefined,
     };
 
     const errors: string[] = [];
     if (!first_name) errors.push('missing name');
-    if (!email && !contact.phone) errors.push('email or phone required');
+    if (!email && !phone) errors.push('email or phone required');
     if (email && !email.includes('@')) errors.push('invalid email');
 
     if (errors.length > 0) contact._error = errors.join('; ');
