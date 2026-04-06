@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Send, Save, AlertCircle, TriangleAlert } from 'lucide-react';
+import { Send, Save, AlertCircle, TriangleAlert, Eye } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { MergeTagFooter } from './MergeTagFooter';
 import { TemplateDropdown } from './TemplateDropdown';
+import { EmailPreviewModal } from './EmailPreviewModal';
 import { toast } from 'sonner';
 
 const SUPABASE_FUNCTIONS = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
@@ -43,6 +44,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const [saveTemplateName, setSaveTemplateName] = useState('');
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showWebhookWarning, setShowWebhookWarning] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [lastResult, setLastResult] = useState<{ sent: number; failed: number } | null>(null);
 
   useEffect(() => {
@@ -330,6 +332,14 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         </button>
 
         <button
+          onClick={() => setShowPreview(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm transition-colors"
+        >
+          <Eye size={15} />
+          Preview
+        </button>
+
+        <button
           onClick={() => setShowSaveTemplate(v => !v)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm transition-colors"
         >
@@ -360,6 +370,17 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       )}
 
       <MergeTagFooter />
+
+      {showPreview && (
+        <EmailPreviewModal
+          subject={subject}
+          body={body}
+          fromName={senders.find(s => s.id === senderId)?.from_name ?? senders.find(s => s.id === senderId)?.nickname ?? ''}
+          fromEmail={senders.find(s => s.id === senderId)?.from_email ?? ''}
+          sampleRecipient={selectedRecipients[0]}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 }
