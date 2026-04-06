@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /messaging
+Disallow: /messaging/
 
 Sitemap: https://thelistingbug.com/sitemap.xml

@@ -60,6 +60,7 @@ const BlogPostPage = lazy(() => import("./components/BlogPostPage").then(m => ({
 const PersonaPage = lazy(() => import("./components/PersonaPage").then(m => ({ default: m.PersonaPage })));
 const ComparisonPage = lazy(() => import("./components/ComparisonPage").then(m => ({ default: m.ComparisonPage })));
 const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
+const MessagingPage = lazy(() => import("./components/MessagingPage").then(m => ({ default: m.MessagingPage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -73,7 +74,8 @@ type Page =
   | "microcopy-pack" | "consent-panel-demo" | "consent-modal-demo"
   | "sample-report-results" | "request-integration" | "integration-guide"
   | "blog-post" | "persona-page" | "comparison-page"
-  | "legal-dpa" | "legal-subprocessors";
+  | "legal-dpa" | "legal-subprocessors"
+  | "messaging";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -98,6 +100,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "comparison-page": "/vs/zillow",
   "legal-dpa": "/legal/dpa",
   "legal-subprocessors": "/legal/subprocessors",
+  "messaging": "/messaging",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -118,6 +121,7 @@ function pathToPage(pathname: string): Page {
     if (pathname === '/legal/dpa') return 'legal-dpa';
     if (pathname === '/legal/subprocessors') return 'legal-subprocessors';
   }
+  if (pathname.startsWith('/messaging')) return 'messaging';
   return 'home';
 }
 
@@ -419,6 +423,7 @@ export default function App() {
       case "comparison-page": return <ComparisonPage />;
       case "legal-dpa": return <LegalPage />;
       case "legal-subprocessors": return <LegalPage />;
+      case "messaging": return <MessagingPage />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
