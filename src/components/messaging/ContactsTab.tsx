@@ -480,6 +480,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                     <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Name</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden md:table-cell">City</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">Company</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden xl:table-cell">Phone</th>
                     {source === 'uploaded' && (
                       <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">Lists</th>
                     )}
@@ -515,6 +516,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                         </td>
                         <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 hidden md:table-cell">{c.city ?? '—'}</td>
                         <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 hidden lg:table-cell max-w-[160px] truncate">{c.company ?? '—'}</td>
+                        <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 hidden xl:table-cell whitespace-nowrap">{c.phone ?? '—'}</td>
                         {source === 'uploaded' && (
                           <td className="px-2 py-2 hidden lg:table-cell">
                             <div className="flex flex-wrap gap-1">
