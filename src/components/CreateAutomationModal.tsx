@@ -114,16 +114,23 @@ export function CreateAutomationModal({
   const [selectedDestination, setSelectedDestination] = useState('');
   const [destinationConfig, setDestinationConfig] = useState<Record<string, string>>({});
   const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
+  const [marketingLists, setMarketingLists] = useState<{ id: string; name: string; count: number }[]>([]);
 
   useEffect(() => {
     const loadConnections = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
-      const { data } = await supabase
-        .from('integration_connections')
-        .select('integration_id')
-        .eq('user_id', session.user.id);
-      if (data) setConnectedIds(new Set(data.map((r: any) => r.integration_id)));
+      const [{ data: connections }, { data: lists }, { data: memberships }] = await Promise.all([
+        supabase.from('integration_connections').select('integration_id').eq('user_id', session.user.id),
+        supabase.from('marketing_lists').select('id, name').eq('user_id', session.user.id).order('created_at', { ascending: true }),
+        supabase.from('marketing_contacts_lists').select('list_id'),
+      ]);
+      if (connections) setConnectedIds(new Set(connections.map((r: any) => r.integration_id)));
+      if (lists) {
+        const countMap = new Map<string, number>();
+        for (const m of memberships ?? []) countMap.set(m.list_id, (countMap.get(m.list_id) ?? 0) + 1);
+        setMarketingLists(lists.map((l: any) => ({ id: l.id, name: l.name, count: countMap.get(l.id) ?? 0 })));
+      }
     };
     loadConnections();
   }, []);
@@ -270,12 +277,32 @@ export function CreateAutomationModal({
    */
   const integrations: Integration[] = [
     // Native ListingBug
-    { 
-      id: 'csv-download', 
-      name: 'ListingBug CSV Download', 
-      icon: Download, 
-      connected: true, 
+    {
+      id: 'csv-download',
+      name: 'ListingBug CSV Download',
+      icon: Download,
+      connected: true,
       requiresSetup: false
+    },
+    {
+      id: 'messaging-list-new',
+      name: 'Send to New List',
+      icon: Mail,
+      connected: true,
+      requiresSetup: true,
+      setupFields: [
+        { key: 'list_name', label: 'New list name', placeholder: 'e.g. Austin Agents — April', hint: 'Agents found by this automation will be upserted into a new messaging contact list. Messaging automations set to On Sync will fire automatically.' }
+      ]
+    },
+    {
+      id: 'messaging-list-existing',
+      name: 'Send to Existing List',
+      icon: Mail,
+      connected: true,
+      requiresSetup: true,
+      setupFields: [
+        { key: 'list_id', label: 'Messaging list', type: 'list-select', hint: 'Agents will be upserted into this list on every run. Messaging automations set to On Sync will fire automatically.' }
+      ]
     },
     {
       id: 'csv-email',
@@ -994,7 +1021,7 @@ export function CreateAutomationModal({
   const canProceedToStep2 = selectedDestination &&
     (!selectedIntegration?.requiresSetup ||
       (selectedIntegration.setupFields?.every((f: any) =>
-        f.type === 'select' || destinationConfig[f.key]?.trim()
+        f.type === 'select' || f.type === 'list-select' || destinationConfig[f.key]?.trim()
       )));
   
   // Field mapping step is hidden — step 1 jumps directly to step 3
@@ -1311,7 +1338,24 @@ export function CreateAutomationModal({
                           {field.label}
                           {field.required !== false && <span className="text-red-500 ml-0.5">*</span>}
                         </label>
-                        {field.type === 'select' ? (
+                        {field.type === 'list-select' ? (
+                          marketingLists.length === 0 ? (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
+                              No messaging lists yet. Import contacts in Messaging → Contacts first, or choose "Send to New List" instead.
+                            </p>
+                          ) : (
+                            <select
+                              className="w-full border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white"
+                              value={destinationConfig[field.key] || ''}
+                              onChange={(e) => setDestinationConfig({ ...destinationConfig, [field.key]: e.target.value })}
+                            >
+                              <option value="">Select list…</option>
+                              {marketingLists.map((l: any) => (
+                                <option key={l.id} value={l.id}>{l.name} ({l.count} contacts)</option>
+                              ))}
+                            </select>
+                          )
+                        ) : field.type === 'select' ? (
                           <select
                             className="w-full border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white"
                             value={destinationConfig[field.key] || (field.options?.[0]?.value ?? '')}

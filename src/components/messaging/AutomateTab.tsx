@@ -15,7 +15,7 @@ interface MessagingAutomation {
   list_id: string;
   list_name?: string;
   sender_id: string;
-  schedule: 'manual' | 'daily' | 'weekly' | 'monthly';
+  schedule: 'on_sync' | 'manual' | 'daily' | 'weekly' | 'monthly';
   last_run_at: string | null;
   total_sent: number;
 }
@@ -25,10 +25,11 @@ interface ContactList { id: string; name: string; count: number; }
 interface Sender { id: string; nickname: string; from_email: string; }
 
 const SCHEDULES = [
-  { value: 'manual', label: 'Manual only' },
-  { value: 'daily',  label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
+  { value: 'on_sync', label: 'On Sync', hint: 'Sends automatically whenever a search automation updates this list.' },
+  { value: 'manual',  label: 'Manual only', hint: 'Only sends when you click Run now.' },
+  { value: 'daily',   label: 'Daily',   hint: null },
+  { value: 'weekly',  label: 'Weekly',  hint: null },
+  { value: 'monthly', label: 'Monthly', hint: null },
 ];
 
 export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
@@ -47,7 +48,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
   const [formBody, setFormBody] = useState('');
   const [formListId, setFormListId] = useState('');
   const [formSenderId, setFormSenderId] = useState('');
-  const [formSchedule, setFormSchedule] = useState<'manual' | 'daily' | 'weekly' | 'monthly'>('manual');
+  const [formSchedule, setFormSchedule] = useState<'on_sync' | 'manual' | 'daily' | 'weekly' | 'monthly'>('on_sync');
   const [saving, setSaving] = useState(false);
 
   const loadAll = async () => {
@@ -363,9 +364,12 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
                 </button>
               ))}
             </div>
-            {formSchedule !== 'manual' && (
-              <p className="text-xs text-zinc-400 mt-1.5">Scheduled sends will run automatically once scheduling is wired in a future update. For now, use Run now to send manually.</p>
-            )}
+            {(() => {
+              const s = SCHEDULES.find(s => s.value === formSchedule);
+              if (s?.hint) return <p className="text-xs text-zinc-400 mt-1.5">{s.hint}</p>;
+              if (formSchedule !== 'manual' && formSchedule !== 'on_sync') return <p className="text-xs text-zinc-400 mt-1.5">Scheduled sends will run automatically once scheduling is wired in a future update. For now, use Run now to send manually.</p>;
+              return null;
+            })()}
           </div>
 
           <div className="flex justify-end">

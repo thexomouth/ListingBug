@@ -1,6 +1,6 @@
 # **ListingBug — Developer Reference**
 
-Last Updated: April 4, 2026  
+Last Updated: April 5, 2026  
 Live Site: [https://thelistingbug.com](https://thelistingbug.com/)  
 GitHub: [https://github.com/thexomouth/ListingBug](https://github.com/thexomouth/ListingBug)  
 ---
@@ -66,9 +66,10 @@ Critical pattern: SubscriptionGate is inlined as a function declaration in App.t
 
 1. User creates automation (name \+ search criteria \+ schedule \+ integration destination)  
 2. Row inserted into automations table (active: true)  
-3. Scheduled trigger (external cron or Supabase cron) calls run-automation edge function  
-4. Edge function: runs the search → dispatches results to the configured integration (Mailchimp, HubSpot, Google Sheets, etc.) via the corresponding send-to-\* edge function  
-5. Result written to automation\_runs table
+3. pg_cron fires `run-due-automations` hourly; it picks up automations where `next_run_at <= now()` and runs them  
+4. Edge function: runs the RentCast search → dispatches results to the configured integration via the corresponding send-to-\* edge function  
+5. Result written to automation\_runs + automation\_run\_listings tables  
+6. **Normalized listings also written to search\_runs** — this is what powers the Agent Leaderboard page (see /agents). Without this step, the Agents page never updates from automation data.
 
 ---
 
@@ -369,9 +370,32 @@ Integrations tab uses IntegrationConnectionModal for connect flow, IntegrationDe
 
 Dedicated billing view (also accessible from Account → Billing tab). Shows current plan, payment method, invoice history from Stripe.
 
-#### **/agents — Agents (AgentsPage.tsx)**
+#### **/agents — Agent Leaderboard (AgentsPage.tsx)**
 
-AI agents feature page — currently a placeholder/coming soon UI.  
+Displays a leaderboard of listing agents ranked by activity, built from the user's own search history. **Not** a placeholder — this is a fully functional feature.
+
+**How it works:**
+
+- Reads exclusively from the `search_runs` table, filtered to the current user's `user_id`
+- Iterates all runs ordered newest-first, flattening all `results_json` arrays into a single deduplicated listing pool (deduped by listing `id`)
+- Aggregates per agent: listing count, avg price, avg DOM, price drop count, ZIP codes active in, and most recent `listedDate`
+- Displays as a sortable, filterable, paginated table with expandable rows showing each agent's listings
+
+**Critical data dependency — `search_runs` must be populated by automations:**
+
+The Agents page only shows data from `search_runs`. Manual searches (via the Listings tab) always write to `search_runs`. However, prior to April 5, 2026, `run-automation` and `run-due-automations` did NOT write to `search_runs` — they only wrote to `automation_run_listings`. This meant the Agents page would stop updating after the last manual search, even with daily automations running successfully.
+
+**Fix applied April 5, 2026:** Both `run-automation` (v71) and `run-due-automations` (v22) now normalize the raw RentCast response and insert a row into `search_runs` after every successful automation run. The normalization step is critical — RentCast returns nested objects (`listingAgent.name`, `listingOffice.name`, `daysOnMarket`, etc.) but `search_runs` and `AgentsPage` expect flat camelCase fields (`agentName`, `officeName`, `daysListed`, etc.), matching the shape produced by `SearchListings.tsx`.
+
+**`lastListed` date behavior:** The "Last Listed" column shows the most recent `listedDate` value across an agent's listings — this is the MLS date the *property* was listed, not when the search was run. If an agent hasn't listed a new property recently, this date won't change even after fresh searches.
+
+**`search_runs` write format (for both manual and automation paths):**
+```
+id, user_id, location, criteria_description, criteria_json,
+results_json (normalized camelCase listings array),
+results_count, searched_at, automation_name (null for manual searches)
+```
+
 ---
 
 ### **Utility / Internal Pages**
@@ -469,7 +493,7 @@ Support form — /support form submission not wired to any backend
 
 ### **Feature Roadmap**
 
-* Agents page — AI agent feature (currently placeholder)  
+* Agents page — Agent Leaderboard is live (see /agents section above); no further roadmap items outstanding  
 * Public API — listed under /api-docs; needs actual implementation  
 * Airtable integration — base/table config wired to send-to-airtable edge function  
 * Twilio integration — E.164 phone validation \+ send-to-twilio wiring  

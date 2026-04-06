@@ -120,6 +120,193 @@ async function fetchListings(searchCriteria: Record<string, unknown>): Promise<u
   return Array.isArray(data) ? data : [];
 }
 
+function normalizeListings(raw: unknown[]): unknown[] {
+  return raw.map((l: any, i: number) => ({
+    id: l.id || l.formattedAddress || String(i),
+    address: l.addressLine1 || l.formattedAddress || "",
+    formattedAddress: l.formattedAddress || "",
+    city: l.city || "",
+    state: l.state || "",
+    zip: l.zipCode || "",
+    county: l.county || "",
+    propertyType: l.propertyType || "Single Family",
+    bedrooms: l.bedrooms || 0,
+    bathrooms: l.bathrooms || 0,
+    sqft: l.squareFootage || 0,
+    lotSize: l.lotSize || 0,
+    yearBuilt: l.yearBuilt || 0,
+    status: l.status || "Active",
+    price: l.price || 0,
+    daysListed: l.daysOnMarket || 0,
+    listedDate: l.listedDate || "",
+    removedDate: l.removedDate || "",
+    createdDate: l.createdDate || "",
+    lastSeenDate: l.lastSeenDate || "",
+    listingType: l.listingType || "",
+    mlsNumber: l.mlsNumber || "",
+    mlsName: l.mlsName || "",
+    hoaFee: l.hoa?.fee ?? null,
+    agentName: l.listingAgent?.name || "",
+    agentPhone: l.listingAgent?.phone || "",
+    agentEmail: l.listingAgent?.email || "",
+    agentWebsite: l.listingAgent?.website || "",
+    officeName: l.listingOffice?.name || "",
+    officePhone: l.listingOffice?.phone || "",
+    officeEmail: l.listingOffice?.email || "",
+    officeWebsite: l.listingOffice?.website || "",
+    brokerage: l.listingAgent?.office || l.listingOffice?.name || "",
+    priceDrop: l.priceReduced || false,
+    latitude: l.latitude || 0,
+    longitude: l.longitude || 0,
+    description: l.description || "",
+    photos: l.photos || [],
+  }));
+}
+
+function applyMergeTags(template: string, data: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] ?? "");
+}
+
+async function resolveSendGridKey(supabase: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
+  const { data: mc } = await supabase.from("messaging_config").select("config").eq("user_id", userId).eq("platform", "sendgrid").maybeSingle();
+  if (mc?.config?.api_key) return mc.config.api_key;
+  const { data: conn } = await supabase.from("integration_connections").select("credentials").eq("user_id", userId).eq("integration_id", "sendgrid").maybeSingle();
+  if ((conn?.credentials as any)?.api_key) return (conn.credentials as any).api_key;
+  return null;
+}
+
+async function triggerOnSyncMessagingAutomations(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  listId: string
+): Promise<void> {
+  const { data: msgAutos } = await supabase
+    .from("messaging_automations")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("list_id", listId)
+    .eq("schedule", "on_sync")
+    .eq("status", "active");
+
+  if (!msgAutos || msgAutos.length === 0) return;
+
+  const apiKey = await resolveSendGridKey(supabase, userId);
+  if (!apiKey) { console.warn("[run-due-automations] on_sync: no SendGrid key for user", userId); return; }
+
+  const sendersRes = await fetch("https://api.sendgrid.com/v3/senders", { headers: { Authorization: `Bearer ${apiKey}` } });
+  const sendersData: any[] = sendersRes.ok ? await sendersRes.json() : [];
+
+  for (const auto of msgAutos) {
+    const sender = sendersData.find((s: any) => String(s.id) === String(auto.sender_id));
+    if (!sender) continue;
+
+    const { data: memberships } = await supabase.from("marketing_contacts_lists").select("contact_id").eq("list_id", listId);
+    if (!memberships || memberships.length === 0) continue;
+
+    const { data: contacts } = await supabase
+      .from("marketing_contacts")
+      .select("id, email, first_name, last_name, city, company")
+      .in("id", memberships.map((m: any) => m.contact_id))
+      .eq("user_id", userId)
+      .eq("unsubscribed", false);
+
+    if (!contacts || contacts.length === 0) continue;
+
+    const campaignId = crypto.randomUUID();
+    await supabase.from("marketing_campaigns").insert({
+      id: campaignId, user_id: userId, name: `${auto.name} (On Sync)`,
+      subject: auto.subject, channel: "email", sender_id: String(auto.sender_id), recipient_count: contacts.length,
+    });
+
+    let sent = 0;
+    for (const contact of contacts) {
+      const mergeData: Record<string, string> = {
+        first_name: contact.first_name ?? "there", last_name: contact.last_name ?? "",
+        city: contact.city ?? "", company: contact.company ?? "",
+      };
+      try {
+        const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: contact.email }] }],
+            from: { email: sender.from?.email, name: sender.from?.name },
+            subject: applyMergeTags(auto.subject ?? "", mergeData),
+            content: [{ type: "text/html", value: applyMergeTags(auto.body ?? "", mergeData) }],
+          }),
+        });
+        const sgMsgId = sgRes.headers.get("X-Message-Id");
+        const status = (sgRes.ok || sgRes.status === 202) ? "pending" : "failed";
+        if (status === "pending") sent++;
+        await supabase.from("marketing_sends").insert({
+          campaign_id: campaignId, contact_id: contact.id, email: contact.email,
+          status, sg_message_id: sgMsgId, sent_at: new Date().toISOString(),
+        });
+      } catch (e: any) { console.error("[run-due-automations] on_sync send error:", e?.message); }
+    }
+
+    await supabase.from("messaging_automations").update({
+      last_run_at: new Date().toISOString(),
+      total_sent: (auto.total_sent ?? 0) + sent,
+      updated_at: new Date().toISOString(),
+    }).eq("id", auto.id);
+  }
+}
+
+async function sendToMessagingList(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  listings: unknown[],
+  config: Record<string, unknown>,
+  destType: string
+): Promise<{ sent: number; skipped?: number; error?: string }> {
+  const seen = new Set<string>();
+  const agents: any[] = [];
+  for (const l of listings as any[]) {
+    const email = (l.agentEmail ?? l.agent_email ?? l.listingAgent?.email ?? "").toLowerCase().trim();
+    if (!email || !email.includes("@") || seen.has(email)) continue;
+    seen.add(email);
+    const name: string = l.agentName ?? l.agent_name ?? l.listingAgent?.name ?? "";
+    const parts = name.trim().split(/\s+/);
+    agents.push({
+      user_id: userId, email,
+      first_name: parts[0] ?? "", last_name: parts.slice(1).join(" ") || null,
+      city: l.city ?? null,
+      company: l.officeName ?? l.brokerage ?? l.listingOffice?.name ?? null,
+      phone: l.agentPhone ?? l.agent_phone ?? l.listingAgent?.phone ?? null,
+      source: "automation",
+    });
+  }
+
+  const skippedNoEmail = (listings as any[]).length - agents.length;
+  if (agents.length === 0) return { sent: 0, skipped: skippedNoEmail, error: "No agents with email addresses found in listings" };
+
+  let listId: string;
+  if (destType === "messaging-list-new") {
+    const listName = String(config.list_name ?? "Automation List").trim();
+    const { data: existing } = await supabase.from("marketing_lists").select("id").eq("user_id", userId).eq("name", listName).maybeSingle();
+    if (existing) { listId = existing.id; } else {
+      const { data: newList, error: listErr } = await supabase.from("marketing_lists").insert({ user_id: userId, name: listName }).select("id").single();
+      if (listErr || !newList) return { sent: 0, error: listErr?.message ?? "Failed to create list" };
+      listId = newList.id;
+    }
+  } else {
+    listId = String(config.list_id ?? "");
+    if (!listId) return { sent: 0, error: "No list selected" };
+  }
+
+  await supabase.from("marketing_contacts").upsert(agents, { onConflict: "user_id,email", ignoreDuplicates: false });
+
+  const { data: freshContacts } = await supabase.from("marketing_contacts").select("id").eq("user_id", userId).in("email", agents.map((a: any) => a.email));
+  const memberships = (freshContacts ?? []).map((c: any) => ({ contact_id: c.id, list_id: listId }));
+  if (memberships.length > 0) {
+    await supabase.from("marketing_contacts_lists").upsert(memberships, { onConflict: "contact_id,list_id", ignoreDuplicates: true });
+  }
+
+  await triggerOnSyncMessagingAutomations(supabase, userId, listId);
+  return { sent: agents.length, skipped: skippedNoEmail };
+}
+
 async function sendToDestination(
   supabase: ReturnType<typeof createClient>,
   automation: Record<string, unknown>,
@@ -213,6 +400,10 @@ async function sendToDestination(
       });
       return res.ok ? { sent: listings.length } : { sent: 0, error: `HTTP ${res.status}` };
     }
+    case "messaging-list-new":
+    case "messaging-list-existing":
+      return sendToMessagingList(supabase, userId, listings, config, destType);
+
     default:
       return { sent: 0, error: `Unsupported destination: ${destType}` };
   }
@@ -293,6 +484,28 @@ serve(async (req) => {
         : `Completed with issues: ${errorMsg ?? "unknown"}`,
     });
     if (logErr) console.error(`[run-due-automations] log insert error:`, logErr.message);
+
+    // Write to search_runs so AgentsPage reflects this automation's results
+    if (listings.length > 0) {
+      const criteria = (automation.search_criteria ?? {}) as Record<string, unknown>;
+      const locationParts = [criteria.city, criteria.state].filter(Boolean);
+      const location = locationParts.length > 0
+        ? locationParts.join(", ")
+        : criteria.zipCode ? String(criteria.zipCode) : "Custom search";
+      const normalizedListings = normalizeListings(listings);
+      const { error: srErr } = await supabase.from("search_runs").insert({
+        id: crypto.randomUUID(),
+        user_id: automation.user_id,
+        location,
+        criteria_description: String(automationName),
+        criteria_json: criteria,
+        results_json: normalizedListings,
+        results_count: normalizedListings.length,
+        searched_at: now.toISOString(),
+        automation_name: String(automationName),
+      });
+      if (srErr) console.error(`[run-due-automations] search_runs insert error:`, srErr.message);
+    }
 
     // Update last_run_at (next_run_at already set above)
     await supabase.from("automations").update({
