@@ -385,21 +385,6 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
               </nav>
             ) : (
               <nav className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
-                {/* Dashboard */}
-                <button
-                  onClick={() => handleNavigate('dashboard')}
-                  className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
-                >
-                  Dashboard
-                  {currentPage === 'dashboard' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37] rounded-full" />
-                  )}
-                  {currentPage !== 'dashboard' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                  )}
-                </button>
-                <span className="text-[#342e37] font-normal">|</span>
-
                 {/* Listings */}
                 <button
                   onClick={() => handleNavigate('search-listings')}
@@ -564,12 +549,6 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={() => handleNavigate('dashboard')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'dashboard' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                  >
-                    Dashboard
-                  </button>
                   <button
                     onClick={() => handleNavigate('search-listings')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'search-listings' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
