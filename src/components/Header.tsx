@@ -13,6 +13,7 @@ type Page = 'home' | 'how-it-works' | 'data-sets' | 'use-cases' | 'integrations'
 interface HeaderProps {
   currentPage: Page;
   isLoggedIn: boolean;
+  isAdmin?: boolean;
   onNavigate: (page: Page) => void;
   onSignOut?: () => void;
   onAccountTabChange?: (tab: 'profile' | 'usage' | 'billing' | 'integrations' | 'compliance') => void;
@@ -36,7 +37,7 @@ const initializeNotifications = (): Notification[] => {
   return [];
 };
 
-export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccountTabChange, onOpenNotifications, onToggleDarkMode, isDarkMode }: HeaderProps) {
+export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, onSignOut, onAccountTabChange, onOpenNotifications, onToggleDarkMode, isDarkMode }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -444,6 +445,25 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                   )}
                 </button>
+
+                {/* Messaging — admin only */}
+                {isAdmin && (
+                  <>
+                    <span className="text-[#342e37] font-normal">|</span>
+                    <button
+                      onClick={() => handleNavigate('messaging')}
+                      className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
+                    >
+                      Messaging
+                      {currentPage === 'messaging' && (
+                        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37] rounded-full" />
+                      )}
+                      {currentPage !== 'messaging' && (
+                        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </button>
+                  </>
+                )}
               </nav>
             )}
 
@@ -573,6 +593,14 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   >
                     Integrations
                   </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleNavigate('messaging')}
+                      className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'messaging' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                    >
+                      Messaging
+                    </button>
+                  )}
 
                   <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
 

@@ -178,6 +178,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [planStatus, setPlanStatus] = useState<string>('active');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -239,8 +240,8 @@ export default function App() {
           // Navigate immediately — no delay — so login form is never interactive with existing session
           navigate(PAGE_TO_PATH['dashboard']);
         }
-        const { data } = await supabase.from('users').select('plan_status, trial_ends_at').eq('id', session.user.id).single();
-        if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); }
+        const { data } = await supabase.from('users').select('plan_status, trial_ends_at, is_admin').eq('id', session.user.id).single();
+        if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); setIsAdmin(data.is_admin ?? false); }
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -434,7 +435,7 @@ export default function App() {
         <div className="min-h-screen bg-background flex flex-col">
           <PageLoader isLoading={isPageLoading} />
           {isAuthPage && <LoginHeader onNavigateToHome={() => navigate('/')} onNavigateToHelp={() => navigateWithLoading('help-center')} />}
-          {!isMinimalPage && <Header currentPage={currentPage} isLoggedIn={isLoggedIn} onNavigate={navigateWithLoading} onSignOut={handleLogout} onAccountTabChange={setAccountDefaultTab} onToggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
+          {!isMinimalPage && <Header currentPage={currentPage} isLoggedIn={isLoggedIn} isAdmin={isAdmin} onNavigate={navigateWithLoading} onSignOut={handleLogout} onAccountTabChange={setAccountDefaultTab} onToggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
           {isLoggedIn && <SubscriptionGate planStatus={planStatus} trialEndsAt={trialEndsAt} onUpgrade={() => { navigateWithLoading('account'); setAccountDefaultTab('billing'); }} />}
           <main className={`flex-1 bg-white dark:bg-[#0f0f0f] ${isMainContentReady ? 'loaded' : 'loading'}`}>
             <Suspense fallback={<PageLoader isLoading={true} />}>
