@@ -98,20 +98,24 @@ export function MessagingPage() {
             <p className="text-[13px] md:text-sm text-zinc-400">Compose and send emails to your contacts</p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
-            <button
-              onClick={() => setActiveTab('setup')}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
-            >
-              <Wrench className="w-4 h-4" />
-              Setup
-            </button>
-            <button
-              onClick={() => setActiveTab('create')}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
-            >
-              <Send className="w-4 h-4" />
-              Create
-            </button>
+            {activeTab !== 'setup' && (
+              <button
+                onClick={() => setActiveTab('setup')}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
+              >
+                <Wrench className="w-4 h-4" />
+                Setup
+              </button>
+            )}
+            {activeTab !== 'create' && (
+              <button
+                onClick={() => setActiveTab('create')}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
+              >
+                <Send className="w-4 h-4" />
+                Create
+              </button>
+            )}
           </div>
         </div>
 
