@@ -32,7 +32,8 @@ import {
   Send,
   Download,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  Search
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { useWalkthrough } from './WalkthroughContext';
@@ -54,10 +55,11 @@ interface Automation {
   searchName: string;
   schedule: string;
   destination: {
-    type: 'email' | 'mailchimp' | 'webhook' | 'hubspot' | 'sheets' | 'slack';
+    type: string;
     label: string;
   };
   active: boolean;
+  automationType: 'export' | 'campaign';
   lastRun?: {
     date: string;
     status: 'success' | 'failed';
@@ -193,13 +195,14 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
       });
     }
 
-    const mapped = (data || []).map((row: any) => {
+    const exportMapped: Automation[] = (data || []).map((row: any) => {
       const lastRun = lastRunMap[row.id];
       return {
         id: row.id, name: row.name, searchName: row.search_name ?? '',
         schedule: row.schedule ? `${row.schedule.charAt(0).toUpperCase() + row.schedule.slice(1)} at 3:00 AM PST` : 'Daily at 3:00 AM PST',
         destination: { type: row.destination_type, label: row.destination_label ?? row.destination_type, config: row.destination_config ?? {} },
         searchCriteria: row.search_criteria ?? {}, active: row.active ?? true, status: 'idle',
+        automationType: 'export' as const,
         lastRun: lastRun ? {
           date: lastRun.run_date,
           status: lastRun.status === 'success' ? 'success' : 'failed',
@@ -209,7 +212,46 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
         nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
       };
     });
-    if (data !== null) setAutomations(mapped);
+
+    // Load campaign_automations (messaging type) and merge
+    const { data: campaignData } = await supabase
+      .from('campaign_automations')
+      .select('id,name,search_name,search_criteria,messaging_automation_id,schedule,active,last_run_at,next_run_at,created_at')
+      .eq('user_id', userId)
+      .order('last_run_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+
+    // Resolve campaign names from messaging_automations
+    const campaignIds = (campaignData || []).map((r: any) => r.messaging_automation_id).filter(Boolean);
+    let campaignNameMap: Record<string, string> = {};
+    if (campaignIds.length > 0) {
+      const { data: msgAutos } = await supabase
+        .from('messaging_automations')
+        .select('id, name')
+        .in('id', campaignIds);
+      (msgAutos || []).forEach((m: any) => { campaignNameMap[m.id] = m.name; });
+    }
+
+    const campaignMapped: Automation[] = (campaignData || []).map((row: any) => ({
+      id: row.id, name: row.name, searchName: row.search_name ?? '',
+      schedule: row.schedule ? `${row.schedule.charAt(0).toUpperCase() + row.schedule.slice(1)}` : 'Daily',
+      destination: {
+        type: 'campaign',
+        label: campaignNameMap[row.messaging_automation_id] ?? 'Campaign',
+      },
+      searchCriteria: row.search_criteria ?? {}, active: row.active ?? true, status: 'idle',
+      automationType: 'campaign' as const,
+      lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success' as const, listingsFetched: 0, listingsSent: 0 } : undefined,
+      nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+    }));
+
+    const allAutomations = [...exportMapped, ...campaignMapped].sort((a, b) => {
+      const aDate = a.lastRun?.date ?? '';
+      const bDate = b.lastRun?.date ?? '';
+      return bDate.localeCompare(aDate);
+    });
+
+    if (data !== null) setAutomations(allAutomations);
     setAutomationsLoading(false);
   }, []);
 
@@ -274,12 +316,13 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
     }
   }, []);
 
-  const handleToggleAutomation = async (id: string) => {
+  const handleToggleAutomation = async (id: string, isCampaign = false) => {
     const automation = automations.find(a => a.id === id);
     if (!automation) return;
     const newActive = !automation.active;
     setAutomations(prev => prev.map(a => a.id === id ? { ...a, active: newActive } : a));
-    const { error } = await supabase.from('automations').update({ active: newActive, updated_at: new Date().toISOString() }).eq('id', id);
+    const table = isCampaign ? 'campaign_automations' : 'automations';
+    const { error } = await supabase.from(table).update({ active: newActive, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) {
       setAutomations(prev => prev.map(a => a.id === id ? { ...a, active: !newActive } : a));
       toast.error('Failed to update automation');
@@ -288,7 +331,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
     }
   };
 
-  const handleRunNow = async (automation: any) => {
+  const handleRunNow = async (automation: any, isCampaign = false) => {
     try {
       let { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
@@ -321,29 +364,39 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
       setRunNowLoading(true);
       setRunningAutomation(automation);
 
-      const res = await fetch('https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/run-automation', {
+      // Campaign automations use the new run-campaign-automation function
+      const fnName = isCampaign ? 'run-campaign-automation' : 'run-automation';
+      const res = await fetch(`https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/${fnName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ automation_id: automation.id }),
       });
       const result = await res.json();
       if (!res.ok || result.error) throw new Error(result.error || 'Automation run failed');
-      const { status, listings_found, listings_sent, details } = result;
-      const destLabel = automation.destination?.label ?? 'destination';
-      if (status === 'failed') {
-        toast.error(`"${automation.name}" failed: ${(details ?? 'Unknown error').slice(0, 120)}`);
-      } else {
-        toast.success(`"${automation.name}" complete — ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
-      }
-      // Fire notification without blocking the refresh
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) createNotification({
-          userId: user.id,
-          type: status === 'failed' ? 'error' : 'success',
-          title: status === 'failed' ? `Automation failed: ${automation.name}` : `Automation run complete: ${automation.name}`,
-          message: status === 'failed' ? (details ?? 'The automation encountered an error.') : listings_sent > 0 ? `${listings_found} listings found — ${listings_sent} sent to ${destLabel}` : `${listings_found} listings found.`,
+
+      if (isCampaign) {
+        const { listings, contacts } = result;
+        toast.success(`"${automation.name}" complete — ${listings} listings found, ${contacts} contacts synced to "${automation.destination?.label}"`);
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) createNotification({ userId: user.id, type: 'success', title: `Campaign automation complete: ${automation.name}`, message: `${listings} listings searched, ${contacts} contacts added to campaign.` });
         });
-      });
+      } else {
+        const { status, listings_found, listings_sent, details } = result;
+        const destLabel = automation.destination?.label ?? 'destination';
+        if (status === 'failed') {
+          toast.error(`"${automation.name}" failed: ${(details ?? 'Unknown error').slice(0, 120)}`);
+        } else {
+          toast.success(`"${automation.name}" complete — ${listings_found} found, ${listings_sent} sent to ${destLabel}`);
+        }
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) createNotification({
+            userId: user.id,
+            type: status === 'failed' ? 'error' : 'success',
+            title: status === 'failed' ? `Automation failed: ${automation.name}` : `Automation run complete: ${automation.name}`,
+            message: status === 'failed' ? (details ?? 'The automation encountered an error.') : listings_sent > 0 ? `${listings_found} listings found — ${listings_sent} sent to ${destLabel}` : `${listings_found} listings found.`,
+          });
+        });
+      }
     } catch (err: any) {
       const msg = err.message ?? 'Unknown error';
       toast.error(`Run failed: ${msg}`);
@@ -360,7 +413,9 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
   };
 
   const handleDeleteAutomation = async (id: string) => {
-    await supabase.from('automations').delete().eq('id', id);
+    const automation = automations.find(a => a.id === id);
+    const table = automation?.automationType === 'campaign' ? 'campaign_automations' : 'automations';
+    await supabase.from(table).delete().eq('id', id);
     setAutomations(prev => prev.filter(a => a.id !== id));
     toast.success('Automation deleted');
   };
@@ -436,9 +491,10 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
             <CreateAutomationPage
               onAutomationCreated={(automation) => {
                 const limitCheck = canCreateAutomation(currentPlan, automations.length);
-                if (!limitCheck.allowed && !walkthroughStep3Active) { setLimitModalOpen(true); toast.error('Automation limit reached'); return; }
+                if (!limitCheck.allowed && !walkthroughStep3Active && automation.type !== 'campaign') { setLimitModalOpen(true); toast.error('Automation limit reached'); return; }
                 handleAutomationCreated(automation);
               }}
+              onNavigate={onNavigate}
             />
           )
         ) : activeTab === 'automations' ? (
@@ -448,7 +504,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
             </div>
             {automationsLoading ? (
               <LBTable>
-                <LBTableHeader><LBTableRow><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Export Results</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
+                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>{Array.from({ length: 4 }).map((_, i) => <SkeletonAutomationRow key={i} />)}</LBTableBody>
               </LBTable>
             ) : automations.length === 0 ? (
@@ -460,17 +516,24 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
               </div>
             ) : (
               <LBTable>
-                <LBTableHeader><LBTableRow><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Export Results</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
+                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>
                   {automations.map((automation) => {
                     const lastRunStatus = automation.lastRun?.status;
                     const lastRunDate = automation.lastRun?.date;
                     const lastRunSent = automation.lastRun?.listingsSent ?? 0;
                     const lastRunFound = automation.lastRun?.listingsFetched ?? 0;
+                    const isCampaign = automation.automationType === 'campaign';
                     return (
-                      <LBTableRow key={automation.id} onClick={() => { setSelectedAutomation(automation); setEditModalOpen(true); }} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5">
+                      <LBTableRow key={automation.id} onClick={() => { if (!isCampaign) { setSelectedAutomation(automation); setEditModalOpen(true); } }} className={`hover:bg-gray-50 dark:hover:bg-white/5 ${!isCampaign ? 'cursor-pointer' : ''}`}>
+                        {/* Type icon */}
+                        <LBTableCell>
+                          {isCampaign
+                            ? <Mail className="w-4 h-4 text-blue-400" title="Messaging automation" />
+                            : <Search className="w-4 h-4 text-gray-400" title="Export automation" />}
+                        </LBTableCell>
                         <LBTableCell className="text-right">
-                          <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id); }} className="inline-flex items-center cursor-pointer select-none justify-end">
+                          <div onClick={(e) => { e.stopPropagation(); handleToggleAutomation(automation.id, isCampaign); }} className="inline-flex items-center cursor-pointer select-none justify-end">
                             <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${automation.active ? 'bg-[#FFD447]' : 'bg-gray-200 dark:bg-gray-700'}`}>
                               <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${automation.active ? 'translate-x-5' : 'translate-x-0'}`} />
                             </div>
@@ -500,15 +563,17 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
                           {automation.lastRun ? (<div className="flex flex-col gap-0.5"><span className="font-bold text-[15px] text-gray-900 dark:text-white">{lastRunFound}</span><span className="text-[11px] text-gray-400">listings fetched</span></div>) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
                         <LBTableCell className="hidden md:table-cell">
-                          {automation.lastRun ? (
-                            <div className="flex flex-col gap-0.5">
-                              {lastRunStatus === 'success' ? (<><span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span><span className="text-[11px] text-gray-400">confirmed</span></>) : (<><span className="font-bold text-[15px] text-red-500">0</span><span className="text-[11px] text-red-400">export failed</span></>)}
-                            </div>
-                          ) : <span className="text-[12px] text-gray-400">—</span>}
+                          {isCampaign
+                            ? <div className="flex flex-col gap-0.5"><span className="text-[13px] text-blue-500 dark:text-blue-400 font-medium">{automation.destination.label}</span><span className="text-[11px] text-gray-400">campaign</span></div>
+                            : automation.lastRun ? (
+                              <div className="flex flex-col gap-0.5">
+                                {lastRunStatus === 'success' ? (<><span className="font-bold text-[15px] text-green-600 dark:text-green-400">{lastRunSent}</span><span className="text-[11px] text-gray-400">confirmed</span></>) : (<><span className="font-bold text-[15px] text-red-500">0</span><span className="text-[11px] text-red-400">export failed</span></>)}
+                              </div>
+                            ) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
                         <LBTableCell className="text-right">
                           <div className="inline-flex items-center justify-end gap-3">
-                            <button onClick={(e) => { e.stopPropagation(); handleRunNow(automation); }} disabled={runNowLoading && runningAutomation?.id === automation.id} className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50" title="Run now">
+                            <button onClick={(e) => { e.stopPropagation(); handleRunNow(automation, isCampaign); }} disabled={runNowLoading && runningAutomation?.id === automation.id} className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50" title="Run now">
                               {runNowLoading && runningAutomation?.id === automation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                             </button>
                             <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(automation.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete automation"><Trash2 className="w-4 h-4" /></button>

@@ -43,6 +43,7 @@ interface CreateAutomationPageProps {
   savedSearch?: any;
   currentCriteria?: any;
   onAutomationCreated?: (automation: any) => void;
+  onNavigate?: (page: string) => void;
 }
 
 interface Integration {
@@ -60,10 +61,11 @@ interface FieldMapping {
   required: boolean;
 }
 
-export function CreateAutomationPage({ 
-  savedSearch, 
+export function CreateAutomationPage({
+  savedSearch,
   currentCriteria,
-  onAutomationCreated 
+  onAutomationCreated,
+  onNavigate,
 }: CreateAutomationPageProps) {
   // Walkthrough integration
   const { isStepActive, completeStep } = useWalkthrough();
@@ -74,10 +76,16 @@ export function CreateAutomationPage({
   const [syncFrequency, setSyncFrequency] = useState('daily');
   const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
+  const [messagingAutomations, setMessagingAutomations] = useState<any[]>([]);
   const [prefillCriteria, setPrefillCriteria] = useState<{ criteria: any; location: string; name: string } | null>(null);
   const [isActivating, setIsActivating] = useState(false);
   const [automationName, setAutomationName] = useState('');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+
+  // 'campaign:UUID' prefix in selectedDestination signals a messaging automation
+  const selectedCampaignId = selectedDestination.startsWith('campaign:')
+    ? selectedDestination.slice('campaign:'.length)
+    : null;
 
   // Load last 10 searches from search_runs (replaces saved searches).
   useEffect(() => {
@@ -109,6 +117,14 @@ export function CreateAutomationPage({
         }));
 
         setRecentSearches(searches);
+
+        // Load messaging automations (campaigns) for the destination dropdown
+        const { data: msgAutos } = await supabase
+          .from('messaging_automations')
+          .select('id, name, subject, schedule, status')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        setMessagingAutomations(msgAutos ?? []);
 
         // Auto-select if prefill data is present (coming from "Automate" on search page)
         const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
@@ -159,10 +175,17 @@ export function CreateAutomationPage({
   useEffect(() => {
     if (selectedDestination && selectedSearchId) {
       const search = getSelectedSearch();
-      const destination = integrations.find(i => i.id === selectedDestination);
-      if (search && destination) {
-        const frequencyLabel = frequencyOptions.find(f => f.value === syncFrequency)?.label || 'Daily';
-        setAutomationName(`${frequencyLabel} ${search.name} to ${destination.name}`);
+      const frequencyLabel = frequencyOptions.find(f => f.value === syncFrequency)?.label || 'Daily';
+      if (selectedCampaignId) {
+        const campaign = messagingAutomations.find(m => m.id === selectedCampaignId);
+        if (search && campaign) {
+          setAutomationName(`${frequencyLabel} ${search.name} → ${campaign.name}`);
+        }
+      } else {
+        const destination = integrations.find(i => i.id === selectedDestination);
+        if (search && destination) {
+          setAutomationName(`${frequencyLabel} ${search.name} to ${destination.name}`);
+        }
       }
     }
   }, [selectedDestination, selectedSearchId, syncFrequency]);
@@ -288,6 +311,51 @@ export function CreateAutomationPage({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) { toast.error('Not signed in'); return; }
 
+      const selectedSearch = getSelectedSearch();
+      const criteria = selectedSearch?.criteria ?? {};
+
+      // Guard: block automation creation if criteria has no location.
+      const hasLocation = !!(criteria.city || criteria.state || criteria.zipCode || criteria.zip || criteria.address);
+      if (!hasLocation) {
+        toast.error('The selected search has no location (city, state, or zip). Please re-save the search with a location before automating it.');
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      // ── Campaign automation (Send Messaging) ───────────────────────────
+      if (selectedCampaignId) {
+        const campaign = messagingAutomations.find(m => m.id === selectedCampaignId);
+        if (!campaign) { toast.error('Selected campaign not found'); return; }
+
+        const nextRunAt = new Date();
+        nextRunAt.setDate(nextRunAt.getDate() + (syncFrequency === 'weekly' ? 7 : 1));
+        nextRunAt.setHours(8, 0, 0, 0);
+
+        const { data: saved, error } = await supabase.from('campaign_automations').insert({
+          user_id: session.user.id,
+          name: automationName,
+          search_name: selectedSearch?.name ?? null,
+          search_criteria: criteria,
+          messaging_automation_id: selectedCampaignId,
+          schedule: syncFrequency,
+          schedule_time: '08:00',
+          active: true,
+          next_run_at: nextRunAt.toISOString(),
+          created_at: now,
+          updated_at: now,
+        }).select().single();
+
+        if (error) { console.error('[CreateAuto] campaign_automations insert:', error); toast.error('Failed to save: ' + error.message); return; }
+
+        onAutomationCreated?.({ id: saved.id, name: automationName, type: 'campaign', searchName: selectedSearch?.name ?? '', campaign: { id: campaign.id, name: campaign.name }, schedule: syncFrequency, active: true });
+        toast.success('Messaging automation created: ' + automationName);
+        if (walkthroughStep3Active) { completeStep(3); setShowCompleteModal(true); }
+        setSelectedSearchId(''); setSelectedDestination(''); setSyncFrequency('daily'); setFieldMappings([]);
+        return;
+      }
+
+      // ── Export automation (existing path) ──────────────────────────────
       // Fetch saved integration config from the integrations page
       const { data: conn } = await supabase
         .from('integration_connections')
@@ -304,20 +372,7 @@ export function CreateAutomationPage({
         return;
       }
 
-      const selectedSearch = getSelectedSearch();
-      const criteria = selectedSearch?.criteria ?? {};
-
-      // Guard: block automation creation if criteria has no location.
-      // Without city/state/zip/address, run-automation will fetch up to 500
-      // unconstrained results from RentCast — wasting API quota and producing bad data.
-      const hasLocation = !!(criteria.city || criteria.state || criteria.zipCode || criteria.zip || criteria.address);
-      if (!hasLocation) {
-        toast.error('The selected search has no location (city, state, or zip). Please re-save the search with a location before automating it.');
-        return;
-      }
-
       const destIntegration = integrations.find((i: any) => i.id === selectedDestination);
-      const now = new Date().toISOString();
 
       const { data: saved, error } = await supabase.from('automations').insert({
         user_id: session.user.id,
@@ -416,10 +471,33 @@ export function CreateAutomationPage({
               </label>
               <select
                 value={selectedDestination}
-                onChange={(e) => setSelectedDestination(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'create-campaign') {
+                    onNavigate?.('messaging');
+                    return;
+                  }
+                  setSelectedDestination(val);
+                }}
                 className="w-full px-4 py-3 border border-gray-200 dark:border-white/20 bg-white dark:bg-[#0F1115] text-[#0F1115] dark:text-white rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#FFCE0A] focus:border-[#FFCE0A]"
               >
                 <option value="">Select destination...</option>
+                {/* Messaging optgroup — always shown at top */}
+                <optgroup label="Messaging">
+                  {messagingAutomations.length === 0 ? (
+                    <option value="create-campaign">Create a Campaign →</option>
+                  ) : (
+                    <>
+                      {messagingAutomations.map(m => (
+                        <option key={m.id} value={`campaign:${m.id}`}>
+                          Send "{m.name}"
+                        </option>
+                      ))}
+                      <option value="create-campaign">+ Create a New Campaign →</option>
+                    </>
+                  )}
+                </optgroup>
+                {/* Export optgroups */}
                 {Object.entries(groupedIntegrations).map(([category, categoryIntegrations]) => (
                   <optgroup key={category} label={category}>
                     {categoryIntegrations.map(integration => (
