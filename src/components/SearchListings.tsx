@@ -904,20 +904,24 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
           <p className="text-gray-600 text-[13px] md:text-sm">Search and manage property listings with custom criteria</p>
         </div>
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
-          <button
-            onClick={() => setActiveTab('history')}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
-          >
-            <Clock className="w-4 h-4" />
-            History
-          </button>
-          <button
-            onClick={() => setActiveTab('listings')}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
-          >
-            <Heart className="w-4 h-4" />
-            Saved
-          </button>
+          {activeTab !== 'history' && (
+            <button
+              onClick={() => setActiveTab('history')}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
+            >
+              <Clock className="w-4 h-4" />
+              History
+            </button>
+          )}
+          {activeTab !== 'listings' && (
+            <button
+              onClick={() => setActiveTab('listings')}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
+            >
+              <Heart className="w-4 h-4" />
+              Saved
+            </button>
+          )}
         </div>
       </div>
 
