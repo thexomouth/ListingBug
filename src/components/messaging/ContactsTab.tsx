@@ -339,10 +339,11 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
             ))}
           </div>
 
+          {/* Import CSV — hidden on mobile, shown inline on sm+ */}
           {source === 'uploaded' && (
             <button
               onClick={() => setShowUpload(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
             >
               <Upload size={13} />
               Import CSV
@@ -350,6 +351,19 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
           )}
         </div>
       </div>
+
+      {/* Import CSV — own row on mobile only */}
+      {source === 'uploaded' && (
+        <div className="sm:hidden">
+          <button
+            onClick={() => setShowUpload(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors w-full justify-center"
+          >
+            <Upload size={13} />
+            Import CSV
+          </button>
+        </div>
+      )}
 
       {/* CSV upload panel */}
       {showUpload && source === 'uploaded' && (
