@@ -452,7 +452,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setActiveTab('automations')}>Automations</h1>
               </div>
               <p className="text-gray-600 dark:text-gray-400 text-[13px] md:text-sm">Automate your searches. Deliver listings to your tools.</p>
             </div>

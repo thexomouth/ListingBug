@@ -94,7 +94,7 @@ export function MessagingPage() {
         {/* Page header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5">Messaging</h1>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setActiveTab('contacts')}>Messaging</h1>
             <p className="text-[13px] md:text-sm text-zinc-400">Compose and send emails to your contacts</p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
