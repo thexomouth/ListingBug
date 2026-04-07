@@ -941,28 +941,28 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
             <div className="space-y-3">
               <div className="space-y-3">
                 <div data-walkthrough="location-section">
-                  <div className="flex items-center gap-2 mb-2"><MapPin className="w-4 h-4 text-primary" /><h3 className="text-[24px] font-bold">Location</h3></div>
+                  <div className="flex items-center gap-2 mb-2"><MapPin className="w-4 h-4 text-primary" /><h3 className="text-[18px] font-bold">Location</h3></div>
                   <div className="mb-2">
                     <CityAutocomplete value={criteria.city} stateValue={criteria.state} onSelect={(city, state) => { updateCriteria('city', city); updateCriteria('state', state); }} onBlur={() => setLocationFieldBlurred(true)} error={fieldErrors.state} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4" data-walkthrough="search-criteria">
                   <div data-walkthrough="property-details">
-                    <div className="flex items-center gap-2 mb-2"><Home className="w-4 h-4 text-primary" /><h3 className="text-[24px] font-bold">Property Details</h3></div>
+                    <div className="flex items-center gap-2 mb-2"><Home className="w-4 h-4 text-primary" /><h3 className="text-[18px] font-bold">Property Details</h3></div>
                     <div className="grid grid-cols-2 gap-2">
                       <LBSelect className="mx-[0px] mt-[0px] mb-[12px]" label="Property Type" value={criteria.propertyType} onChange={(value) => updateCriteria('propertyType', value)} options={[{ value: '', label: 'All Types' }, { value: 'Single Family', label: 'Single Family' }, { value: 'Condo', label: 'Condo' }, { value: 'Townhouse', label: 'Townhouse' }, { value: 'Multi-Family', label: 'Multi-Family' }, { value: 'Land', label: 'Land' }, { value: 'Commercial', label: 'Commercial' }]} />
                       <LBSelect label="Listing Status" value={criteria.status} onChange={(value) => updateCriteria('status', value)} options={[{ value: '', label: 'All Statuses' }, { value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]} />
                     </div>
                   </div>
                   <div data-walkthrough="price-range">
-                    <div className="flex items-center gap-2 mb-2"><DollarSign className="w-4 h-4 text-primary" /><h3 className="text-[24px] font-bold">Price Range</h3></div>
+                    <div className="flex items-center gap-2 mb-2"><DollarSign className="w-4 h-4 text-primary" /><h3 className="text-[18px] font-bold">Price Range</h3></div>
                     <div className="grid grid-cols-2 gap-2">
                       <LBInput className="mx-[0px] mt-[0px] mb-[12px]" label="Min Price" value={criteria.minPrice} onChange={(e) => updateCriteria('minPrice', e.target.value)} placeholder="500000" />
                       <LBInput label="Max Price" value={criteria.maxPrice} onChange={(e) => updateCriteria('maxPrice', e.target.value)} placeholder="1000000" />
                     </div>
                   </div>
                   <div data-walkthrough="listing-details">
-                    <div className="flex items-center gap-2 mb-2"><Calendar className="w-4 h-4 text-primary" /><h3 className="text-[24px] font-bold">Listing Details</h3></div>
+                    <div className="flex items-center gap-2 mb-2"><Calendar className="w-4 h-4 text-primary" /><h3 className="text-[18px] font-bold">Listing Details</h3></div>
                     <div className="grid grid-cols-2 gap-2">
                       <LBInput className="mx-[0px] mt-[0px] mb-[12px]" label="Year Built" value={criteria.yearBuilt} onChange={(e) => updateCriteria('yearBuilt', e.target.value)} placeholder="2000-2020" />
                       <LBInput label="Days Listed" value={criteria.daysOld} onChange={(e) => updateCriteria('daysOld', e.target.value)} placeholder="30 or 10-30" />
