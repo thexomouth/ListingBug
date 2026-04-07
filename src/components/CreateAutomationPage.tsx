@@ -474,6 +474,7 @@ export function CreateAutomationPage({
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val === 'create-campaign') {
+                    sessionStorage.setItem('messaging_open_tab', 'create');
                     onNavigate?.('messaging');
                     return;
                   }

@@ -62,7 +62,11 @@ function PasswordGate({ onSubmit }: { onSubmit: (input: string) => void }) {
 
 export function MessagingPage() {
   const [authed, setAuthed] = useState(() => localStorage.getItem(GATE_KEY) === '1');
-  const [activeTab, setActiveTab] = useState<Tab>('contacts');
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const intent = sessionStorage.getItem('messaging_open_tab');
+    if (intent === 'create') { sessionStorage.removeItem('messaging_open_tab'); return 'create'; }
+    return 'contacts';
+  });
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [selectedContacts, setSelectedContacts] = useState<ContactRow[]>([]);
 
