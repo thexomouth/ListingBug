@@ -2,14 +2,12 @@ import { useState } from 'react';
 import { Lock } from 'lucide-react';
 import { CreateTab, Recipient } from './messaging/CreateTab';
 import { ContactsTab, ContactRow } from './messaging/ContactsTab';
-import { CampaignsTable } from './messaging/CampaignsTable';
 import { SetupTab } from './messaging/SetupTab';
-import { MessagingResultsPage } from './MessagingResultsPage';
 
 const GATE_KEY = 'lb_msg_auth';
 const GATE_PASS = 'spitonthatthang';
 
-type Tab = 'create' | 'contacts' | 'campaigns' | 'setup';
+type Tab = 'create' | 'contacts' | 'setup';
 
 function PasswordGate({ onSubmit }: { onSubmit: (input: string) => void }) {
   const [value, setValue] = useState('');
@@ -67,10 +65,6 @@ export function MessagingPage() {
   const [activeTab, setActiveTab] = useState<Tab>('create');
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [selectedContacts, setSelectedContacts] = useState<ContactRow[]>([]);
-  const [campaignRefreshTrigger, setCampaignRefreshTrigger] = useState(0);
-
-  // Campaign results drill-in
-  const [viewingCampaign, setViewingCampaign] = useState<{ id: string; name: string } | null>(null);
 
   const handlePassword = (input: string) => {
     if (input === GATE_PASS) {
@@ -81,21 +75,9 @@ export function MessagingPage() {
 
   if (!authed) return <PasswordGate onSubmit={handlePassword} />;
 
-  // Campaign results sub-page
-  if (viewingCampaign) {
-    return (
-      <MessagingResultsPage
-        campaignId={viewingCampaign.id}
-        campaignName={viewingCampaign.name}
-        onBack={() => setViewingCampaign(null)}
-      />
-    );
-  }
-
   const tabs: { id: Tab; label: string }[] = [
     { id: 'create', label: 'Create' },
     { id: 'contacts', label: 'Contacts' },
-    { id: 'campaigns', label: 'Campaigns' },
     { id: 'setup', label: 'Setup' },
   ];
 
@@ -160,7 +142,7 @@ export function MessagingPage() {
             <CreateTab
               selectedRecipients={recipients}
               onClearRecipients={() => { setSelectedEmails(new Set()); setSelectedContacts([]); }}
-              onCampaignSent={() => setCampaignRefreshTrigger(n => n + 1)}
+              onCampaignSent={() => {}}
               onGoToSetup={() => setActiveTab('setup')}
             />
           )}
@@ -171,12 +153,6 @@ export function MessagingPage() {
                 setSelectedEmails(emails);
                 setSelectedContacts(contacts);
               }}
-            />
-          )}
-          {activeTab === 'campaigns' && (
-            <CampaignsTable
-              refreshTrigger={campaignRefreshTrigger}
-              onViewResults={(id, name) => setViewingCampaign({ id, name })}
             />
           )}
           {activeTab === 'setup' && <SetupTab />}
