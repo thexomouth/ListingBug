@@ -102,19 +102,20 @@ interface AutomationsManagementPageProps {
   onViewRunDetails?: (run: RunHistoryItem) => void;
 }
 
-export function AutomationsManagementPage({ onViewDetail, initialTab = 'create', onNavigate, onViewRunDetails }: AutomationsManagementPageProps = {}) {
+export function AutomationsManagementPage({ onViewDetail, initialTab = 'automations', onNavigate, onViewRunDetails }: AutomationsManagementPageProps = {}) {
   const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
   const walkthroughStep3Active = isStepActive(3);
-  
+
   const [activeTab, setActiveTab] = useState<'create' | 'automations' | 'history'>(() => {
     // One-shot navigation intent takes priority over last-visited tab memory
     const navIntent = sessionStorage.getItem('listingbug_automations_tab');
     if (navIntent && ['create', 'automations', 'history'].includes(navIntent)) {
       return navIntent as 'create' | 'automations' | 'history';
     }
+    // 'create' is not a persistent tab — never restore it from last-visited memory
     const lastTab = sessionStorage.getItem('listingbug_automations_last_tab');
-    if (lastTab && ['create', 'automations', 'history'].includes(lastTab)) {
-      return lastTab as 'create' | 'automations' | 'history';
+    if (lastTab && ['automations', 'history'].includes(lastTab)) {
+      return lastTab as 'automations' | 'history';
     }
     return initialTab;
   });
@@ -125,7 +126,9 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
   }, []);
 
   useEffect(() => {
-    sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
+    if (activeTab !== 'create') {
+      sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
+    }
   }, [activeTab]);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -390,22 +393,33 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'create',
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       <div className="bg-white dark:bg-[#0f0f0f]">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('history')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
+              >
+                <Clock className="w-4 h-4" />
+                History
+              </button>
+              <button
+                onClick={() => setActiveTab('create')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                New
+              </button>
+            </div>
           </div>
           <p className="text-gray-600 dark:text-gray-400 text-[15px]">Automate your searches. Deliver listings to your tools.</p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="border-b border-gray-200 dark:border-white/10 mb-4">
-          <nav className="flex">
-            <button onClick={() => setActiveTab('create')} className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${activeTab === 'create' ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>Create</button>
-            <button onClick={() => setActiveTab('automations')} className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${activeTab === 'automations' ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>My Automations</button>
-            <button onClick={() => setActiveTab('history')} className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${activeTab === 'history' ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>History</button>
-          </nav>
-        </div>
 
         {activeTab === 'create' ? (
           automationUsage.isAtLimit && !walkthroughStep3Active ? (
