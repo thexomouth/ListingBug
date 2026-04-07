@@ -448,10 +448,13 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       <div className="bg-white dark:bg-[#0f0f0f]">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-[13px] md:text-sm">Automate your searches. Deliver listings to your tools.</p>
             </div>
             <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
               <button
@@ -470,7 +473,6 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
               </button>
             </div>
           </div>
-          <p className="text-gray-600 dark:text-gray-400 text-[15px]">Automate your searches. Deliver listings to your tools.</p>
         </div>
       </div>
 
