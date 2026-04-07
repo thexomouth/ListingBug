@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Send, Wrench } from 'lucide-react';
 import { CreateTab, Recipient } from './messaging/CreateTab';
 import { ContactsTab, ContactRow } from './messaging/ContactsTab';
 import { SetupTab } from './messaging/SetupTab';
@@ -62,7 +62,7 @@ function PasswordGate({ onSubmit }: { onSubmit: (input: string) => void }) {
 
 export function MessagingPage() {
   const [authed, setAuthed] = useState(() => localStorage.getItem(GATE_KEY) === '1');
-  const [activeTab, setActiveTab] = useState<Tab>('create');
+  const [activeTab, setActiveTab] = useState<Tab>('contacts');
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [selectedContacts, setSelectedContacts] = useState<ContactRow[]>([]);
 
@@ -74,12 +74,6 @@ export function MessagingPage() {
   };
 
   if (!authed) return <PasswordGate onSubmit={handlePassword} />;
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'create', label: 'Create' },
-    { id: 'contacts', label: 'Contacts' },
-    { id: 'setup', label: 'Setup' },
-  ];
 
   const recipients: Recipient[] = selectedContacts.map(c => ({
     email: c.email,
@@ -94,46 +88,46 @@ export function MessagingPage() {
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Page header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Messaging</h1>
-            <p className="text-sm text-zinc-400 mt-0.5">Admin — not publicly linked</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5">Messaging</h1>
+            <p className="text-[13px] md:text-sm text-zinc-400">Compose and send emails to your contacts</p>
           </div>
-          {selectedEmails.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                {selectedEmails.size} contact{selectedEmails.size !== 1 ? 's' : ''} selected
-              </span>
-              <button
-                onClick={() => setActiveTab('create')}
-                className="px-3 py-1.5 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-zinc-900 text-sm font-semibold transition-colors"
-              >
-                Compose →
-              </button>
-            </div>
-          )}
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
+            <button
+              onClick={() => setActiveTab('setup')}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
+            >
+              <Wrench className="w-4 h-4" />
+              Setup
+            </button>
+            <button
+              onClick={() => setActiveTab('create')}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              Create
+            </button>
+          </div>
         </div>
 
-        {/* Tab bar */}
+        {/* Tab bar — Contacts only visible tab */}
         <div className="flex border-b border-zinc-200 dark:border-zinc-700">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`flex-1 py-4 border-b-2 transition-colors text-[15px] ${
-                activeTab === t.id
-                  ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              {t.label}
-              {t.id === 'contacts' && selectedEmails.size > 0 && (
-                <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
-                  {selectedEmails.size}
-                </span>
-              )}
-            </button>
-          ))}
+          <button
+            onClick={() => setActiveTab('contacts')}
+            className={`px-6 py-4 border-b-2 transition-colors text-[15px] ${
+              activeTab === 'contacts'
+                ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            Contacts
+            {selectedEmails.size > 0 && (
+              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
+                {selectedEmails.size}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Tab content */}
