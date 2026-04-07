@@ -73,48 +73,52 @@ export function CreateAutomationPage({
   const [selectedDestination, setSelectedDestination] = useState('');
   const [syncFrequency, setSyncFrequency] = useState('daily');
   const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
-  const [savedSearches, setSavedSearches] = useState<any[]>([]);
+  const [recentSearches, setRecentSearches] = useState<any[]>([]);
+  const [prefillCriteria, setPrefillCriteria] = useState<{ criteria: any; location: string; name: string } | null>(null);
   const [isActivating, setIsActivating] = useState(false);
   const [automationName, setAutomationName] = useState('');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
 
-  // Load saved searches from Supabase (authoritative source).
-  // localStorage is NOT used — it can be stale or store a different shape,
-  // causing search_criteria to arrive empty when creating an automation.
+  // Load last 10 searches from search_runs (replaces saved searches).
   useEffect(() => {
-    const loadSearches = async () => {
+    const loadRecentSearches = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
-          .from('searches')
-          .select('id, name, location, filters_json')
+          .from('search_runs')
+          .select('id, location, criteria_description, criteria_json, searched_at')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          .order('searched_at', { ascending: false })
+          .limit(10);
 
         if (error || !data) {
-          console.error('[CreateAutomationPage] failed to load searches:', error?.message);
+          console.error('[CreateAutomationPage] failed to load search_runs:', error?.message);
           return;
         }
 
-        // Normalise the shape: criteria lives in filters_json.criteria
         const searches = data.map((row: any) => ({
           id: row.id,
-          name: row.name,
+          name: row.criteria_description
+            ? `${row.location} — ${row.criteria_description}`
+            : row.location || 'Search',
           location: row.location,
-          criteria: row.filters_json?.criteria ?? row.filters_json ?? {},
+          criteria: row.criteria_json ?? {},
         }));
 
-        setSavedSearches(searches);
+        setRecentSearches(searches);
 
         // Auto-select if prefill data is present (coming from "Automate" on search page)
         const prefillData = sessionStorage.getItem('listingbug_prefill_automation');
         if (prefillData) {
           try {
-            const { searchId } = JSON.parse(prefillData);
-            const match = searches.find((s: any) => s.id === searchId);
-            if (match) setSelectedSearchId(match.id);
+            const parsed = JSON.parse(prefillData);
+            if (parsed.criteria) {
+              // Criteria-based prefill from the Automate button (no saved search required)
+              setPrefillCriteria({ criteria: parsed.criteria, location: parsed.location, name: parsed.name });
+              setSelectedSearchId('current-search');
+            }
             // Don't clear here — let AutomationsManagementPage handle it
           } catch (e) {
             console.error('Failed to parse prefill data:', e);
@@ -124,11 +128,11 @@ export function CreateAutomationPage({
           if (match) setSelectedSearchId(match.id);
         }
       } catch (e) {
-        console.error('[CreateAutomationPage] loadSearches exception:', e);
+        console.error('[CreateAutomationPage] loadRecentSearches exception:', e);
       }
     };
 
-    loadSearches();
+    loadRecentSearches();
 
     if (currentCriteria && !savedSearch) {
       setSelectedSearchId('current-search');
@@ -163,14 +167,15 @@ export function CreateAutomationPage({
   }, [selectedDestination, selectedSearchId, syncFrequency]);
 
   const getSelectedSearch = () => {
-    if (selectedSearchId === 'current-search' && currentCriteria) {
-      return {
-        id: 'current-search',
-        name: 'Current Search',
-        criteria: currentCriteria,
-      };
+    if (selectedSearchId === 'current-search') {
+      if (prefillCriteria) {
+        return { id: 'current-search', name: prefillCriteria.name || 'Current Search', criteria: prefillCriteria.criteria };
+      }
+      if (currentCriteria) {
+        return { id: 'current-search', name: 'Current Search', criteria: currentCriteria };
+      }
     }
-    return savedSearches.find(s => s.id === selectedSearchId);
+    return recentSearches.find(s => s.id === selectedSearchId);
   };
 
   const [integrations, setIntegrations] = useState<Integration[]>([{
@@ -374,11 +379,14 @@ export function CreateAutomationPage({
                 onChange={(e) => setSelectedSearchId(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 dark:border-white/20 bg-white dark:bg-[#0F1115] text-[#0F1115] dark:text-white rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#FFCE0A] focus:border-[#FFCE0A]"
               >
-                <option value="">Choose a saved search...</option>
-                {currentCriteria && (
+                <option value="">Choose a recent search...</option>
+                {prefillCriteria && (
+                  <option value="current-search">{prefillCriteria.name || 'Current Search'}</option>
+                )}
+                {currentCriteria && !prefillCriteria && (
                   <option value="current-search">Current Search</option>
                 )}
-                {savedSearches.map(search => (
+                {recentSearches.map(search => (
                   <option key={search.id} value={search.id}>{search.name}</option>
                 ))}
               </select>

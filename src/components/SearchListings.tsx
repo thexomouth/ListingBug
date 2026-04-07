@@ -193,16 +193,13 @@ const US_STATES = [
 ];
 
 export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResults }: SearchListingsProps = {}) {
-  const [activeTab, setActiveTab] = useState<'search' | 'saved' | 'listings' | 'history'>(() => {
-    const shouldOpenSaved = sessionStorage.getItem('listingbug_open_saved_tab');
+  const [activeTab, setActiveTab] = useState<'search' | 'listings' | 'history'>(() => {
     const tabToOpen = sessionStorage.getItem('listingbug_open_tab');
     const lastTab = sessionStorage.getItem('listingbug_last_tab');
-    if (shouldOpenSaved === 'true') {
-      return 'saved';
-    } else if (tabToOpen && ['search','saved','listings','history'].includes(tabToOpen)) {
-      return tabToOpen as 'search' | 'saved' | 'listings' | 'history';
-    } else if (lastTab && ['search','saved','listings','history'].includes(lastTab)) {
-      return lastTab as 'search' | 'saved' | 'listings' | 'history';
+    if (tabToOpen && ['search','listings','history'].includes(tabToOpen)) {
+      return tabToOpen as 'search' | 'listings' | 'history';
+    } else if (lastTab && ['search','listings','history'].includes(lastTab)) {
+      return lastTab as 'search' | 'listings' | 'history';
     }
     return 'search';
   });
@@ -226,9 +223,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   }, []);
 
   useEffect(() => {
-    if (sessionStorage.getItem('listingbug_open_saved_tab')) {
-      sessionStorage.removeItem('listingbug_open_saved_tab');
-    }
     if (sessionStorage.getItem('listingbug_open_tab')) {
       sessionStorage.removeItem('listingbug_open_tab');
     }
@@ -318,32 +312,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     fetchBillingInfo();
   }, []);
 
-  useEffect(() => {
-    const loadSavedSearches = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from('searches')
-        .select('id, name, location, filters_json, created_at, last_run_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (data && data.length > 0) {
-        const searches = data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          location: r.location,
-          criteria: r.filters_json?.criteria || {},
-          activeFilters: r.filters_json?.activeFilters || [],
-          criteriaDescription: r.filters_json?.criteriaDescription || '',
-          createdAt: r.created_at,
-          lastUsed: r.last_run_at,
-        }));
-        setSavedSearches(searches);
-        localStorage.setItem('listingbug_saved_searches', JSON.stringify(searches));
-      }
-    };
-    loadSavedSearches();
-  }, []);
 
   useEffect(() => {
     const loadSavedListings = async () => {
@@ -389,14 +357,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     loadSearchHistory();
   }, []);
 
-  const [savedSearches, setSavedSearches] = useState<any[]>(() => {
-    const stored = localStorage.getItem('listingbug_saved_searches');
-    if (stored) {
-      try { return JSON.parse(stored); } catch (e) { console.error('Failed to parse stored searches:', e); }
-    }
-    return [];
-  });
-
   const pendingRunNameRef = React.useRef<{ searchName?: string; automationName?: string }>({});
 
   const [searchHistory, setSearchHistory] = useState<any[]>(() => {
@@ -435,10 +395,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     localStorage.setItem('listingbug_report_history', JSON.stringify(reportHistory));
   }, [reportHistory]);
   
-  const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
-  const [saveSearchName, setSaveSearchName] = useState('');
-  const [showAutomationModal, setShowAutomationModal] = useState(false);
-  const [selectedSavedSearch, setSelectedSavedSearch] = useState<any | null>(null);
   
   const [criteria, setCriteria] = useState<SearchCriteria>({
     address: '',
@@ -505,33 +461,12 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   ];
 
   useEffect(() => {
-    localStorage.setItem('listingbug_saved_searches', JSON.stringify(savedSearches));
-  }, [savedSearches]);
-  
-  useEffect(() => {
     localStorage.setItem('listingbug_search_history', JSON.stringify(searchHistory));
   }, [searchHistory]);
   
   useEffect(() => {
     localStorage.setItem('listingbug_saved_listings', JSON.stringify(savedListings));
   }, [savedListings]);
-
-  useEffect(() => {
-    if (showSaveSearchModal) {
-      document.body.style.overflow = 'hidden';
-      const viewport = document.querySelector('meta[name="viewport"]');
-      if (viewport) {
-        const originalContent = viewport.getAttribute('content');
-        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-        return () => {
-          document.body.style.overflow = '';
-          if (originalContent) viewport.setAttribute('content', originalContent);
-        };
-      }
-    } else {
-      document.body.style.overflow = '';
-    }
-  }, [showSaveSearchModal]);
 
   useEffect(() => {
     if (isLoading) {
@@ -890,71 +825,15 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
     } catch (e: any) { toast.dismiss(toastId); toast.error(e.message ?? 'Network error during export'); }
   };
 
-  const handleSaveSearch = () => {
-    const prefill = [criteria.city, criteria.state].filter(Boolean).join(', ');
-    setSaveSearchName(prefill);
-    setShowSaveSearchModal(true);
-  };
-
-  const handleConfirmSaveSearch = async () => {
-    if (!saveSearchName.trim()) { toast.error('Please enter a search name'); return; }
-    const locationParts = [criteria.city, criteria.state].filter(Boolean);
-    const location = locationParts.join(', ') || 'Custom Search';
-    const criteriaDescription = [criteria.propertyType ? `Type: ${criteria.propertyType}` : '', criteria.minPrice || criteria.maxPrice ? `Price: ${criteria.minPrice ? '$' + criteria.minPrice : ''}${criteria.minPrice && criteria.maxPrice ? '-' : ''}${criteria.maxPrice ? '$' + criteria.maxPrice : ''}` : '', criteria.beds ? `Beds: ${criteria.beds}` : '', criteria.baths ? `Baths: ${criteria.baths}` : ''].filter(Boolean).join(', ') || 'Various criteria';
-    const newSearch = { id: crypto.randomUUID(), name: saveSearchName, criteria: { ...criteria }, activeFilters: [...(activeFilters || [])], location, criteriaDescription, createdAt: new Date().toISOString(), lastUsed: new Date().toISOString() };
-    setSavedSearches(prev => [newSearch, ...prev]);
-    setShowSaveSearchModal(false);
-    setSaveSearchName('');
-    toast.success(`Search "${saveSearchName}" saved successfully!`);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('searches').upsert({ id: newSearch.id, user_id: user.id, name: newSearch.name, location: newSearch.location, filters_json: { criteria: newSearch.criteria, activeFilters: newSearch.activeFilters, criteriaDescription: newSearch.criteriaDescription }, created_at: newSearch.createdAt, last_run_at: newSearch.lastUsed, status: 'active' }, { onConflict: 'id' });
-      await createNotification({ userId: user.id, type: 'success', title: 'Search Saved', message: `your search "${saveSearchName}" for ${location} with ${results.length} listings` });
-    }
-    if (isStepActive(2)) { completeStep(2); setTimeout(() => { if (onNavigate) onNavigate('automations'); }, 1000); }
-  };
-
-  const handleLoadSavedSearch = (search: any) => {
-    setCriteria(search.criteria);
-    setActiveFilters(search.activeFilters || []);
-    setActiveTab('search');
-    pendingRunNameRef.current = { searchName: search.name };
-    toast.success(`Loaded search "${search.name}"`);
-    setSavedSearches(prev => prev.map(s => s.id === search.id ? { ...s, lastUsed: new Date().toISOString() } : s));
-  };
-
-  const handleDeleteSavedSearch = async (id: string) => {
-    const search = savedSearches.find(s => s.id === id);
-    setSavedSearches(prev => prev.filter(s => s.id !== id));
-    toast.success(`Deleted search "${search?.name}"`);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) await supabase.from('searches').delete().eq('id', id).eq('user_id', user.id);
-  };
-
-  const handleCreateAutomation = (search?: any) => {
-    if (!search && !criteria.city && !criteria.state && !criteria.address) { toast.error('Please enter search criteria before creating an automation'); return; }
-    setSelectedSavedSearch(search || null);
-    setShowAutomationModal(true);
-  };
-
-  const handleAutomateCurrentSearch = () => {
-    if (!criteria.city && !criteria.state && !criteria.address && !criteria.zip) { toast.error('Please enter search criteria before creating an automation'); return; }
-    const existingSavedSearch = savedSearches.find(s => JSON.stringify(s.criteria) === JSON.stringify(criteria));
-    if (!existingSavedSearch) { toast.error('Please save this search before creating an automation', { description: 'Run your search and click Save to save your criteria first.', duration: 4000 }); return; }
-    if (onNavigate) {
-      sessionStorage.setItem('listingbug_automations_tab', 'create');
-      sessionStorage.setItem('listingbug_prefill_automation', JSON.stringify({ searchId: existingSavedSearch.id, searchName: existingSavedSearch.name }));
-      toast.success('Redirecting to create automation...', { duration: 2000 });
-      onNavigate('automations');
-    }
-  };
-
   const handleAutomateFromResults = () => {
-    const existingSavedSearch = savedSearches.find(s => JSON.stringify(s.criteria) === JSON.stringify(criteria));
-    if (!existingSavedSearch) { toast.error('Please save this search before creating an automation', { description: 'Click the Save button above to save your search criteria first.', duration: 4000 }); return; }
+    if (!criteria.city && !criteria.state && !criteria.address && !criteria.zip) {
+      toast.error('Please enter search criteria before creating an automation');
+      return;
+    }
     if (onNavigate) {
       sessionStorage.setItem('listingbug_automations_tab', 'create');
-      sessionStorage.setItem('listingbug_prefill_automation', JSON.stringify({ searchId: existingSavedSearch.id, searchName: existingSavedSearch.name }));
+      const location = [criteria.city, criteria.state].filter(Boolean).join(', ') || 'Custom Search';
+      sessionStorage.setItem('listingbug_prefill_automation', JSON.stringify({ criteria, location, name: location }));
       toast.success('Redirecting to create automation...', { duration: 2000 });
       onNavigate('automations');
     }
@@ -985,7 +864,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
   };
 
   const isListingSaved = (listingId: any) => savedListings.some(l => l.id === listingId);
-  const handleAddToMyReports = () => handleSaveSearch();
   const updateCriteria = (field: string, value: string | boolean) => setCriteria((prev) => ({ ...prev, [field]: value }));
   const addFilter = (filterKey: FilterKey) => { if (!(activeFilters || []).includes(filterKey)) { setActiveFilters([...(activeFilters || []), filterKey]); setCriteria((prev) => ({ ...prev, [filterKey]: '' })); } };
   const removeFilter = (filterKey: FilterKey) => { setActiveFilters((activeFilters || []).filter((f) => f !== filterKey)); const newCriteria = { ...criteria }; delete newCriteria[filterKey]; setCriteria(newCriteria); };
@@ -1022,14 +900,14 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
           <Search className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
           <h1 className="mb-0 text-2xl font-bold">Listings</h1>
         </div>
-        <p className="text-gray-600 text-[13px] md:text-sm">Search, save, and manage property listings with custom criteria</p>
+        <p className="text-gray-600 text-[13px] md:text-sm">Search and manage property listings with custom criteria</p>
       </div>
 
       <div className="border-b border-gray-200 mb-4">
         <nav className="flex gap-2 md:gap-0 overflow-x-auto scrollbar-hide -mb-px">
-          {(['search', 'saved', 'listings', 'history'] as const).map((tab) => (
+          {(['search', 'listings', 'history'] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`py-3 px-2 md:px-4 border-b-2 transition-colors text-[14px] whitespace-nowrap flex-1 text-center ${activeTab === tab ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-              {tab === 'search' ? 'Search' : tab === 'saved' ? 'Saved Searches' : tab === 'listings' ? 'Saved Listings' : 'History'}
+              {tab === 'search' ? 'Search' : tab === 'listings' ? 'Saved Listings' : 'History'}
             </button>
           ))}
         </nav>
@@ -1122,7 +1000,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <LBCardTitle className="text-base md:text-lg">Showing {((currentPage-1)*resultsPerPage)+1}–{Math.min(currentPage*resultsPerPage, results.length)} of {results.length} listings</LBCardTitle>
                   <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                    <LBButton onClick={handleSaveSearch} variant="ghost" size="sm" className="whitespace-nowrap flex-1 sm:flex-none min-w-0" data-walkthrough="save-search"><Save className="w-4 h-4" /><span className="hidden xs:inline sm:inline">Save Search</span><span className="inline xs:hidden sm:hidden">Save</span></LBButton>
                     <LBButton onClick={handleAutomateFromResults} variant="ghost" size="sm" className="whitespace-nowrap flex-1 sm:flex-none min-w-0" data-walkthrough="create-automation-button"><Zap className="w-4 h-4" /><span>Automate</span></LBButton>
                     <ExportDropdown onExportCSV={handleDownloadCSV} onSendToIntegration={handleSendToIntegration} className="flex-1 sm:flex-none min-w-0" />
                   </div>
@@ -1160,40 +1037,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
           )}
           {!isLoading && searchPerformed && results.length === 0 && (<div className="text-center py-12 border border-dashed border-gray-300 dark:border-white/20 rounded-lg mt-4"><p className="text-lg font-semibold text-gray-900 dark:text-white">No listings found for that location.</p><p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Try a nearby city or different ZIP code.</p></div>)}
         </>
-      ) : activeTab === 'saved' ? (
-        <div className="space-y-4 pb-[100px]">
-          {savedSearches.length === 0 ? (
-            <Card className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10"><CardContent className="text-center py-12"><Save className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" /><p className="text-gray-900 dark:text-white font-medium mb-2">No saved searches yet</p><p className="text-[13px] text-gray-600 dark:text-gray-400 mb-4">Save your search criteria to quickly access them later or create automations</p><LBButton onClick={() => setActiveTab('search')} size="sm">Go to Search</LBButton></CardContent></Card>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-[24px]">Your Saved Searches ({savedSearches.length})</h3></div>
-              <div className="grid gap-4">
-                {savedSearches.map((search) => (
-                  <Card key={search.id} className="bg-white dark:bg-[#2F2F2F] border-gray-200 dark:border-white/10 hover:shadow-sm transition-shadow">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-[14px] truncate">{search.name}</h4>
-                          {search.location && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.location}</p>}
-                          {search.criteriaDescription && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.criteriaDescription}</p>}
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <LBButton variant="outline" size="sm" onClick={() => handleLoadSavedSearch(search)}><Play className="w-3.5 h-3.5" /></LBButton>
-                          <LBButton variant="primary" size="sm" onClick={() => {
-                            sessionStorage.setItem('listingbug_automations_tab', 'create');
-                            sessionStorage.setItem('listingbug_prefill_automation', JSON.stringify({ searchId: search.id, searchName: search.name }));
-                            if (onNavigate) onNavigate('automations');
-                          }}><Zap className="w-3.5 h-3.5 mr-1" />Automate</LBButton>
-                          <LBButton variant="ghost" size="sm" onClick={() => handleDeleteSavedSearch(search.id)}><Trash2 className="w-3.5 h-3.5 text-red-500" /></LBButton>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
       ) : activeTab === 'listings' ? (
         <div className="space-y-4 pb-[100px]">
           {savedListings.length === 0 ? (
@@ -1265,28 +1108,6 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         </div>
       ) : null}
 
-      {/* Save Search Modal */}
-      <Dialog open={showSaveSearchModal} onOpenChange={setShowSaveSearchModal}>
-        <DialogContent className="max-w-md sm:top-[50%] top-[20%] sm:translate-y-[-50%] translate-y-0 max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="bg-[#FFD447] -mx-6 -mt-6 px-6 pt-6 pb-4 mb-6"><DialogTitle className="text-[#342E37]">Save Search</DialogTitle><DialogDescription className="text-[#342E37]/80">Give your search a name so you can easily find it later</DialogDescription></DialogHeader>
-          <div className="space-y-4">
-            <div className="w-full space-y-1">
-              <label htmlFor="save-search-name-input" className="block text-[13px] text-foreground">Search Name</label>
-              <input id="save-search-name-input" type="text" value={saveSearchName} onChange={(e) => setSaveSearchName(e.target.value)} placeholder="e.g., Miami Foreclosures Under 300K" autoFocus onFocus={(e) => { setTimeout(() => { e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleConfirmSaveSearch(); } }} className="flex h-10 w-full border-b-2 bg-transparent px-0 py-2 text-[16px] transition-colors placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 border-gray-300 focus-visible:border-[#FFD447] hover:border-gray-400" style={{ fontSize: '16px' }} />
-            </div>
-            <div className="rounded-lg p-3 border border-gray-600">
-              <p className="text-[13px] text-gray-400 mb-2">Current criteria:</p>
-              <p className="text-[13px] text-white">{[criteria.city, criteria.state].filter(Boolean).join(', ') || 'Custom search'} • {criteria.propertyType || 'All types'} • {criteria.minPrice || criteria.maxPrice ? `${criteria.minPrice ? '$' + criteria.minPrice : ''}${criteria.minPrice && criteria.maxPrice ? '-' : ''}${criteria.maxPrice ? '$' + criteria.maxPrice : ''}` : 'Any price'}</p>
-            </div>
-            <div className="flex gap-2 justify-end pt-4">
-              <LBButton variant="outline" onClick={() => { setShowSaveSearchModal(false); setSaveSearchName(''); }}>Cancel</LBButton>
-              <LBButton variant="primary" onClick={handleConfirmSaveSearch}><Save className="w-4 h-4 mr-2" />Save Search</LBButton>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <CreateAutomationModal isOpen={showAutomationModal} onClose={() => { setShowAutomationModal(false); setSelectedSavedSearch(null); }} savedSearch={selectedSavedSearch} currentCriteria={!selectedSavedSearch ? criteria : undefined} onAutomationCreated={handleAutomationCreated} onNavigate={onNavigate} />
       {selectedListing && (<ListingDetailModal listing={selectedListing} onClose={() => setSelectedListing(null)} onSaveListing={handleSaveListing} isSaved={isListingSaved(selectedListing.id)} />)}
       {selectedReport && selectedReportType === 'valuation' && (<PropertyValuationModal report={selectedReport} onClose={() => { setSelectedReport(null); setSelectedReportType(null); }} />)}
       {selectedReport && selectedReportType === 'property-history' && (<PropertyHistoryModal report={selectedReport} onClose={() => { setSelectedReport(null); setSelectedReportType(null); }} />)}
