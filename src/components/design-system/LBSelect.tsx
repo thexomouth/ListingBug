@@ -31,7 +31,7 @@ const LBSelect = React.forwardRef<HTMLSelectElement, LBSelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="block text-[13px] dark:text-[#EBF2FA] text-[#ffffff]"
+            className="block text-[13px] text-[#342e37] dark:text-[#EBF2FA]"
           >
             {label}
             {props.required && <span className="text-destructive ml-1">*</span>}

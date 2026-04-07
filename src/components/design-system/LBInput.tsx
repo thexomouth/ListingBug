@@ -22,7 +22,7 @@ const LBInput = React.forwardRef<HTMLInputElement, LBInputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-[13px] dark:text-[#EBF2FA] text-[#ffffff]"
+            className="block text-[13px] text-[#342e37] dark:text-[#EBF2FA]"
           >
             {label}
             {props.required && <span className="text-destructive ml-1">*</span>}
