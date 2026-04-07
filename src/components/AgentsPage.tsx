@@ -191,20 +191,6 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
         </div>
       </div>
 
-      {/* Results per page selector */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex justify-end">
-        <label className="text-[13px] text-gray-600 dark:text-gray-300 mr-2">Results per page:</label>
-        <select
-          className="border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-[13px] bg-white dark:bg-[#1a1a1a] dark:text-white"
-          value={resultsPerPage}
-          onChange={e => setResultsPerPage(Number(e.target.value))}
-        >
-          {resultsPerPageOptions.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-
       {/* Filters */}
       <div className="bg-white dark:bg-[#0F1115] border-b dark:border-white/10 px-4 md:px-8 py-3">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-3">
@@ -354,12 +340,14 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
           </div>
         )}
 
-        {/* Results count */}
-        {/* Pagination controls */}
+        {/* Pagination + per-page controls */}
         {!isLoading && filtered.length > 0 && (
-          <>
-            <p className="text-[12px] text-gray-400 mt-3 text-right">{filtered.length} agent{filtered.length !== 1 ? 's' : ''} shown</p>
-            <div className="flex justify-center items-center gap-2 mt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+            {/* Left: total count */}
+            <p className="text-[12px] text-gray-400">{filtered.length} agent{filtered.length !== 1 ? 's' : ''} total</p>
+
+            {/* Center: page controls */}
+            <div className="flex items-center gap-2">
               <button
                 className="px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-[13px] disabled:opacity-50"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -378,7 +366,21 @@ export function AgentsPage({ onNavigate }: AgentsPageProps) {
                 Next
               </button>
             </div>
-          </>
+
+            {/* Right: results per page */}
+            <div className="flex items-center gap-2">
+              <label className="text-[13px] text-gray-600 dark:text-gray-300">Per page:</label>
+              <select
+                className="border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-[13px] bg-white dark:bg-[#1a1a1a] dark:text-white"
+                value={resultsPerPage}
+                onChange={e => setResultsPerPage(Number(e.target.value))}
+              >
+                {resultsPerPageOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         )}
       </div>
 
