@@ -284,7 +284,7 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                   setIsMenuOpen(true);
                   setIsAccountMenuOpen(false);
                 }}
-                className={`${isLoggedIn ? '' : 'md:hidden'} w-12 h-12 flex items-center justify-center transition-colors group font-bold`}
+                className={`${isLoggedIn ? '' : 'md:hidden'} relative z-10 w-12 h-12 flex items-center justify-center transition-colors group font-bold`}
                 aria-label="Open navigation menu"
                 aria-expanded={isMenuOpen}
               >
@@ -449,7 +449,7 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                   handleNavigate('signup');
                 }
               }}
-              className="w-10 h-10 rounded-full bg-[#342e37] hover:bg-white flex items-center justify-center transition-all group border border-[#342e37]/20"
+              className="relative z-10 w-10 h-10 rounded-full bg-[#342e37] hover:bg-white flex items-center justify-center transition-all group border border-[#342e37]/20"
               aria-label={isLoggedIn ? "Open account menu" : "Sign up for an account"}
               aria-expanded={isLoggedIn ? isAccountMenuOpen : undefined}
             >
