@@ -16,24 +16,24 @@ export function Footer({ isLoggedIn, onNavigate, onAccountTabChange }: FooterPro
     onNavigate('account');
   };
 
-  const linkCls = "text-gray-600 dark:text-[#EBF2FA] hover:text-[#FFCE0A] dark:hover:text-[#FFCE0A] transition-colors text-sm leading-relaxed";
+  const linkCls = "text-[#EBF2FA] hover:text-[#FFCE0A] transition-colors text-sm leading-relaxed";
 
   if (isLoggedIn) {
     return (
-      <footer className="bg-gray-50 dark:bg-[#2F2F2F] text-[#342e37] dark:text-white mt-auto border-t border-gray-200 dark:border-white/10">
+      <footer className="bg-[#2F2F2F] text-white mt-auto border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-8 border-b border-gray-200 dark:border-white/10">
+          <div className="py-8 border-b border-white/10">
             {/* Logo + description — full width on mobile, above 2-col grid */}
             <div className="mb-6">
               <ImageWithFallback src={logo} alt="ListingBug" className="h-12 w-auto mb-3" />
-              <p className="text-gray-600 dark:text-[#EBF2FA] text-sm leading-relaxed max-w-sm">
+              <p className="text-[#EBF2FA] text-sm leading-relaxed max-w-sm">
                 Real estate data intelligence for service providers.
               </p>
             </div>
             {/* Two-column links — Resources + Account */}
             <div className="grid grid-cols-2 gap-8">
               <div>
-                <h3 className="text-[#342e37] dark:text-white font-semibold mb-3 text-sm">Resources</h3>
+                <h3 className="text-white font-semibold mb-3 text-sm">Resources</h3>
                 <ul className="space-y-2">
                   <li><button onClick={() => onNavigate("data-sets")} className={linkCls}>Listing Data</button></li>
                   <li><button onClick={() => onNavigate("use-cases")} className={linkCls}>Use Cases</button></li>
@@ -43,7 +43,7 @@ export function Footer({ isLoggedIn, onNavigate, onAccountTabChange }: FooterPro
                 </ul>
               </div>
               <div>
-                <h3 className="text-[#342e37] dark:text-white font-semibold mb-3 text-sm">Account</h3>
+                <h3 className="text-white font-semibold mb-3 text-sm">Account</h3>
                 <ul className="space-y-2">
                   <li><button onClick={() => onNavigate("account")} className={linkCls}>Settings</button></li>
                   <li><button onClick={() => onNavigate("billing")} className={linkCls}>Billing</button></li>
@@ -54,7 +54,7 @@ export function Footer({ isLoggedIn, onNavigate, onAccountTabChange }: FooterPro
             </div>
           </div>
           <div className="py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-gray-600 dark:text-[#EBF2FA] text-sm">
+            <p className="text-[#EBF2FA] text-sm">
               © {currentYear} ListingBug. All rights reserved.
             </p>
             <div className="flex gap-4">
