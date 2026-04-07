@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const { recipients, subject, body: emailBody, campaign_name, sender_id } = body;
+  const { recipients, subject, body: emailBody, campaign_name, sender_id, attachments } = body;
   if (!Array.isArray(recipients) || recipients.length === 0) return json({ error: 'recipients required' }, 400);
   if (!subject || !emailBody) return json({ error: 'subject and body required' }, 400);
   if (!sender_id) return json({ error: 'sender_id required' }, 400);
@@ -113,12 +113,21 @@ Deno.serve(async (req: Request) => {
     const personalizedSubject = applyMergeTags(subject, mergeData);
     const personalizedBody = applyMergeTags(emailBody, mergeData);
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       personalizations: [{ to: [{ email: recipient.email }] }],
       from: { email: fromEmail, name: fromName },
       subject: personalizedSubject,
       content: [{ type: 'text/html', value: personalizedBody }],
     };
+
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      payload.attachments = attachments.map((a: { fileName: string; mimeType: string; base64: string }) => ({
+        filename: a.fileName,
+        type: a.mimeType,
+        content: a.base64,
+        disposition: 'attachment',
+      }));
+    }
 
     let sgMessageId: string | null = null;
     let status = 'pending';

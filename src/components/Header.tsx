@@ -278,13 +278,13 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
           <div className="flex items-center justify-between h-20">
             {/* Left side */}
             <div className="flex items-center gap-4">
-              {/* Hamburger Menu Button - Mobile Only */}
+              {/* Hamburger Menu Button */}
               <button
                 onClick={() => {
                   setIsMenuOpen(true);
                   setIsAccountMenuOpen(false);
                 }}
-                className="md:hidden w-12 h-12 flex items-center justify-center transition-colors group font-bold"
+                className={`${isLoggedIn ? '' : 'md:hidden'} w-12 h-12 flex items-center justify-center transition-colors group font-bold`}
                 aria-label="Open navigation menu"
                 aria-expanded={isMenuOpen}
               >
@@ -293,7 +293,7 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
 
               <button
                 onClick={() => handleNavigate(isLoggedIn ? 'dashboard' : 'home')}
-                className="flex items-center group md:relative absolute left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0"
+                className={`flex items-center group absolute left-1/2 -translate-x-1/2 ${!isLoggedIn ? 'md:relative md:left-auto md:translate-x-0' : ''}`}
                 aria-label={isLoggedIn ? "ListingBug dashboard" : "ListingBug home"}
               >
                 {isLoggedIn ? (
@@ -372,7 +372,7 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                 </button>
               </nav>
             ) : (
-              <nav className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
+              <nav className="hidden">
                 {/* Listings */}
                 <button
                   onClick={() => handleNavigate('search-listings')}

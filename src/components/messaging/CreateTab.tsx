@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Send, Save, AlertCircle, TriangleAlert, Eye } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Save, AlertCircle, TriangleAlert, Eye, Paperclip, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { MergeTagFooter } from './MergeTagFooter';
 import { TemplateDropdown } from './TemplateDropdown';
@@ -46,6 +46,9 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const [showWebhookWarning, setShowWebhookWarning] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [lastResult, setLastResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [attachments, setAttachments] = useState<Array<{ id: string; fileName: string; mimeType: string; base64: string; size: number }>>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -83,6 +86,49 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     load();
   }, []);
 
+  const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB per file
+  const MAX_TOTAL_BYTES = 30 * 1024 * 1024; // 30 MB total (SendGrid limit)
+
+  const processFiles = (files: FileList | File[]) => {
+    const incoming = Array.from(files);
+    const totalExisting = attachments.reduce((sum, a) => sum + a.size, 0);
+    let runningTotal = totalExisting;
+
+    incoming.forEach(file => {
+      if (file.size > MAX_FILE_BYTES) {
+        toast.error(`${file.name} exceeds the 25 MB per-file limit.`);
+        return;
+      }
+      if (runningTotal + file.size > MAX_TOTAL_BYTES) {
+        toast.error(`Adding ${file.name} would exceed the 30 MB total attachment limit.`);
+        return;
+      }
+      runningTotal += file.size;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.split(',')[1];
+        setAttachments(prev => [...prev, {
+          id: crypto.randomUUID(),
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          base64,
+          size: file.size,
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeAttachment = (id: string) => setAttachments(prev => prev.filter(a => a.id !== id));
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   // Validation: returns an error string or null if all clear
   const validate = (): string | null => {
     if (selectedRecipients.length === 0) return 'No recipients selected. Choose contacts in the Contacts tab.';
@@ -113,6 +159,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           body: body.trim(),
           campaign_name: campaignName.trim() || subject.trim(),
           sender_id: senderId,
+          attachments: attachments.map(({ fileName, mimeType, base64 }) => ({ fileName, mimeType, base64 })),
         }),
       });
 
@@ -263,6 +310,58 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           rows={10}
           className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono resize-y"
         />
+      </div>
+
+      {/* Attachments */}
+      <div>
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+          Attachments <span className="text-zinc-400 font-normal">(optional — 25 MB per file, 30 MB total)</span>
+        </label>
+
+        {/* Drop zone */}
+        <div
+          onDragOver={e => { e.preventDefault(); setIsDraggingOver(true); }}
+          onDragLeave={() => setIsDraggingOver(false)}
+          onDrop={e => { e.preventDefault(); setIsDraggingOver(false); processFiles(e.dataTransfer.files); }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm ${
+            isDraggingOver
+              ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-500 dark:text-zinc-400'
+          }`}
+        >
+          <Paperclip size={16} className="shrink-0" />
+          <span>Click or drag files here to attach</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={e => { if (e.target.files) { processFiles(e.target.files); e.target.value = ''; } }}
+          />
+        </div>
+
+        {/* Attached file list */}
+        {attachments.length > 0 && (
+          <ul className="mt-2 space-y-1">
+            {attachments.map(a => (
+              <li key={a.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Paperclip size={13} className="text-zinc-400 shrink-0" />
+                  <span className="truncate text-zinc-800 dark:text-zinc-200">{a.fileName}</span>
+                  <span className="text-zinc-400 shrink-0">{formatBytes(a.size)}</span>
+                </div>
+                <button
+                  onClick={() => removeAttachment(a.id)}
+                  className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                  aria-label={`Remove ${a.fileName}`}
+                >
+                  <X size={12} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* SMS stub */}

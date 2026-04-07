@@ -9,7 +9,7 @@ import { LBSelect } from './design-system/LBSelect';
 import { LBButton } from './design-system/LBButton';
 import { LBToggle } from './design-system/LBToggle';
 import { CityAutocomplete } from './CityAutocomplete';
-import { Download, Plus, X, MapPin, DollarSign, Home, Eye, Save, Search, Filter, Sliders, ArrowUpDown, ArrowUp, ArrowDown, Check, Calendar, Clock, Loader2, FileText, Database, CheckCircle, Zap, Edit2, Trash2, Play, TrendingUp, History, BarChart3, Share2, ExternalLink, Info } from 'lucide-react';
+import { Download, Plus, X, MapPin, DollarSign, Home, Eye, Save, Search, Filter, Sliders, ArrowUpDown, ArrowUp, ArrowDown, Check, Calendar, Clock, Loader2, FileText, Database, CheckCircle, Zap, Edit2, Trash2, Play, TrendingUp, History, BarChart3, Share2, ExternalLink, Info, Heart } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -895,15 +895,33 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6" style={{ borderRadius: 0, border: 0 }}>
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-0.5">
-          <Search className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
-          <h1 className="mb-0 text-2xl font-bold">Listings</h1>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <Search className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
+            <h1 className="mb-0 text-2xl font-bold">Listings</h1>
+          </div>
+          <p className="text-gray-600 text-[13px] md:text-sm">Search and manage property listings with custom criteria</p>
         </div>
-        <p className="text-gray-600 text-[13px] md:text-sm">Search and manage property listings with custom criteria</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('history')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
+          >
+            <Clock className="w-4 h-4" />
+            History
+          </button>
+          <button
+            onClick={() => setActiveTab('listings')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
+          >
+            <Heart className="w-4 h-4" />
+            Saved
+          </button>
+        </div>
       </div>
 
-      <div className="border-b border-gray-200 mb-4">
+      <div className="hidden">
         <nav className="flex gap-2 md:gap-0 overflow-x-auto scrollbar-hide -mb-px">
           {(['search', 'listings', 'history'] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`py-3 px-2 md:px-4 border-b-2 transition-colors text-[14px] whitespace-nowrap flex-1 text-center ${activeTab === tab ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>

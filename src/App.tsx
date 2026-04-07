@@ -192,6 +192,7 @@ export default function App() {
   const [sampleReportListings, setSampleReportListings] = useState<any[]>([]);
   const [sampleReportError, setSampleReportError] = useState<string | null>(null);
   const [sampleReportLoading, setSampleReportLoading] = useState(false);
+  const [pageResetKey, setPageResetKey] = useState(0);
 
   const currentPage = pathToPage(location.pathname);
 
@@ -272,7 +273,9 @@ export default function App() {
 
   const navigateWithLoading = (page: Page) => {
     const path = PAGE_TO_PATH[page] || '/';
+    const isSamePage = pathToPage(location.pathname) === page;
     setIsPageLoading(true);
+    if (isSamePage) setPageResetKey(k => k + 1);
     setTimeout(() => {
       startTransition(() => { navigate(path); });
       setTimeout(() => setIsPageLoading(false), 300);
@@ -438,7 +441,7 @@ export default function App() {
           {!isMinimalPage && <Header currentPage={currentPage} isLoggedIn={isLoggedIn} isAdmin={isAdmin} onNavigate={navigateWithLoading} onSignOut={handleLogout} onAccountTabChange={setAccountDefaultTab} onToggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
           {isLoggedIn && <SubscriptionGate planStatus={planStatus} trialEndsAt={trialEndsAt} onUpgrade={() => { navigateWithLoading('account'); setAccountDefaultTab('billing'); }} />}
           <main className={`flex-1 bg-white dark:bg-[#0f0f0f] ${isMainContentReady ? 'loaded' : 'loading'}`}>
-            <Suspense fallback={<PageLoader isLoading={true} />}>
+            <Suspense key={pageResetKey} fallback={<PageLoader isLoading={true} />}>
               {isMainContentReady ? renderPage() : <PageLoader isLoading={true} />}
             </Suspense>
           </main>
