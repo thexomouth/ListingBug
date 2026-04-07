@@ -459,11 +459,13 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
         </div>
       </header>
 
-      {/* Mobile Sidebar Menu */}
+      {/* Sidebar Menu */}
       {isMenuOpen && (
         <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setIsMenuOpen(false)} />
           {/* Sidebar */}
-          <div ref={menuRef} className="fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#252525] z-50 shadow-xl md:hidden transform transition-transform duration-300 ease-out">
+          <div ref={menuRef} className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#252525] z-50 shadow-xl transform transition-transform duration-300 ease-out ${isLoggedIn ? '' : 'md:hidden'}`}>
             {/* Sidebar Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <button
