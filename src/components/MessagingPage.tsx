@@ -111,25 +111,6 @@ export function MessagingPage() {
           </div>
         </div>
 
-        {/* Tab bar — Contacts only visible tab */}
-        <div className="flex border-b border-zinc-200 dark:border-zinc-700">
-          <button
-            onClick={() => setActiveTab('contacts')}
-            className={`px-6 py-4 border-b-2 transition-colors text-[15px] ${
-              activeTab === 'contacts'
-                ? 'border-[#FFD447] text-[#342E37] dark:text-white font-medium'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            Contacts
-            {selectedEmails.size > 0 && (
-              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300">
-                {selectedEmails.size}
-              </span>
-            )}
-          </button>
-        </div>
-
         {/* Tab content */}
         <div>
           {activeTab === 'create' && (
