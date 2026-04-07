@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock, Send, Wrench } from 'lucide-react';
+import { Lock, Send, Wrench, Mail } from 'lucide-react';
 import { CreateTab, Recipient } from './messaging/CreateTab';
 import { ContactsTab, ContactRow } from './messaging/ContactsTab';
 import { SetupTab } from './messaging/SetupTab';
@@ -94,7 +94,10 @@ export function MessagingPage() {
         {/* Page header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-0.5 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setActiveTab('contacts')}>Messaging</h1>
+            <div className="flex items-center gap-2 mb-0.5">
+              <Mail className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
+              <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setActiveTab('contacts')}>Messaging</h1>
+            </div>
             <p className="text-[13px] md:text-sm text-zinc-400">Compose and send emails to your contacts</p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
