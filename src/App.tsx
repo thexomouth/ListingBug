@@ -185,7 +185,7 @@ export default function App() {
   const [modalDefaultTab, setModalDefaultTab] = useState<'preferences' | 'history'>('preferences');
   const [showFromNewReport, setShowFromNewReport] = useState(false);
   const [selectedAutomation, setSelectedAutomation] = useState<any>(null);
-  const [automationsInitialTab, setAutomationsInitialTab] = useState<'create' | 'automations' | 'history'>('create');
+  const [automationsInitialTab, setAutomationsInitialTab] = useState<'create' | 'automations' | 'history'>('automations');
   const [selectedSearchRun, setSelectedSearchRun] = useState<any | null>(null);
   const [selectedAutomationRun, setSelectedAutomationRun] = useState<any | null>(null);
   const [sampleReportZipcode, setSampleReportZipcode] = useState('');

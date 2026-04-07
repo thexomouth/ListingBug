@@ -346,19 +346,6 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                 </button>
                 <span className="text-[#342e37] font-normal">|</span>
                 <button
-                  onClick={() => handleNavigate('integrations')}
-                  className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
-                >
-                  Integrations
-                  {currentPage === 'integrations' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37] rounded-full" />
-                  )}
-                  {currentPage !== 'integrations' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                  )}
-                </button>
-                <span className="text-[#342e37] font-normal">|</span>
-                <button
                   onClick={() => handleNavigate('use-cases')}
                   className={`font-bold text-[18px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
                 >
@@ -427,21 +414,6 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                     <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37] rounded-full" />
                   )}
                   {!(currentPage === 'automations' || currentPage === 'create-automation' || currentPage === 'my-automations' || currentPage === 'automation-history') && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                  )}
-                </button>
-                <span className="text-[#342e37] font-normal">|</span>
-
-                {/* Integrations */}
-                <button
-                  onClick={() => handleNavigate('integrations')}
-                  className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
-                >
-                  Integrations
-                  {currentPage === 'integrations' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37] rounded-full" />
-                  )}
-                  {currentPage !== 'integrations' && (
                     <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                   )}
                 </button>
@@ -528,16 +500,6 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                     Listing Data
                   </button>
                   <button
-                    onClick={() => handleNavigate('integrations')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
-                      currentPage === 'integrations'
-                        ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
-                        : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    Integrations
-                  </button>
-                  <button
                     onClick={() => handleNavigate('use-cases')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'use-cases'
@@ -586,12 +548,6 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'automations' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Automations
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('integrations')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'integrations' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                  >
-                    Integrations
                   </button>
                   {isAdmin && (
                     <button
@@ -679,6 +635,12 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     API
+                  </button>
+                  <button
+                    onClick={() => { handleNavigate('integrations'); setIsAccountMenuOpen(false); }}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'integrations' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                  >
+                    Integrations
                   </button>
 
                   {/* Divider */}

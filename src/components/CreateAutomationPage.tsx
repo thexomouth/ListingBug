@@ -90,6 +90,7 @@ export function CreateAutomationPage({
           .from('search_runs')
           .select('id, location, criteria_description, criteria_json, searched_at')
           .eq('user_id', user.id)
+          .is('automation_name', null)
           .order('searched_at', { ascending: false })
           .limit(10);
 
