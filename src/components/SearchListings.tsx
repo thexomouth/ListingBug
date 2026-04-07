@@ -1111,7 +1111,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
                           {search.criteriaDescription && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{search.criteriaDescription}</p>}
                           <p className="text-[12px] text-green-600 dark:text-green-400">{search.resultsCount} {search.resultsCount === 1 ? 'result' : 'results'}</p>
                         </div>
-                        <div className="flex flex-col gap-1.5 flex-shrink-0">
+                        <div className="flex flex-col md:flex-row gap-1.5 flex-shrink-0">
                           <LBButton variant="primary" size="sm" className="hidden md:flex w-full justify-center" onClick={(e) => { e.stopPropagation(); if (onViewSearchResults) onViewSearchResults(search); }}><Eye className="w-3.5 h-3.5 mr-1" />View</LBButton>
                           <LBButton variant="outline" size="sm" className="w-full justify-center" onClick={(e) => { e.stopPropagation(); setCriteria(search.criteria); setActiveFilters(search.activeFilters || []); setActiveTab('search'); toast.success('Search criteria loaded'); }}><Play className="w-3.5 h-3.5 mr-1" />Run</LBButton>
                           <LBButton variant="ghost" size="sm" className="hidden md:flex w-full justify-center" onClick={(e) => { e.stopPropagation(); setSearchHistory(prev => prev.filter(s => s.id !== search.id)); toast.success('Removed from history'); }}><Trash2 className="w-3.5 h-3.5 text-red-500" /></LBButton>
