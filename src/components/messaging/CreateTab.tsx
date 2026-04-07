@@ -40,6 +40,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const [sendersLoading, setSendersLoading] = useState(true);
   const [webhookConfigured, setWebhookConfigured] = useState<boolean | null>(null);
   const [sending, setSending] = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [saveTemplateName, setSaveTemplateName] = useState('');
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -207,6 +208,58 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     toast.success('Template saved.');
     setShowSaveTemplate(false);
     setSaveTemplateName('');
+  };
+
+  const handleSaveCampaign = async () => {
+    if (!senderId) { toast.error('Select a sender before saving a campaign.'); return; }
+    if (!subject.trim()) { toast.error('Subject is required.'); return; }
+    if (!body.trim()) { toast.error('Body is required.'); return; }
+
+    const name = (campaignName.trim() || subject.trim()).slice(0, 120);
+    setSavingCampaign(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error('Not signed in.'); return; }
+
+      // Auto-create a marketing_list for this campaign (or reuse if same name exists)
+      let listId: string;
+      const { data: existing } = await supabase
+        .from('marketing_lists')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('name', name)
+        .maybeSingle();
+
+      if (existing) {
+        listId = existing.id;
+      } else {
+        const { data: newList, error: listErr } = await supabase
+          .from('marketing_lists')
+          .insert({ user_id: user.id, name })
+          .select('id')
+          .single();
+        if (listErr || !newList) { toast.error('Failed to create campaign list.'); return; }
+        listId = newList.id;
+      }
+
+      const { error } = await supabase.from('messaging_automations').insert({
+        user_id: user.id,
+        name,
+        subject: subject.trim(),
+        body: body.trim(),
+        sender_id: String(senderId),
+        list_id: listId,
+        schedule: 'manual',
+        status: 'active',
+      });
+
+      if (error) { toast.error(error.message); return; }
+      toast.success(`Campaign "${name}" saved.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Unexpected error.');
+    } finally {
+      setSavingCampaign(false);
+    }
   };
 
   return (
@@ -428,6 +481,15 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         >
           <Send size={15} />
           {sending ? 'Sending…' : 'Send'}
+        </button>
+
+        <button
+          onClick={handleSaveCampaign}
+          disabled={savingCampaign}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm font-semibold disabled:opacity-60 transition-colors"
+        >
+          <Save size={15} />
+          {savingCampaign ? 'Saving…' : 'Save Campaign'}
         </button>
 
         <button
