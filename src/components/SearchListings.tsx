@@ -1068,7 +1068,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="font-bold text-[18px]">Saved Listings ({savedListings.length})</CardTitle>
-                  <LBButton variant="outline" size="sm" onClick={() => { if (window.confirm(`Are you sure you want to remove all ${savedListings.length} saved listings?`)) { setSavedListings([]); toast.success('All saved listings cleared'); } }}><Trash2 className="w-3.5 h-3.5 mr-1.5" />Clear</LBButton>
+                  <span className="hidden md:block"><LBButton variant="outline" size="sm" onClick={() => { if (window.confirm(`Are you sure you want to remove all ${savedListings.length} saved listings?`)) { setSavedListings([]); toast.success('All saved listings cleared'); } }}><Trash2 className="w-3.5 h-3.5 mr-1.5" />Clear</LBButton></span>
                 </div>
               </CardHeader>
               <CardContent>
