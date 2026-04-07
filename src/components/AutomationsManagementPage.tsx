@@ -453,17 +453,17 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
               <Zap className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-0">Automations</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
               <button
                 onClick={() => setActiveTab('history')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 text-sm font-semibold transition-colors"
               >
                 <Clock className="w-4 h-4" />
                 History
               </button>
               <button
                 onClick={() => setActiveTab('create')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] text-sm font-semibold transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 New
