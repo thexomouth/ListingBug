@@ -385,7 +385,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
           Back to Search History
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Search className="w-5 h-5 text-[#FFCE0A]" />
@@ -393,7 +393,7 @@ export function SearchResultsPage({ searchRun, onBack }: SearchResultsPageProps)
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">{searchRun.criteriaDescription}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex-shrink-0">
             <ExportDropdown
               onExportCSV={handleExportCSV}
               onSendToIntegration={handleSendToIntegration}
