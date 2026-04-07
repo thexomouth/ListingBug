@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import {
   Zap, Mail, Database, Webhook, FileSpreadsheet, MessageSquare,
-  X, Edit2, CheckCircle, XCircle, AlertTriangle, Plus, Lock
+  X, Edit2, CheckCircle, XCircle, AlertTriangle, Plus, Lock, Clock
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -199,9 +199,20 @@ export function ViewEditAutomationDrawer({
               {isEditing ? 'Edit Automation' : 'Automation Details'}
             </h2>
           </div>
-          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-[#342e37]/10 transition-colors">
-            <X className="w-5 h-5 text-[#342e37]" />
-          </button>
+          <div className="flex items-center gap-2">
+            {!isEditing && onViewHistory && (
+              <button
+                onClick={() => { handleClose(); onViewHistory(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold text-[#342e37] bg-[#342e37]/10 hover:bg-[#342e37]/20 transition-colors"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                History
+              </button>
+            )}
+            <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-[#342e37]/10 transition-colors">
+              <X className="w-5 h-5 text-[#342e37]" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable body */}
@@ -453,11 +464,6 @@ export function ViewEditAutomationDrawer({
             <>
               <button onClick={handleClose} className="px-4 py-2 text-[14px] font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Close</button>
               <div className="flex items-center gap-2">
-                {onViewHistory && (
-                  <button onClick={() => { handleClose(); onViewHistory(); }} className="px-4 py-2 text-[14px] font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-white/20 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                    History
-                  </button>
-                )}
                 <button onClick={() => setIsEditing(true)} className="inline-flex items-center gap-2 px-5 py-2 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115] font-bold text-[14px] rounded-lg transition-colors">
                   <Edit2 className="w-4 h-4" />Edit Automation
                 </button>
