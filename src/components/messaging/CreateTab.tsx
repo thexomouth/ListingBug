@@ -135,7 +135,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const validate = (): string | null => {
     if (selectedRecipients.length === 0) return 'No recipients selected. Choose contacts in the Contacts tab.';
     if (!senderId) return 'No sender selected. Add a sender identity in Setup.';
-    if (senders.length === 0) return 'No SendGrid sender configured. Go to Setup to connect SendGrid and verify a sender.';
+    if (senders.length === 0) return 'No SendGrid sender configured. Go to Setup to connect an integration and verify a sender.';
     if (!subject.trim()) return 'Subject is required.';
     if (!body.trim()) return 'Body is required.';
     if (!unsubscribeUrl.trim()) return 'Unsubscribe URL is required for legal compliance with outbound marketing laws.';
@@ -331,7 +331,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           <div className="px-3 py-2 text-sm text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
             No verified senders found. Go to{' '}
             <button onClick={onGoToSetup} className="underline font-medium hover:no-underline">Setup</button>
-            {' '}to connect SendGrid and verify a sender before sending.
+            {' '}to connect an integration and verify a sender before sending.
           </div>
         ) : (
           <select
