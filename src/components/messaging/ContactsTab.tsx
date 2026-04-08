@@ -314,13 +314,16 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Contacts</h2>
           {selectedEmails.size > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 font-medium">
               {selectedEmails.size} selected
             </span>
           )}
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">View and select contacts for messaging.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -487,8 +490,8 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
               }
             </div>
           ) : (
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-sm">
+            <div className="flex-1 overflow-x-auto overflow-y-auto">
+              <table className="min-w-full text-sm">
                 <thead className="bg-zinc-50 dark:bg-zinc-800 sticky top-0 z-10">
                   <tr>
                     <th className="px-3 py-2 text-left w-8">
@@ -498,11 +501,11 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                     </th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Email</th>
                     <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Name</th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden md:table-cell">City</th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">Company</th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden xl:table-cell">Phone</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">City</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Company</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Phone</th>
                     {source === 'uploaded' && (
-                      <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">Lists</th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400">Lists</th>
                     )}
                   </tr>
                 </thead>
@@ -531,14 +534,14 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                           {c.email}
                           {c.unsubscribed && <span className="ml-1 text-xs text-red-400">(unsub)</span>}
                         </td>
-                        <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200">
-                          {c.first_name}{c.last_name ? ` ${c.last_name}` : ''}
+                        <td className="px-2 py-2 text-zinc-800 dark:text-zinc-200 max-w-[180px] truncate">
+                          {(() => { const full = `${c.first_name}${c.last_name ? ` ${c.last_name}` : ''}`; return full.length > 30 ? full.slice(0, 30) + '…' : full; })()}
                         </td>
-                        <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 hidden md:table-cell">{c.city ?? '—'}</td>
-                        <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 hidden lg:table-cell max-w-[160px] truncate">{c.company ?? '—'}</td>
-                        <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 hidden xl:table-cell whitespace-nowrap">{c.phone ?? '—'}</td>
+                        <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{c.city ?? '—'}</td>
+                        <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 max-w-[160px] truncate">{c.company ?? '—'}</td>
+                        <td className="px-2 py-2 text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{c.phone ?? '—'}</td>
                         {source === 'uploaded' && (
-                          <td className="px-2 py-2 hidden lg:table-cell">
+                          <td className="px-2 py-2">
                             <div className="flex flex-wrap gap-1">
                               {(c.lists ?? []).slice(0, 2).map(lid => {
                                 const list = lists.find(l => l.id === lid);
