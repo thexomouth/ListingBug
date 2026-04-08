@@ -99,6 +99,7 @@ export function MessagingPage() {
               <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setActiveTab('contacts')}>Messaging</h1>
             </div>
             <p className="text-[13px] md:text-sm text-zinc-400">Compose and send emails to your contacts</p>
+            <p className="text-[11px] md:text-xs text-amber-600 dark:text-amber-400 mt-1">Beta — performance may be significantly better from your platform's native messaging system.</p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
             {activeTab !== 'setup' && (
