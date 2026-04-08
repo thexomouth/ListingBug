@@ -1,4 +1,5 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
+import { getBillingPeriod, getBillingPeriodUsage } from './utils/billingPeriod';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { LBTable, LBTableHeader, LBTableBody, LBTableHead, LBTableRow, LBTableCell } from './design-system/LBTable';
@@ -269,7 +270,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
 
       const { data: user, error } = await supabase
         .from('users')
-        .select('plan,plan_status,trial_ends_at,stripe_subscription_end')
+        .select('plan,plan_status,trial_ends_at,created_at')
         .eq('id', userId)
         .single();
 
@@ -292,21 +293,16 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
         } else {
           setResetLabel('Trial ends soon');
         }
-      } else if (user.stripe_subscription_end) {
-        const end = new Date(user.stripe_subscription_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        setResetLabel(`Resets ${end}`);
+      } else {
+        // Derive reset date from billing period (same logic as Dashboard)
+        const period = getBillingPeriod(user.created_at);
+        const resetDate = period.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        setResetLabel(`Resets ${resetDate}`);
       }
 
-      const monthYear = new Date().toISOString().slice(0, 7);
-      const { data: usageData } = await supabase
-        .from('usage_tracking')
-        .select('listings_fetched')
-        .eq('user_id', userId)
-        .eq('month_year', monthYear)
-        .maybeSingle();
-      if (usageData?.listings_fetched !== undefined) {
-        setListingsSynced(usageData.listings_fetched);
-      }
+      // Use billing-period usage (same window as Dashboard)
+      const { total } = await getBillingPeriodUsage(supabase, userId, user.created_at);
+      setListingsSynced(total);
     };
 
     fetchBillingInfo();
