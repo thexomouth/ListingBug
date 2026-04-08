@@ -396,7 +396,6 @@ export function IntegrationSetupGuidePage({ onBack }: IntegrationSetupGuidePageP
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h2 className="font-bold text-[22px]">{guide.name}</h2>
-                    <Badge variant="outline" className="text-xs">{guide.category}</Badge>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 text-[15px] leading-relaxed">{guide.description}</p>
                 </div>

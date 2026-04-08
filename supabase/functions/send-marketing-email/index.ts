@@ -97,8 +97,7 @@ Deno.serve(async (req: Request) => {
 
   if (sendableRecipients.length === 0) return json({ error: 'All recipients are on the suppression list.' }, 400);
 
-  // Build unsubscribe footer HTML appended to every email
-  const unsubscribeFooter = `<br><br><hr style="border:none;border-top:1px solid #eee;margin:24px 0"><p style="font-size:12px;color:#999;text-align:center;margin:0">You received this email because your contact information appears in a public real estate listing. To stop receiving these emails, <a href="${unsubscribe_url}" style="color:#999">click here to unsubscribe</a>.</p>`;
+  // unsubscribeFooter is built per-recipient inside the loop (email param pre-filled)
 
   // Insert campaign row
   const campaignId = crypto.randomUUID();
@@ -124,6 +123,9 @@ Deno.serve(async (req: Request) => {
       city: recipient.city ?? '',
       company: recipient.company ?? '',
     };
+    const unsubscribeHref = `${unsubscribe_url}?email=${encodeURIComponent(recipient.email)}`;
+    const unsubscribeFooter = `<br><br><hr style="border:none;border-top:1px solid #eee;margin:24px 0"><p style="font-size:12px;color:#999;text-align:center;margin:0">You received this email because your contact information appears in a public real estate listing. To stop receiving these emails, <a href="${unsubscribeHref}" style="color:#999">click here to unsubscribe</a>.</p>`;
+
     const personalizedSubject = applyMergeTags(subject, mergeData);
     const personalizedBody = applyMergeTags(emailBody, mergeData) + unsubscribeFooter;
 

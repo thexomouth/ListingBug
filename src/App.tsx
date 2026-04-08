@@ -61,6 +61,7 @@ const PersonaPage = lazy(() => import("./components/PersonaPage").then(m => ({ d
 const ComparisonPage = lazy(() => import("./components/ComparisonPage").then(m => ({ default: m.ComparisonPage })));
 const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 const MessagingPage = lazy(() => import("./components/MessagingPage").then(m => ({ default: m.MessagingPage })));
+const UnsubscribePage = lazy(() => import("./components/UnsubscribePage").then(m => ({ default: m.UnsubscribePage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -75,7 +76,8 @@ type Page =
   | "sample-report-results" | "request-integration" | "integration-guide"
   | "blog-post" | "persona-page" | "comparison-page"
   | "legal-dpa" | "legal-subprocessors"
-  | "messaging";
+  | "messaging"
+  | "unsubscribe";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -101,6 +103,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "legal-dpa": "/legal/dpa",
   "legal-subprocessors": "/legal/subprocessors",
   "messaging": "/messaging",
+  "unsubscribe": "/unsubscribe",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -122,6 +125,7 @@ function pathToPage(pathname: string): Page {
     if (pathname === '/legal/subprocessors') return 'legal-subprocessors';
   }
   if (pathname.startsWith('/messaging')) return 'messaging';
+  if (pathname === '/unsubscribe') return 'unsubscribe';
   return 'home';
 }
 
@@ -336,7 +340,7 @@ export default function App() {
   const handleAddToMyReports = (reportData: any) => { console.log("Search saved:", reportData); };
 
   const isAuthPage = currentPage === 'login' || currentPage === 'signup';
-  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup'].includes(currentPage);
+  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe'].includes(currentPage);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -428,6 +432,7 @@ export default function App() {
       case "legal-dpa": return <LegalPage />;
       case "legal-subprocessors": return <LegalPage />;
       case "messaging": return <MessagingPage />;
+      case "unsubscribe": return <UnsubscribePage />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };

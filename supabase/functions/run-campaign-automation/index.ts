@@ -357,11 +357,8 @@ serve(async (req) => {
                 (c: any) => !suppressedEmails.has((c.email ?? "").toLowerCase())
               );
 
-              // Build unsubscribe footer
-              const unsubscribeUrl = msgAuto.unsubscribe_url ?? "";
-              const unsubscribeFooter = unsubscribeUrl
-                ? `<br><br><hr style="border:none;border-top:1px solid #eee;margin:24px 0"><p style="font-size:12px;color:#999;text-align:center;margin:0">You received this email because your contact information appears in a public real estate listing. To stop receiving these emails, <a href="${unsubscribeUrl}" style="color:#999">click here to unsubscribe</a>.</p>`
-                : "";
+              // unsubscribeUrl stored on the automation; footer built per-recipient in the loop
+              const unsubscribeBaseUrl = msgAuto.unsubscribe_url ?? "";
 
               if (filteredContacts.length > 0) {
                 const campaignId = crypto.randomUUID();
@@ -388,7 +385,7 @@ serve(async (req) => {
                     personalizations: [{ to: [{ email: contact.email }] }],
                     from: { email: sender.from?.email, name: sender.from?.name },
                     subject: applyMergeTags(msgAuto.subject ?? "", mergeData),
-                    content: [{ type: "text/html", value: applyMergeTags(msgAuto.body ?? "", mergeData) + unsubscribeFooter }],
+                    content: [{ type: "text/html", value: applyMergeTags(msgAuto.body ?? "", mergeData) + (unsubscribeBaseUrl ? `<br><br><hr style="border:none;border-top:1px solid #eee;margin:24px 0"><p style="font-size:12px;color:#999;text-align:center;margin:0">You received this email because your contact information appears in a public real estate listing. To stop receiving these emails, <a href="${unsubscribeBaseUrl}?email=${encodeURIComponent(contact.email)}" style="color:#999">click here to unsubscribe</a>.</p>` : "") }],
                   };
                   try {
                     const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
