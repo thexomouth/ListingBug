@@ -44,7 +44,8 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const [showWebhookWarning, setShowWebhookWarning] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [lastResult, setLastResult] = useState<{ sent: number; failed: number } | null>(null);
-  const [unsubscribeUrl, setUnsubscribeUrl] = useState('');
+  const [useCustomUnsub, setUseCustomUnsub] = useState(false);
+  const [customUnsubUrl, setCustomUnsubUrl] = useState('');
   const [attachments, setAttachments] = useState<Array<{ id: string; fileName: string; mimeType: string; base64: string; size: number }>>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,8 +136,10 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     if (senders.length === 0) return 'No SendGrid sender configured. Go to Setup to connect an integration and verify a sender.';
     if (!subject.trim()) return 'Subject is required.';
     if (!body.trim()) return 'Body is required.';
-    if (!unsubscribeUrl.trim()) return 'Unsubscribe URL is required for legal compliance with outbound marketing laws.';
-    try { new URL(unsubscribeUrl.trim()); } catch { return 'Unsubscribe URL must be a valid URL (e.g. https://yourdomain.com/unsubscribe).'; }
+    if (useCustomUnsub) {
+      if (!customUnsubUrl.trim()) return 'Enter a custom unsubscribe URL or switch back to ListingBug.';
+      try { new URL(customUnsubUrl.trim()); } catch { return 'Custom unsubscribe URL must be a valid URL (e.g. https://yourdomain.com/unsubscribe).'; }
+    }
     return null;
   };
 
@@ -147,6 +150,11 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error('Not authenticated.'); return; }
+
+      const campaignId = crypto.randomUUID();
+      const unsubscribeUrl = useCustomUnsub
+        ? customUnsubUrl.trim()
+        : `https://www.thelistingbug.com/unsubscribe/${session.user.id}/${campaignId}`;
 
       const res = await fetch(`${SUPABASE_FUNCTIONS}/send-marketing-email`, {
         method: 'POST',
@@ -160,7 +168,8 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           body: body.trim(),
           campaign_name: campaignName.trim() || subject.trim(),
           sender_id: senderId,
-          unsubscribe_url: unsubscribeUrl.trim(),
+          campaign_id: campaignId,
+          unsubscribe_url: unsubscribeUrl,
           attachments: attachments.map(({ fileName, mimeType, base64 }) => ({ fileName, mimeType, base64 })),
         }),
       });
@@ -196,14 +205,20 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     if (!senderId) { toast.error('Select a sender before saving a campaign.'); return; }
     if (!subject.trim()) { toast.error('Subject is required.'); return; }
     if (!body.trim()) { toast.error('Body is required.'); return; }
-    if (!unsubscribeUrl.trim()) { toast.error('Unsubscribe URL is required for legal compliance.'); return; }
-    try { new URL(unsubscribeUrl.trim()); } catch { toast.error('Unsubscribe URL must be a valid URL.'); return; }
 
     const name = (campaignName.trim() || subject.trim()).slice(0, 120);
     setSavingCampaign(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('Not signed in.'); return; }
+
+      if (useCustomUnsub && !customUnsubUrl.trim()) { toast.error('Enter a custom unsubscribe URL or switch back to ListingBug.'); return; }
+      if (useCustomUnsub) { try { new URL(customUnsubUrl.trim()); } catch { toast.error('Custom unsubscribe URL must be a valid URL.'); return; } }
+
+      const automationId = crypto.randomUUID();
+      const unsubscribeUrl = useCustomUnsub
+        ? customUnsubUrl.trim()
+        : `https://www.thelistingbug.com/unsubscribe/${user.id}/${automationId}`;
 
       // Auto-create a marketing_list for this campaign (or reuse if same name exists)
       let listId: string;
@@ -227,6 +242,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       }
 
       const { error } = await supabase.from('messaging_automations').insert({
+        id: automationId,
         user_id: user.id,
         name,
         subject: subject.trim(),
@@ -235,7 +251,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         list_id: listId,
         schedule: 'manual',
         status: 'active',
-        unsubscribe_url: unsubscribeUrl.trim(),
+        unsubscribe_url: unsubscribeUrl,
       });
 
       if (error) { toast.error(error.message); return; }
@@ -259,7 +275,6 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
             if (c.subject) setSubject(c.subject);
             if (c.body) setBody(c.body);
             if (c.sender_id) setSenderId(c.sender_id);
-            if (c.unsubscribe_url) setUnsubscribeUrl(c.unsubscribe_url);
           }}
         />
       </div>
@@ -407,22 +422,55 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         )}
       </div>
 
-      {/* Unsubscribe URL */}
+      {/* Unsubscribe link */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-          Unsubscribe URL <span className="text-red-500">*</span>
-          <span className="ml-1 text-zinc-400 font-normal text-xs">(required by law for outbound marketing emails)</span>
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+          Unsubscribe link
         </label>
-        <input
-          type="url"
-          value={unsubscribeUrl}
-          onChange={e => setUnsubscribeUrl(e.target.value)}
-          placeholder="https://yourdomain.com/unsubscribe"
-          className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-        />
-        <p className="mt-1 text-xs text-zinc-400">
-          An unsubscribe link will be automatically appended to every email. Paste your platform's unsubscribe page URL or your own opt-out page.
-        </p>
+        <div className="flex gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setUseCustomUnsub(false)}
+            className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              !useCustomUnsub
+                ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+                : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+            }`}
+          >
+            ListingBug (automatic)
+          </button>
+          <button
+            type="button"
+            onClick={() => setUseCustomUnsub(true)}
+            className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              useCustomUnsub
+                ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+                : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+            }`}
+          >
+            Custom URL
+          </button>
+        </div>
+
+        {!useCustomUnsub ? (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="shrink-0 mt-0.5 text-green-500">✓</span>
+            <span>ListingBug generates a unique opt-out link for this campaign. Recipients who click it are added to your campaign suppression list automatically — no setup required.</span>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <input
+              type="url"
+              value={customUnsubUrl}
+              onChange={e => setCustomUnsubUrl(e.target.value)}
+              placeholder="https://yourdomain.com/unsubscribe"
+              className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <p className="text-xs text-zinc-400">
+              Your custom unsubscribe page URL. An opt-out link will be appended to every email — managing the suppression list is your responsibility.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* SMS stub */}

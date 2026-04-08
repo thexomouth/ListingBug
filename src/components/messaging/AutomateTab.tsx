@@ -49,7 +49,6 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
   const [formListId, setFormListId] = useState('');
   const [formSenderId, setFormSenderId] = useState('');
   const [formSchedule, setFormSchedule] = useState<'on_sync' | 'manual' | 'daily' | 'weekly' | 'monthly'>('on_sync');
-  const [formUnsubscribeUrl, setFormUnsubscribeUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
   const loadAll = async () => {
@@ -111,14 +110,16 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
     if (!formSenderId) { toast.error('Select a sender. Go to Setup to configure SendGrid first.'); return; }
     if (!formSubject.trim()) { toast.error('Subject is required.'); return; }
     if (!formBody.trim()) { toast.error('Body is required.'); return; }
-    if (!formUnsubscribeUrl.trim()) { toast.error('Unsubscribe URL is required for legal compliance with outbound marketing laws.'); return; }
-    try { new URL(formUnsubscribeUrl.trim()); } catch { toast.error('Unsubscribe URL must be a valid URL (e.g. https://yourdomain.com/unsubscribe).'); return; }
 
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSaving(false); return; }
 
+    const automationId = crypto.randomUUID();
+    const unsubscribeUrl = `https://www.thelistingbug.com/unsubscribe/${user.id}/${automationId}`;
+
     const { error } = await supabase.from('messaging_automations').insert({
+      id: automationId,
       user_id: user.id,
       name: formName.trim(),
       template_id: formTemplateId || null,
@@ -128,7 +129,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
       sender_id: formSenderId,
       schedule: formSchedule,
       status: 'active',
-      unsubscribe_url: formUnsubscribeUrl.trim(),
+      unsubscribe_url: unsubscribeUrl,
     });
 
     setSaving(false);
@@ -137,7 +138,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
     toast.success('Automation created.');
     setShowForm(false);
     setFormName(''); setFormTemplateId(''); setFormSubject(''); setFormBody('');
-    setFormListId(''); setFormSchedule('manual'); setFormUnsubscribeUrl('');
+    setFormListId(''); setFormSchedule('manual');
     await loadAll();
   };
 
@@ -351,19 +352,10 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
             />
           </div>
 
-          {/* Unsubscribe URL */}
-          <div>
-            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-              Unsubscribe URL <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="url"
-              value={formUnsubscribeUrl}
-              onChange={e => setFormUnsubscribeUrl(e.target.value)}
-              placeholder="https://yourdomain.com/unsubscribe"
-              className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            />
-            <p className="mt-1 text-xs text-zinc-400">Required by law. An unsubscribe link is automatically appended to every email sent by this automation.</p>
+          {/* Unsubscribe notice */}
+          <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="shrink-0 mt-0.5">✓</span>
+            <span>A compliant unsubscribe footer is automatically added to every email with a unique opt-out link for this automation.</span>
           </div>
 
           {/* Schedule */}

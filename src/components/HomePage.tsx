@@ -25,7 +25,7 @@ interface HomePageProps {
   onSampleReportLoading?: (loading: boolean) => void;
 }
 
-export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePageProps) {
+export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleReportLoading }: HomePageProps) {
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [showSampleReport, setShowSampleReport] = useState(false);
   const [sampleZipcode, setSampleZipcode] = useState('');
@@ -49,8 +49,9 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
     }
   }, [isLoadingReport]);
 
-  const handleGenerateSample = async (zipcode: string) => {
-    setSampleZipcode(zipcode);
+  const handleGenerateSample = async (city: string, state: string) => {
+    const locationLabel = `${city}, ${state}`;
+    setSampleZipcode(locationLabel);
     setSampleError(null);
     setIsLoadingReport(true);
     onSampleReportLoading?.(true);
@@ -69,7 +70,10 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
         body: JSON.stringify({
           listingType: 'sale',
           status: 'Active',
-          zipCode: zipcode,
+          propertyType: 'Single Family',
+          city,
+          state,
+          daysOld: new Date().getDay() === 0 || new Date().getDay() === 1 ? 3 : 1,
           limit: 10,
           offset: 0,
         }),
@@ -78,7 +82,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated }: HomePage
       const data = await res.json();
 
       if (!res.ok || !Array.isArray(data?.listings)) {
-        const message = data?.error || 'No listings found for that ZIP code. Try another.';
+        const message = data?.error || 'No listings found for that location. Try another city.';
         setSampleError(message);
         setSampleListings([]);
 

@@ -141,7 +141,7 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <Button type="button" variant="outline" disabled={isGoogleLoading} className="w-full flex items-center justify-center gap-3 h-11 active:scale-[0.97] transition-transform" onClick={handleGoogleSignUp}>
+              <Button type="button" variant="outline" disabled={isGoogleLoading} className="w-full flex items-center justify-center gap-3 h-11 active:scale-[0.97] transition-transform dark:hover:bg-white/10 dark:hover:border-white/30" onClick={handleGoogleSignUp}>
                 {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Chrome className="w-5 h-5" />}
                 {isGoogleLoading ? 'Redirecting…' : 'Continue with Google'}
               </Button>

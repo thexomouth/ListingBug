@@ -1,16 +1,16 @@
 import { LBButton } from "../design-system/LBButton";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
-import { useState, useRef, useEffect } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { useState } from 'react';
+import { Search } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import { CityAutocomplete } from '../CityAutocomplete';
 
 interface HeroSectionProps {
   onNavigate?: (page: string) => void;
-  onGenerateSample?: (zipcode: string) => void;
+  onGenerateSample?: (city: string, state: string) => void;
 }
 
-// Sample cities database with ZIP codes
+// Sample cities database with ZIP codes (kept for reference only — no longer used in search)
 const US_CITIES = [
   { city: 'Los Angeles', state: 'CA', zip: '90001' },
   { city: 'New York', state: 'NY', zip: '10001' },
@@ -62,65 +62,13 @@ const US_CITIES = [
 ];
 
 export function HeroSection({ onNavigate, onGenerateSample }: HeroSectionProps) {
-  const [searchInput, setSearchInput] = useState('');
-  const [selectedZip, setSelectedZip] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [filteredCities, setFilteredCities] = useState<typeof US_CITIES>([]);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleInputChange = (value: string) => {
-    setSearchInput(value);
-    setSelectedZip(''); // Clear selected ZIP when typing
-
-    // If it's numeric, don't show city suggestions
-    if (/^\d+$/.test(value)) {
-      setShowDropdown(false);
-      setFilteredCities([]);
-      setSelectedZip(value); // Store ZIP directly if numeric
-      return;
-    }
-
-    // Filter cities based on input
-    if (value.length >= 2) {
-      const matches = US_CITIES.filter(
-        (city) =>
-          city.city.toLowerCase().startsWith(value.toLowerCase()) ||
-          city.city.toLowerCase().includes(value.toLowerCase())
-      ).slice(0, 5); // Limit to 5 suggestions
-
-      setFilteredCities(matches);
-      setShowDropdown(matches.length > 0);
-    } else {
-      setFilteredCities([]);
-      setShowDropdown(false);
-    }
-  };
-
-  const handleCitySelect = (city: typeof US_CITIES[0]) => {
-    setSearchInput(`${city.city}, ${city.state}`);
-    setSelectedZip(city.zip);
-    setShowDropdown(false);
-    setFilteredCities([]);
-  };
+  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedState, setSelectedState] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const zipToUse = selectedZip || searchInput.trim();
-    if (zipToUse && onGenerateSample) {
-      onGenerateSample(zipToUse);
+    if (selectedCity && selectedState && onGenerateSample) {
+      onGenerateSample(selectedCity, selectedState);
     }
   };
 
@@ -134,38 +82,19 @@ export function HeroSection({ onNavigate, onGenerateSample }: HeroSectionProps) 
               Your Real Estate Listing Radar
             </h1>
             <p className="text-lg md:text-xl text-gray-600 dark:text-[#EBF2FA] mb-[21px] max-w-2xl mx-auto lg:mx-0 text-[16px] mt-[0px] mr-[0px] ml-[0px] px-[12px] py-[0px]">
-              Type your city or zip to try our exclusive real estate monitoring service for free.
+              Type your city and state to try our exclusive real estate monitoring service for free.
             </p>
             
             {/* Form */}
             <form onSubmit={handleSubmit} className="max-w-2xl mx-auto lg:mx-0">
               <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start px-[12px] py-[0px]">
                 <div className="flex-1 relative">
-                  <Input
-                    type="text"
-                    placeholder="Enter City or ZIP (e.g., Miami or 90210)"
-                    value={searchInput}
-                    onChange={(e) => handleInputChange(e.target.value)}
-                    className="h-12 text-[14px] text-[rgb(235,242,250)] placeholder:opacity-[0.33] border-b border-white"
-                    required
+                  <CityAutocomplete
+                    value={selectedCity}
+                    stateValue={selectedState}
+                    onSelect={(city, state) => { setSelectedCity(city); setSelectedState(state); }}
+                    className="h-12 text-[14px] text-zinc-900 dark:text-[rgb(235,242,250)] placeholder:opacity-[0.33] border-b border-white"
                   />
-                  {showDropdown && (
-                    <div
-                      ref={dropdownRef}
-                      className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-md bg-white dark:bg-[#2F2F2F] py-1 text-base shadow-lg ring-1 ring-black dark:ring-white/10 ring-opacity-5 focus:outline-none"
-                    >
-                      {filteredCities.map((city) => (
-                        <div
-                          key={city.zip}
-                          className="cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-900 dark:text-white"
-                          onClick={() => handleCitySelect(city)}
-                        >
-                          <MapPin className="mr-2 inline-block h-4 w-4" />
-                          {city.city}, {city.state} - {city.zip}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <Button 
                   type="submit" 

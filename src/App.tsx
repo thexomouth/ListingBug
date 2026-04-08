@@ -125,7 +125,7 @@ function pathToPage(pathname: string): Page {
     if (pathname === '/legal/subprocessors') return 'legal-subprocessors';
   }
   if (pathname.startsWith('/messaging')) return 'messaging';
-  if (pathname === '/unsubscribe') return 'unsubscribe';
+  if (pathname.startsWith('/unsubscribe')) return 'unsubscribe';
   return 'home';
 }
 
@@ -453,7 +453,7 @@ export default function App() {
           {!isMinimalPage && <Suspense fallback={null}><Footer isLoggedIn={isLoggedIn} onNavigate={navigateWithLoading} onAccountTabChange={setAccountDefaultTab} /></Suspense>}
           {isModalOpen && <Suspense fallback={null}><ReportDetailsModal report={selectedReport} isOpen={isModalOpen} onClose={handleCloseModal} onSave={handleSaveReport} showFromNewReport={showFromNewReport} defaultTab={modalDefaultTab} /></Suspense>}
           <ToastContainer />
-          <Toaster position="top-right" richColors />
+          <Toaster position="top-right" richColors toastOptions={{ success: { duration: 2000 } }} />
         </div>
       </WalkthroughProvider>
     </ErrorBoundary>

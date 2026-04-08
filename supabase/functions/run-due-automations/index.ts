@@ -469,8 +469,10 @@ serve(async (req) => {
       errorMsg = e.message;
     }
 
-    // Log — only valid automation_runs columns (no error_message)
+    // Log — pre-generate run ID so we can reference it in automation_run_listings
+    const runId = crypto.randomUUID();
     const { error: logErr } = await supabase.from("automation_runs").insert({
+      id: runId,
       automation_id: automationId,
       user_id: automation.user_id,
       automation_name: automationName,
@@ -484,6 +486,21 @@ serve(async (req) => {
         : `Completed with issues: ${errorMsg ?? "unknown"}`,
     });
     if (logErr) console.error(`[run-due-automations] log insert error:`, logErr.message);
+
+    // Persist each listing so the Results page can display them
+    if (listings.length > 0) {
+      const transferred = runStatus !== "failed" && listingsSent > 0;
+      const { error: arlErr } = await supabase.from("automation_run_listings").insert(
+        (listings as any[]).map((listing) => ({
+          automation_run_id: runId,
+          user_id: automation.user_id,
+          listing_id: String((listing as any).id ?? (listing as any).formattedAddress ?? ""),
+          listing_data: listing,
+          transferred,
+        }))
+      );
+      if (arlErr) console.error(`[run-due-automations] automation_run_listings insert error:`, arlErr.message);
+    }
 
     // Write to search_runs so AgentsPage reflects this automation's results
     if (listings.length > 0) {

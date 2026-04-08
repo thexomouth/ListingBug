@@ -3,10 +3,22 @@ import { CheckCircle, AlertCircle, Mail } from 'lucide-react';
 
 const SUPABASE_FUNCTIONS = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
 
+/** Parse /unsubscribe/{userId}/{campaignId} from the current path */
+function parseCampaignParams(): { userId: string; campaignId: string } | null {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  // parts[0] = 'unsubscribe', parts[1] = userId, parts[2] = campaignId
+  if (parts.length >= 3 && parts[0] === 'unsubscribe') {
+    return { userId: parts[1], campaignId: parts[2] };
+  }
+  return null;
+}
+
 export function UnsubscribePage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const campaignParams = parseCampaignParams();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -26,11 +38,27 @@ export function UnsubscribePage() {
     setErrorMsg('');
 
     try {
-      const res = await fetch(`${SUPABASE_FUNCTIONS}/unsubscribe-contact`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
+      let res: Response;
+
+      if (campaignParams) {
+        // Campaign-specific unsubscribe — adds to campaign_suppressions only
+        res = await fetch(`${SUPABASE_FUNCTIONS}/campaign-unsubscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: campaignParams.userId,
+            campaign_id: campaignParams.campaignId,
+            email: email.trim().toLowerCase(),
+          }),
+        });
+      } else {
+        // Legacy global unsubscribe
+        res = await fetch(`${SUPABASE_FUNCTIONS}/unsubscribe-contact`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        });
+      }
 
       if (res.ok) {
         setStatus('success');
@@ -65,7 +93,7 @@ export function UnsubscribePage() {
                 You're unsubscribed
               </h1>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                <span className="font-medium text-zinc-700 dark:text-zinc-300">{email}</span> has been removed from all ListingBug marketing emails. You won't receive any further outreach from this platform.
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">{email}</span> has been removed from this email list. You won't receive any further emails from this campaign.
               </p>
               <p className="text-xs text-zinc-400 mt-4">
                 If you didn't request this or believe this was a mistake, you can contact the sender directly or reach us at{' '}
@@ -86,7 +114,7 @@ export function UnsubscribePage() {
                 Unsubscribe from emails
               </h1>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center mb-6">
-                Enter your email address below to stop receiving marketing emails sent through ListingBug.
+                Enter your email address below to stop receiving emails from this campaign.
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -122,7 +150,7 @@ export function UnsubscribePage() {
               </form>
 
               <p className="text-xs text-zinc-400 text-center mt-5">
-                ListingBug is a real estate data platform. Marketing emails are sent by independent users of the platform. Unsubscribing here will prevent all ListingBug-powered emails to this address.
+                ListingBug is a real estate data platform. Marketing emails are sent by independent users of the platform. Unsubscribing here will stop emails from this specific campaign.
               </p>
             </>
           )}

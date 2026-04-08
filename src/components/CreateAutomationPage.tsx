@@ -349,7 +349,6 @@ export function CreateAutomationPage({
         if (error) { console.error('[CreateAuto] campaign_automations insert:', error); toast.error('Failed to save: ' + error.message); return; }
 
         onAutomationCreated?.({ id: saved.id, name: automationName, type: 'campaign', searchName: selectedSearch?.name ?? '', campaign: { id: campaign.id, name: campaign.name }, schedule: syncFrequency, active: true });
-        toast.success('Messaging automation created: ' + automationName);
         if (walkthroughStep3Active) { completeStep(3); setShowCompleteModal(true); }
         setSelectedSearchId(''); setSelectedDestination(''); setSyncFrequency('daily'); setFieldMappings([]);
         return;
@@ -392,7 +391,6 @@ export function CreateAutomationPage({
       if (error) { console.error('[CreateAuto]', error); toast.error('Failed to save: ' + error.message); return; }
 
       onAutomationCreated?.({ id: saved.id, name: automationName, searchName: selectedSearch?.name ?? '', destination: { type: selectedDestination, label: destIntegration?.name ?? '', config }, schedule: syncFrequency, active: true });
-      toast.success('Automation created: ' + automationName);
       if (walkthroughStep3Active) { completeStep(3); setShowCompleteModal(true); }
       setSelectedSearchId(''); setSelectedDestination(''); setSyncFrequency('daily'); setFieldMappings([]);
     } catch (err: any) {
