@@ -514,7 +514,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
             </div>
             {automationsLoading ? (
               <LBTable>
-                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
+                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right text-xs font-medium">On/Off</LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right text-xs font-medium">Run</LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>{Array.from({ length: 4 }).map((_, i) => <SkeletonAutomationRow key={i} />)}</LBTableBody>
               </LBTable>
             ) : automations.length === 0 ? (
@@ -526,7 +526,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
               </div>
             ) : (
               <LBTable>
-                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right"></LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right"></LBTableHead></LBTableRow></LBTableHeader>
+                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right text-xs font-medium">On/Off</LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right text-xs font-medium">Run</LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>
                   {automations.map((automation) => {
                     const lastRunStatus = automation.lastRun?.status;
