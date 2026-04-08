@@ -514,7 +514,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
             </div>
             {automationsLoading ? (
               <LBTable>
-                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right text-xs font-medium">On/Off</LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right text-xs font-medium">Run</LBTableHead></LBTableRow></LBTableHeader>
+                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right">On/Off</LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right">Run</LBTableHead><LBTableHead></LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>{Array.from({ length: 4 }).map((_, i) => <SkeletonAutomationRow key={i} />)}</LBTableBody>
               </LBTable>
             ) : automations.length === 0 ? (
@@ -526,7 +526,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
               </div>
             ) : (
               <LBTable>
-                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right text-xs font-medium">On/Off</LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right text-xs font-medium">Run</LBTableHead></LBTableRow></LBTableHeader>
+                <LBTableHeader><LBTableRow><LBTableHead className="w-8"></LBTableHead><LBTableHead className="text-right">On/Off</LBTableHead><LBTableHead>Name</LBTableHead><LBTableHead className="hidden md:table-cell">Last Run</LBTableHead><LBTableHead className="hidden md:table-cell">Search Results</LBTableHead><LBTableHead className="hidden md:table-cell">Destination</LBTableHead><LBTableHead className="text-right">Run</LBTableHead><LBTableHead></LBTableHead></LBTableRow></LBTableHeader>
                 <LBTableBody>
                   {automations.map((automation) => {
                     const lastRunStatus = automation.lastRun?.status;
@@ -582,12 +582,12 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
                             ) : <span className="text-[12px] text-gray-400">—</span>}
                         </LBTableCell>
                         <LBTableCell className="text-right">
-                          <div className="inline-flex items-center justify-end gap-3">
-                            <button onClick={(e) => { e.stopPropagation(); handleRunNow(automation, isCampaign); }} disabled={runNowLoading && runningAutomation?.id === automation.id} className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50" title="Run now">
-                              {runNowLoading && runningAutomation?.id === automation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(automation.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete automation"><Trash2 className="w-4 h-4" /></button>
-                          </div>
+                          <button onClick={(e) => { e.stopPropagation(); handleRunNow(automation, isCampaign); }} disabled={runNowLoading && runningAutomation?.id === automation.id} className="p-1.5 rounded-lg text-gray-400 hover:text-[#FFCE0A] hover:bg-[#FFCE0A]/10 dark:hover:bg-[#FFCE0A]/10 transition-colors disabled:opacity-50" title="Run now">
+                            {runNowLoading && runningAutomation?.id === automation.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                          </button>
+                        </LBTableCell>
+                        <LBTableCell className="text-right">
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(automation.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Delete automation"><Trash2 className="w-4 h-4" /></button>
                         </LBTableCell>
                       </LBTableRow>
                     );

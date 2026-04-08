@@ -31,7 +31,8 @@ export function SkeletonAutomationRow() {
       <td className="px-4 py-3 hidden md:table-cell"><Sk className="h-4 w-24" /></td>
       <td className="px-4 py-3 hidden md:table-cell"><Sk className="h-4 w-16" /></td>
       <td className="px-4 py-3 hidden md:table-cell"><Sk className="h-4 w-16" /></td>
-      <td className="px-4 py-3"><Sk className="h-7 w-14 ml-auto" /></td>
+      <td className="px-4 py-3"><Sk className="h-7 w-7 ml-auto" /></td>
+      <td className="px-4 py-3"><Sk className="h-7 w-7 ml-auto" /></td>
     </tr>
   );
 }
