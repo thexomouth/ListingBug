@@ -163,6 +163,11 @@ async function resolveSendGridKey(
     .eq("integration_id", "sendgrid")
     .maybeSingle();
   if ((conn?.credentials as any)?.api_key) return (conn.credentials as any).api_key;
+
+  // Platform key — allows sending without any user setup
+  const platformKey = Deno.env.get("SENDGRID_ADMIN_KEY");
+  if (platformKey) return platformKey;
+
   return null;
 }
 

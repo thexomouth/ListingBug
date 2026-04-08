@@ -20,8 +20,7 @@ function applyMergeTags(template: string, data: Record<string, string>): string 
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] ?? '');
 }
 
-/** Resolve SendGrid API key: messaging_config → integration_connections only.
- *  No platform-level fallback — users must configure their own key. */
+/** Resolve SendGrid API key: messaging_config → integration_connections → platform key */
 async function resolveSendGridKey(
   serviceClient: ReturnType<typeof createClient>,
   userId: string
@@ -43,6 +42,10 @@ async function resolveSendGridKey(
     .eq('integration_id', 'sendgrid')
     .maybeSingle();
   if ((conn?.credentials as any)?.api_key) return (conn.credentials as any).api_key;
+
+  // 3. Platform key — allows sending without any user setup
+  const platformKey = Deno.env.get('SENDGRID_ADMIN_KEY');
+  if (platformKey) return platformKey;
 
   return null;
 }
