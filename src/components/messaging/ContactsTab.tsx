@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Upload, X, CheckSquare, Square, UserCheck, RefreshCw } from 'lucide-react';
+import { Search, Upload, X, CheckSquare, Square, UserCheck, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ContactsListPanel, ContactList } from './ContactsListPanel';
 import { CsvUploadZone, ParsedContact } from './CsvUploadZone';
@@ -64,6 +64,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
   const [mailchimpContacts, setMailchimpContacts] = useState<ContactRow[]>([]);
   const [mailchimpLoading, setMailchimpLoading] = useState(false);
   const [mailchimpConnected, setMailchimpConnected] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [lists, setLists] = useState<ContactList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,6 +74,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
   const [pendingContacts, setPendingContacts] = useState<ParsedContact[] | null>(null);
+  const [audienceCollapsed, setAudienceCollapsed] = useState(true);
   const [assignListId, setAssignListId] = useState('');
   const [newListName, setNewListName] = useState('');
 
@@ -80,6 +82,10 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
+
+    // Load admin status
+    const { data: userData } = await supabase.from('users').select('is_admin').eq('id', user.id).single();
+    setIsAdmin(userData?.is_admin ?? false);
 
     // Load agent data from search_runs
     const { data: runs } = await supabase
@@ -162,6 +168,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { setCurrentPage(1); }, [source, selectedListId, searchQuery, perPage]);
+  useEffect(() => { if (!isAdmin && source === 'uploaded') setSource('agents'); }, [isAdmin]);
 
   const loadMailchimpMembers = async (listId: string) => {
     if (!listId) return;
@@ -331,7 +338,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
           <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-sm">
             {([
               { id: 'agents', label: 'Agents' },
-              { id: 'uploaded', label: 'Uploaded' },
+              ...(isAdmin ? [{ id: 'uploaded', label: 'Uploaded' }] : []),
               ...(mailchimpConnected ? [{ id: 'mailchimp', label: 'Mailchimp' }] : []),
             ] as { id: SourceFilter; label: string }[]).map((s, i) => (
               <button
@@ -418,33 +425,52 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden min-h-[400px]">
         {/* Mailchimp audience selector */}
         {source === 'mailchimp' && (
-          <div className="w-56 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col">
-            <div className="p-3 border-b border-zinc-200 dark:border-zinc-700">
-              <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">Audience</p>
-              <select
-                value={mailchimpListId}
-                onChange={e => {
-                  setMailchimpListId(e.target.value);
-                  setMailchimpContacts([]);
-                  loadMailchimpMembers(e.target.value);
-                }}
-                className="w-full text-sm rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-2 py-1.5 focus:outline-none"
-              >
-                {mailchimpLists.map(l => (
-                  <option key={l.id} value={l.id}>{l.name} ({l.member_count})</option>
-                ))}
-              </select>
-            </div>
-            <div className="p-3">
+          audienceCollapsed ? (
+            <div className="w-8 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col items-center pt-2">
               <button
-                onClick={() => { setMailchimpContacts([]); loadMailchimpMembers(mailchimpListId); }}
-                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                onClick={() => setAudienceCollapsed(false)}
+                className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                title="Expand audience"
               >
-                <RefreshCw size={11} className={mailchimpLoading ? 'animate-spin' : ''} />
-                Reload members
+                <ChevronRight size={14} />
               </button>
             </div>
-          </div>
+          ) : (
+            <div className="w-56 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col">
+              <div className="p-3 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Audience</p>
+                <button
+                  onClick={() => setAudienceCollapsed(true)}
+                  className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                  title="Collapse"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+              </div>
+              <div className="p-3 space-y-3">
+                <select
+                  value={mailchimpListId}
+                  onChange={e => {
+                    setMailchimpListId(e.target.value);
+                    setMailchimpContacts([]);
+                    loadMailchimpMembers(e.target.value);
+                  }}
+                  className="w-full text-sm rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-2 py-1.5 focus:outline-none"
+                >
+                  {mailchimpLists.map(l => (
+                    <option key={l.id} value={l.id}>{l.name} ({l.member_count})</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => { setMailchimpContacts([]); loadMailchimpMembers(mailchimpListId); }}
+                  className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                >
+                  <RefreshCw size={11} className={mailchimpLoading ? 'animate-spin' : ''} />
+                  Reload members
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {/* List panel (uploaded only) */}

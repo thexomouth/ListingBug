@@ -21,6 +21,9 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
   const [viewMode, setViewMode] = useState<ViewMode>('listing');
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [saved, setSaved] = useState(isSaved);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   // Always check save state on open and on event
   useEffect(() => {
@@ -105,15 +108,30 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
     } catch (e: any) { toast.dismiss(toastId); toast.error(e.message ?? 'Network error during export'); }
   };
 
-  // Enable swipe-to-close on mobile (swipe right to close)
+  // Swipe-to-close: follow the finger, snap back or slide out
   useSwipeGesture({
-    onSwipeRight: () => {
-      // Only close on swipe right if we're at the left edge of content
-      onClose();
+    onSwipeDrag: (deltaX) => {
+      setIsDragging(true);
+      setSwipeOffset(deltaX);
     },
-    threshold: 80, // Require 80px swipe
-    velocityThreshold: 0.4, // Or fast swipe
+    onSwipeRight: () => {
+      setIsDragging(false);
+      setIsClosing(true);
+    },
+    onSwipeCancel: () => {
+      setIsDragging(false);
+      setSwipeOffset(0);
+    },
+    threshold: 80,
+    velocityThreshold: 0.4,
   });
+
+  // After slide-out animation completes, call onClose
+  useEffect(() => {
+    if (!isClosing) return;
+    const t = setTimeout(() => onClose(), 300);
+    return () => clearTimeout(t);
+  }, [isClosing, onClose]);
 
   // CRITICAL: Proper scroll lock that works on mobile and desktop
   useEffect(() => {
@@ -283,11 +301,15 @@ export function ListingDetailModal({ listing, onClose, onSaveListing, isSaved = 
       />
       
       {/* Modal - Side Drawer with proper overflow handling */}
-      <div 
+      <div
         className="fixed right-0 top-0 h-screen w-[calc(100%-12px)] md:w-[650px] lg:w-[800px] bg-white dark:bg-[#0F1115] z-[9999] shadow-2xl overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
+        style={{
+          transform: isClosing ? 'translateX(100%)' : `translateX(${swipeOffset}px)`,
+          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
       >
         {/* Wrapper for flex layout */}
         <div className="h-full flex flex-col">

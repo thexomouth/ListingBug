@@ -41,9 +41,6 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const [webhookConfigured, setWebhookConfigured] = useState<boolean | null>(null);
   const [sending, setSending] = useState(false);
   const [savingCampaign, setSavingCampaign] = useState(false);
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [saveTemplateName, setSaveTemplateName] = useState('');
-  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showWebhookWarning, setShowWebhookWarning] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [lastResult, setLastResult] = useState<{ sent: number; failed: number } | null>(null);
@@ -195,25 +192,6 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     await doSend();
   };
 
-  const handleSaveTemplate = async () => {
-    if (!saveTemplateName.trim()) { toast.error('Template name is required.'); return; }
-    setSavingTemplate(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase.from('marketing_templates').insert({
-      user_id: user.id,
-      name: saveTemplateName.trim(),
-      channel: 'email',
-      subject: subject.trim() || null,
-      body: body.trim() || null,
-    });
-    setSavingTemplate(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Template saved.');
-    setShowSaveTemplate(false);
-    setSaveTemplateName('');
-  };
-
   const handleSaveCampaign = async () => {
     if (!senderId) { toast.error('Select a sender before saving a campaign.'); return; }
     if (!subject.trim()) { toast.error('Subject is required.'); return; }
@@ -276,9 +254,12 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Create Campaign</h2>
         <TemplateDropdown
           channel="email"
-          onSelect={(t) => {
-            if (t.subject) setSubject(t.subject);
-            if (t.body) setBody(t.body);
+          onSelect={(c) => {
+            if (c.name) setCampaignName(c.name);
+            if (c.subject) setSubject(c.subject);
+            if (c.body) setBody(c.body);
+            if (c.sender_id) setSenderId(c.sender_id);
+            if (c.unsubscribe_url) setUnsubscribeUrl(c.unsubscribe_url);
           }}
         />
       </div>
@@ -372,23 +353,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         />
       </div>
 
-      {/* Unsubscribe URL */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-          Unsubscribe URL <span className="text-red-500">*</span>
-          <span className="ml-1 text-zinc-400 font-normal text-xs">(required by law for outbound marketing emails)</span>
-        </label>
-        <input
-          type="url"
-          value={unsubscribeUrl}
-          onChange={e => setUnsubscribeUrl(e.target.value)}
-          placeholder="https://yourdomain.com/unsubscribe"
-          className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-        />
-        <p className="mt-1 text-xs text-zinc-400">
-          An unsubscribe link will be automatically appended to every email. Paste your platform's unsubscribe page URL or your own opt-out page.
-        </p>
-      </div>
+      <MergeTagFooter />
 
       {/* Attachments */}
       <div>
@@ -440,6 +405,24 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
             ))}
           </ul>
         )}
+      </div>
+
+      {/* Unsubscribe URL */}
+      <div>
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+          Unsubscribe URL <span className="text-red-500">*</span>
+          <span className="ml-1 text-zinc-400 font-normal text-xs">(required by law for outbound marketing emails)</span>
+        </label>
+        <input
+          type="url"
+          value={unsubscribeUrl}
+          onChange={e => setUnsubscribeUrl(e.target.value)}
+          placeholder="https://yourdomain.com/unsubscribe"
+          className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        />
+        <p className="mt-1 text-xs text-zinc-400">
+          An unsubscribe link will be automatically appended to every email. Paste your platform's unsubscribe page URL or your own opt-out page.
+        </p>
       </div>
 
       {/* SMS stub */}
@@ -525,37 +508,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           Preview
         </button>
 
-        <button
-          onClick={() => setShowSaveTemplate(v => !v)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm transition-colors"
-        >
-          <Save size={15} />
-          Save as template
-        </button>
       </div>
-
-      {/* Save template inline */}
-      {showSaveTemplate && (
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Template name"
-            value={saveTemplateName}
-            onChange={e => setSaveTemplateName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSaveTemplate(); }}
-            className="flex-1 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-          />
-          <button
-            onClick={handleSaveTemplate}
-            disabled={savingTemplate}
-            className="px-3 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-zinc-900 text-sm font-semibold disabled:opacity-60 transition-colors"
-          >
-            {savingTemplate ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      )}
-
-      <MergeTagFooter />
 
       {showPreview && (
         <EmailPreviewModal

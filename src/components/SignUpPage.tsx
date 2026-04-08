@@ -22,6 +22,7 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [isVerificationStep, setIsVerificationStep] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -69,11 +70,12 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
   };
 
   const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/` }
     });
-    if (error) toast.error(error.message);
+    if (error) { toast.error(error.message); setIsGoogleLoading(false); }
   };
 
   const handleResendVerification = async () => {
@@ -139,9 +141,9 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-3 h-11" onClick={handleGoogleSignUp}>
-                <Chrome className="w-5 h-5" />
-                Continue with Google
+              <Button type="button" variant="outline" disabled={isGoogleLoading} className="w-full flex items-center justify-center gap-3 h-11 active:scale-[0.97] transition-transform" onClick={handleGoogleSignUp}>
+                {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Chrome className="w-5 h-5" />}
+                {isGoogleLoading ? 'Redirecting…' : 'Continue with Google'}
               </Button>
             </div>
 

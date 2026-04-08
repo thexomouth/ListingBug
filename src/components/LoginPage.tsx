@@ -20,6 +20,7 @@ export function LoginPage({ onLogin, onNavigateToSignUp, onNavigateToForgotPassw
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,11 +40,12 @@ export function LoginPage({ onLogin, onNavigateToSignUp, onNavigateToForgotPassw
   };
 
   const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/` }
     });
-    if (error) toast.error(error.message);
+    if (error) { toast.error(error.message); setIsGoogleLoading(false); }
   };
 
   return (
@@ -58,9 +60,9 @@ export function LoginPage({ onLogin, onNavigateToSignUp, onNavigateToForgotPassw
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <Button type="button" variant="outline" className="w-full flex items-center justify-center gap-3 h-11" onClick={handleGoogleLogin}>
-                <Chrome className="w-5 h-5" />
-                Continue with Google
+              <Button type="button" variant="outline" disabled={isGoogleLoading} className="w-full flex items-center justify-center gap-3 h-11 active:scale-[0.97] transition-transform" onClick={handleGoogleLogin}>
+                {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Chrome className="w-5 h-5" />}
+                {isGoogleLoading ? 'Redirecting…' : 'Continue with Google'}
               </Button>
             </div>
 

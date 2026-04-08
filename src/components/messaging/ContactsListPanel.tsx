@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, List, Users } from 'lucide-react';
+import { Plus, List, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface ContactList {
   id: string;
@@ -17,6 +17,7 @@ interface ContactsListPanelProps {
 export function ContactsListPanel({ lists, selectedListId, onSelectList, onCreateList }: ContactsListPanelProps) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const [collapsed, setCollapsed] = useState(true);
 
   const handleCreate = () => {
     const name = newName.trim();
@@ -26,17 +27,40 @@ export function ContactsListPanel({ lists, selectedListId, onSelectList, onCreat
     setCreating(false);
   };
 
+  if (collapsed) {
+    return (
+      <div className="w-8 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col items-center pt-2">
+        <button
+          onClick={() => setCollapsed(false)}
+          className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+          title="Expand lists"
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-48 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col">
       <div className="p-3 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
         <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Lists</span>
-        <button
-          onClick={() => setCreating(true)}
-          className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
-          title="New list"
-        >
-          <Plus size={14} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCreating(true)}
+            className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+            title="New list"
+          >
+            <Plus size={14} />
+          </button>
+          <button
+            onClick={() => setCollapsed(true)}
+            className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+            title="Collapse"
+          >
+            <ChevronLeft size={14} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-1">

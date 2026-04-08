@@ -467,20 +467,21 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
           {/* Sidebar */}
           <div ref={menuRef} className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#252525] z-50 shadow-xl transform transition-transform duration-300 ease-out ${isLoggedIn ? '' : 'md:hidden'}`}>
             {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="w-8 shrink-0" />
               <button
                 onClick={() => handleNavigate('home')}
-                className="flex items-center hover:opacity-80 transition-opacity"
+                className="flex-1 flex items-center justify-center hover:opacity-80 transition-opacity"
               >
                 <ImageWithFallback
                   src={isDarkMode ? headerLogoWhite : headerLogoFull}
                   alt="ListingBug"
-                  className={isDarkMode ? "h-6 w-auto object-contain" : "h-12 w-auto object-contain"}
+                  className={isDarkMode ? "h-6 w-auto object-contain" : "h-16 w-auto object-contain"}
                 />
               </button>
               <button
                 onClick={() => setIsMenuOpen(false)}
-                className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors"
+                className="w-8 h-8 shrink-0 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors"
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5 text-[#342e37] dark:text-white" />
