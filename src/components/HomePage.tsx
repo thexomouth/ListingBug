@@ -87,7 +87,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
         setSampleListings([]);
 
         if (onSampleReportGenerated) {
-          onSampleReportGenerated(zipcode, []);
+          onSampleReportGenerated(locationLabel, []);
         }
 
         return;
@@ -133,7 +133,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
       setSampleListings(fetchedListings);
 
       if (onSampleReportGenerated) {
-        onSampleReportGenerated(zipcode, fetchedListings);
+        onSampleReportGenerated(locationLabel, fetchedListings);
       } else {
         setShowSampleReport(true);
       }
@@ -142,7 +142,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
       setSampleError('No listings found for that ZIP code. Try another.');
       setSampleListings([]);
       if (onSampleReportGenerated) {
-        onSampleReportGenerated(zipcode, []);
+        onSampleReportGenerated(locationLabel, []);
       }
     } finally {
       setIsLoadingReport(false);
