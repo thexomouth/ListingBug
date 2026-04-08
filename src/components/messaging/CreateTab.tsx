@@ -47,6 +47,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const [showWebhookWarning, setShowWebhookWarning] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [lastResult, setLastResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [unsubscribeUrl, setUnsubscribeUrl] = useState('');
   const [attachments, setAttachments] = useState<Array<{ id: string; fileName: string; mimeType: string; base64: string; size: number }>>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +138,8 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     if (senders.length === 0) return 'No SendGrid sender configured. Go to Setup to connect SendGrid and verify a sender.';
     if (!subject.trim()) return 'Subject is required.';
     if (!body.trim()) return 'Body is required.';
+    if (!unsubscribeUrl.trim()) return 'Unsubscribe URL is required for legal compliance with outbound marketing laws.';
+    try { new URL(unsubscribeUrl.trim()); } catch { return 'Unsubscribe URL must be a valid URL (e.g. https://yourdomain.com/unsubscribe).'; }
     return null;
   };
 
@@ -160,6 +163,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           body: body.trim(),
           campaign_name: campaignName.trim() || subject.trim(),
           sender_id: senderId,
+          unsubscribe_url: unsubscribeUrl.trim(),
           attachments: attachments.map(({ fileName, mimeType, base64 }) => ({ fileName, mimeType, base64 })),
         }),
       });
@@ -214,6 +218,8 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     if (!senderId) { toast.error('Select a sender before saving a campaign.'); return; }
     if (!subject.trim()) { toast.error('Subject is required.'); return; }
     if (!body.trim()) { toast.error('Body is required.'); return; }
+    if (!unsubscribeUrl.trim()) { toast.error('Unsubscribe URL is required for legal compliance.'); return; }
+    try { new URL(unsubscribeUrl.trim()); } catch { toast.error('Unsubscribe URL must be a valid URL.'); return; }
 
     const name = (campaignName.trim() || subject.trim()).slice(0, 120);
     setSavingCampaign(true);
@@ -251,6 +257,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         list_id: listId,
         schedule: 'manual',
         status: 'active',
+        unsubscribe_url: unsubscribeUrl.trim(),
       });
 
       if (error) { toast.error(error.message); return; }
@@ -266,7 +273,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     <div className="space-y-4">
       {/* Top bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Compose Email</h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Create Campaign</h2>
         <TemplateDropdown
           channel="email"
           onSelect={(t) => {
@@ -363,6 +370,24 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           rows={10}
           className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono resize-y"
         />
+      </div>
+
+      {/* Unsubscribe URL */}
+      <div>
+        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+          Unsubscribe URL <span className="text-red-500">*</span>
+          <span className="ml-1 text-zinc-400 font-normal text-xs">(required by law for outbound marketing emails)</span>
+        </label>
+        <input
+          type="url"
+          value={unsubscribeUrl}
+          onChange={e => setUnsubscribeUrl(e.target.value)}
+          placeholder="https://yourdomain.com/unsubscribe"
+          className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+        />
+        <p className="mt-1 text-xs text-zinc-400">
+          An unsubscribe link will be automatically appended to every email. Paste your platform's unsubscribe page URL or your own opt-out page.
+        </p>
       </div>
 
       {/* Attachments */}

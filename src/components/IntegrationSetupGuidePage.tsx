@@ -335,14 +335,29 @@ export function IntegrationSetupGuidePage({ onBack }: IntegrationSetupGuidePageP
           <BookOpen className="w-7 h-7 text-[#FFCE0A]" />
           <h1 className="font-bold text-[33px]">Integration Setup & Workflow Guides</h1>
         </div>
-        <p className="text-gray-600 text-[15px]">
+        <p className="text-gray-600 dark:text-gray-400 text-[15px]">
           Learn how to view your listing data and build powerful workflows in each connected platform.
         </p>
       </div>
 
+      {/* Mobile dropdown selector */}
+      <div className="sm:hidden mb-4">
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFD447]/50"
+        >
+          {GUIDES.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="flex gap-6 items-start">
-        {/* Sidebar */}
-        <div className="w-56 flex-shrink-0 sticky top-6">
+        {/* Sidebar - desktop only */}
+        <div className="hidden sm:block w-56 flex-shrink-0 sticky top-6">
           <div className="bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
             <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Integrations</p>

@@ -70,6 +70,8 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(25);
   const [pendingContacts, setPendingContacts] = useState<ParsedContact[] | null>(null);
   const [assignListId, setAssignListId] = useState('');
   const [newListName, setNewListName] = useState('');
@@ -159,6 +161,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
   };
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => { setCurrentPage(1); }, [source, selectedListId, searchQuery, perPage]);
 
   const loadMailchimpMembers = async (listId: string) => {
     if (!listId) return;
@@ -300,6 +303,9 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       setImporting(false);
     }
   };
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const nonUnsub = filtered.filter(c => !c.unsubscribed);
   const allSelected = nonUnsub.length > 0 && nonUnsub.every(c => selectedEmails.has(c.email));
@@ -501,7 +507,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c, i) => {
+                  {paginated.map((c, i) => {
                     const isSelected = selectedEmails.has(c.email);
                     return (
                       <tr
@@ -551,15 +557,46 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
             </div>
           )}
 
-          {/* Footer stats */}
+          {/* Pagination controls */}
           {!loading && filtered.length > 0 && (
-            <div className="border-t border-zinc-100 dark:border-zinc-800 px-3 py-2 text-xs text-zinc-400 flex items-center justify-between">
-              <span>{filtered.length} contact{filtered.length !== 1 ? 's' : ''}</span>
-              {selectedEmails.size > 0 && (
-                <span className="text-yellow-600 dark:text-yellow-400 font-medium">
-                  {selectedEmails.size} selected → switch to Create tab to send
-                </span>
+            <div className="border-t border-zinc-100 dark:border-zinc-800 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+              {/* Left: count */}
+              <span className="text-xs text-zinc-400 whitespace-nowrap">
+                {filtered.length === 0 ? '0' : `${(currentPage - 1) * perPage + 1}–${Math.min(currentPage * perPage, filtered.length)}`} of {filtered.length} contact{filtered.length !== 1 ? 's' : ''}
+                {selectedEmails.size > 0 && <span className="ml-2 text-yellow-600 dark:text-yellow-400 font-medium">({selectedEmails.size} selected)</span>}
+              </span>
+
+              {/* Center: Prev / Page X of Y / Next */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-zinc-500 dark:text-zinc-400 px-1">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
               )}
+
+              {/* Right: per-page */}
+              <select
+                value={perPage}
+                onChange={e => setPerPage(Number(e.target.value))}
+                className="text-xs px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 focus:outline-none"
+              >
+                {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+              </select>
             </div>
           )}
         </div>

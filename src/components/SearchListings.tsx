@@ -901,7 +901,7 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
             <Search className="w-5 h-5 md:w-6 md:h-6 text-[#FFCE0A]" />
             <h1 className="mb-0 text-2xl font-bold cursor-pointer hover:opacity-70 transition-opacity" onClick={() => setActiveTab('search')}>Listings</h1>
           </div>
-          <p className="text-gray-600 text-[13px] md:text-sm">Search and manage property listings with custom criteria</p>
+          <p className="text-gray-600 dark:text-gray-400 text-[13px] md:text-sm">Search and manage property listings with custom criteria</p>
         </div>
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
           {activeTab !== 'history' && (

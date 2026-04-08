@@ -67,7 +67,15 @@
       "Bash(curl -s 'https://api.apify.com/v2/users/me/usage/monthly?token=apify_api_BUPj3FTY3cJXh9XIKRnWzVY7B41SzG26D8bU')",
       "Bash(curl -s -X POST 'https://api.apify.com/v2/acts/compass~crawler-google-places/runs?token=apify_api_BUPj3FTY3cJXh9XIKRnWzVY7B41SzG26D8bU' -H 'Content-Type: application/json' -d '{\"searchStringsArray\": [\"home staging companies in Denver, CO\"], \"language\": \"en\"}')",
       "Bash(env)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "Bash(claude logout:*)",
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "Bash(cat supabase/migrations/*.sql)",
+      "Bash(supabase db:*)",
+      "Bash(grep -n \"destination\\\\|integration_id\\\\|webhook\\\\|export_type\" supabase/migrations/*.sql)"
     ]
   }
 }

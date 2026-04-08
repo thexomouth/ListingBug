@@ -177,14 +177,25 @@ export function IntegrationConnectionModal({
   const [mcTags, setMcTags] = useState('');
   const [mcDoubleOptIn, setMcDoubleOptIn] = useState(false);
   const [loadingAudiences, setLoadingAudiences] = useState(false);
+  const [creatingAudience, setCreatingAudience] = useState(false);
+
+  // SendGrid new list creation
+  const [creatingList, setCreatingList] = useState(false);
+
+  // Twilio Sync List config
+  const [twilioListName, setTwilioListName] = useState('ListingBug');
+
+  // HubSpot post-OAuth config
+  const [hsObjectType] = useState('contacts');
+  const [hsLists, setHsLists] = useState<{id: string; name: string}[]>([]);
+  const [hsListId, setHsListId] = useState('');
+  const [loadingHsLists, setLoadingHsLists] = useState(false);
+  const [creatingHsList, setCreatingHsList] = useState(false);
 
   // Google Sheets post-OAuth config
   const [spreadsheetId, setSpreadsheetId] = useState('');
   const [sheetName, setSheetName] = useState('Sheet1');
   const [writeMode, setWriteMode] = useState<'append' | 'overwrite'>('append');
-
-  // HubSpot post-OAuth config (minimal)
-  const [hsObjectType] = useState('contacts');
 
   const config = integration ? INTEGRATION_CONFIGS[integration.id] ?? {} : {};
   const authType = config.authType ?? 'oauth';
@@ -198,6 +209,9 @@ export function IntegrationConnectionModal({
       setWebhookUrl(''); setSendMode('batch'); setAuthHeader('');
       setSgLists([]); setSgListIds([]); setLoadingLists(false);
       setMcAudiences([]); setMcListId(''); setMcTags(''); setMcDoubleOptIn(false);
+      setCreatingAudience(false); setCreatingList(false);
+      setTwilioListName('ListingBug');
+      setHsLists([]); setHsListId(''); setLoadingHsLists(false); setCreatingHsList(false);
       setSpreadsheetId(''); setSheetName('Sheet1'); setWriteMode('append');
       setIsConnecting(false);
     }
@@ -211,7 +225,7 @@ export function IntegrationConnectionModal({
     }
   }, [isOpen]);
 
-  // If returning from OAuth OR already connected and opening config, auto-load audiences
+  // If returning from OAuth OR already connected and opening config, auto-load audiences/lists
   useEffect(() => {
     if (isOpen && integration && authType === 'oauth') {
       const params = new URLSearchParams(window.location.search);
@@ -219,8 +233,10 @@ export function IntegrationConnectionModal({
       if (fromOAuth) {
         setStep('config');
         if (integration.id === 'mailchimp') loadMailchimpAudiences();
-      } else if (step === 'config' && integration.id === 'mailchimp' && mcAudiences.length === 0) {
-        loadMailchimpAudiences();
+        else if (integration.id === 'hubspot') loadHubSpotLists();
+      } else if (step === 'config') {
+        if (integration.id === 'mailchimp' && mcAudiences.length === 0) loadMailchimpAudiences();
+        else if (integration.id === 'hubspot' && hsLists.length === 0) loadHubSpotLists();
       }
     }
   }, [isOpen, integration, step]);
@@ -259,14 +275,82 @@ export function IntegrationConnectionModal({
         }
       );
       const data = await res.json();
-      if (data.options) setMcAudiences(data.options);
-      else toast.error(data.error ?? 'Could not load Mailchimp audiences');
+      if (data.options) {
+        setMcAudiences(data.options);
+        // Auto-suggest creating a new audience if none exist yet
+        if (data.options.length === 0 && !mcListId) {
+          setMcListId('__new__');
+        }
+      } else {
+        toast.error(data.error ?? 'Could not load Mailchimp audiences');
+      }
     } catch {
       toast.error('Failed to load Mailchimp audiences');
     } finally {
       setLoadingAudiences(false);
     }
   }, []);
+
+  // ── Create ListingBug audience/list ───────────────────────────────────────
+  const createListingBugAudience = async (integrationId: 'mailchimp' | 'sendgrid'): Promise<{id: string; name: string; existed: boolean} | null> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+      const res = await fetch(
+        `https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/create-integration-audience`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ integration: integrationId }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to create audience');
+      return data;
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to create audience');
+      return null;
+    }
+  };
+
+  // ── Load HubSpot contact lists ────────────────────────────────────────────
+  const loadHubSpotLists = useCallback(async () => {
+    setLoadingHsLists(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(
+        `https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/get-integration-options`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ integration: 'hubspot' }),
+        }
+      );
+      const data = await res.json();
+      if (data.options) {
+        setHsLists(data.options);
+        if (data.options.length === 0 && !hsListId) setHsListId('__new__');
+      } else {
+        toast.error(data.error ?? 'Could not load HubSpot lists');
+      }
+    } catch {
+      toast.error('Failed to load HubSpot lists');
+    } finally {
+      setLoadingHsLists(false);
+    }
+  }, [hsListId]);
+
+  // ── Create new "ListingBug" HubSpot list ─────────────────────────────────
+  const handleCreateHsList = async () => {
+    setCreatingHsList(true);
+    const result = await createListingBugAudience('hubspot');
+    setCreatingHsList(false);
+    if (!result) return;
+    setHsLists(prev => prev.some(l => l.id === result.id) ? prev : [result, ...prev]);
+    setHsListId(result.id);
+    toast.success(result.existed ? `"ListingBug" list found and selected` : `"ListingBug" list created`);
+  };
 
   // ── Load SendGrid lists ────────────────────────────────────────────────────
   const handleLoadSgLists = async () => {
@@ -293,6 +377,18 @@ export function IntegrationConnectionModal({
     }
   };
 
+  // ── Create new "ListingBug" list in SendGrid ─────────────────────────────
+  const handleCreateSgList = async () => {
+    setCreatingList(true);
+    const result = await createListingBugAudience('sendgrid');
+    setCreatingList(false);
+    if (!result) return;
+    // Add to lists if not already there, and auto-select it
+    setSgLists(prev => prev.some(l => l.id === result.id) ? prev : [result, ...prev]);
+    setSgListIds(prev => prev.includes(result.id) ? prev : [...prev, result.id]);
+    toast.success(result.existed ? `"ListingBug" list found and selected` : `"ListingBug" list created`);
+  };
+
   // ── Save API key integrations ──────────────────────────────────────────────
   const handleSaveApiKey = async () => {
     setIsConnecting(true);
@@ -302,7 +398,11 @@ export function IntegrationConnectionModal({
       const credentials: any = authType === 'api-key-twilio'
         ? { account_sid: accountSid.trim(), auth_token: authToken.trim() }
         : { api_key: apiKey.trim() };
-      const config_data: any = authType === 'api-key' ? { list_ids: sgListIds } : {};
+      const config_data: any = authType === 'api-key'
+        ? { list_ids: sgListIds }
+        : authType === 'api-key-twilio'
+          ? { list_unique_name: (twilioListName.trim() || 'ListingBug').toLowerCase().replace(/\s+/g, '_') }
+          : {};
       await supabase.from('integration_connections').upsert({
         user_id: session.user.id,
         integration_id: integration!.id,
@@ -360,9 +460,27 @@ export function IntegrationConnectionModal({
         cfg = { spreadsheet_id: spreadsheetId.trim(), sheet_name: sheetName.trim() || 'Sheet1', write_mode: writeMode };
       } else if (integration!.id === 'mailchimp') {
         if (!mcListId) { toast.error('Please select an audience'); setIsConnecting(false); return; }
-        cfg = { list_id: mcListId, tags: mcTags ? mcTags.split(',').map(t => t.trim()).filter(Boolean) : [], double_opt_in: mcDoubleOptIn };
+        let resolvedListId = mcListId;
+        if (mcListId === '__new__') {
+          setCreatingAudience(true);
+          const result = await createListingBugAudience('mailchimp');
+          setCreatingAudience(false);
+          if (!result) { setIsConnecting(false); return; }
+          resolvedListId = result.id;
+          toast.success(result.existed ? `Using existing "${result.name}" audience` : `"ListingBug" audience created`);
+        }
+        cfg = { list_id: resolvedListId, tags: mcTags ? mcTags.split(',').map(t => t.trim()).filter(Boolean) : [], double_opt_in: mcDoubleOptIn };
       } else if (integration!.id === 'hubspot') {
-        cfg = { object_type: hsObjectType };
+        let resolvedHsListId = hsListId;
+        if (hsListId === '__new__') {
+          setCreatingHsList(true);
+          const result = await createListingBugAudience('hubspot');
+          setCreatingHsList(false);
+          if (!result) { setIsConnecting(false); return; }
+          resolvedHsListId = result.id;
+          toast.success(result.existed ? `Using existing "${result.name}" list` : `"ListingBug" list created`);
+        }
+        cfg = { object_type: hsObjectType, ...(resolvedHsListId ? { list_id: resolvedHsListId } : {}) };
       }
 
       await supabase.from('integration_connections').update({ config: cfg }).eq('user_id', session.user.id).eq('integration_id', integration!.id);
@@ -506,15 +624,22 @@ export function IntegrationConnectionModal({
                 {!loadingAudiences && mcAudiences.length === 0 && (
                   <Button variant="outline" className="w-full" onClick={loadMailchimpAudiences}>Load My Audiences</Button>
                 )}
-                {mcAudiences.length > 0 && (
+                {!loadingAudiences && (
                   <select
                     className="w-full border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white"
                     value={mcListId}
                     onChange={e => setMcListId(e.target.value)}
                   >
                     <option value="">Select an audience...</option>
+                    <option value="__new__">+ Create new "ListingBug" audience</option>
                     {mcAudiences.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
+                )}
+                {mcListId === '__new__' && (
+                  <div className="flex items-start gap-2 px-3 py-2.5 bg-[#FFCE0A]/10 border border-[#FFCE0A]/40 rounded-lg text-xs text-gray-700 dark:text-gray-300">
+                    <Plus className="w-3.5 h-3.5 text-[#0d1b2a] dark:text-[#FFCE0A] flex-shrink-0 mt-0.5" />
+                    A new Mailchimp audience named <strong className="mx-0.5">"ListingBug"</strong> will be created in your account when you save.
+                  </div>
                 )}
               </div>
 
@@ -555,6 +680,45 @@ export function IntegrationConnectionModal({
                 <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <p className="text-sm text-green-800 dark:text-green-300 font-medium">HubSpot connected successfully.</p>
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Contact List <span className="text-gray-400 text-xs font-normal">(optional)</span></Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleCreateHsList}
+                      disabled={creatingHsList}
+                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                    >
+                      {creatingHsList ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      Create "ListingBug" list
+                    </button>
+                    <button onClick={loadHubSpotLists} className="text-xs text-blue-500 hover:underline flex items-center gap-1">
+                      {loadingHsLists ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                      {hsLists.length ? 'Refresh' : 'Load lists'}
+                    </button>
+                  </div>
+                </div>
+                {loadingHsLists && <div className="flex items-center gap-2 text-sm text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading your lists...</div>}
+                {!loadingHsLists && (
+                  <select
+                    className="w-full border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2F2F2F] text-gray-900 dark:text-white"
+                    value={hsListId}
+                    onChange={e => setHsListId(e.target.value)}
+                  >
+                    <option value="">No list — add to all contacts</option>
+                    <option value="__new__">+ Create new "ListingBug" list</option>
+                    {hsLists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                )}
+                {hsListId === '__new__' && (
+                  <div className="flex items-start gap-2 px-3 py-2.5 bg-[#FFCE0A]/10 border border-[#FFCE0A]/40 rounded-lg text-xs text-gray-700 dark:text-gray-300">
+                    <Plus className="w-3.5 h-3.5 text-[#0d1b2a] dark:text-[#FFCE0A] flex-shrink-0 mt-0.5" />
+                    A new HubSpot contact list named <strong className="mx-0.5">"ListingBug"</strong> will be created in your account when you save.
+                  </div>
+                )}
+              </div>
+
               <div className="p-4 bg-gray-50 dark:bg-[#2F2F2F] rounded-lg space-y-2">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">What gets synced:</p>
                 <ul className="space-y-1">
@@ -615,10 +779,22 @@ export function IntegrationConnectionModal({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Contact List (optional)</Label>
-                  <Button variant="outline" size="sm" onClick={handleLoadSgLists} disabled={!apiKey.trim() || loadingLists}>
-                    {loadingLists ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-                    {sgLists.length ? 'Reload lists' : 'Load my lists'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCreateSgList}
+                      disabled={!apiKey.trim() || creatingList}
+                      className="text-xs"
+                    >
+                      {creatingList ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Plus className="w-3 h-3 mr-1" />}
+                      Create "ListingBug" list
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleLoadSgLists} disabled={!apiKey.trim() || loadingLists}>
+                      {loadingLists ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                      {sgLists.length ? 'Reload' : 'Load lists'}
+                    </Button>
+                  </div>
                 </div>
                 {sgLists.length > 0 && (
                   <div className="space-y-1">
@@ -680,6 +856,19 @@ export function IntegrationConnectionModal({
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Found below your Account SID on the Twilio Console dashboard.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="twilio-list-name">Sync List Name</Label>
+                <Input
+                  id="twilio-list-name"
+                  placeholder="ListingBug"
+                  value={twilioListName}
+                  onChange={e => setTwilioListName(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Contacts are stored in a Twilio Sync List with this name. It will be auto-created on first use if it doesn't exist.
+                </p>
               </div>
             </>
           )}
@@ -747,10 +936,10 @@ export function IntegrationConnectionModal({
               <Button
                 className="bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0d1b2a] font-bold"
                 onClick={handleSaveOAuthConfig}
-                disabled={isConnecting}
+                disabled={isConnecting || creatingAudience || creatingHsList}
               >
-                {isConnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Save Settings
+                {(isConnecting || creatingAudience || creatingHsList) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                {creatingAudience ? 'Creating audience...' : creatingHsList ? 'Creating list...' : 'Save Settings'}
               </Button>
             )}
 

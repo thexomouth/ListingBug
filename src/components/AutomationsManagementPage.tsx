@@ -67,6 +67,8 @@ interface Automation {
     listingsSent: number;
   };
   nextRun?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface RunHistoryItem {
@@ -172,10 +174,9 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
     }
     const { data, error } = await supabase
       .from('automations')
-      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at')
+      .select('id,name,search_name,destination_type,destination_label,destination_config,search_criteria,schedule,schedule_time,sync_frequency,sync_rate,active,last_run_at,next_run_at,created_at,updated_at')
       .eq('user_id', userId)
-      .order('last_run_at', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false });
+      .order('updated_at', { ascending: false, nullsFirst: false });
     if (error) { console.error('[Automations] load error:', error.message); setAutomationsLoading(false); return; }
 
     // Fetch last run metrics for each automation from automation_runs
@@ -210,16 +211,17 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
           listingsSent: lastRun.listings_sent ?? 0,
         } : row.last_run_at ? { date: row.last_run_at, status: 'success', listingsFetched: 0, listingsSent: 0 } : undefined,
         nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+        createdAt: row.created_at ?? '',
+        updatedAt: row.updated_at ?? row.created_at ?? '',
       };
     });
 
     // Load campaign_automations (messaging type) and merge
     const { data: campaignData } = await supabase
       .from('campaign_automations')
-      .select('id,name,search_name,search_criteria,messaging_automation_id,schedule,active,last_run_at,next_run_at,created_at')
+      .select('id,name,search_name,search_criteria,messaging_automation_id,schedule,active,last_run_at,next_run_at,created_at,updated_at')
       .eq('user_id', userId)
-      .order('last_run_at', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false });
+      .order('updated_at', { ascending: false, nullsFirst: false });
 
     // Resolve campaign names from messaging_automations
     const campaignIds = (campaignData || []).map((r: any) => r.messaging_automation_id).filter(Boolean);
@@ -243,11 +245,13 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
       automationType: 'campaign' as const,
       lastRun: row.last_run_at ? { date: row.last_run_at, status: 'success' as const, listingsFetched: 0, listingsSent: 0 } : undefined,
       nextRun: row.next_run_at ? new Date(row.next_run_at).toLocaleString() : 'Pending first run',
+      createdAt: row.created_at ?? '',
+      updatedAt: row.updated_at ?? row.created_at ?? '',
     }));
 
     const allAutomations = [...exportMapped, ...campaignMapped].sort((a, b) => {
-      const aDate = a.lastRun?.date ?? '';
-      const bDate = b.lastRun?.date ?? '';
+      const aDate = a.updatedAt || a.createdAt || '';
+      const bDate = b.updatedAt || b.createdAt || '';
       return bDate.localeCompare(aDate);
     });
 

@@ -337,6 +337,14 @@ serve(async (req) => {
 
             if (sender && freshContacts && freshContacts.length > 0) {
               const contactIds = freshContacts.map((c: any) => c.id);
+
+              // Load suppression list for this user
+              const { data: suppressedRows } = await supabase
+                .from("suppression_list")
+                .select("email")
+                .eq("user_id", userId);
+              const suppressedEmails = new Set((suppressedRows ?? []).map((r: any) => r.email.toLowerCase()));
+
               const { data: sendableContacts } = await supabase
                 .from("marketing_contacts")
                 .select("id, email, first_name, last_name, city, company")
@@ -344,7 +352,18 @@ serve(async (req) => {
                 .eq("user_id", userId)
                 .eq("unsubscribed", false);
 
-              if (sendableContacts && sendableContacts.length > 0) {
+              // Also filter out suppression list entries
+              const filteredContacts = (sendableContacts ?? []).filter(
+                (c: any) => !suppressedEmails.has((c.email ?? "").toLowerCase())
+              );
+
+              // Build unsubscribe footer
+              const unsubscribeUrl = msgAuto.unsubscribe_url ?? "";
+              const unsubscribeFooter = unsubscribeUrl
+                ? `<br><br><hr style="border:none;border-top:1px solid #eee;margin:24px 0"><p style="font-size:12px;color:#999;text-align:center;margin:0">You received this email because your contact information appears in a public real estate listing. To stop receiving these emails, <a href="${unsubscribeUrl}" style="color:#999">click here to unsubscribe</a>.</p>`
+                : "";
+
+              if (filteredContacts.length > 0) {
                 const campaignId = crypto.randomUUID();
                 await supabase.from("marketing_campaigns").insert({
                   id:              campaignId,
@@ -353,12 +372,12 @@ serve(async (req) => {
                   subject:         msgAuto.subject,
                   channel:         "email",
                   sender_id:       String(msgAuto.sender_id),
-                  recipient_count: sendableContacts.length,
+                  recipient_count: filteredContacts.length,
                   sent_at:         new Date().toISOString(),
                 });
 
                 let sent = 0;
-                for (const contact of sendableContacts) {
+                for (const contact of filteredContacts) {
                   const mergeData: Record<string, string> = {
                     first_name: contact.first_name ?? "there",
                     last_name:  contact.last_name  ?? "",
@@ -369,7 +388,7 @@ serve(async (req) => {
                     personalizations: [{ to: [{ email: contact.email }] }],
                     from: { email: sender.from?.email, name: sender.from?.name },
                     subject: applyMergeTags(msgAuto.subject ?? "", mergeData),
-                    content: [{ type: "text/html", value: applyMergeTags(msgAuto.body ?? "", mergeData) }],
+                    content: [{ type: "text/html", value: applyMergeTags(msgAuto.body ?? "", mergeData) + unsubscribeFooter }],
                   };
                   try {
                     const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {

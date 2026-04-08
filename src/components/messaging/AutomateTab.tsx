@@ -33,7 +33,7 @@ const SCHEDULES = [
 ];
 
 export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
-  const [automations, setAutomations] = useState<MessagingAutomation[]>([]);
+  const [automations, setAutomations] = useState<(MessagingAutomation & { unsubscribe_url?: string })[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [lists, setLists] = useState<ContactList[]>([]);
   const [senders, setSenders] = useState<Sender[]>([]);
@@ -49,6 +49,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
   const [formListId, setFormListId] = useState('');
   const [formSenderId, setFormSenderId] = useState('');
   const [formSchedule, setFormSchedule] = useState<'on_sync' | 'manual' | 'daily' | 'weekly' | 'monthly'>('on_sync');
+  const [formUnsubscribeUrl, setFormUnsubscribeUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
   const loadAll = async () => {
@@ -110,6 +111,8 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
     if (!formSenderId) { toast.error('Select a sender. Go to Setup to configure SendGrid first.'); return; }
     if (!formSubject.trim()) { toast.error('Subject is required.'); return; }
     if (!formBody.trim()) { toast.error('Body is required.'); return; }
+    if (!formUnsubscribeUrl.trim()) { toast.error('Unsubscribe URL is required for legal compliance with outbound marketing laws.'); return; }
+    try { new URL(formUnsubscribeUrl.trim()); } catch { toast.error('Unsubscribe URL must be a valid URL (e.g. https://yourdomain.com/unsubscribe).'); return; }
 
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -125,6 +128,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
       sender_id: formSenderId,
       schedule: formSchedule,
       status: 'active',
+      unsubscribe_url: formUnsubscribeUrl.trim(),
     });
 
     setSaving(false);
@@ -133,7 +137,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
     toast.success('Automation created.');
     setShowForm(false);
     setFormName(''); setFormTemplateId(''); setFormSubject(''); setFormBody('');
-    setFormListId(''); setFormSchedule('manual');
+    setFormListId(''); setFormSchedule('manual'); setFormUnsubscribeUrl('');
     await loadAll();
   };
 
@@ -190,6 +194,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          unsubscribe_url: a.unsubscribe_url ?? '',
           recipients: contacts.map((c: any) => ({
             email: c.email,
             first_name: c.first_name ?? '',
@@ -344,6 +349,21 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
               placeholder={"Hi {{first_name}},\n\n..."}
               className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono resize-y"
             />
+          </div>
+
+          {/* Unsubscribe URL */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Unsubscribe URL <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="url"
+              value={formUnsubscribeUrl}
+              onChange={e => setFormUnsubscribeUrl(e.target.value)}
+              placeholder="https://yourdomain.com/unsubscribe"
+              className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <p className="mt-1 text-xs text-zinc-400">Required by law. An unsubscribe link is automatically appended to every email sent by this automation.</p>
           </div>
 
           {/* Schedule */}

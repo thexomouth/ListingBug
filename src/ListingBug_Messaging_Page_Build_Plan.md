@@ -8,534 +8,345 @@
 
 ## Overview
 
-A new `/messaging` route added to the ListingBug SPA. Stage 1 is a private, password-gated admin tool for Jack's personal outbound marketing use. Stage 2 promotes it to a full user-facing feature with integration platform support and automation triggers.
+A `/messaging` route added to the ListingBug SPA. Stage 1 is an admin-only outbound marketing tool accessible only to accounts with `is_admin = true`. Stage 2 promotes it to a full user-facing feature with plan gating, integration platform support, and scheduled automation triggers.
 
-The page has four tabs rendered in this order: **Create → Contacts → Campaigns → Setup**
+The page has five tabs rendered in this order: **Create → Contacts → Campaigns → Automate → Setup**
 
 ---
 
-## Architecture Notes (Read Before Building)
+## Architecture Notes
 
-- All routing lives in `src/App.tsx`. Add `/messaging` as a `lazy()` import — never a top-level import (TDZ risk from Supabase circular imports).
-- All edge functions deploy with `verify_jwt: false`. Auth is validated manually inside the function using the anon key pattern.
+- All routing lives in `src/App.tsx`. `/messaging` is a `lazy()` import — never a top-level import (TDZ risk from Supabase circular imports).
+- All edge functions deploy with `verify_jwt: false`. Auth is validated manually inside the function using the anon key pattern. **Never change `verify_jwt` without asking** — `run-automation` and `run-due-automations` are intentionally `false`.
 - Never use `.single()` for optional lookups — use `.maybeSingle()`.
 - Never use `.upsert()` on the `users` table — use `.update()`.
 - Supabase silently drops INSERTs with unknown columns. Always destructure and check `const { error } = await supabase.from(...).insert(...)`.
-- New tables must be added to the `supabase_realtime` publication if realtime is needed: `ALTER PUBLICATION supabase_realtime ADD TABLE <table>;`
 - Radix UI dropdowns inside high-z-index modals need `className="z-[10000]"` on `DropdownMenuContent`.
-- Stage 1 uses a **separate** SendGrid API key secret (`SENDGRID_ADMIN_KEY`) distinct from the existing `SENDGRID_API_KEY` used by `send-to-sendgrid`. This separation makes Stage 2 cleanup explicit.
-- Functions marked `[STAGE 1 — REPLACE IN STAGE 2]` are intentionally simplified and will need rework before user-facing launch.
+- `messaging_config` table stores per-user SendGrid API key and webhook secret as JSONB `config` field. Always read-before-write (merge pattern) to avoid overwriting sibling keys.
+- Supabase URL is hardcoded: `https://ynqmisrlahjberhmlviz.supabase.co`. Do not use `import.meta.env.VITE_SUPABASE_URL` — these env vars are not set.
 
 ---
 
-## Stage 1 — Private Admin Messaging
+## Stage 1 — Complete
 
-**Access:** Route exists at `/messaging` but is not linked in any nav, sidebar, or sitemap.  
-**Auth:** Hardcoded password `spitonthatthang` checked on mount, stored in `localStorage` key `lb_msg_auth`. One-time entry — once set, the user is never prompted again on that device.  
-**Sitemap:** Add `/messaging` to `robots.txt` as `Disallow`.  
-**Stage 2 action:** Remove password gate entirely. Add to sidebar nav. Apply plan-based gating.
+All items below are built and deployed as of April 6, 2026.
+
+---
+
+### Admin Access & Nav
+
+- `users.is_admin` boolean column added (migration `004_add_is_admin.sql`)
+- User `c7b3040c-941d-417a-b6a1-910b72c48e09` promoted to admin in same migration
+- `App.tsx` fetches `is_admin` from `users` table on session load, passes to `Header` as prop
+- `Header.tsx` shows Messaging nav link as last item only when `isAdmin = true` (both top nav and mobile hamburger)
+- Dashboard removed from top nav and left sidebar nav entirely
+- `/messaging` route is not linked for non-admin users — no sitemap entry needed yet
 
 ---
 
 ### Tab 1 — Create
 
-**Purpose:** Compose and send a marketing email (or stub an SMS) to a selected contact list or manually entered recipients.
+- Recipient selector: contacts from Contacts tab, manual email entry
+- Sender identity dropdown: loads verified senders via `get-marketing-config` → SendGrid `GET /v3/senders`
+- Template dropdown: loads from `marketing_templates`, pre-fills subject and body on selection
+- Subject and body fields with merge tag reference footer (`{{first_name}}`, `{{last_name}}`, `{{city}}`, `{{company}}`)
+- Body supports full HTML (sent as `text/html` to SendGrid)
+- **Pre-send validation** (`validate()` runs before any send attempt): checks recipients, sender ID, senders loaded, subject, body — shows inline red errors
+- **Webhook warning**: if SendGrid webhook secret is not configured, shows amber warning block with "Setup is easy →" link navigating to Setup tab via `onGoToSetup` prop — does not block send
+- **No platform SendGrid fallback** — send is blocked until user has their own SendGrid key configured in Setup
+- **Email preview modal**: Eye icon button opens `EmailPreviewModal` before send
+- Save as Template button: writes to `marketing_templates`
+- Send flow: calls `send-marketing-email` edge function → server-side merge tag substitution → `POST /v3/mail/send` per recipient → writes `marketing_campaigns` + `marketing_sends` rows
 
-**Layout:**
-- Top bar: page title left, template dropdown right (loads from `marketing_templates`)
-- Form fields: To (recipient selector — pulls from Contacts tab selection or manual email entry), Subject, Body (rich text or textarea with basic toolbar)
-- Channel toggle: Email / SMS — SMS is **stubbed in Stage 1**, renders greyed UI with "Coming in Stage 2" tooltip
-- Action buttons below body: Save as Template, Send
-- Footer (always visible): merge tag reference and SendGrid variable syntax example
+---
 
-**Merge tag footer example (always shown at bottom of Create tab):**
-```
-Available merge tags: {{first_name}}, {{last_name}}, {{city}}, {{company}}
-SendGrid substitution syntax: -first_name-, or use Handlebars: {{first_name}}
-Example subject: "New listings in {{city}}, {{first_name}}"
-Example body opener: "Hi {{first_name}}, here are this week's new listings in {{city}}..."
-```
+### Email Preview Modal (`EmailPreviewModal.tsx`)
 
-**Send flow:**
-1. Client substitutes merge tags per recipient from contact record
-2. Calls `send-marketing-email` edge function with `{ recipients, subject, body, campaign_name, sender_id }`
-3. Edge function loops `POST /v3/mail/send` per recipient (Email API quota — not Marketing Campaigns)
-4. Writes one row to `marketing_campaigns`, one row per recipient to `marketing_sends`
-5. Returns per-recipient result summary to UI; UI shows inline success/error count toast
-
-**Sender identity selector:**
-- Dropdown populated by calling SendGrid `GET /v3/senders` via the `get-marketing-config` edge function
-- Returns list of verified sender identities (id, nickname, from email)
-- Selected sender ID passed to `send-marketing-email`
-
-**Template system:**
-- Save as Template → writes to `marketing_templates` (name, channel, subject, body)
-- Load template dropdown → reads from `marketing_templates` filtered by `user_id` and `channel`
-- In Stage 1, templates are ListingBug-native only (no platform imports)
+- Sandboxed iframe with `srcdoc` renders the actual email body (avoids React escaping issues)
+- `buildEmailDocument()`: full DOCTYPE HTML shell with email-safe CSS, centered 600px container
+- HTML detection: if body contains HTML tags, renders as-is; if plain text, wraps in basic HTML shell
+- Merge tag substitution with first selected recipient's data, or sample data if none selected — badge indicates which
+- Desktop (680px) / mobile (390px) viewport toggle
+- From / To / Subject header chrome above iframe
+- Footer note: "Body rendered as HTML" or "Body is plain text — will be wrapped in a basic HTML shell on send"
 
 ---
 
 ### Tab 2 — Contacts
 
-**Purpose:** Upload, manage, and browse contacts. Organize into named lists. Select recipients for sends.
-
-**Contact fields (normalized CSV schema):**
-
-| Field | Required | Notes |
-|---|---|---|
-| `email` | Yes | Primary key, used for upsert dedup |
-| `first_name` | Yes | Merge tag source. Fallback to "there" if blank on send |
-| `last_name` | No | |
-| `role` | No | Controlled vocab: Buyer, Seller, Agent, Broker, Investor, Landlord |
-| `city` | No | Replaces "market" — used as field and tag. Matches automation geography |
-| `phone` | No | E.164 format (+15551234567). For future Twilio sends |
-| `company` | No | Brokerage or firm name |
-| `tags` | No | Pipe-delimited string: `"vip\|q1\|open-house"` |
-
-**System-managed fields (never in upload CSV):**
-
-| Field | Notes |
-|---|---|
-| `unsubscribed` | Set true on bounce or unsubscribe event. Locked out of selection |
-| `last_sent_at` | ISO timestamp of most recent send |
-| `source` | Set on import: `"csv-upload"` in Stage 1 |
-| `user_id` | Set to authenticated user on insert |
-
-**CSV upload flow:**
-1. Drag-drop or file picker → parse on client (no server round-trip for parse)
-2. Validate: flag rows missing `email` or `first_name`, flag malformed emails
-3. Preview table with error rows highlighted before committing
-4. On confirm: POST to `import-marketing-contacts` edge function → upserts to `marketing_contacts` on `email`
-5. User assigns upload to one or more lists (existing or new) during import
-
-**List management:**
-- Contacts belong to one or more named lists via `marketing_contacts_lists` join table
-- Lists panel (left sidebar or top bar): shows all lists with contact count
-- "New list" button → name input → creates row in `marketing_lists`
-- Clicking a list filters the contact table to members of that list
-- Contacts not assigned to any list visible under "All Contacts"
-- Each contact row shows which lists they belong to (badge chips)
-- Multi-select contacts → "Add to list" or "Remove from list" bulk actions
-
-**Filtering:**
-- Filter chips: role, city, tags, list membership, unsubscribed status
-- Search by name or email
-- "Select filtered" → passes selected contacts to Create tab as recipients
-
-**Stage 2 addition:** Primary load will be agents from the Agents/Leaderboard page data. Integration audience loading (Mailchimp, HubSpot, SendGrid lists) added as a source switcher.
+- Full contact table: Name, Email, Phone, Company, City, Source, Lists, Status
+- Phone column populated from all three sources: local agent profiles, CSV uploads, Mailchimp
+- **CSV upload zone** (complete rewrite):
+  - `HEADER_ALIASES` map: normalizes 20+ column name variants (company_name→company, mobile→phone, email_address→email, firstname→first_name, full_name splits to first/last, brokerage→company, etc.)
+  - `splitCSVRecords()`: character-level parser handles newlines inside quoted fields, double-quote escaping, CRLF — does not break on multiline fields
+  - Strips BOM, lowercases and trims all header names before alias lookup
+  - Validation: `full_name` + (`email` OR `phone`) required; remaining fields optional
+  - Two-column layout: drop zone left, format guide right
+  - Format guide: column name, badge (required/either/optional), description, "also: alias1, alias2" line for each alias group
+  - Copy prompt button (clipboard) and Download template CSV button (4 example rows)
+  - Preview table before confirm: Name, Email, Phone, Company, City, Status
+- List management: create lists, assign contacts to lists, filter by list
+- Contact source badges: `csv-upload`, `automation-run`, `mailchimp`, `hubspot`
 
 ---
 
 ### Tab 3 — Campaigns
 
-**Purpose:** History of all sends grouped by campaign. Selecting a campaign opens a full results detail page.
-
-**Campaigns table columns:** Campaign name, Channel, Subject, Sent at, Recipients, Delivered, Bounced, Failed, Status
-
-**Interaction:** Clicking any campaign row navigates to `/messaging/results/:campaign_id` — a dedicated results page (not a modal) showing the full per-recipient send table.
-
-**Results page columns:** Email, First name, Status (delivered / bounced / failed), Error message, Sent at, Updated at
-
-**Status data source:** SendGrid Event Webhook (`sendgrid-event-webhook` edge function) — SendGrid POSTs delivery events to this endpoint, which updates `marketing_sends.status` by matching `sg_message_id`. Status shown in UI reflects the most recent event received.
-
-**Refresh:** Manual refresh button in Stage 1. No realtime subscription.
-
-**Stage 2 addition:** Open/click rate columns once per-integration metrics are available.
+- Table: Campaign name, Channel, Subject, Sent at, Recipients, Delivered, Bounced, Failed, Status
+- Clicking a campaign row navigates to `/messaging/results/:campaign_id`
+- Results page: per-recipient table — Email, Name, Status, Error, Sent at, Updated at
+- Status sourced from `marketing_sends.status`, updated by SendGrid event webhook
+- Manual refresh in Stage 1 (no realtime subscription)
 
 ---
 
-### Tab 4 — Setup
+### Tab 4 — Automate (`AutomateTab.tsx`)
 
-**Purpose:** Configure the sending environment and test it.
-
-**Sections:**
-
-**SendGrid (Email):**
-- API key status indicator (confirms `SENDGRID_ADMIN_KEY` secret is set — key value never exposed to client)
-- Verified sender dropdown (loaded from `GET /v3/senders` via `get-marketing-config`)
-- Send test email button → sends to a hardcoded admin address, shows raw response inline
-- Webhook URL display (read-only): the public URL of `sendgrid-event-webhook` to register in SendGrid dashboard
-
-**SMS (Stub):**
-- Section rendered but greyed out with label "Coming in Stage 2"
-- Placeholder text: "SMS sending will be available via SendGrid or Twilio. Configuration will appear here."
-
-**Note:** No API key input field in the UI. The `SENDGRID_ADMIN_KEY` is set directly in Supabase Edge Function Secrets, not stored in the database.
+- Lists active and paused messaging automations for the user
+- **Create automation**: select list, select template (pre-fills subject/body), set schedule, activate
+- **Schedule options**: On Sync (default), Manual, Daily, Weekly, Monthly
+  - **On Sync**: fires automatically whenever a search automation updates the target list via `run-automation` or `run-due-automations`
+  - Manual: user clicks "Run Now" button
+  - Daily/Weekly/Monthly: intended for future cron execution (see Recommended Next)
+- **Run Now**: loads list members, skips unsubscribed, calls `send-marketing-email`, updates `last_run_at` and `total_sent`
+- Status toggle (active/paused), delete, stats per automation (list name, last run, total sent, schedule badge, status badge)
+- `messaging_automations` table: `list_id`, `sender_id`, `subject`, `body`, `schedule` (on_sync/manual/daily/weekly/monthly), `status`, `last_run_at`, `total_sent`
 
 ---
 
-## New Supabase Tables (Stage 1)
+### Tab 5 — Setup
 
-### `marketing_contacts`
-```sql
-id            uuid primary key default gen_random_uuid()
-user_id       uuid references auth.users
-email         text not null
-first_name    text
-last_name     text
-role          text  -- Buyer | Seller | Agent | Broker | Investor | Landlord
-city          text
-phone         text  -- E.164
-company       text
-tags          text  -- pipe-delimited: "vip|q1"
-unsubscribed  boolean default false
-last_sent_at  timestamptz
-source        text  -- "csv-upload" in S1
-created_at    timestamptz default now()
-
-unique(user_id, email)
-```
-
-### `marketing_lists`
-```sql
-id          uuid primary key default gen_random_uuid()
-user_id     uuid references auth.users
-name        text not null
-created_at  timestamptz default now()
-```
-
-### `marketing_contacts_lists`
-```sql
-contact_id  uuid references marketing_contacts(id) on delete cascade
-list_id     uuid references marketing_lists(id) on delete cascade
-primary key (contact_id, list_id)
-```
-
-### `marketing_campaigns`
-```sql
-id               uuid primary key default gen_random_uuid()
-user_id          uuid references auth.users
-name             text
-subject          text
-channel          text default 'email'  -- email | sms
-sender_id        text  -- SendGrid sender identity ID
-sent_at          timestamptz default now()
-recipient_count  int default 0
-template_id      uuid references marketing_templates(id)
-```
-
-### `marketing_sends`
-```sql
-id             uuid primary key default gen_random_uuid()
-campaign_id    uuid references marketing_campaigns(id)
-contact_id     uuid references marketing_contacts(id)
-email          text
-status         text default 'pending'  -- pending | delivered | bounced | failed
-sg_message_id  text  -- SendGrid X-Message-Id, used for webhook matching
-error          text
-sent_at        timestamptz
-updated_at     timestamptz default now()
-```
-
-### `marketing_templates`
-```sql
-id          uuid primary key default gen_random_uuid()
-user_id     uuid references auth.users
-name        text not null
-channel     text default 'email'
-subject     text
-body        text
-created_at  timestamptz default now()
-updated_at  timestamptz default now()
-```
-
-**RLS:** Enable RLS on all tables. All policies: `user_id = auth.uid()`. Exception: `sendgrid-event-webhook` updates `marketing_sends` using the service role key (no user context on webhook calls).
-
-**Realtime:** Add `marketing_sends` and `marketing_campaigns` to the publication if live status updates are needed in Stage 2:
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE marketing_sends;
-ALTER PUBLICATION supabase_realtime ADD TABLE marketing_campaigns;
-```
+- Per-user SendGrid API key input → stored in `messaging_config` JSONB (read-before-write merge)
+- SendGrid webhook secret input → stored in `messaging_config`
+- Verified sender dropdown (loads from user's own SendGrid key via `get-marketing-config`)
+- Webhook URL display (read-only): `sendgrid-event-webhook` public URL for registering in SendGrid dashboard
+- Webhook configured status indicator (checked by CreateTab on mount for amber warning logic)
+- SMS section: greyed out with "Coming in Stage 2" label
 
 ---
 
-## New Edge Functions (Stage 1)
+### Automation Destinations — Create Automation Modal
 
-### `send-marketing-email` — [STAGE 1 — REPLACE IN STAGE 2]
-
-**Purpose:** Send a batch of marketing emails via SendGrid Email API (not Marketing Campaigns). One `POST /v3/mail/send` call per recipient.
-
-**Auth:** `verify_jwt: false`. Validates JWT manually inside using anon key pattern.
-
-**Secret used:** `SENDGRID_ADMIN_KEY` (separate from existing `SENDGRID_API_KEY`)
-
-**Request body:**
-```typescript
-{
-  recipients: Array<{
-    email: string
-    first_name?: string
-    last_name?: string
-    city?: string
-    company?: string
-  }>
-  subject: string        // may contain {{merge_tags}}
-  body: string           // may contain {{merge_tags}}
-  campaign_name: string
-  sender_id: string      // SendGrid verified sender ID
-}
-```
-
-**Logic:**
-1. Validate JWT
-2. Insert row to `marketing_campaigns`, capture `campaign_id`
-3. For each recipient:
-   - Substitute `{{first_name}}`, `{{last_name}}`, `{{city}}`, `{{company}}` in subject and body (server-side, not client-side)
-   - `POST https://api.sendgrid.com/v3/mail/send` with `from` set from sender_id lookup
-   - Capture `X-Message-Id` from response header
-   - Insert row to `marketing_sends` with `sg_message_id` and initial status `pending`
-4. Return `{ campaign_id, sent: N, failed: N, errors: [...] }`
-
-**Stage 2 replacement scope:** Extend to support per-user SendGrid keys, Mailchimp sends, HubSpot sends, Twilio SMS. Factor into a dispatcher pattern similar to `run-automation` → `send-to-*`.
+- **Send to New List**: adds `messaging-list-new` as a destination in `CreateAutomationModal`
+  - Setup field: `list_name` (text input, creates new `marketing_lists` row)
+- **Send to Existing List**: adds `messaging-list-existing` as a destination
+  - Setup field: `list_id` (list-select dropdown populated from `marketing_lists`)
+  - Shows amber warning if no lists exist yet
+- Both destinations appear after "Export to CSV Download" in the destination list
 
 ---
 
-### `sendgrid-event-webhook` — [STAGE 1 — REPLACE IN STAGE 2]
+### On Sync Trigger — Edge Functions
 
-**Purpose:** Receive SendGrid delivery event POSTs and update `marketing_sends` status.
-
-**Auth:** `verify_jwt: false`. No JWT — this is called by SendGrid, not the browser. Validate using SendGrid webhook signature header (`X-Twilio-Email-Event-Webhook-Signature`).
-
-**Secret used:** `SENDGRID_WEBHOOK_SECRET` (set in Supabase Edge Function Secrets)
-
-**Endpoint must be registered in:** SendGrid Dashboard → Settings → Mail Settings → Event Webhook
-
-**Handles events:** `delivered`, `bounce`, `dropped`, `spamreport`, `unsubscribe`
-
-**Logic:**
-```typescript
-// For each event in the POST body array:
-const statusMap = {
-  delivered: 'delivered',
-  bounce: 'bounced',
-  dropped: 'failed',
-  spamreport: 'failed',
-  unsubscribe: 'delivered'  // still delivered, but also set unsubscribed = true
-}
-
-// Update marketing_sends where sg_message_id matches
-// If event is 'unsubscribe', also set marketing_contacts.unsubscribed = true by email
-```
-
-**Stage 2 replacement scope:** Expand to handle per-user webhook routing when multiple users have individual SendGrid keys.
+- `run-automation` and `run-due-automations` both contain:
+  - `sendToMessagingList(userId, listings, listId?, listName?)`: extracts agents with emails from listings, upserts to `marketing_contacts` with `source = 'automation-run'`, adds to `marketing_contacts_lists`, then calls `triggerOnSyncMessagingAutomations`
+  - `triggerOnSyncMessagingAutomations(userId, listId, supabase)`: queries `messaging_automations` for `schedule = 'on_sync'`, `status = 'active'`, matching `list_id`; resolves SendGrid key from `messaging_config`; loads list members; sends via SendGrid API; writes `marketing_campaigns` + `marketing_sends` rows; updates `last_run_at` and `total_sent`
+  - Switch cases added: `messaging-list-new` and `messaging-list-existing` both call `sendToMessagingList`
+- Server-side merge tag substitution (`applyMergeTags()`) runs in both edge functions and in `send-marketing-email`
 
 ---
 
-### `get-marketing-config` — [STAGE 1 — REPLACE IN STAGE 2]
+### Database Migrations Applied
 
-**Purpose:** Load SendGrid sender identities for the sender dropdown in Setup and Create tabs.
-
-**Auth:** `verify_jwt: false`. Validates JWT manually.
-
-**Secret used:** `SENDGRID_ADMIN_KEY`
-
-**Actions (query param `action`):**
-- `senders` → `GET https://api.sendgrid.com/v3/senders` → returns `[{ id, nickname, from_email }]`
-
-**Stage 2 replacement scope:** Replace with per-user key lookup. Add actions for Mailchimp template list, HubSpot template list, Twilio number lookup.
+| Migration | Description |
+|---|---|
+| `001_create_marketing_tables.sql` | `marketing_contacts`, `marketing_lists`, `marketing_contacts_lists`, `marketing_campaigns`, `marketing_sends`, `marketing_templates` |
+| `002_create_messaging_config.sql` | `messaging_config` table with JSONB config field |
+| `003_sendgrid_webhook.sql` | `sendgrid-event-webhook` function and delivery event handling |
+| `004_add_is_admin.sql` | `users.is_admin` boolean; promotes admin user |
+| `005_create_messaging_automations.sql` | `messaging_automations` table with RLS |
+| `006_messaging_automations_on_sync.sql` | Adds `on_sync` to schedule constraint; sets as default |
 
 ---
 
-### `import-marketing-contacts` — [STAGE 1 — REPLACE IN STAGE 2]
+### Edge Functions Deployed
 
-**Purpose:** Upsert a batch of contacts parsed from CSV on the client.
-
-**Auth:** `verify_jwt: false`. Validates JWT manually.
-
-**Request body:**
-```typescript
-{
-  contacts: Array<{
-    email: string
-    first_name?: string
-    last_name?: string
-    role?: string
-    city?: string
-    phone?: string
-    company?: string
-    tags?: string
-  }>
-  list_ids?: string[]   // existing list UUIDs to assign contacts to
-  new_list_name?: string  // if provided, create a new list and assign
-}
-```
-
-**Logic:**
-1. Validate JWT, get `user_id`
-2. Upsert contacts to `marketing_contacts` on `(user_id, email)` conflict — update all fields except `unsubscribed` and `last_sent_at`
-3. Set `source = 'csv-upload'`
-4. If `new_list_name` provided, insert to `marketing_lists`, capture `list_id`
-5. Insert rows to `marketing_contacts_lists` for all `list_ids` (including new)
-6. Return `{ imported: N, updated: N, skipped: N }`
-
-**Stage 2 replacement scope:** Add source types for integration-pulled contacts (Mailchimp, HubSpot). Merge dedup logic across sources.
+| Function | Purpose |
+|---|---|
+| `send-marketing-email` | Per-recipient SendGrid send, server-side merge tags, campaign/send rows. No platform fallback — requires user's own SendGrid key. |
+| `sendgrid-event-webhook` | Receives SendGrid delivery events, updates `marketing_sends.status`. ECDSA P-256/SHA-256 signature verification. |
+| `get-marketing-config` | Loads sender identities from user's SendGrid key. Actions: `senders`. |
+| `import-marketing-contacts` | Upserts contacts from client-parsed CSV. Assigns to lists. |
+| `run-automation` | Includes `sendToMessagingList` + `triggerOnSyncMessagingAutomations` for messaging list destinations. |
+| `run-due-automations` | Same messaging additions as `run-automation` (functions are self-contained copies). |
 
 ---
 
-## Frontend Route & Component Structure
+## Recommended Next (Pre-Stage 2)
 
-```
-src/
-  pages/
-    MessagingPage.tsx          -- tab shell, password gate, lazy loaded
-    MessagingResultsPage.tsx   -- /messaging/results/:campaign_id
-  components/messaging/
-    CreateTab.tsx
-    ContactsTab.tsx
-    CampaignsTable.tsx
-    SetupTab.tsx
-    TemplateDropdown.tsx
-    ContactsListPanel.tsx
-    CsvUploadZone.tsx
-    MergeTagFooter.tsx         -- always-visible footer in Create tab
-```
+These are improvements to existing Stage 1 features that should be addressed before Stage 2 expansion begins.
 
-**Route additions in `App.tsx`:**
-```typescript
-const MessagingPage = lazy(() => import('./pages/MessagingPage'))
-const MessagingResultsPage = lazy(() => import('./pages/MessagingResultsPage'))
+### 1 — Scheduled Automation Execution (Cron)
 
-// Inside router:
-<Route path="/messaging" element={<MessagingPage />} />
-<Route path="/messaging/results/:campaignId" element={<MessagingResultsPage />} />
-```
+Automations with `schedule = 'daily'`, `'weekly'`, or `'monthly'` are created and saved but **not yet executed on schedule**. A cron edge function or pg_cron job needs to:
 
-**Password gate logic (in `MessagingPage.tsx`):**
-```typescript
-const GATE_KEY = 'lb_msg_auth'
-const GATE_PASS = 'spitonthatthang'
+- Query `messaging_automations` where `schedule IN ('daily','weekly','monthly')` and `status = 'active'`
+- Check `last_run_at` against the current time to determine which are due
+- Fire `send-marketing-email` for each due automation's list members
+- Update `last_run_at` and `total_sent`
 
-const [authed, setAuthed] = useState(() => localStorage.getItem(GATE_KEY) === '1')
-
-const handlePassword = (input: string) => {
-  if (input === GATE_PASS) {
-    localStorage.setItem(GATE_KEY, '1')
-    setAuthed(true)
-  }
-}
-
-if (!authed) return <PasswordGate onSubmit={handlePassword} />
-```
-
-**Sitemap exclusion — add to `public/robots.txt`:**
-```
-Disallow: /messaging
-Disallow: /messaging/
-```
+**Approach:** Either a Supabase pg_cron job calling a new `run-due-messaging-automations` edge function, or extending `run-due-automations` to also process messaging automations.
 
 ---
 
-## SendGrid Setup Checklist (One-Time, Before Stage 1 Build)
+### 2 — Campaign Results Page
 
-1. Create a new SendGrid API key scoped to: Mail Send, Senders — Read. Name it "ListingBug Admin Marketing".
-2. Add to Supabase Edge Function Secrets as `SENDGRID_ADMIN_KEY`.
-3. After deploying `sendgrid-event-webhook`, register its public URL in SendGrid Dashboard → Settings → Mail Settings → Event Webhook. Enable events: Delivered, Bounce, Dropped, Spam Report, Unsubscribe.
-4. Copy the SendGrid webhook signing key into Supabase secrets as `SENDGRID_WEBHOOK_SECRET`.
-5. Confirm at least one verified sender identity exists in SendGrid (Settings → Sender Authentication → Sender Management).
+`/messaging/results/:campaignId` is referenced from `CampaignsTable` but not fully built. Build `MessagingResultsPage.tsx`:
+
+- Route already defined in `App.tsx`
+- Loads `marketing_sends` rows for campaign, joined with `marketing_contacts`
+- Per-recipient table: Email, Name, Status, Error, Sent at, Updated at
+- Campaign summary header: name, subject, sent at, total delivered/bounced/failed counts
+
+---
+
+### 3 — Open/Click Event Handling in Webhook
+
+`sendgrid-event-webhook` currently handles `delivered`, `bounce`, `dropped`, `spamreport`, `unsubscribe`. Add:
+
+- `open` event → update `marketing_sends` with `opened_at` timestamp
+- `click` event → update `marketing_sends` with `clicked_at` timestamp
+- Requires adding `opened_at` and `clicked_at` columns to `marketing_sends`
+- Campaigns tab then shows open rate and click rate columns
+
+---
+
+### 4 — Test Send in Setup Tab
+
+Setup tab currently shows SendGrid connection status but has no test send flow. Add:
+
+- "Send test email" button → prompts for recipient email (defaults to logged-in user's email)
+- Calls `send-marketing-email` with a fixed test subject and body
+- Shows raw response inline (success or error message)
+
+---
+
+### 5 — Bulk Contact Actions
+
+Contacts tab multi-select exists in plan but is not implemented:
+
+- Checkbox per row + "Select all" header checkbox
+- Action bar appears when 1+ contacts selected: "Add to list", "Remove from list", "Export selected", "Delete"
+- Passes selected contacts to Create tab via shared state or query param
+
+---
+
+### 6 — Filter Chips in Contacts Tab
+
+Currently contacts load unfiltered. Add:
+
+- Filter chips above the table: Role, City, Source, List, Unsubscribed
+- Search bar: name or email substring
+- Chips stack horizontally, each dismissible individually
+- "Clear all" link when any filter is active
+
+---
+
+### 7 — Unsubscribe Link Handling
+
+Sends currently go out without any unsubscribe mechanism. Before using at scale:
+
+- Add an `{{unsubscribe_url}}` merge tag that resolves to a Supabase edge function URL with a signed token
+- Build `handle-unsubscribe` edge function: validates token, sets `marketing_contacts.unsubscribed = true`, renders a simple "You've been unsubscribed" page
+- Add a reminder in CreateTab body footer if `{{unsubscribe_url}}` is absent from the body
 
 ---
 
 ## Stage 2 — User-Facing Messaging Page
 
-**Access:** Added to sidebar nav. Plan-gated (pro+ tier). Password gate removed entirely.
-
-**All `[STAGE 1 — REPLACE IN STAGE 2]` functions are refactored or replaced.**
+**Access:** Added to sidebar nav for pro+ plan users. `is_admin` gate replaced with plan-based gating.  
+**Password gate:** Already removed — replaced with `is_admin` check. Stage 2 replaces that with plan gating.
 
 ---
 
-### Tab 1 — Create (Stage 2 additions)
+### Tab 1 — Create (Stage 2)
 
 - Channel toggle fully wired: Email and SMS both functional
-- SMS send routed through existing `send-to-twilio` edge function
-- Per-integration send: user selects which platform to send through (SendGrid / Mailchimp / HubSpot / Twilio) via a platform selector
-- Template dropdown becomes a dynamic search across all connected integrations by `user_id`:
-  - ListingBug native templates (from `marketing_templates`)
-  - Mailchimp templates: `GET /3.0/templates` filtered by user's Mailchimp connection in `integration_connections`
-  - HubSpot templates: HubSpot Marketing Email API (requires Marketing Hub on user's account — **confirm availability before building**)
+- SMS send routed through `send-to-twilio` edge function (already exists for automation sends)
+- Per-integration send: platform selector (SendGrid / Mailchimp / HubSpot / Twilio) based on user's connected integrations
+- Template dropdown becomes cross-platform:
+  - ListingBug native templates (`marketing_templates`)
+  - Mailchimp templates: `GET /3.0/templates`
+  - HubSpot email templates: HubSpot Marketing Email API (**requires Marketing Hub — confirm user plan**)
   - Templates grouped by platform in dropdown
-  - Mailchimp and HubSpot templates return HTML body — render preview before send
 
-**Open question:** HubSpot Marketing Email API requires Marketing Hub subscription. Need to verify whether ListingBug users will have this, or whether HubSpot sends should route through contact property updates only (i.e., add email to a HubSpot workflow rather than sending directly).
-
----
-
-### Tab 2 — Contacts (Stage 2 additions)
-
-**Primary data source:** Agents from the Agents/Leaderboard page — the `search_runs` table populated by `run-automation` and `run-due-automations`.
-
-**Auto-population from automations:** When `run-automation` or `run-due-automations` completes a run, each listing agent contact found should be upserted into `marketing_contacts` with `source = 'automation-run'`. This mirrors how the Agents page is populated but persists contacts for messaging use.
-
-**Implementation:** Add a post-run step in `run-automation` and `run-due-automations` that upserts agent contacts (name, email, phone, city) to `marketing_contacts` for the run's `user_id`. Tag with the automation name.
-
-**Integration audience loading:** Source switcher above the contact table lets users toggle between:
-- ListingBug contacts (default — agents + CSV uploads)
-- Mailchimp: load audience via `GET /3.0/lists/{id}/members`, filter by tags/segment
-- HubSpot: load contact lists via `GET /crm/v3/lists`, map fields
-- SendGrid: load contact lists via `GET /v3/marketing/lists` (partially handled by existing `get-integration-options`)
-
-**Unified view:** Contacts from all sources merged into a single table, deduplicated by email, with a `source` badge per row.
-
-**Open question:** Field mapping between integration-native fields (HubSpot lifecycle stage, Mailchimp merge fields) and ListingBug's contact schema. Define a mapping layer before building.
+**Open question:** HubSpot Marketing Email API requires Marketing Hub subscription. If users don't have it, HubSpot sends may need to route through contact enrollment in a workflow rather than direct send.
 
 ---
 
-### Tab 3 — Campaigns (Stage 2 additions)
+### Tab 2 — Contacts (Stage 2)
 
-- Open rate and click rate columns (sourced from SendGrid event webhook — add `open` and `click` event handling)
-- Mailchimp campaign stats: `GET /3.0/campaigns/{id}/report` — requires storing Mailchimp campaign ID at send time
-- HubSpot email performance stats (requires Marketing Hub — same open question as Create tab)
+- Integration audience loading: source switcher toggles between ListingBug contacts, Mailchimp audience members, HubSpot contact lists, SendGrid marketing lists
+- Field mapping layer: maps integration-native fields (HubSpot lifecycle stage, Mailchimp merge fields) to ListingBug contact schema before display and send
+- Unified view: contacts from all sources merged, deduplicated by email, with `source` badge per row
+- Agents from `run-automation` / `run-due-automations` already auto-populate via `sendToMessagingList` (done in Stage 1)
 
 ---
 
-### Tab 4 — Setup (Stage 2 additions)
+### Tab 3 — Campaigns (Stage 2)
+
+- Open rate and click rate columns (requires Stage 1 Recommended #3 — webhook open/click events)
+- Mailchimp campaign stats: `GET /3.0/campaigns/{id}/report` — requires `mailchimp_campaign_id` stored at send time
+- HubSpot email performance stats (requires Marketing Hub)
+
+---
+
+### Tab 4 — Automate (Stage 2)
+
+- Scheduled automations execute on actual schedule (cron) — not just On Sync and Manual
+- Frequency cap: minimum days between sends to the same contact, configurable per automation
+- `messaging_triggers` table for rule-based automation: "When automation X completes a run, send campaign Y to contacts in city Z"
+- Realtime subscription on `messaging_automations` for live status updates
+
+---
+
+### Tab 5 — Setup (Stage 2)
 
 - SMS section fully wired: Twilio from-number configuration
-- SMS from-number: either a shared ListingBug number or per-user provisioned number — **provisioning flow TBD**
-- Trigger-based automation config:
-  - Rule builder: "When a new automation run completes for automation [X], send campaign [Y] to contacts matching city [Z]"
-  - Frequency cap: minimum days between sends to the same contact
-  - Platform selector per trigger
-  - Stored in new `messaging_triggers` table (schema defined in Stage 2 planning)
-- Per-user API key management (users input their own SendGrid / Mailchimp / Twilio keys if not using OAuth-connected integrations)
-
-**Open question:** SMS from-number strategy. Options: (a) one shared ListingBug Twilio number for all users' sends, (b) per-user Twilio sub-account provisioning, (c) user provides their own Twilio number. Decision needed before Stage 2 SMS build.
+- Per-user Twilio account: either shared ListingBug number, per-user sub-account provisioning, or user-supplied number — **provisioning strategy TBD**
+- Per-user API key management UI for integrations not connected via OAuth
 
 ---
 
-## Integration API Reference — Stage 2 Calls Needed
+### Nav & Access (Stage 2)
+
+- Messaging link visible to all users with qualifying plan (pro+), not just admins
+- Plan gate enforced in `App.tsx` using existing `plan_status` field
+- `/messaging` added to public nav in sidebar and mobile menu with plan badge if user is on free tier
+
+---
+
+## Integration API Reference — Stage 2
 
 | Integration | Action | API Call | Notes |
 |---|---|---|---|
-| SendGrid | List sender identities | `GET /v3/senders` | Already in `get-marketing-config` (S1) |
-| SendGrid | Send email | `POST /v3/mail/send` | Already in `send-marketing-email` (S1) |
-| SendGrid | Load contact lists | `GET /v3/marketing/lists` | Partially in `get-integration-options` |
-| SendGrid | Delivery events | Webhook POST | Already in `sendgrid-event-webhook` (S1) |
-| Mailchimp | Load audiences | `GET /3.0/lists` | Already in `get-integration-options` |
+| SendGrid | List sender identities | `GET /v3/senders` | Done in Stage 1 (`get-marketing-config`) |
+| SendGrid | Send email | `POST /v3/mail/send` | Done in Stage 1 (`send-marketing-email`) |
+| SendGrid | Delivery/open/click events | Webhook POST | Done S1; open/click columns recommended next |
+| SendGrid | Load contact lists | `GET /v3/marketing/lists` | New in S2 |
+| Mailchimp | Load audiences | `GET /3.0/lists` | In `get-integration-options` |
 | Mailchimp | Load audience members | `GET /3.0/lists/{id}/members` | New in S2 |
 | Mailchimp | Load templates | `GET /3.0/templates` | New in S2 |
-| Mailchimp | Campaign stats | `GET /3.0/campaigns/{id}/report` | New in S2 — requires campaign ID stored at send time |
-| Mailchimp | Send campaign | `POST /3.0/campaigns` + send | New in S2 — or push contacts + trigger existing campaign |
+| Mailchimp | Campaign stats | `GET /3.0/campaigns/{id}/report` | New in S2 — store campaign ID at send time |
+| Mailchimp | Send campaign | `POST /3.0/campaigns` + send | New in S2 |
 | HubSpot | Load contact lists | `GET /crm/v3/lists` | New in S2 |
 | HubSpot | Load contacts from list | `GET /crm/v3/lists/{id}/memberships` | New in S2 |
-| HubSpot | Load email templates | HubSpot Marketing Email API | New in S2 — **requires Marketing Hub** |
-| HubSpot | Send marketing email | HubSpot Marketing Email API | New in S2 — **confirm user plan** |
-| Twilio | Send SMS | Already in `send-to-twilio` | Wire to Create tab in S2 |
+| HubSpot | Load/send email templates | HubSpot Marketing Email API | New in S2 — **requires Marketing Hub** |
+| Twilio | Send SMS | `send-to-twilio` already exists | Wire to Create tab in S2 |
 | Twilio | From-number config | Twilio Numbers API or manual | Provisioning strategy TBD |
 
 ---
 
-## Open Questions (Must Resolve Before Building)
+## Open Questions
 
 | # | Question | Blocks |
 |---|---|---|
-| 1 | Is `SENDGRID_API_KEY` already set in Supabase secrets for the existing `send-to-sendgrid` function? | Naming `SENDGRID_ADMIN_KEY` correctly in S1 |
-| 2 | How many verified sender identities exist in SendGrid, and which should be default? | Setup tab sender dropdown |
-| 3 | Does the existing `send-to-twilio` function send arbitrary body text, or is it listing-data-specific? | SMS wiring in S2 |
-| 4 | Do ListingBug users have HubSpot Marketing Hub subscriptions? | HubSpot template load and send in S2 |
-| 5 | SMS from-number strategy: shared number, per-user provisioning, or user-supplied? | Twilio SMS in S2 Setup tab |
-| 6 | Field mapping spec for HubSpot and Mailchimp contacts → ListingBug contact schema | Contacts tab unified view in S2 |
-| 7 | Should `run-automation` / `run-due-automations` upsert agent contacts immediately on run, or on a separate background job? | S2 Contacts auto-population |
+| 1 | SMS from-number strategy: shared ListingBug number, per-user sub-account, or user-supplied? | S2 Twilio SMS setup tab |
+| 2 | Do ListingBug users have HubSpot Marketing Hub? | HubSpot template load and direct send in S2 |
+| 3 | Field mapping spec for HubSpot/Mailchimp contact fields → ListingBug schema | S2 unified contacts view |
+| 4 | Frequency cap granularity: per-contact across all automations, or per-contact per-automation? | S2 `messaging_triggers` schema |
+| 5 | Plan gating threshold: which plan tier unlocks messaging for regular users? | S2 nav and access |
 
 ---
 
-*End of document. Pass to Claude Code to begin Stage 1 implementation.*
+*End of document.*

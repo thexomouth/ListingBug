@@ -65,10 +65,11 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const { recipients, subject, body: emailBody, campaign_name, sender_id, attachments } = body;
+  const { recipients, subject, body: emailBody, campaign_name, sender_id, attachments, unsubscribe_url } = body;
   if (!Array.isArray(recipients) || recipients.length === 0) return json({ error: 'recipients required' }, 400);
   if (!subject || !emailBody) return json({ error: 'subject and body required' }, 400);
   if (!sender_id) return json({ error: 'sender_id required' }, 400);
+  if (!unsubscribe_url) return json({ error: 'unsubscribe_url is required for legal compliance.' }, 400);
 
   // Resolve API key via priority chain
   const apiKey = await resolveSendGridKey(serviceClient, user.id);
@@ -86,6 +87,19 @@ Deno.serve(async (req: Request) => {
   const fromEmail = sender.from?.email ?? '';
   const fromName = sender.from?.name ?? '';
 
+  // Load suppression list for this user and filter out suppressed emails
+  const { data: suppressedRows } = await serviceClient
+    .from('suppression_list')
+    .select('email')
+    .eq('user_id', user.id);
+  const suppressedEmails = new Set((suppressedRows ?? []).map((r: any) => r.email.toLowerCase()));
+  const sendableRecipients = recipients.filter((r: any) => !suppressedEmails.has((r.email ?? '').toLowerCase()));
+
+  if (sendableRecipients.length === 0) return json({ error: 'All recipients are on the suppression list.' }, 400);
+
+  // Build unsubscribe footer HTML appended to every email
+  const unsubscribeFooter = `<br><br><hr style="border:none;border-top:1px solid #eee;margin:24px 0"><p style="font-size:12px;color:#999;text-align:center;margin:0">You received this email because your contact information appears in a public real estate listing. To stop receiving these emails, <a href="${unsubscribe_url}" style="color:#999">click here to unsubscribe</a>.</p>`;
+
   // Insert campaign row
   const campaignId = crypto.randomUUID();
   const { error: campErr } = await serviceClient.from('marketing_campaigns').insert({
@@ -95,7 +109,7 @@ Deno.serve(async (req: Request) => {
     subject,
     channel: 'email',
     sender_id: String(sender_id),
-    recipient_count: recipients.length,
+    recipient_count: sendableRecipients.length,
   });
   if (campErr) return json({ error: campErr.message }, 500);
 
@@ -103,7 +117,7 @@ Deno.serve(async (req: Request) => {
   let failed = 0;
   const errors: { email: string; error: string }[] = [];
 
-  for (const recipient of recipients) {
+  for (const recipient of sendableRecipients) {
     const mergeData: Record<string, string> = {
       first_name: recipient.first_name ?? 'there',
       last_name: recipient.last_name ?? '',
@@ -111,7 +125,7 @@ Deno.serve(async (req: Request) => {
       company: recipient.company ?? '',
     };
     const personalizedSubject = applyMergeTags(subject, mergeData);
-    const personalizedBody = applyMergeTags(emailBody, mergeData);
+    const personalizedBody = applyMergeTags(emailBody, mergeData) + unsubscribeFooter;
 
     const payload: Record<string, unknown> = {
       personalizations: [{ to: [{ email: recipient.email }] }],

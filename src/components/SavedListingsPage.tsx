@@ -106,7 +106,7 @@ export function SavedListingsPage() {
           <Save className="w-5 h-5 md:w-6 md:h-6 text-[#342e37]" />
           <h1 className="mb-0 text-2xl md:text-4xl font-bold text-[27px]">Saved Listings</h1>
         </div>
-        <p className="text-gray-600 text-[13px] md:text-sm">
+        <p className="text-gray-600 dark:text-gray-400 text-[13px] md:text-sm">
           Your saved listings for quick access
         </p>
       </div>
