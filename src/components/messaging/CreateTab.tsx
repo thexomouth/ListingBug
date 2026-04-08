@@ -1,12 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Save, AlertCircle, TriangleAlert, Eye, Paperclip, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { MergeTagFooter } from './MergeTagFooter';
 import { TemplateDropdown } from './TemplateDropdown';
 import { EmailPreviewModal } from './EmailPreviewModal';
 import { toast } from 'sonner';
 
 const SUPABASE_FUNCTIONS = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
+
+const MERGE_TAGS: Record<string, { label: string; value: string }[]> = {
+  email: [
+    { label: 'First name', value: '{{first_name}}' },
+    { label: 'Last name',  value: '{{last_name}}' },
+    { label: 'City',       value: '{{city}}' },
+    { label: 'Company',    value: '{{company}}' },
+  ],
+  // sms: [...] when SMS is added
+};
 
 export interface Recipient {
   email: string;
@@ -49,6 +58,20 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
   const [attachments, setAttachments] = useState<Array<{ id: string; fileName: string; mimeType: string; base64: string; size: number }>>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertMergeTag = (tag: string) => {
+    const el = bodyRef.current;
+    if (!el) { setBody(prev => prev + tag); return; }
+    const start = el.selectionStart ?? body.length;
+    const end = el.selectionEnd ?? body.length;
+    const next = body.slice(0, start) + tag + body.slice(end);
+    setBody(next);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = start + tag.length;
+      el.focus();
+    });
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -215,34 +238,46 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       if (useCustomUnsub && !customUnsubUrl.trim()) { toast.error('Enter a custom unsubscribe URL or switch back to ListingBug.'); return; }
       if (useCustomUnsub) { try { new URL(customUnsubUrl.trim()); } catch { toast.error('Custom unsubscribe URL must be a valid URL.'); return; } }
 
-      const automationId = crypto.randomUUID();
-      const unsubscribeUrl = useCustomUnsub
-        ? customUnsubUrl.trim()
-        : `https://www.thelistingbug.com/unsubscribe/${user.id}/${automationId}`;
-
-      // Auto-create a marketing_list for this campaign (or reuse if same name exists)
-      let listId: string;
-      const { data: existing } = await supabase
-        .from('marketing_lists')
-        .select('id')
+      // Check for an existing automation with this name
+      const { data: existingAuto } = await supabase
+        .from('messaging_automations')
+        .select('id, list_id, unsubscribe_url')
         .eq('user_id', user.id)
         .eq('name', name)
         .maybeSingle();
 
-      if (existing) {
-        listId = existing.id;
+      // Preserve existing ID/URL when overwriting so suppressions stay valid
+      const automationId = existingAuto?.id ?? crypto.randomUUID();
+      const unsubscribeUrl = useCustomUnsub
+        ? customUnsubUrl.trim()
+        : (existingAuto?.unsubscribe_url ?? `https://www.thelistingbug.com/unsubscribe/${user.id}/${automationId}`);
+
+      // Reuse or create the campaign's marketing list
+      let listId: string;
+      if (existingAuto?.list_id) {
+        listId = existingAuto.list_id;
       } else {
-        const { data: newList, error: listErr } = await supabase
+        const { data: existingList } = await supabase
           .from('marketing_lists')
-          .insert({ user_id: user.id, name })
           .select('id')
-          .single();
-        if (listErr || !newList) { toast.error('Failed to create campaign list.'); return; }
-        listId = newList.id;
+          .eq('user_id', user.id)
+          .eq('name', name)
+          .maybeSingle();
+
+        if (existingList) {
+          listId = existingList.id;
+        } else {
+          const { data: newList, error: listErr } = await supabase
+            .from('marketing_lists')
+            .insert({ user_id: user.id, name })
+            .select('id')
+            .single();
+          if (listErr || !newList) { toast.error('Failed to create campaign list.'); return; }
+          listId = newList.id;
+        }
       }
 
-      const { error } = await supabase.from('messaging_automations').insert({
-        id: automationId,
+      const payload = {
         user_id: user.id,
         name,
         subject: subject.trim(),
@@ -252,10 +287,25 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         schedule: 'manual',
         status: 'active',
         unsubscribe_url: unsubscribeUrl,
-      });
+        updated_at: new Date().toISOString(),
+      };
 
-      if (error) { toast.error(error.message); return; }
-      toast.success(`Campaign "${name}" saved.`);
+      let saveError;
+      if (existingAuto) {
+        const { error } = await supabase
+          .from('messaging_automations')
+          .update(payload)
+          .eq('id', automationId);
+        saveError = error;
+      } else {
+        const { error } = await supabase
+          .from('messaging_automations')
+          .insert({ id: automationId, ...payload });
+        saveError = error;
+      }
+
+      if (saveError) { toast.error(saveError.message); return; }
+      toast.success(`Campaign "${name}" ${existingAuto ? 'updated' : 'saved'}.`);
     } catch (e: any) {
       toast.error(e?.message ?? 'Unexpected error.');
     } finally {
@@ -360,15 +410,26 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       <div>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Body</label>
         <textarea
+          ref={bodyRef}
           value={body}
           onChange={e => setBody(e.target.value)}
           placeholder={"Hi {{first_name}},\n\nHere are this week's new listings in {{city}}..."}
           rows={10}
           className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 font-mono resize-y"
         />
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {(MERGE_TAGS['email'] ?? []).map(tag => (
+            <button
+              key={tag.value}
+              type="button"
+              onClick={() => insertMergeTag(tag.value)}
+              className="px-2 py-0.5 rounded font-mono text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 hover:border-yellow-300 dark:hover:border-yellow-600 hover:text-yellow-700 dark:hover:text-yellow-300 transition-colors"
+            >
+              {tag.value}
+            </button>
+          ))}
+        </div>
       </div>
-
-      <MergeTagFooter />
 
       {/* Attachments */}
       <div>
@@ -471,15 +532,6 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
             </p>
           </div>
         )}
-      </div>
-
-      {/* SMS stub */}
-      <div className="relative rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 opacity-50 pointer-events-none select-none">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">SMS channel</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400">Coming in Stage 2</span>
-        </div>
-        <p className="text-xs text-zinc-400 mt-1">SMS sending via SendGrid or Twilio. Not yet available.</p>
       </div>
 
       {/* Last result */}
