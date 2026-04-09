@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Upload, X, CheckSquare, Square, UserCheck, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Upload, X, CheckSquare, Square, UserCheck, RefreshCw, ChevronLeft, ChevronRight, Download, ListPlus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ContactsListPanel, ContactList } from './ContactsListPanel';
 import { CsvUploadZone, ParsedContact } from './CsvUploadZone';
@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 const SUPABASE_FUNCTIONS = 'https://ynqmisrlahjberhmlviz.supabase.co/functions/v1';
 
 export interface ContactRow {
-  id?: string; // undefined for agent-source rows
+  id?: string;
   email: string;
   first_name: string;
   last_name?: string;
@@ -18,18 +18,17 @@ export interface ContactRow {
   role?: string;
   tags?: string;
   unsubscribed?: boolean;
-  source: 'agent' | 'csv-upload';
+  source: 'agent' | 'csv-upload' | 'mailchimp' | 'hubspot';
   lists?: string[];
 }
 
-type SourceFilter = 'agents' | 'uploaded' | 'mailchimp';
+type SourceFilter = 'agents' | 'uploaded' | 'mailchimp' | 'hubspot';
 
 interface ContactsTabProps {
   selectedEmails: Set<string>;
   onSelectionChange: (emails: Set<string>, contacts: ContactRow[]) => void;
 }
 
-/** Flatten search_runs results_json into a deduplicated agent contact list. */
 function extractAgentsFromRuns(runs: any[]): ContactRow[] {
   const seen = new Set<string>();
   const agents: ContactRow[] = [];
@@ -55,19 +54,43 @@ function extractAgentsFromRuns(runs: any[]): ContactRow[] {
   return agents;
 }
 
+function exportToCsv(contacts: ContactRow[], filename = 'contacts.csv') {
+  const headers = ['Email', 'First Name', 'Last Name', 'City', 'Company', 'Phone'];
+  const rows = contacts.map(c => [
+    c.email, c.first_name, c.last_name ?? '', c.city ?? '', c.company ?? '', c.phone ?? '',
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabProps) {
   const [source, setSource] = useState<SourceFilter>('agents');
   const [agentContacts, setAgentContacts] = useState<ContactRow[]>([]);
   const [uploadedContacts, setUploadedContacts] = useState<ContactRow[]>([]);
+
+  // Mailchimp
   const [mailchimpLists, setMailchimpLists] = useState<{ id: string; name: string; member_count: number }[]>([]);
   const [mailchimpListId, setMailchimpListId] = useState('');
   const [mailchimpContacts, setMailchimpContacts] = useState<ContactRow[]>([]);
   const [mailchimpLoading, setMailchimpLoading] = useState(false);
   const [mailchimpConnected, setMailchimpConnected] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+
+  // HubSpot
+  const [hubspotLists, setHubspotLists] = useState<{ listId: string; name: string; size: number }[]>([]);
+  const [hubspotListId, setHubspotListId] = useState('');
+  const [hubspotContacts, setHubspotContacts] = useState<ContactRow[]>([]);
+  const [hubspotLoading, setHubspotLoading] = useState(false);
+  const [hubspotConnected, setHubspotConnected] = useState(false);
+  const [hubspotPanelCollapsed, setHubspotPanelCollapsed] = useState(true);
+
   const [lists, setLists] = useState<ContactList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hideUnsubscribed, setHideUnsubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -78,16 +101,17 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
   const [assignListId, setAssignListId] = useState('');
   const [newListName, setNewListName] = useState('');
 
+  // Bulk action state
+  const [showAddToList, setShowAddToList] = useState(false);
+  const [bulkListId, setBulkListId] = useState('');
+  const [bulkAdding, setBulkAdding] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   const loadData = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    // Load admin status
-    const { data: userData } = await supabase.from('users').select('is_admin').eq('id', user.id).single();
-    setIsAdmin(userData?.is_admin ?? false);
-
-    // Load agent data from search_runs
     const { data: runs } = await supabase
       .from('search_runs')
       .select('results_json')
@@ -95,14 +119,12 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       .order('searched_at', { ascending: false });
     setAgentContacts(extractAgentsFromRuns(runs ?? []));
 
-    // Load uploaded contacts
     const { data: contacts } = await supabase
       .from('marketing_contacts')
       .select('id, email, first_name, last_name, city, company, phone, role, tags, unsubscribed')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    // Load lists + membership counts
     const { data: listsData } = await supabase
       .from('marketing_lists')
       .select('id, name')
@@ -113,7 +135,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       .from('marketing_contacts_lists')
       .select('contact_id, list_id');
 
-    const membershipMap = new Map<string, string[]>(); // contact_id → list_ids
+    const membershipMap = new Map<string, string[]>();
     for (const m of memberships ?? []) {
       if (!membershipMap.has(m.contact_id)) membershipMap.set(m.contact_id, []);
       membershipMap.get(m.contact_id)!.push(m.list_id);
@@ -145,9 +167,9 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       count: listCountMap.get(l.id) ?? 0,
     })));
 
-    // Check if Mailchimp is connected and load audience list
     const { data: session } = await supabase.auth.getSession();
     if (session.session) {
+      // Check Mailchimp
       try {
         const res = await fetch(`${SUPABASE_FUNCTIONS}/get-marketing-config?action=mailchimp-lists`, {
           headers: { Authorization: `Bearer ${session.session.access_token}` },
@@ -156,19 +178,29 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
           const data = await res.json();
           setMailchimpLists(data.lists ?? []);
           setMailchimpConnected(true);
-          if (data.lists?.length > 0 && !mailchimpListId) {
-            setMailchimpListId(data.lists[0].id);
-          }
+          if (data.lists?.length > 0 && !mailchimpListId) setMailchimpListId(data.lists[0].id);
         }
-      } catch { /* Mailchimp not configured */ }
+      } catch { /* not configured */ }
+
+      // Check HubSpot
+      try {
+        const res = await fetch(`${SUPABASE_FUNCTIONS}/get-marketing-config?action=hubspot-lists`, {
+          headers: { Authorization: `Bearer ${session.session.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHubspotLists(data.lists ?? []);
+          setHubspotConnected(true);
+          if (data.lists?.length > 0 && !hubspotListId) setHubspotListId(data.lists[0].listId);
+        }
+      } catch { /* not configured */ }
     }
 
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [source, selectedListId, searchQuery, perPage]);
-  useEffect(() => { if (!isAdmin && source === 'uploaded') setSource('agents'); }, [isAdmin]);
+  useEffect(() => { setCurrentPage(1); }, [source, selectedListId, searchQuery, perPage, hideUnsubscribed]);
 
   const loadMailchimpMembers = async (listId: string) => {
     if (!listId) return;
@@ -183,45 +215,61 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       if (res.ok) {
         const data = await res.json();
         setMailchimpContacts((data.members ?? []).map((m: any) => ({
-          email: m.email,
-          first_name: m.first_name,
-          last_name: m.last_name,
-          city: m.city,
-          company: m.company,
-          phone: m.phone,
-          source: 'mailchimp' as const,
+          email: m.email, first_name: m.first_name, last_name: m.last_name,
+          city: m.city, company: m.company, phone: m.phone, source: 'mailchimp' as const,
         })));
-      } else {
-        toast.error('Failed to load Mailchimp audience members.');
-      }
-    } catch {
-      toast.error('Could not reach Mailchimp.');
-    } finally {
-      setMailchimpLoading(false);
-    }
+      } else { toast.error('Failed to load Mailchimp audience members.'); }
+    } catch { toast.error('Could not reach Mailchimp.'); }
+    finally { setMailchimpLoading(false); }
   };
 
-  // Auto-load Mailchimp members when switching to that source
+  const loadHubspotMembers = async (listId: string) => {
+    if (!listId) return;
+    setHubspotLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) return;
+      const res = await fetch(
+        `${SUPABASE_FUNCTIONS}/get-marketing-config?action=hubspot-members&list_id=${encodeURIComponent(listId)}`,
+        { headers: { Authorization: `Bearer ${session.session.access_token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setHubspotContacts((data.members ?? []).map((m: any) => ({
+          email: m.email, first_name: m.first_name, last_name: m.last_name,
+          city: m.city, company: m.company, phone: m.phone, source: 'hubspot' as const,
+        })));
+      } else { toast.error('Failed to load HubSpot contacts.'); }
+    } catch { toast.error('Could not reach HubSpot.'); }
+    finally { setHubspotLoading(false); }
+  };
+
   useEffect(() => {
     if (source === 'mailchimp' && mailchimpListId && mailchimpContacts.length === 0) {
       loadMailchimpMembers(mailchimpListId);
     }
   }, [source, mailchimpListId]);
 
+  useEffect(() => {
+    if (source === 'hubspot' && hubspotListId && hubspotContacts.length === 0) {
+      loadHubspotMembers(hubspotListId);
+    }
+  }, [source, hubspotListId]);
+
   const activeContacts =
     source === 'agents' ? agentContacts :
     source === 'mailchimp' ? mailchimpContacts :
+    source === 'hubspot' ? hubspotContacts :
     uploadedContacts;
 
   const filtered = useMemo(() => {
     let rows = activeContacts;
-
-    // List filter (uploaded only)
     if (source === 'uploaded' && selectedListId) {
       rows = rows.filter(c => c.lists?.includes(selectedListId));
     }
-
-    // Search
+    if (hideUnsubscribed) {
+      rows = rows.filter(c => !c.unsubscribed);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       rows = rows.filter(c =>
@@ -232,22 +280,25 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
         (c.company ?? '').toLowerCase().includes(q)
       );
     }
-
     return rows;
-  }, [activeContacts, source, selectedListId, searchQuery]);
+  }, [activeContacts, source, selectedListId, searchQuery, hideUnsubscribed]);
 
-  // Keep selection in sync with currently visible contacts
   const selectedInView = filtered.filter(c => selectedEmails.has(c.email));
+  const nonUnsub = filtered.filter(c => !c.unsubscribed);
+  const allSelected = nonUnsub.length > 0 && nonUnsub.every(c => selectedEmails.has(c.email));
+
+  const getSelectedRows = (emails: Set<string>): ContactRow[] => {
+    const all = [...agentContacts, ...uploadedContacts, ...mailchimpContacts, ...hubspotContacts];
+    const byEmail = new Map(all.map(c => [c.email, c]));
+    return Array.from(emails).map(e => byEmail.get(e)).filter(Boolean) as ContactRow[];
+  };
 
   const toggleAll = () => {
-    const nonUnsub = filtered.filter(c => !c.unsubscribed);
     if (selectedInView.length === nonUnsub.length && nonUnsub.length > 0) {
-      // Deselect all in view
       const next = new Set(selectedEmails);
       for (const c of filtered) next.delete(c.email);
       onSelectionChange(next, getSelectedRows(next));
     } else {
-      // Select all in view
       const next = new Set(selectedEmails);
       for (const c of nonUnsub) next.add(c.email);
       onSelectionChange(next, getSelectedRows(next));
@@ -260,12 +311,6 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
     if (next.has(c.email)) next.delete(c.email);
     else next.add(c.email);
     onSelectionChange(next, getSelectedRows(next));
-  };
-
-  const getSelectedRows = (emails: Set<string>): ContactRow[] => {
-    const all = [...agentContacts, ...uploadedContacts];
-    const byEmail = new Map(all.map(c => [c.email, c]));
-    return Array.from(emails).map(e => byEmail.get(e)).filter(Boolean) as ContactRow[];
   };
 
   const handleCreateList = async (name: string) => {
@@ -299,23 +344,93 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? 'Import failed.'); return; }
       toast.success(`Imported ${data.imported} contact${data.imported !== 1 ? 's' : ''}.`);
-      setPendingContacts(null);
-      setAssignListId('');
-      setNewListName('');
+      setPendingContacts(null); setAssignListId(''); setNewListName('');
       setShowUpload(false);
       await loadData();
     } catch (e: any) {
       toast.error(e?.message ?? 'Unexpected error.');
-    } finally {
-      setImporting(false);
-    }
+    } finally { setImporting(false); }
+  };
+
+  // ── Bulk actions ─────────────────────────────────────────────────────────
+
+  const handleExportSelected = () => {
+    const rows = getSelectedRows(selectedEmails);
+    exportToCsv(rows, 'selected-contacts.csv');
+    toast.success(`Exported ${rows.length} contact${rows.length !== 1 ? 's' : ''}.`);
+  };
+
+  const handleBulkAddToList = async () => {
+    if (!bulkListId) { toast.error('Select a list.'); return; }
+    setBulkAdding(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // For uploaded contacts we have IDs; for others, upsert first
+      const rows = getSelectedRows(selectedEmails);
+      const uploadedIds: string[] = [];
+      const toUpsert: ContactRow[] = [];
+
+      for (const c of rows) {
+        if (c.id) uploadedIds.push(c.id);
+        else toUpsert.push(c);
+      }
+
+      // Upsert non-uploaded contacts into marketing_contacts
+      if (toUpsert.length > 0) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await fetch(`${SUPABASE_FUNCTIONS}/import-marketing-contacts`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contacts: toUpsert, list_ids: [bulkListId] }),
+          });
+        }
+      }
+
+      // Add existing contacts to list
+      if (uploadedIds.length > 0) {
+        const inserts = uploadedIds.map(id => ({ contact_id: id, list_id: bulkListId }));
+        await supabase.from('marketing_contacts_lists').upsert(inserts, { onConflict: 'contact_id,list_id' });
+      }
+
+      toast.success(`Added ${rows.length} contact${rows.length !== 1 ? 's' : ''} to list.`);
+      setShowAddToList(false); setBulkListId('');
+      await loadData();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Unexpected error.');
+    } finally { setBulkAdding(false); }
+  };
+
+  const handleBulkDelete = async () => {
+    const rows = getSelectedRows(selectedEmails).filter(c => c.id);
+    if (rows.length === 0) { toast.error('Only uploaded contacts can be deleted.'); return; }
+    if (!confirm(`Delete ${rows.length} contact${rows.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      const ids = rows.map(c => c.id!);
+      const { error } = await supabase.from('marketing_contacts').delete().in('id', ids);
+      if (error) { toast.error(error.message); return; }
+      const cleared = new Set(selectedEmails);
+      for (const c of rows) cleared.delete(c.email);
+      onSelectionChange(cleared, getSelectedRows(cleared));
+      toast.success(`Deleted ${rows.length} contact${rows.length !== 1 ? 's' : ''}.`);
+      await loadData();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Unexpected error.');
+    } finally { setBulkDeleting(false); }
   };
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
-  const nonUnsub = filtered.filter(c => !c.unsubscribed);
-  const allSelected = nonUnsub.length > 0 && nonUnsub.every(c => selectedEmails.has(c.email));
+  const sourceTabs: { id: SourceFilter; label: string }[] = [
+    { id: 'agents', label: 'Agents' },
+    { id: 'uploaded' as SourceFilter, label: 'Uploaded' },
+    ...(mailchimpConnected ? [{ id: 'mailchimp' as SourceFilter, label: 'Mailchimp' }] : []),
+    ...(hubspotConnected ? [{ id: 'hubspot' as SourceFilter, label: 'HubSpot' }] : []),
+  ];
 
   return (
     <div className="space-y-4">
@@ -323,12 +438,12 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Contacts</h2>
-          {selectedEmails.size > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 font-medium">
-              {selectedEmails.size} selected
-            </span>
-          )}
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Contacts</h2>
+            {selectedEmails.size > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 font-medium">
+                {selectedEmails.size} selected
+              </span>
+            )}
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">View and select contacts for messaging.</p>
         </div>
@@ -336,11 +451,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
         <div className="flex items-center gap-2">
           {/* Source switcher */}
           <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-sm">
-            {([
-              { id: 'agents', label: 'Agents' },
-              ...(isAdmin ? [{ id: 'uploaded', label: 'Uploaded' }] : []),
-              ...(mailchimpConnected ? [{ id: 'mailchimp', label: 'Mailchimp' }] : []),
-            ] as { id: SourceFilter; label: string }[]).map((s, i) => (
+            {sourceTabs.map((s, i) => (
               <button
                 key={s.id}
                 onClick={() => setSource(s.id)}
@@ -355,7 +466,6 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
             ))}
           </div>
 
-          {/* Import CSV — hidden on mobile, shown inline on sm+ */}
           {source === 'uploaded' && (
             <button
               onClick={() => setShowUpload(v => !v)}
@@ -368,7 +478,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
         </div>
       </div>
 
-      {/* Import CSV — own row on mobile only */}
+      {/* Import CSV — mobile */}
       {source === 'uploaded' && (
         <div className="sm:hidden">
           <button
@@ -385,7 +495,6 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
       {showUpload && source === 'uploaded' && (
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3 bg-zinc-50 dark:bg-zinc-900">
           <CsvUploadZone onParsed={handleImport} />
-
           {pendingContacts && pendingContacts.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -421,8 +530,84 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
         </div>
       )}
 
+      {/* Filter chips */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setHideUnsubscribed(v => !v)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+            hideUnsubscribed
+              ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+              : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+          }`}
+        >
+          {hideUnsubscribed ? <><X size={10} /> Showing subscribed only</> : 'Hide unsubscribed'}
+        </button>
+      </div>
+
+      {/* Bulk action bar */}
+      {selectedEmails.size > 0 && (
+        <div className="flex items-center gap-2 flex-wrap px-3 py-2 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10">
+          <span className="text-xs font-semibold text-yellow-800 dark:text-yellow-300 mr-1">
+            {selectedEmails.size} selected
+          </span>
+          <button
+            onClick={handleExportSelected}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <Download size={12} /> Export CSV
+          </button>
+          <button
+            onClick={() => { setShowAddToList(v => !v); setBulkListId(''); }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <ListPlus size={12} /> Add to list
+          </button>
+          {source === 'uploaded' && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-zinc-900 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 disabled:opacity-60 transition-colors"
+            >
+              <Trash2 size={12} /> {bulkDeleting ? 'Deleting…' : 'Delete'}
+            </button>
+          )}
+          <button
+            onClick={() => onSelectionChange(new Set(), [])}
+            className="ml-auto text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
+
+      {/* Add to list inline picker */}
+      {showAddToList && (
+        <div className="flex items-center gap-2 flex-wrap px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900">
+          <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">Add to list:</span>
+          <select
+            value={bulkListId}
+            onChange={e => setBulkListId(e.target.value)}
+            className="text-xs px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none"
+          >
+            <option value="">Select list…</option>
+            {lists.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+          <button
+            onClick={handleBulkAddToList}
+            disabled={bulkAdding || !bulkListId}
+            className="px-2.5 py-1 rounded bg-yellow-400 hover:bg-yellow-500 text-zinc-900 text-xs font-semibold disabled:opacity-60 transition-colors"
+          >
+            {bulkAdding ? 'Adding…' : 'Confirm'}
+          </button>
+          <button onClick={() => setShowAddToList(false)} className="text-xs text-zinc-400 hover:text-zinc-600">
+            Cancel
+          </button>
+        </div>
+      )}
+
       {/* Main content area */}
       <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden min-h-[400px]">
+
         {/* Mailchimp audience selector */}
         {source === 'mailchimp' && (
           audienceCollapsed ? (
@@ -439,22 +624,14 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
             <div className="w-56 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col">
               <div className="p-3 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
                 <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Audience</p>
-                <button
-                  onClick={() => setAudienceCollapsed(true)}
-                  className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
-                  title="Collapse"
-                >
+                <button onClick={() => setAudienceCollapsed(true)} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
                   <ChevronLeft size={14} />
                 </button>
               </div>
               <div className="p-3 space-y-3">
                 <select
                   value={mailchimpListId}
-                  onChange={e => {
-                    setMailchimpListId(e.target.value);
-                    setMailchimpContacts([]);
-                    loadMailchimpMembers(e.target.value);
-                  }}
+                  onChange={e => { setMailchimpListId(e.target.value); setMailchimpContacts([]); loadMailchimpMembers(e.target.value); }}
                   className="w-full text-sm rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-2 py-1.5 focus:outline-none"
                 >
                   {mailchimpLists.map(l => (
@@ -467,6 +644,48 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                 >
                   <RefreshCw size={11} className={mailchimpLoading ? 'animate-spin' : ''} />
                   Reload members
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* HubSpot list selector */}
+        {source === 'hubspot' && (
+          hubspotPanelCollapsed ? (
+            <div className="w-8 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col items-center pt-2">
+              <button
+                onClick={() => setHubspotPanelCollapsed(false)}
+                className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                title="Expand lists"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="w-56 shrink-0 border-r border-zinc-200 dark:border-zinc-700 flex flex-col">
+              <div className="p-3 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">List</p>
+                <button onClick={() => setHubspotPanelCollapsed(true)} className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+                  <ChevronLeft size={14} />
+                </button>
+              </div>
+              <div className="p-3 space-y-3">
+                <select
+                  value={hubspotListId}
+                  onChange={e => { setHubspotListId(e.target.value); setHubspotContacts([]); loadHubspotMembers(e.target.value); }}
+                  className="w-full text-sm rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 px-2 py-1.5 focus:outline-none"
+                >
+                  {hubspotLists.map(l => (
+                    <option key={l.listId} value={l.listId}>{l.name} ({l.size})</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => { setHubspotContacts([]); loadHubspotMembers(hubspotListId); }}
+                  className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                >
+                  <RefreshCw size={11} className={hubspotLoading ? 'animate-spin' : ''} />
+                  Reload contacts
                 </button>
               </div>
             </div>
@@ -504,7 +723,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
             </div>
           </div>
 
-          {loading || (source === 'mailchimp' && mailchimpLoading) ? (
+          {loading || (source === 'mailchimp' && mailchimpLoading) || (source === 'hubspot' && hubspotLoading) ? (
             <div className="flex-1 flex items-center justify-center text-sm text-zinc-400">Loading…</div>
           ) : filtered.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-sm text-zinc-400 p-8 text-center">
@@ -512,7 +731,9 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                 ? <><UserCheck size={32} className="mb-2 opacity-30" /><p>No agents found yet. Run a search or automation to populate agent data.</p></>
                 : source === 'mailchimp'
                   ? <><RefreshCw size={32} className="mb-2 opacity-30" /><p>No members loaded. Select an audience and click "Reload members".</p></>
-                  : <><Upload size={32} className="mb-2 opacity-30" /><p>No uploaded contacts. Import a CSV above.</p></>
+                  : source === 'hubspot'
+                    ? <><RefreshCw size={32} className="mb-2 opacity-30" /><p>No contacts loaded. Select a list and click "Reload contacts".</p></>
+                    : <><Upload size={32} className="mb-2 opacity-30" /><p>No uploaded contacts. Import a CSV above.</p></>
               }
             </div>
           ) : (
@@ -586,16 +807,13 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
             </div>
           )}
 
-          {/* Pagination controls */}
+          {/* Pagination */}
           {!loading && filtered.length > 0 && (
             <div className="border-t border-zinc-100 dark:border-zinc-800 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-              {/* Left: count */}
               <span className="text-xs text-zinc-400 whitespace-nowrap">
-                {filtered.length === 0 ? '0' : `${(currentPage - 1) * perPage + 1}–${Math.min(currentPage * perPage, filtered.length)}`} of {filtered.length} contact{filtered.length !== 1 ? 's' : ''}
+                {`${(currentPage - 1) * perPage + 1}–${Math.min(currentPage * perPage, filtered.length)}`} of {filtered.length} contact{filtered.length !== 1 ? 's' : ''}
                 {selectedEmails.size > 0 && <span className="ml-2 text-yellow-600 dark:text-yellow-400 font-medium">({selectedEmails.size} selected)</span>}
               </span>
-
-              {/* Center: Prev / Page X of Y / Next */}
               {totalPages > 1 && (
                 <div className="flex items-center gap-1.5 text-xs">
                   <button
@@ -605,9 +823,7 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                   >
                     Prev
                   </button>
-                  <span className="text-zinc-500 dark:text-zinc-400 px-1">
-                    Page {currentPage} of {totalPages}
-                  </span>
+                  <span className="text-zinc-500 dark:text-zinc-400 px-1">Page {currentPage} of {totalPages}</span>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
@@ -617,8 +833,6 @@ export function ContactsTab({ selectedEmails, onSelectionChange }: ContactsTabPr
                   </button>
                 </div>
               )}
-
-              {/* Right: per-page */}
               <select
                 value={perPage}
                 onChange={e => setPerPage(Number(e.target.value))}

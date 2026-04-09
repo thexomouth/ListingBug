@@ -521,54 +521,151 @@ export function SetupTab() {
           <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
             <div className="flex items-start gap-2">
               <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
-              <p>Mailchimp is connected. Audiences are available in the <span className="font-medium text-zinc-700 dark:text-zinc-300">Contacts tab</span> and templates appear in the <span className="font-medium text-zinc-700 dark:text-zinc-300">template dropdown</span> in Create.</p>
+              <p>Mailchimp is connected. Audience members are available as a contact source in the <span className="font-medium text-zinc-700 dark:text-zinc-300">Contacts tab</span>, and your Mailchimp templates appear in the <span className="font-medium text-zinc-700 dark:text-zinc-300">template dropdown</span> in Create.</p>
             </div>
             <div className="flex items-start gap-2">
               <AlertCircle size={14} className="text-amber-500 mt-0.5 shrink-0" />
-              <p>Sending via Mailchimp campaigns is available in Stage 2. Currently you can load Mailchimp contacts as recipients and send through SendGrid.</p>
+              <p>Sending directly via Mailchimp campaigns is coming in Stage 2. For now, load Mailchimp contacts as recipients and send through SendGrid.</p>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Connect Mailchimp in <span className="font-medium text-zinc-700 dark:text-zinc-300">Account → Integrations</span> to load audiences and templates here.
-          </p>
+          <div className="space-y-4">
+            <div className="px-3 py-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400">
+              Connecting Mailchimp lets you load audience members as contacts and use your Mailchimp templates when composing emails.
+            </div>
+            <ol className="space-y-3 text-sm">
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">1</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Open <span className="font-medium text-zinc-700 dark:text-zinc-300">Account → Integrations</span> in the left sidebar.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">2</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Find <span className="font-medium text-zinc-700 dark:text-zinc-300">Mailchimp</span> and click <span className="font-medium text-zinc-700 dark:text-zinc-300">Connect</span>.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">3</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Sign in to Mailchimp and click <span className="font-medium text-zinc-700 dark:text-zinc-300">Allow</span> when prompted to authorize ListingBug.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">4</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Return here and click <span className="font-medium text-zinc-700 dark:text-zinc-300">Refresh status</span> — your audiences and templates will be available immediately.
+                </p>
+              </li>
+            </ol>
+          </div>
         )}
       </PlatformCard>
 
       {/* ── HubSpot ──────────────────────────────────────────────────── */}
       <PlatformCard
         title="HubSpot"
-        subtitle="Contact lists"
+        subtitle="Contact lists + email (requires Marketing Hub)"
         connected={platforms?.hubspot.connected ?? false}
         source={platforms?.hubspot.source ?? null}
       >
         {platforms?.hubspot.connected ? (
-          <div className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-            <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
-            <p>HubSpot is connected. Loading HubSpot contact lists as a contact source is coming in Stage 2.</p>
+          <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <div className="flex items-start gap-2">
+              <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
+              <p>HubSpot is connected. Contact lists are available as a contact source in the <span className="font-medium text-zinc-700 dark:text-zinc-300">Contacts tab</span>.</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <AlertCircle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+              <p>Sending directly through HubSpot requires a <span className="font-medium text-zinc-700 dark:text-zinc-300">Marketing Hub</span> plan. Without it, you can still use HubSpot contacts as recipients and send through SendGrid.</p>
+            </div>
           </div>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Connect HubSpot in <span className="font-medium text-zinc-700 dark:text-zinc-300">Account → Integrations</span>.
-          </p>
+          <div className="space-y-4">
+            <div className="px-3 py-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400">
+              Connecting HubSpot lets you load contact lists as a recipient source. Direct email sending through HubSpot requires a Marketing Hub plan — without it, contacts still send through SendGrid.
+            </div>
+            <ol className="space-y-3 text-sm">
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">1</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Open <span className="font-medium text-zinc-700 dark:text-zinc-300">Account → Integrations</span> in the left sidebar.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">2</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Find <span className="font-medium text-zinc-700 dark:text-zinc-300">HubSpot</span> and click <span className="font-medium text-zinc-700 dark:text-zinc-300">Connect</span>.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">3</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Sign in to HubSpot and click <span className="font-medium text-zinc-700 dark:text-zinc-300">Connect app</span> on the authorization screen. Select the account you want to link if prompted.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">4</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Return here and click <span className="font-medium text-zinc-700 dark:text-zinc-300">Refresh status</span> — your HubSpot contact lists will appear as a contact source.
+                </p>
+              </li>
+            </ol>
+          </div>
         )}
       </PlatformCard>
 
       {/* ── Twilio ───────────────────────────────────────────────────── */}
       <PlatformCard
         title="Twilio"
-        subtitle="SMS — coming in Stage 2"
+        subtitle="SMS sending"
         connected={platforms?.twilio.connected ?? false}
         source={platforms?.twilio.source ?? null}
       >
-        <div className="space-y-2 text-sm text-zinc-500 dark:text-zinc-400">
-          {platforms?.twilio.connected && (
+        {platforms?.twilio.connected ? (
+          <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-              <CheckCircle2 size={14} /> Twilio is connected and ready for Stage 2 SMS wiring.
+              <CheckCircle2 size={14} /> Twilio is connected.
             </div>
-          )}
-          <p>SMS sending configuration will appear here in Stage 2. From-number strategy (shared vs. per-user) is pending a decision.</p>
-        </div>
+            <div className="flex items-start gap-2">
+              <AlertCircle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+              <p>SMS sending and from-number configuration will be wired here in Stage 2.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="px-3 py-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-500 dark:text-zinc-400">
+              Connecting Twilio enables SMS outreach. You'll need your Account SID and Auth Token from the Twilio console.
+            </div>
+            <ol className="space-y-3 text-sm">
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">1</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Log in at <span className="font-medium text-zinc-700 dark:text-zinc-300">twilio.com/console</span>. Your <span className="font-medium text-zinc-700 dark:text-zinc-300">Account SID</span> and <span className="font-medium text-zinc-700 dark:text-zinc-300">Auth Token</span> are displayed on the dashboard homepage.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">2</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Copy both values — you'll need them in the next step.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">3</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Open <span className="font-medium text-zinc-700 dark:text-zinc-300">Account → Integrations</span>, find <span className="font-medium text-zinc-700 dark:text-zinc-300">Twilio</span>, and paste your Account SID and Auth Token.
+                </p>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-none w-5 h-5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center">4</span>
+                <p className="text-zinc-600 dark:text-zinc-400 pt-0.5">
+                  Save and return here — click <span className="font-medium text-zinc-700 dark:text-zinc-300">Refresh status</span> to confirm the connection. From-number setup will appear here once SMS is live.
+                </p>
+              </li>
+            </ol>
+          </div>
+        )}
       </PlatformCard>
     </div>
   );

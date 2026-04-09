@@ -18,6 +18,8 @@ import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import { Dashboard } from "./components/Dashboard";
 import { AutomationRunPage } from "./components/AutomationRunPage";
 
+import { OnboardingModalA, OnboardingModalB, OnboardingModalC, OnboardingModalD } from "./components/OnboardingModals";
+
 // Lazy-loaded non-critical components
 const Footer = lazy(() => import("./components/Footer").then(m => ({ default: m.Footer })));
 const HomePage = lazy(() => import("./components/HomePage").then(m => ({ default: m.HomePage })));
@@ -182,8 +184,6 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [planStatus, setPlanStatus] = useState<string>('active');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultTab, setModalDefaultTab] = useState<'preferences' | 'history'>('preferences');
@@ -197,6 +197,10 @@ export default function App() {
   const [sampleReportError, setSampleReportError] = useState<string | null>(null);
   const [sampleReportLoading, setSampleReportLoading] = useState(false);
   const [pageResetKey, setPageResetKey] = useState(0);
+
+  // Onboarding modal state
+  const [onboardingModal, setOnboardingModal] = useState<'a' | 'b' | 'c' | 'd' | null>(null);
+  const [firstSearchCity, setFirstSearchCity] = useState<string | null>(null);
 
   const currentPage = pathToPage(location.pathname);
 
@@ -245,8 +249,8 @@ export default function App() {
           // Navigate immediately — no delay — so login form is never interactive with existing session
           navigate(PAGE_TO_PATH['dashboard']);
         }
-        const { data } = await supabase.from('users').select('plan_status, trial_ends_at, is_admin').eq('id', session.user.id).single();
-        if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); setIsAdmin(data.is_admin ?? false); }
+        const { data } = await supabase.from('users').select('plan_status, trial_ends_at').eq('id', session.user.id).single();
+        if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); }
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -339,6 +343,35 @@ export default function App() {
   const handleSaveReport = (updatedReport: any) => { setSelectedReport(updatedReport); };
   const handleAddToMyReports = (reportData: any) => { console.log("Search saved:", reportData); };
 
+  // Onboarding modal handlers — each fires at most once (guarded by localStorage)
+  const handleFirstSearchComplete = (city: string) => {
+    if (localStorage.getItem('lb_modal_a_seen')) return;
+    if (city) setFirstSearchCity(city);
+    setOnboardingModal('a');
+  };
+
+  const handleIntegrationConnected = () => {
+    if (localStorage.getItem('lb_modal_b_seen')) return;
+    setOnboardingModal('b');
+  };
+
+  const handleFirstExport = () => {
+    if (localStorage.getItem('lb_modal_c_seen')) return;
+    setOnboardingModal('c');
+  };
+
+  const handleFirstAutomationCreated = (automation: any) => {
+    if (localStorage.getItem('lb_modal_d_seen')) return;
+    const city = automation?.searchCriteria?.city || automation?.searchName?.split(',')[0] || firstSearchCity || null;
+    if (city) setFirstSearchCity(city);
+    setOnboardingModal('d');
+  };
+
+  const dismissOnboardingModal = () => {
+    if (onboardingModal) localStorage.setItem(`lb_modal_${onboardingModal}_seen`, 'true');
+    setOnboardingModal(null);
+  };
+
   const isAuthPage = currentPage === 'login' || currentPage === 'signup';
   const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe'].includes(currentPage);
 
@@ -362,7 +395,7 @@ export default function App() {
       case "welcome": return <WelcomePage userName="User" onContinue={() => navigateWithLoading('quick-start-guide')} onSkipToReport={() => navigateWithLoading('search-listings')} />;
       case "quick-start-guide": return <QuickStartGuidePage onComplete={() => navigateWithLoading('search-listings')} onSkip={() => navigateWithLoading('search-listings')} />;
       case "dashboard": return isLoggedIn ? <Dashboard onNavigate={navigateWithLoading} onOpenReport={handleOpenReport} onAccountTabChange={setAccountDefaultTab} onViewAutomationDetail={handleViewAutomationDetail} onSetAutomationsTab={setAutomationsInitialTab} /> : <LoginPage onLogin={handleLogin} />;
-      case "search-listings": return isLoggedIn ? <SearchListings onAddToMyReports={handleAddToMyReports} onNavigate={handleSmartNavigate} onViewSearchResults={handleViewSearchResults} /> : <LoginPage onLogin={handleLogin} />;
+      case "search-listings": return isLoggedIn ? <SearchListings onAddToMyReports={handleAddToMyReports} onNavigate={handleSmartNavigate} onViewSearchResults={handleViewSearchResults} onFirstSearchComplete={handleFirstSearchComplete} onFirstExport={handleFirstExport} /> : <LoginPage onLogin={handleLogin} />;
       case "search-results": return isLoggedIn
         ? selectedSearchRun
           ? <SearchResultsPage searchRun={selectedSearchRun} onBack={() => {
@@ -378,6 +411,7 @@ export default function App() {
         onViewDetail={handleViewAutomationDetail}
         initialTab={automationsInitialTab}
         onNavigate={navigateWithLoading}
+        onFirstAutomationCreated={handleFirstAutomationCreated}
         onViewRunDetails={(run) => {
           // Write to sessionStorage BEFORE navigating so the run survives
           // the navigateWithLoading timeout/transition which can drop React state.
@@ -405,7 +439,7 @@ export default function App() {
       case "saved-listings": return isLoggedIn ? <SavedListingsPage /> : <LoginPage onLogin={handleLogin} />;
       case "agents": return isLoggedIn ? <AgentsPage onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
       case "account": return isLoggedIn ? <AccountPage onLogout={handleLogout} defaultTab={accountDefaultTab} isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} onNavigate={navigateWithLoading} /> : <LoginPage onLogin={handleLogin} />;
-      case "integrations": return isLoggedIn ? <IntegrationsPage onNavigate={navigateWithLoading} /> : <IntegrationsMarketingPage onNavigate={navigateWithLoading} />;
+      case "integrations": return isLoggedIn ? <IntegrationsPage onNavigate={navigateWithLoading} onConnect={handleIntegrationConnected} /> : <IntegrationsMarketingPage onNavigate={navigateWithLoading} />;
       case "billing": return <BillingPage />;
       case "privacy": return <PrivacyPolicyPage />;
       case "terms": return <TermsOfServicePage />;
@@ -443,7 +477,7 @@ export default function App() {
         <div className="min-h-screen bg-background flex flex-col">
           <PageLoader isLoading={isPageLoading} />
           {isAuthPage && <LoginHeader onNavigateToHome={() => navigate('/')} onNavigateToHelp={() => navigateWithLoading('help-center')} />}
-          {!isMinimalPage && <Header currentPage={currentPage} isLoggedIn={isLoggedIn} isAdmin={isAdmin} onNavigate={navigateWithLoading} onSignOut={handleLogout} onAccountTabChange={setAccountDefaultTab} onToggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
+          {!isMinimalPage && <Header currentPage={currentPage} isLoggedIn={isLoggedIn} onNavigate={navigateWithLoading} onSignOut={handleLogout} onAccountTabChange={setAccountDefaultTab} onToggleDarkMode={toggleDarkMode} isDarkMode={isDarkMode} />}
           {isLoggedIn && <SubscriptionGate planStatus={planStatus} trialEndsAt={trialEndsAt} onUpgrade={() => { navigateWithLoading('account'); setAccountDefaultTab('billing'); }} />}
           <main className={`flex-1 bg-white dark:bg-[#0f0f0f] ${isMainContentReady ? 'loaded' : 'loading'}`}>
             <Suspense key={pageResetKey} fallback={<PageLoader isLoading={true} />}>
@@ -454,6 +488,11 @@ export default function App() {
           {isModalOpen && <Suspense fallback={null}><ReportDetailsModal report={selectedReport} isOpen={isModalOpen} onClose={handleCloseModal} onSave={handleSaveReport} showFromNewReport={showFromNewReport} defaultTab={modalDefaultTab} /></Suspense>}
           <ToastContainer />
           <Toaster position="top-right" richColors toastOptions={{ success: { duration: 2000 } }} />
+          {/* Onboarding modals — rendered at App level so they survive page navigation */}
+          <OnboardingModalA isOpen={onboardingModal === 'a'} onNavigate={navigateWithLoading} onDismiss={dismissOnboardingModal} />
+          <OnboardingModalB isOpen={onboardingModal === 'b'} onNavigate={navigateWithLoading} onDismiss={dismissOnboardingModal} />
+          <OnboardingModalC isOpen={onboardingModal === 'c'} onNavigate={navigateWithLoading} onDismiss={dismissOnboardingModal} />
+          <OnboardingModalD isOpen={onboardingModal === 'd'} onNavigate={navigateWithLoading} onDismiss={dismissOnboardingModal} city={firstSearchCity} />
         </div>
       </WalkthroughProvider>
     </ErrorBoundary>

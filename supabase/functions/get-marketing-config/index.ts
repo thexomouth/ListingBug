@@ -46,6 +46,21 @@ async function resolveSendGridKey(
   return null;
 }
 
+/** Resolve HubSpot access token from integration_connections */
+async function resolveHubSpotCreds(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string
+): Promise<{ accessToken: string } | null> {
+  const { data: conn } = await serviceClient
+    .from('integration_connections')
+    .select('credentials')
+    .eq('user_id', userId)
+    .eq('integration_id', 'hubspot')
+    .maybeSingle();
+  const accessToken = (conn?.credentials as any)?.access_token;
+  return accessToken ? { accessToken } : null;
+}
+
 /** Resolve Mailchimp credentials from integration_connections */
 async function resolveMailchimpCreds(
   serviceClient: ReturnType<typeof createClient>,
@@ -211,6 +226,74 @@ Deno.serve(async (req: Request) => {
       subject: t.subject_line ?? '',
     }));
     return json({ templates });
+  }
+
+  // ── action=hubspot-lists ─────────────────────────────────────────────────
+  if (action === 'hubspot-lists') {
+    const hsCreds = await resolveHubSpotCreds(serviceClient, user.id);
+    if (!hsCreds) return json({ error: 'HubSpot not connected.' }, 400);
+
+    const res = await fetch(
+      'https://api.hubapi.com/crm/v3/lists?objectTypeId=0-1&count=100',
+      { headers: { Authorization: `Bearer ${hsCreds.accessToken}` } }
+    );
+    if (!res.ok) return json({ error: `HubSpot error: ${res.status}` }, 502);
+    const data = await res.json();
+    const lists = (data.lists ?? []).map((l: any) => ({
+      listId: String(l.listId),
+      name: l.name ?? '',
+      size: l.size ?? 0,
+    }));
+    return json({ lists });
+  }
+
+  // ── action=hubspot-members ───────────────────────────────────────────────
+  if (action === 'hubspot-members') {
+    const listId = url.searchParams.get('list_id');
+    if (!listId) return json({ error: 'list_id required' }, 400);
+
+    const hsCreds = await resolveHubSpotCreds(serviceClient, user.id);
+    if (!hsCreds) return json({ error: 'HubSpot not connected.' }, 400);
+
+    // Step 1: get contact IDs from list memberships
+    const memberRes = await fetch(
+      `https://api.hubapi.com/crm/v3/lists/${listId}/memberships?limit=100`,
+      { headers: { Authorization: `Bearer ${hsCreds.accessToken}` } }
+    );
+    if (!memberRes.ok) return json({ error: `HubSpot error: ${memberRes.status}` }, 502);
+    const memberData = await memberRes.json();
+    const contactIds: string[] = (memberData.results ?? []).map((m: any) => String(m.recordId));
+
+    if (contactIds.length === 0) return json({ members: [] });
+
+    // Step 2: batch read contact properties
+    const batchRes = await fetch(
+      'https://api.hubapi.com/crm/v3/objects/contacts/batch/read',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${hsCreds.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: contactIds.map(id => ({ id })),
+          properties: ['email', 'firstname', 'lastname', 'city', 'company', 'phone'],
+        }),
+      }
+    );
+    if (!batchRes.ok) return json({ error: `HubSpot batch error: ${batchRes.status}` }, 502);
+    const batchData = await batchRes.json();
+    const members = (batchData.results ?? [])
+      .filter((c: any) => c.properties?.email)
+      .map((c: any) => ({
+        email: c.properties.email ?? '',
+        first_name: c.properties.firstname ?? '',
+        last_name: c.properties.lastname ?? '',
+        city: c.properties.city ?? '',
+        company: c.properties.company ?? '',
+        phone: c.properties.phone ?? '',
+      }));
+    return json({ members });
   }
 
   return json({ error: `Unknown action: ${action}` }, 400);

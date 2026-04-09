@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Save, AlertCircle, TriangleAlert, Eye, Paperclip, X } from 'lucide-react';
+import { Send, Save, AlertCircle, TriangleAlert, Eye, Paperclip, X, Mail, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { TemplateDropdown } from './TemplateDropdown';
 import { EmailPreviewModal } from './EmailPreviewModal';
@@ -33,6 +33,12 @@ interface Sender {
   from_name: string;
 }
 
+interface PlatformStatus {
+  mailchimp: boolean;
+  hubspot: boolean;
+  twilio: boolean;
+}
+
 interface CreateTabProps {
   selectedRecipients: Recipient[];
   onClearRecipients: () => void;
@@ -41,12 +47,14 @@ interface CreateTabProps {
 }
 
 export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSent, onGoToSetup }: CreateTabProps) {
+  const [channel, setChannel] = useState<'email' | 'sms'>('email');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [senderId, setSenderId] = useState('');
   const [senders, setSenders] = useState<Sender[]>([]);
   const [sendersLoading, setSendersLoading] = useState(true);
+  const [platformStatus, setPlatformStatus] = useState<PlatformStatus>({ mailchimp: false, hubspot: false, twilio: false });
   const [webhookConfigured, setWebhookConfigured] = useState<boolean | null>(null);
   const [sending, setSending] = useState(false);
   const [savingCampaign, setSavingCampaign] = useState(false);
@@ -90,7 +98,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           if (data.senders?.length > 0) setSenderId(data.senders[0].id);
         }
 
-        // Check webhook_secret
+        // Check webhook_secret + platform connection status
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: mc } = await supabase
@@ -101,6 +109,21 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
             .maybeSingle();
           setWebhookConfigured(!!(mc?.config?.webhook_secret));
         }
+
+        // Load platform status for the selector strip
+        try {
+          const platformRes = await fetch(`${SUPABASE_FUNCTIONS}/get-marketing-config?action=platforms`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (platformRes.ok) {
+            const p = await platformRes.json();
+            setPlatformStatus({
+              mailchimp: p.mailchimp?.connected ?? false,
+              hubspot: p.hubspot?.connected ?? false,
+              twilio: p.twilio?.connected ?? false,
+            });
+          }
+        } catch { /* ignore */ }
       } catch {
         // SendGrid not yet configured
       }
@@ -177,7 +200,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       const campaignId = crypto.randomUUID();
       const unsubscribeUrl = useCustomUnsub
         ? customUnsubUrl.trim()
-        : `https://www.thelistingbug.com/unsubscribe/${session.user.id}/${campaignId}`;
+        : `${SUPABASE_FUNCTIONS}/handle-unsubscribe?user_id=${session.user.id}&campaign_id=${campaignId}`;
 
       const res = await fetch(`${SUPABASE_FUNCTIONS}/send-marketing-email`, {
         method: 'POST',
@@ -250,7 +273,7 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       const automationId = existingAuto?.id ?? crypto.randomUUID();
       const unsubscribeUrl = useCustomUnsub
         ? customUnsubUrl.trim()
-        : (existingAuto?.unsubscribe_url ?? `https://www.thelistingbug.com/unsubscribe/${user.id}/${automationId}`);
+        : (existingAuto?.unsubscribe_url ?? `${SUPABASE_FUNCTIONS}/handle-unsubscribe?user_id=${user.id}&campaign_id=${automationId}`);
 
       // Reuse or create the campaign's marketing list
       let listId: string;
@@ -317,9 +340,34 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
     <div className="space-y-4">
       {/* Top bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Create Campaign</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Create Campaign</h2>
+          {/* Channel toggle */}
+          <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden text-sm">
+            <button
+              onClick={() => setChannel('email')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
+                channel === 'email'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+              }`}
+            >
+              <Mail size={13} /> Email
+            </button>
+            <button
+              onClick={() => setChannel('sms')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 border-l border-zinc-200 dark:border-zinc-700 transition-colors ${
+                channel === 'sms'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+              }`}
+            >
+              <MessageSquare size={13} /> SMS
+            </button>
+          </div>
+        </div>
         <TemplateDropdown
-          channel="email"
+          channel={channel}
           onSelect={(c) => {
             if (c.name) setCampaignName(c.name);
             if (c.subject) setSubject(c.subject);
@@ -328,6 +376,42 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           }}
         />
       </div>
+
+      {/* SMS coming soon */}
+      {channel === 'sms' && (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 text-center px-6">
+          <MessageSquare size={36} className="text-zinc-300 dark:text-zinc-600" />
+          <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">SMS sending coming soon</p>
+          <p className="text-sm text-zinc-400 max-w-sm">
+            SMS outreach via Twilio is being wired in a future update. Connect Twilio in{' '}
+            <button onClick={onGoToSetup} className="underline hover:no-underline text-zinc-500 dark:text-zinc-300">
+              Messaging Setup
+            </button>{' '}
+            to be ready when it launches.
+          </p>
+        </div>
+      )}
+
+      {/* Platform strip — shown when email channel active and other integrations connected */}
+      {channel === 'email' && (platformStatus.mailchimp || platformStatus.hubspot) && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/40 text-xs text-zinc-500 dark:text-zinc-400 flex-wrap">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">Sending via:</span>
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 font-medium">SendGrid</span>
+          {platformStatus.mailchimp && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400">
+              Mailchimp contacts available · direct send coming
+            </span>
+          )}
+          {platformStatus.hubspot && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400">
+              HubSpot contacts available · direct send requires Marketing Hub
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Email form — hidden when SMS selected */}
+      {channel === 'email' && <>
 
       {/* Recipients */}
       <div>
@@ -620,6 +704,8 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
           onClose={() => setShowPreview(false)}
         />
       )}
+
+      </> /* end email form */}
     </div>
   );
 }

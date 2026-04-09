@@ -13,7 +13,6 @@ type Page = 'home' | 'how-it-works' | 'data-sets' | 'use-cases' | 'integrations'
 interface HeaderProps {
   currentPage: Page;
   isLoggedIn: boolean;
-  isAdmin?: boolean;
   onNavigate: (page: Page) => void;
   onSignOut?: () => void;
   onAccountTabChange?: (tab: 'profile' | 'usage' | 'billing' | 'integrations' | 'compliance') => void;
@@ -37,7 +36,7 @@ const initializeNotifications = (): Notification[] => {
   return [];
 };
 
-export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, onSignOut, onAccountTabChange, onOpenNotifications, onToggleDarkMode, isDarkMode }: HeaderProps) {
+export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccountTabChange, onOpenNotifications, onToggleDarkMode, isDarkMode }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -418,9 +417,8 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                   )}
                 </button>
 
-                {/* Messaging — admin only */}
-                {isAdmin && (
-                  <>
+                {/* Messaging */}
+                <>
                     <span className="text-[#342e37] font-normal">|</span>
                     <button
                       onClick={() => handleNavigate('messaging')}
@@ -435,7 +433,6 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                       )}
                     </button>
                   </>
-                )}
               </nav>
             )}
 
@@ -552,14 +549,12 @@ export function Header({ currentPage, isLoggedIn, isAdmin = false, onNavigate, o
                   >
                     Automations
                   </button>
-                  {isAdmin && (
-                    <button
-                      onClick={() => handleNavigate('messaging')}
-                      className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'messaging' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                    >
-                      Messaging
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleNavigate('messaging')}
+                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'messaging' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                  >
+                    Messaging
+                  </button>
 
                   <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
 

@@ -116,7 +116,7 @@ export function AutomateTab({ onGoToSetup }: { onGoToSetup: () => void }) {
     if (!user) { setSaving(false); return; }
 
     const automationId = crypto.randomUUID();
-    const unsubscribeUrl = `https://www.thelistingbug.com/unsubscribe/${user.id}/${automationId}`;
+    const unsubscribeUrl = `${SUPABASE_FUNCTIONS}/handle-unsubscribe?user_id=${user.id}&campaign_id=${automationId}`;
 
     const { error } = await supabase.from('messaging_automations').insert({
       id: automationId,
