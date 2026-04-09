@@ -43,6 +43,16 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
       options: { emailRedirectTo: `${window.location.origin}/dashboard` }
     });
 
+    // Supabase silently "succeeds" for existing emails when confirmations are on,
+    // returning an empty identities array instead of an error.
+    const emailAlreadyExists = !error && data?.user?.identities?.length === 0;
+
+    if (emailAlreadyExists) {
+      setError('__email_exists__');
+      setIsSubmitting(false);
+      return;
+    }
+
     if (error?.message) {
       setError(error.message);
       setIsSubmitting(false);
@@ -154,12 +164,26 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
               </div>
             </div>
 
-            {error && (
+            {error === '__email_exists__' ? (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 dark:bg-yellow-500/10 dark:border-yellow-500/30 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                  That email is already registered.{' '}
+                  <button
+                    type="button"
+                    className="font-semibold underline hover:no-underline"
+                    onClick={onNavigateToLogin}
+                  >
+                    Sign in instead →
+                  </button>
+                </p>
+              </div>
+            ) : error ? (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-red-700">{error}</p>
               </div>
-            )}
+            ) : null}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">

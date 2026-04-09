@@ -2,58 +2,82 @@
 
 **Document type:** Implementation reference for Claude Code  
 **Created:** April 7, 2026  
-**Scope:** New user onboarding — Dashboard checklist + contextual modals + inline empty states
+**Updated:** April 9, 2026  
+**Scope:** New user onboarding — Full-screen welcome → guided sequential flow → persistent Dashboard checklist
 
 ---
 
 ## Overview
 
-New users land in an app with a lot of surface area (Search, Automations, Integrations, Messaging). Without guidance, the messaging page is functionally dead until setup occurs, and automations don't make sense without a search or destination. This spec defines a lightweight, non-blocking onboarding guide that threads users through the right sequence without forcing a rigid flow.
+New users land in an app with a lot of surface area (Search, Automations, Integrations, Messaging). Without guidance, the messaging page is functionally dead until setup occurs, and automations don't make sense without a search or destination. This spec defines a guided onboarding flow that opens with a full-screen welcome and threads users through the right sequence without forcing a rigid flow.
 
-**Chosen format:** Dashboard checklist card (persistent, collapsible) + contextual post-action modals at natural "what's next?" moments + inline empty states on dead pages.
+**Chosen format:** Full-screen welcome overlay (first login only) → Dashboard checklist card (persistent, collapsible) + contextual post-action modals at natural "what's next?" moments + inline empty states on dead pages.
+
+**Step order rationale:** Automations are the core value loop of the product — users should understand search automations and messaging automations before being routed to the standalone Messaging setup. Messaging comes last as an optional deepening step.
 
 ---
 
-## The Four Steps
+## The Five Steps
 
 | # | Step | Completion signal | Required? |
 |---|------|------------------|-----------|
+| 0 | Welcome screen | Dismissed (localStorage flag) | Yes — shown once |
 | 1 | Run your first search | Any row in `search_runs` for this user | Yes |
-| 2 | Connect a destination | Any row in `integration_connections` OR messaging setup complete | Yes |
-| 3 | Set up ListingBug Messaging | Sender configured in messaging setup (SendGrid key + sender identity) | Optional — see branching below |
-| 4 | Create your first automation | Any row in `automations` for this user | Yes |
+| 2 | Connect a destination | Any row in `integration_connections` | Yes |
+| 3 | Create your first automation | Any row in `automations` for this user | Yes |
+| 4 | Set up ListingBug Messaging | Sender configured in messaging setup | Optional |
 
 ---
 
 ## Step-by-Step Flow
 
+### Step 0 — Full-screen welcome (first login only)
+
+**Trigger:** First time a new user lands on the Dashboard (detect via `lb_onboarding_welcomed: true` absent from localStorage).
+
+**Design:** Full-screen overlay (not a modal) — dark background, centered content, no escape except the CTA. Feels like a landing moment, not a popup.
+
+**Content:**
+- Headline: **"Welcome to ListingBug"**
+- Subtext: "Let's get you started. We'll load local listings you can export, automate, and message — right from here."
+- CTA (primary, prominent): **"Run Your First Search →"**
+- Secondary link (small, below CTA): "Skip for now" — dismisses overlay, sets `lb_onboarding_welcomed: true`, starts checklist from Step 1
+
+**On CTA click:** Dismiss overlay, set `lb_onboarding_welcomed: true`, navigate to Search page with the search subcomponent focused.
+
+---
+
 ### Step 1 — Run your first search
-- User lands on Dashboard, sees checklist card with Step 1 highlighted.
-- CTA navigates to Search page.
-- **On first successful search result:** show a post-search modal (see Modal A below).
-- Step auto-completes on next Dashboard load when `search_runs` row exists.
+- User arrives on Search page from the welcome CTA.
+- Highlight the city input and show a prompt: "Start by entering a city to find listings."
+- Once a valid city is entered, optionally prompt user to adjust price range, then guide them to submit the search.
+- **After results load:** highlight the first row in the results table, prompting the user to click it to preview a listing in the detail modal. After they close the modal, highlight the **Export** button and guide them toward connecting a destination.
+- **On first successful search result:** show **Modal A** (post-search) — see below.
+- Step auto-completes when `search_runs` row exists for this user.
 
 ### Step 2 — Connect a destination
 - Triggered by Modal A (post-search) or by user returning to Dashboard.
-- CTA navigates to Integrations page.
-- After connecting at least one integration, **Modal B** appears: "Want to connect more, or are you ready to move on?"
-- Also ask: **"How do you want to handle emailing your contacts?"** — with clarifying copy that sets the right expectation (see Modal B below).
-  - → "Sync to Mailchimp / my integration, I'll send from there" — skip Step 3, go straight to Step 4
-  - → "Send directly from ListingBug" — Step 3 becomes active
-  - → "Both" — Step 3 becomes active
-- Step auto-completes when `integration_connections` has any row (even if messaging is chosen, an integration is still recommended for exports).
+- CTA navigates to Integrations page: "Choose a platform below to export new listings and agents to."
+- This step waits for any integration to be connected — no specific platform is required.
+- After connecting, show **Modal B**: guide user back to Search → History tab to select their recent search and use the Export button with their newly connected integration.
+- After a successful export, **Modal C** fires: "Ready to automate this search?" → navigates to Automations.
+- Step auto-completes when `integration_connections` has any row.
 
-### Step 3 — Set up ListingBug Messaging *(conditional)*
-- Only shown if user answered "Through ListingBug" or "Both" in Step 2.
-- If skipped in Step 2, this step is shown with a muted "optional" label on the checklist.
-- CTA deep-links directly to **Messaging → Setup tab**.
-- Step auto-completes when a valid sender identity is saved in messaging setup (check for a non-empty sender record for this user in `messaging_automations` sender config, or a dedicated `messaging_setup` table if one exists — verify at build time).
-- **Inline empty state on Messaging page** (see Empty States section) handles users who arrive here without guidance.
-
-### Step 4 — Create your first automation
-- CTA navigates to Automations → opens New automation form.
+### Step 3 — Create your first automation
+- CTA navigates to **Automations → Create tab**.
+- Explain that the Automations page has two types of automations:
+  - **Search automations** — run a saved search on a schedule and export results to your connected destination automatically
+  - **Messaging automations** — send automated emails to agents in your list on a schedule or when contacts are added
+- Prompt is pre-filled with the city from the user's first search if available (pass via `sessionStorage`).
 - Step auto-completes when any row exists in `automations` for this user.
-- This is the finish line. On completion, checklist card shows a success state for a few seconds, then collapses/dismisses permanently.
+- On completion, surface the optional messaging step via **Modal D**: "Want to set up automated messaging to the agents in [city]?" — with a CTA to Messaging setup and a "Not now" dismiss.
+
+### Step 4 — Set up ListingBug Messaging *(optional)*
+- Only surfaced after Step 3 completes (via Modal D), or visible on the checklist with an "Optional" badge.
+- CTA deep-links directly to **Messaging → Setup tab**.
+- Step auto-completes when a valid sender identity is saved in messaging setup.
+- **Inline empty state on Messaging page** (see Empty States section) handles users who arrive here without guidance.
+- This is the finish line. On completion (or explicit dismissal), checklist card shows a success state for a few seconds, then collapses/dismisses permanently.
 
 ---
 
@@ -63,7 +87,7 @@ New users land in an app with a lot of surface area (Search, Automations, Integr
 
 **Content:**
 - Headline: "You've got listings — now where do you want to send them?"
-- Body: Brief (1-2 sentences) — "Connect an integration to sync listings to Mailchimp, Google Sheets, a webhook, or more. Or set up ListingBug Messaging to send directly from your own sender address."
+- Body: "Connect an integration to sync listings to Mailchimp, Google Sheets, a webhook, or more."
 - CTA primary: "Connect a destination →" → navigates to Integrations
 - CTA secondary: "I'll do this later" → dismisses, marks as seen in localStorage
 
@@ -71,22 +95,41 @@ New users land in an app with a lot of surface area (Search, Automations, Integr
 
 ---
 
-## Modal B — Post-Integration "More or Continue?"
+## Modal B — Post-Integration "Now let's export"
 
 **Trigger:** After a user successfully connects their first integration on the Integrations page.
 
 **Content:**
-- Headline: "Connected. Want to add more, or keep going?"
-- Subtext: "You can always connect more integrations later."
-- Question: "How do you want to handle emailing your contacts?"
-- Clarifying note (shown beneath the options, small text): *"Connecting Mailchimp syncs your contacts to an audience — you send the campaign from Mailchimp. Sending through ListingBug means we handle delivery directly using your own sender address."*
-  - Radio/button group:
-    - "Sync contacts to Mailchimp / my integration — I'll send from there"
-    - "Send emails directly from ListingBug"
-    - "Both"
-- CTA: "Continue setup →" — records answer, navigates to Step 3 or Step 4 accordingly
+- Headline: "Connected. Let's export your first batch of listings."
+- Body: "Head back to your search history and export the results to your new integration."
+- CTA primary: "Go to Search History →" → navigates to Search → History tab
+- CTA secondary: "I'll do this later" → dismisses
 
-**Answer is stored in localStorage** as `lb_onboarding_email_method: 'integration' | 'listingbug' | 'both'` so Step 3 visibility is consistent across sessions.
+---
+
+## Modal C — Post-Export "Automate this"
+
+**Trigger:** After a user's first successful export from the Search History or results page.
+
+**Content:**
+- Headline: "Nice work. Want to automate that search?"
+- Body: "Set up a daily automation and ListingBug will run this search and export new listings for you — automatically."
+- CTA primary: "Set up an automation →" → navigates to Automations → Create tab
+- CTA secondary: "Maybe later" → dismisses
+
+---
+
+## Modal D — Post-Automation "Set up messaging"
+
+**Trigger:** After a user creates their first automation (any row inserted to `automations`).
+
+**Content:**
+- Headline: "Want to set up automated messaging for agents in [city]?"
+- Body: "ListingBug Messaging lets you send automated emails directly to agents in your list — from your own sender address."
+- CTA primary: "Set up messaging →" → navigates to Messaging → Setup tab
+- CTA secondary: "Not now" → dismisses, marks messaging step as skipped in localStorage
+
+**`[city]` is pulled from the user's first search if available in `search_runs`; fall back to "your area" if not.**
 
 **Implementation note:** The current Mailchimp integration stores API key + `list_id` + tags. This is sufficient for contact sync only — it does not and cannot trigger Mailchimp campaigns. Do not imply otherwise in UI copy. Users who want to send campaigns via Mailchimp do so entirely within Mailchimp after contacts are synced.
 
@@ -94,14 +137,14 @@ New users land in an app with a lot of surface area (Search, Automations, Integr
 
 ## Dashboard Checklist Card
 
-**Location:** Top of Dashboard, below the page header, above stats cards. Collapses to a small "Setup guide (2/4 done)" pill once any step is complete.
+**Location:** Top of Dashboard, below the page header, above stats cards. Collapses to a small "Setup guide (2/4 done)" pill once any step is complete. Not shown at all until the welcome overlay (Step 0) has been dismissed.
 
 **Structure:**
 ```
-[ ] Run your first search              → Go to Search
-[✓] Connect a destination              Done
-[ ] Set up ListingBug Messaging        Optional · Go to Setup   ← only shown if relevant
+[✓] Run your first search              Done
+[ ] Connect a destination              → Go to Integrations
 [ ] Create your first automation       → Create automation
+[ ] Set up ListingBug Messaging        Optional · Go to Setup
 
                               [Dismiss guide]
 ```
@@ -109,18 +152,18 @@ New users land in an app with a lot of surface area (Search, Automations, Integr
 **Behavior:**
 - Each row shows a checkmark if auto-detected as complete (query Supabase on Dashboard load).
 - Steps are clickable — each CTA navigates to the right page/tab.
-- Step 3 row is either hidden (if user chose "through integration") or shown with an "Optional" badge.
+- Messaging row always shown with an "Optional" badge; it is never hidden entirely.
 - "Dismiss guide" permanently hides it (set `lb_onboarding_dismissed: true` in localStorage).
 - The card does not re-appear after dismissal, even if steps are incomplete.
-- After all applicable steps complete, show a brief "You're all set! 🎉" state for 3 seconds, then auto-dismiss.
+- After all required steps complete, show a brief "You're all set!" state for 3 seconds, then auto-dismiss.
 
 **Completion detection (on Dashboard load):**
 ```ts
-const { data: searchRuns } = await supabase.from('search_runs').select('id').limit(1);
-const { data: integrations } = await supabase.from('integration_connections').select('id').limit(1);
-const { data: automations } = await supabase.from('automations').select('id').limit(1);
+const welcomed = localStorage.getItem('lb_onboarding_welcomed') === 'true';
+const { data: searchRuns } = await supabase.from('search_runs').select('id').eq('user_id', user.id).limit(1);
+const { data: integrations } = await supabase.from('integration_connections').select('id').eq('user_id', user.id).limit(1);
+const { data: automations } = await supabase.from('automations').select('id').eq('user_id', user.id).limit(1);
 // Messaging setup: check for a configured sender (verify exact table/column at build time)
-const emailMethod = localStorage.getItem('lb_onboarding_email_method');
 ```
 
 ---
@@ -136,8 +179,9 @@ These are **independent of the checklist** — they handle users who arrive at a
 
 ### Automations page — no search saved yet
 - Show a soft prompt above the New automation form.
-- Content: "You haven't saved a search yet. Run a search first, then come back to automate it."
+- Content: "You haven't run a search yet. Run a search first, then come back to automate it."
 - CTA: "Run a search →"
+- Note: The Automations page supports **two types of automations**: search automations (scheduled listing exports) and messaging automations (scheduled emails to contacts). The empty state should mention both so new users understand the full scope of the page.
 
 ### Integrations page — nothing connected
 - Already likely has an empty state. If not, add: "Connect your first integration to start exporting listings."
@@ -167,5 +211,7 @@ These are **independent of the checklist** — they handle users who arrive at a
 ## Open questions (resolve at build time)
 
 1. What table/column indicates messaging sender is configured? Verify exact schema before writing completion detection logic.
-2. Does `SearchListings` already fire any event on first save? If so, hook into that instead of adding a new one.
+2. Does `SearchListings` already fire any event on first save/search? If so, hook into that instead of adding a new one.
 3. Should the checklist card be a new component or a section added to `Dashboard.tsx`? Recommend new component `OnboardingChecklist.tsx` imported into Dashboard.
+4. Is there an existing first-login detection mechanism (e.g., profile `created_at` within the last 60 seconds, or a `profiles` column like `onboarding_complete`)? If so, use it rather than relying solely on localStorage for the welcome overlay trigger — localStorage can be cleared.
+5. The welcome overlay (Step 0) should be skipped entirely for existing users who already have `search_runs` rows. Verify this guard at build time so returning users are never shown the welcome screen.
