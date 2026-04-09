@@ -104,9 +104,10 @@ interface AutomationsManagementPageProps {
   initialTab?: 'create' | 'automations' | 'history';
   onNavigate?: (page: string) => void;
   onViewRunDetails?: (run: RunHistoryItem) => void;
+  onFirstAutomationCreated?: (automation: any) => void;
 }
 
-export function AutomationsManagementPage({ onViewDetail, initialTab = 'automations', onNavigate, onViewRunDetails }: AutomationsManagementPageProps = {}) {
+export function AutomationsManagementPage({ onViewDetail, initialTab = 'automations', onNavigate, onViewRunDetails, onFirstAutomationCreated }: AutomationsManagementPageProps = {}) {
   const { isStepActive, completeStep, skipWalkthrough, totalSteps } = useWalkthrough();
   const walkthroughStep3Active = isStepActive(3);
 
@@ -129,6 +130,17 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
     sessionStorage.removeItem('listingbug_automations_tab');
   }, []);
 
+  // Check if user has prior searches (for empty state nudge on create tab)
+  useEffect(() => {
+    if (activeTab !== 'create' || hasSearchRuns !== null) return;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('search_runs').select('id').eq('user_id', user.id).limit(1);
+      setHasSearchRuns(!!(data?.length));
+    })();
+  }, [activeTab]);
+
   useEffect(() => {
     if (activeTab !== 'create') {
       sessionStorage.setItem('listingbug_automations_last_tab', activeTab);
@@ -149,6 +161,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
   const [currentPlan, setCurrentPlan] = useState<ReturnType<typeof getCurrentPlan>>(getCurrentPlan());
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [automationsLoading, setAutomationsLoading] = useState(true);
+  const [hasSearchRuns, setHasSearchRuns] = useState<boolean | null>(null);
 
   const realCount = automations.length;
   const planLimits = getPlanLimits(currentPlan);
@@ -441,6 +454,7 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
     loadAutomations();
     setActiveTab('automations');
     toast.success(`Automation "${automation.name}" created`);
+    onFirstAutomationCreated?.(automation);
   };
 
   const getDestinationIcon = (type: string) => {
@@ -498,14 +512,30 @@ export function AutomationsManagementPage({ onViewDetail, initialTab = 'automati
               </div>
             </div>
           ) : (
-            <CreateAutomationPage
-              onAutomationCreated={(automation) => {
-                const limitCheck = canCreateAutomation(currentPlan, automations.length);
-                if (!limitCheck.allowed && !walkthroughStep3Active && automation.type !== 'campaign') { setLimitModalOpen(true); toast.error('Automation limit reached'); return; }
-                handleAutomationCreated(automation);
-              }}
-              onNavigate={onNavigate}
-            />
+            <>
+              {/* Nudge: run a search first if no search_runs exist */}
+              {hasSearchRuns === false && (
+                <div className="mb-4 px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700/50 rounded-lg flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <p className="text-sm text-amber-900 dark:text-amber-200 flex-1">
+                    <strong>Heads up:</strong> You haven't run a search yet. Run a search first so you can select it as your automation's data source.
+                  </p>
+                  <button
+                    onClick={() => onNavigate?.('search-listings')}
+                    className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline whitespace-nowrap"
+                  >
+                    Run a search →
+                  </button>
+                </div>
+              )}
+              <CreateAutomationPage
+                onAutomationCreated={(automation) => {
+                  const limitCheck = canCreateAutomation(currentPlan, automations.length);
+                  if (!limitCheck.allowed && !walkthroughStep3Active && automation.type !== 'campaign') { setLimitModalOpen(true); toast.error('Automation limit reached'); return; }
+                  handleAutomationCreated(automation);
+                }}
+                onNavigate={onNavigate}
+              />
+            </>
           )
         ) : activeTab === 'automations' ? (
           <div className="pb-8">

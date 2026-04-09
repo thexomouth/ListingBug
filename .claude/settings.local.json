@@ -75,7 +75,15 @@
       "Bash(grep -E \"\\\\.tsx$\")",
       "Bash(cat supabase/migrations/*.sql)",
       "Bash(supabase db:*)",
-      "Bash(grep -n \"destination\\\\|integration_id\\\\|webhook\\\\|export_type\" supabase/migrations/*.sql)"
+      "Bash(grep -n \"destination\\\\|integration_id\\\\|webhook\\\\|export_type\" supabase/migrations/*.sql)",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "Bash(mv \"cleaners_20260409_1402.csv\"           \"Real Estate Cleaners_20260409_1402.csv\")",
+      "Bash(mv \"escrow_protectors_20260409_1402.csv\"  \"Foundation Repair Contractors_20260409_1402.csv\")",
+      "Bash(mv \"hvac_20260409_1402.csv\"               \"HVAC Contractors_20260409_1402.csv\")",
+      "Bash(mv \"open_house_20260409_1402.csv\"         \"Title Companies_20260409_1402.csv\")",
+      "Bash(mv \"post_listing_20260409_1402.csv\"       \"Junk Removal and Estate Liquidators_20260409_1402.csv\")",
+      "Bash(npx --yes tsc --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
     ]
   }
 }

@@ -184,6 +184,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [planStatus, setPlanStatus] = useState<string>('active');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [onboardingSeen, setOnboardingSeen] = useState<Record<string, boolean>>({});
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultTab, setModalDefaultTab] = useState<'preferences' | 'history'>('preferences');
@@ -249,8 +250,8 @@ export default function App() {
           // Navigate immediately — no delay — so login form is never interactive with existing session
           navigate(PAGE_TO_PATH['dashboard']);
         }
-        const { data } = await supabase.from('users').select('plan_status, trial_ends_at').eq('id', session.user.id).single();
-        if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); }
+        const { data } = await supabase.from('users').select('plan_status, trial_ends_at, onboarding_seen').eq('id', session.user.id).single();
+        if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); setOnboardingSeen(data.onboarding_seen ?? {}); }
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -343,32 +344,39 @@ export default function App() {
   const handleSaveReport = (updatedReport: any) => { setSelectedReport(updatedReport); };
   const handleAddToMyReports = (reportData: any) => { console.log("Search saved:", reportData); };
 
-  // Onboarding modal handlers — each fires at most once (guarded by localStorage)
+  // Onboarding modal handlers — each fires at most once (guarded by DB per-account)
   const handleFirstSearchComplete = (city: string) => {
-    if (localStorage.getItem('lb_modal_a_seen')) return;
+    if (onboardingSeen['a']) return;
     if (city) setFirstSearchCity(city);
     setOnboardingModal('a');
   };
 
   const handleIntegrationConnected = () => {
-    if (localStorage.getItem('lb_modal_b_seen')) return;
+    if (onboardingSeen['b']) return;
     setOnboardingModal('b');
   };
 
   const handleFirstExport = () => {
-    if (localStorage.getItem('lb_modal_c_seen')) return;
+    if (onboardingSeen['c']) return;
     setOnboardingModal('c');
   };
 
   const handleFirstAutomationCreated = (automation: any) => {
-    if (localStorage.getItem('lb_modal_d_seen')) return;
+    if (onboardingSeen['d']) return;
     const city = automation?.searchCriteria?.city || automation?.searchName?.split(',')[0] || firstSearchCity || null;
     if (city) setFirstSearchCity(city);
     setOnboardingModal('d');
   };
 
-  const dismissOnboardingModal = () => {
-    if (onboardingModal) localStorage.setItem(`lb_modal_${onboardingModal}_seen`, 'true');
+  const dismissOnboardingModal = async () => {
+    if (onboardingModal) {
+      const updated = { ...onboardingSeen, [onboardingModal]: true };
+      setOnboardingSeen(updated);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('users').update({ onboarding_seen: updated }).eq('id', user.id);
+      }
+    }
     setOnboardingModal(null);
   };
 

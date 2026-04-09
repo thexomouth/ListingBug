@@ -79,7 +79,7 @@ export function HeroSection({ onNavigate, onGenerateSample }: HeroSectionProps) 
           {/* Left Column: Text Content */}
           <div className="text-center lg:text-left p-[0px]">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-[18px] text-[42px] mt-[0px] mr-[0px] ml-[0px] dark:text-white">
-              Your Real Estate Listing Radar
+              Real Estate Listing Alerts for Service Providers
             </h1>
             <p className="text-lg md:text-xl text-gray-600 dark:text-[#EBF2FA] mb-[21px] max-w-2xl mx-auto lg:mx-0 text-[16px] mt-[0px] mr-[0px] ml-[0px] px-[12px] py-[0px]">
               Type your city and state to try our exclusive real estate monitoring service for free.

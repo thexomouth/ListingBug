@@ -1,4 +1,4 @@
-import { 
+import {
   Zap,
   Mail,
   Database,
@@ -16,6 +16,8 @@ import {
   ListChecks,
   Sparkles
 } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
 
 interface IntegrationsMarketingPageProps {
   onNavigate?: (page: string) => void;
@@ -24,6 +26,14 @@ interface IntegrationsMarketingPageProps {
 export function IntegrationsMarketingPage({ onNavigate }: IntegrationsMarketingPageProps) {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>Real Estate CRM & Marketing Integrations | ListingBug</title>
+        <meta name="description" content="Connect ListingBug to HubSpot, Salesforce, Mailchimp, Google Sheets, Airtable, Slack, and 10+ more tools. Push new listing data straight into your CRM and marketing workflows." />
+        <link rel="canonical" href="https://thelistingbug.com/integrations" />
+        <meta property="og:title" content="Real Estate CRM & Marketing Integrations | ListingBug" />
+        <meta property="og:description" content="Connect ListingBug to HubSpot, Salesforce, Mailchimp, Google Sheets, Airtable, Slack, and 10+ more tools." />
+        <meta property="og:url" content="https://thelistingbug.com/integrations" />
+      </Helmet>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-[33px] px-[12px]">
         
@@ -38,12 +48,12 @@ export function IntegrationsMarketingPage({ onNavigate }: IntegrationsMarketingP
             Connect your CRM, email marketing platform, spreadsheets, and more.
           </p>
           <p className="text-[14px] mt-2">
-            <button
-              onClick={() => onNavigate?.('integration-guide')}
+            <Link
+              to="/integrations/guide"
               className="text-[#FFCE0A] hover:underline font-medium"
             >
               View our Setup &amp; Workflow Guide for step-by-step instructions to get started →
-            </button>
+            </Link>
           </p>
         </div>
 

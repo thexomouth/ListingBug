@@ -1,4 +1,5 @@
 import { Sparkles, Home, Palette, Trees, Hammer, Shield, Building2, Wrench, Package, Zap } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const useCases = [
   {
@@ -111,6 +112,21 @@ export function UseCaseSection() {
               </div>
             );
           })}
+        </div>
+        {/* Internal links to persona pages + blog */}
+        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-white/10">
+          <p className="text-center text-[13px] text-gray-500 dark:text-[#EBF2FA]/50 mb-4">Guides by profession</p>
+          <div className="flex flex-wrap justify-center gap-3 text-[13px]">
+            <Link to="/for/mortgage-brokers" className="text-[#342E37] dark:text-[#FFCE0A] hover:underline">Mortgage Brokers</Link>
+            <span className="text-gray-300 dark:text-white/20">·</span>
+            <Link to="/for/property-service-providers" className="text-[#342E37] dark:text-[#FFCE0A] hover:underline">Inspectors & Stagers</Link>
+            <span className="text-gray-300 dark:text-white/20">·</span>
+            <Link to="/for/home-improvement-pros" className="text-[#342E37] dark:text-[#FFCE0A] hover:underline">Contractors & Tradespeople</Link>
+            <span className="text-gray-300 dark:text-white/20">·</span>
+            <Link to="/for/transaction-services" className="text-[#342E37] dark:text-[#FFCE0A] hover:underline">Insurance & Title</Link>
+            <span className="text-gray-300 dark:text-white/20">·</span>
+            <Link to="/blog" className="text-[#342E37] dark:text-[#FFCE0A] hover:underline">Read the Blog</Link>
+          </div>
         </div>
       </div>
     </section>

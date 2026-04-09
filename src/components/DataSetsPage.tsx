@@ -1,6 +1,7 @@
 import { Code, Database, Search, FileJson, Zap, ArrowRight, TrendingDown, RefreshCw, Building2, Sparkles, Filter } from "lucide-react";
 import { LBCard, LBCardContent, LBButton } from "./design-system";
 import React from "react";
+import { Helmet } from "react-helmet-async";
 
 interface QueryParameter {
   name: string;
@@ -442,6 +443,14 @@ export function DataSetsPage({ onNavigate }: DataSetsPageProps = {}) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
+      <Helmet>
+        <title>Real Estate Listing Data — What's Included | ListingBug</title>
+        <meta name="description" content="Explore every data field ListingBug provides: property details, listing agent contact info, days on market, price history, and more. Real estate listing data for service providers." />
+        <link rel="canonical" href="https://thelistingbug.com/data-sets" />
+        <meta property="og:title" content="Real Estate Listing Data — What's Included | ListingBug" />
+        <meta property="og:description" content="Explore every data field ListingBug provides: property details, listing agent contact info, days on market, price history, and more." />
+        <meta property="og:url" content="https://thelistingbug.com/data-sets" />
+      </Helmet>
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-[32px] px-[12px]">
         {/* Page Header */}
         <div className="mb-8">

@@ -1,5 +1,6 @@
 import { Zap, Clock, Mail, Webhook, Code, Database, CheckCircle2, ArrowRight, Repeat, Download } from 'lucide-react';
 import { Button } from './ui/button';
+import { Helmet } from 'react-helmet-async';
 
 /**
  * AUTOMATION PAGE
@@ -21,6 +22,14 @@ interface AutomationPageProps {
 export function AutomationPage({ onNavigate }: AutomationPageProps) {
   return (
     <div className="min-h-screen bg-white">
+      <Helmet>
+        <title>Automated Real Estate Listing Alerts — Set It & Forget It | ListingBug</title>
+        <meta name="description" content="Automate your real estate listing searches and never miss an opportunity. ListingBug runs scheduled listing alerts 24/7 and pushes results straight into your CRM or workflow." />
+        <link rel="canonical" href="https://thelistingbug.com/automation" />
+        <meta property="og:title" content="Automated Real Estate Listing Alerts — Set It & Forget It | ListingBug" />
+        <meta property="og:description" content="Automate your real estate listing searches and never miss an opportunity. ListingBug runs scheduled listing alerts 24/7 and pushes results straight into your CRM or workflow." />
+        <meta property="og:url" content="https://thelistingbug.com/automation" />
+      </Helmet>
       
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-[#ffd447] via-[#ffd447]/90 to-[#ffd447]/80">

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { OnboardingWelcomeOverlay } from './OnboardingWelcomeOverlay';
+import { OnboardingChecklist } from './OnboardingChecklist';
 import { Card, CardContent } from './ui/card';
 import { useWalkthrough } from './WalkthroughContext';
 import { InteractiveWalkthroughOverlay } from './InteractiveWalkthroughOverlay';
@@ -62,6 +64,10 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   const [billingPeriodLabel, setBillingPeriodLabel] = useState('this billing period');
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
   const pendingLoads = useRef(3);
+
+  // Onboarding state
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
   const markLoaded = () => {
     pendingLoads.current -= 1;
     if (pendingLoads.current <= 0) setIsDashboardLoading(false);
@@ -82,6 +88,32 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     const dataState = getUserDataState();
     if (dataState.isFirstTimeUser) initializeEmptyUserData();
     setUserDataState(dataState);
+  }, []);
+
+  // Onboarding: decide whether to show welcome overlay or checklist
+  useEffect(() => {
+    const initOnboarding = async () => {
+      const welcomed = localStorage.getItem('lb_onboarding_welcomed') === 'true';
+      const dismissed = localStorage.getItem('lb_onboarding_dismissed') === 'true';
+      if (dismissed) return;
+
+      if (!welcomed) {
+        // Show welcome overlay only to users with no prior searches
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from('search_runs').select('id').eq('user_id', user.id).limit(1);
+        if (data?.length) {
+          // Existing user — skip welcome, go straight to checklist
+          localStorage.setItem('lb_onboarding_welcomed', 'true');
+          setShowChecklist(true);
+        } else {
+          setShowWelcome(true);
+        }
+      } else {
+        setShowChecklist(true);
+      }
+    };
+    initOnboarding();
   }, []);
 
   useEffect(() => {
@@ -260,8 +292,31 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     return `${minutes}m ago`;
   };
 
+  const handleWelcomeStart = () => {
+    localStorage.setItem('lb_onboarding_welcomed', 'true');
+    setShowWelcome(false);
+    setShowChecklist(true);
+    onNavigate?.('search-listings');
+  };
+
+  const handleWelcomeSkip = () => {
+    localStorage.setItem('lb_onboarding_welcomed', 'true');
+    setShowWelcome(false);
+    setShowChecklist(true);
+  };
+
+  const handleChecklistDismiss = () => {
+    localStorage.setItem('lb_onboarding_dismissed', 'true');
+    setShowChecklist(false);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
+      {/* Welcome overlay — first login only */}
+      {showWelcome && (
+        <OnboardingWelcomeOverlay onStart={handleWelcomeStart} onSkip={handleWelcomeSkip} />
+      )}
+
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
 
         <div className="mb-8">
@@ -272,6 +327,11 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Track your listing activity and market performance</p>
           </div>
+
+          {/* Onboarding checklist — shown after welcome overlay is dismissed */}
+          {showChecklist && (
+            <OnboardingChecklist onNavigate={onNavigate} onDismiss={handleChecklistDismiss} />
+          )}
 
           <div className="flex gap-2 md:gap-3 mb-4">
             <Card className="cursor-pointer transition-all border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700 flex-1" onClick={() => { sessionStorage.setItem('listingbug_open_tab', 'history'); onNavigate?.('search-listings'); }}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -87,6 +87,36 @@ export function SignUpPage({ onSignUp, onNavigateToLogin, onNavigateToHelp }: Si
     });
     if (error) { toast.error(error.message); setIsGoogleLoading(false); }
   };
+
+  // Poll for confirmation — works across devices because we retry signInWithPassword.
+  // Succeeds the moment Supabase marks the email as confirmed.
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!isVerificationStep) return;
+    pollingRef.current = setInterval(async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (data?.session && !error) {
+        clearInterval(pollingRef.current!);
+        onSignUp();
+      }
+    }, 3000);
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, [isVerificationStep]);
+
+  // Poll for confirmation — works across devices by retrying signInWithPassword.
+  // Succeeds the moment Supabase marks the email as confirmed on any device.
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!isVerificationStep) return;
+    pollingRef.current = setInterval(async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (data?.session && !error) {
+        clearInterval(pollingRef.current!);
+        onSignUp();
+      }
+    }, 3000);
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, [isVerificationStep]);
 
   const handleResendVerification = async () => {
     setIsResending(true);

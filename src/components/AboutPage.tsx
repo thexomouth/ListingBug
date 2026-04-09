@@ -1,8 +1,29 @@
 import { Building2, Target, Lightbulb, Users } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 
 export function AboutPage() {
   return (
     <div className="min-h-[calc(100vh-300px)] flex items-center justify-center bg-white dark:bg-[#0F1115] px-4 py-16">
+      <Helmet>
+        <title>About ListingBug — Real Estate Listing Alerts for Service Providers</title>
+        <meta name="description" content="ListingBug helps mortgage brokers, home inspectors, contractors, and other real estate service providers find new listings and connect with listing agents automatically." />
+        <link rel="canonical" href="https://thelistingbug.com/about" />
+        <meta property="og:title" content="About ListingBug — Real Estate Listing Alerts for Service Providers" />
+        <meta property="og:description" content="ListingBug helps mortgage brokers, home inspectors, contractors, and other real estate service providers find new listings and connect with listing agents automatically." />
+        <meta property="og:url" content="https://thelistingbug.com/about" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "ListingBug",
+          "url": "https://thelistingbug.com",
+          "logo": "https://thelistingbug.com/logo.png",
+          "description": "Real estate listing alerts and workflow automation for service providers.",
+          "sameAs": [
+            "https://twitter.com/listingbug",
+            "https://www.linkedin.com/company/listingbug"
+          ]
+        })}</script>
+      </Helmet>
       <div className="max-w-2xl w-full text-center">
         {/* Icon */}
         <div className="inline-flex items-center justify-center w-20 h-20 bg-[#FFCE0A]/10 dark:bg-[#FFCE0A]/5 rounded-2xl mb-6">

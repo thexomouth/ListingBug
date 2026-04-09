@@ -137,6 +137,9 @@ interface SearchCriteria {
 interface SearchListingsProps {
   onAddToMyReports?: (reportData: any) => void;
   onNavigate?: (page: string) => void;
+  onViewSearchResults?: (searchRun: any) => void;
+  onFirstSearchComplete?: (city: string) => void;
+  onFirstExport?: () => void;
 }
 
 const US_STATES = [
@@ -193,7 +196,7 @@ const US_STATES = [
   { value: 'WY', label: 'Wyoming' }
 ];
 
-export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResults }: SearchListingsProps = {}) {
+export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResults, onFirstSearchComplete, onFirstExport }: SearchListingsProps = {}) {
   const [activeTab, setActiveTab] = useState<'search' | 'listings' | 'history'>(() => {
     const tabToOpen = sessionStorage.getItem('listingbug_open_tab');
     const lastTab = sessionStorage.getItem('listingbug_last_tab');
@@ -693,8 +696,12 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
             automation_name: pendingRunNameRef.current.automationName || null,
           });
           pendingRunNameRef.current = {};
-          if (insertError) console.error('[search_runs insert failed]', insertError.code, insertError.message, insertError.details);
-          else console.log('[search_runs] saved', historyEntry.id, 'with', finalResults.length, 'listings');
+          if (insertError) {
+            console.error('[search_runs insert failed]', insertError.code, insertError.message, insertError.details);
+          } else {
+            console.log('[search_runs] saved', historyEntry.id, 'with', finalResults.length, 'listings');
+            onFirstSearchComplete?.(criteria.city || criteria.state || '');
+          }
         }
       } catch (e: any) {
         console.error('[search_runs exception]', e.message || e);
@@ -815,9 +822,9 @@ export function SearchListings({ onAddToMyReports, onNavigate, onViewSearchResul
       if (!res.ok) { toast.error(`Export failed: ${data.error ?? `HTTP ${res.status}`}`); return; }
       const sent = data.sent ?? data.written ?? data.accepted ?? 0;
       const failed = data.failed ?? 0;
-      if (sent > 0) { toast.success(`${sent} listing${sent !== 1 ? 's' : ''} sent to ${integrationName}!`); openIntegrationTab(integrationId, config); }
+      if (sent > 0) { toast.success(`${sent} listing${sent !== 1 ? 's' : ''} sent to ${integrationName}!`); openIntegrationTab(integrationId, config); onFirstExport?.(); }
       else if (failed > 0 && sent === 0) { const err = data.errors?.[0] ?? 'All contacts failed'; toast.error(`Export failed: ${typeof err === 'string' ? err : JSON.stringify(err)}`); }
-      else { toast.success(`Listings sent to ${integrationName}!`); openIntegrationTab(integrationId, config); }
+      else { toast.success(`Listings sent to ${integrationName}!`); openIntegrationTab(integrationId, config); onFirstExport?.(); }
     } catch (e: any) { toast.dismiss(toastId); toast.error(e.message ?? 'Network error during export'); }
   };
 

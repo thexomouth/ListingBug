@@ -29,6 +29,32 @@ export function HowItWorksPage({ onNavigate }: HowItWorksPageProps) {
         <meta property="og:title" content="How It Works — Real Estate Listing Alerts | ListingBug" />
         <meta property="og:description" content="Learn how ListingBug monitors real estate markets, delivers new listings to your workflows, and triggers automated outreach — all on a schedule you control." />
         <meta property="og:url" content="https://thelistingbug.com/how-it-works" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "HowTo",
+          "name": "How ListingBug Works",
+          "description": "Set up automated real estate listing alerts that deliver new property data straight into your CRM or workflow.",
+          "step": [
+            {
+              "@type": "HowToStep",
+              "position": 1,
+              "name": "Search Your Target Market",
+              "text": "Use powerful filters to find properties matching your service area — by city, zip code, property type, price range, and more."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 2,
+              "name": "Automate Your Workflow",
+              "text": "Save your search as an automation and set a schedule — hourly, daily, or weekly. ListingBug monitors the market 24/7 and alerts you when new listings match."
+            },
+            {
+              "@type": "HowToStep",
+              "position": 3,
+              "name": "Connect & Sync Seamlessly",
+              "text": "Export results to 17+ integrations including Google Sheets, Airtable, HubSpot, Mailchimp, Slack, and webhooks — automatically, no manual exports needed."
+            }
+          ]
+        })}</script>
       </Helmet>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-[33px] px-[12px]">
