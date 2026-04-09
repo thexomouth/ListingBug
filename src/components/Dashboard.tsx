@@ -91,20 +91,27 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   }, []);
 
   // Onboarding: decide whether to show welcome overlay or checklist
+  // State is stored in users.onboarding_seen (account-based, resets on row delete)
   useEffect(() => {
     const initOnboarding = async () => {
-      const welcomed = localStorage.getItem('lb_onboarding_welcomed') === 'true';
-      const dismissed = localStorage.getItem('lb_onboarding_dismissed') === 'true';
-      if (dismissed) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (!welcomed) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('onboarding_seen')
+        .eq('id', user.id)
+        .single();
+
+      const seen: Record<string, boolean> = userData?.onboarding_seen ?? {};
+      if (seen['checklist_dismissed']) return;
+
+      if (!seen['welcomed']) {
         // Show welcome overlay only to users with no prior searches
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase.from('search_runs').select('id').eq('user_id', user.id).limit(1);
-        if (data?.length) {
-          // Existing user — skip welcome, go straight to checklist
-          localStorage.setItem('lb_onboarding_welcomed', 'true');
+        const { data: runs } = await supabase.from('search_runs').select('id').eq('user_id', user.id).limit(1);
+        if (runs?.length) {
+          // Existing user — skip welcome overlay, go straight to checklist
+          await supabase.from('users').update({ onboarding_seen: { ...seen, welcomed: true } }).eq('id', user.id);
           setShowChecklist(true);
         } else {
           setShowWelcome(true);
@@ -292,22 +299,30 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
     return `${minutes}m ago`;
   };
 
+  const updateOnboardingSeen = async (updates: Record<string, boolean>) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from('users').select('onboarding_seen').eq('id', user.id).single();
+    const current: Record<string, boolean> = data?.onboarding_seen ?? {};
+    await supabase.from('users').update({ onboarding_seen: { ...current, ...updates } }).eq('id', user.id);
+  };
+
   const handleWelcomeStart = () => {
-    localStorage.setItem('lb_onboarding_welcomed', 'true');
     setShowWelcome(false);
     setShowChecklist(true);
+    updateOnboardingSeen({ welcomed: true });
     onNavigate?.('search-listings');
   };
 
   const handleWelcomeSkip = () => {
-    localStorage.setItem('lb_onboarding_welcomed', 'true');
     setShowWelcome(false);
     setShowChecklist(true);
+    updateOnboardingSeen({ welcomed: true });
   };
 
   const handleChecklistDismiss = () => {
-    localStorage.setItem('lb_onboarding_dismissed', 'true');
     setShowChecklist(false);
+    updateOnboardingSeen({ checklist_dismissed: true });
   };
 
   return (
