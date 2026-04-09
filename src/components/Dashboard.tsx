@@ -94,30 +94,45 @@ export function Dashboard({ onNavigate, onOpenReport, onAccountTabChange, onView
   // State is stored in users.onboarding_seen (account-based, resets on row delete)
   useEffect(() => {
     const initOnboarding = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('onboarding_seen')
-        .eq('id', user.id)
-        .single();
-
-      const seen: Record<string, boolean> = userData?.onboarding_seen ?? {};
-      if (seen['checklist_dismissed']) return;
-
-      if (!seen['welcomed']) {
-        // Show welcome overlay only to users with no prior searches
-        const { data: runs } = await supabase.from('search_runs').select('id').eq('user_id', user.id).limit(1);
-        if (runs?.length) {
-          // Existing user — skip welcome overlay, go straight to checklist
-          await supabase.from('users').update({ onboarding_seen: { ...seen, welcomed: true } }).eq('id', user.id);
-          setShowChecklist(true);
-        } else {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+        if (!user) {
+          // No session yet — fall back to showing welcome so new users aren't blocked
           setShowWelcome(true);
+          return;
         }
-      } else {
-        setShowChecklist(true);
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('onboarding_seen')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        const seen: Record<string, boolean> = (userData as any)?.onboarding_seen ?? {};
+        if (seen['checklist_dismissed']) return;
+
+        if (!seen['welcomed']) {
+          // Show welcome overlay only to users with no prior searches
+          const { data: runs } = await supabase
+            .from('search_runs')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1);
+
+          if (runs && runs.length > 0) {
+            // Existing user — skip welcome overlay, go straight to checklist
+            supabase.from('users').update({ onboarding_seen: { ...seen, welcomed: true } }).eq('id', user.id);
+            setShowChecklist(true);
+          } else {
+            setShowWelcome(true);
+          }
+        } else {
+          setShowChecklist(true);
+        }
+      } catch {
+        // On any unexpected error, show welcome so new users aren't silently blocked
+        setShowWelcome(true);
       }
     };
     initOnboarding();
