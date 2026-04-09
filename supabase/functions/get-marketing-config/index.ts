@@ -231,7 +231,7 @@ Deno.serve(async (req: Request) => {
   // ── action=hubspot-lists ─────────────────────────────────────────────────
   if (action === 'hubspot-lists') {
     const hsCreds = await resolveHubSpotCreds(serviceClient, user.id);
-    if (!hsCreds) return json({ error: 'HubSpot not connected.' }, 400);
+    if (!hsCreds) return json({ lists: [] });
 
     const res = await fetch(
       'https://api.hubapi.com/crm/v3/lists?objectTypeId=0-1&count=100',
@@ -253,7 +253,7 @@ Deno.serve(async (req: Request) => {
     if (!listId) return json({ error: 'list_id required' }, 400);
 
     const hsCreds = await resolveHubSpotCreds(serviceClient, user.id);
-    if (!hsCreds) return json({ error: 'HubSpot not connected.' }, 400);
+    if (!hsCreds) return json({ contacts: [] });
 
     // Step 1: get contact IDs from list memberships
     const memberRes = await fetch(
