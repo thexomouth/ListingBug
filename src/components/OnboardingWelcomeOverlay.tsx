@@ -9,8 +9,12 @@ export function OnboardingWelcomeOverlay({ onStart, onSkip }: OnboardingWelcomeO
   return (
     <div className="fixed inset-0 z-[9000] bg-[#0F1115]/95 flex items-center justify-center p-6">
       <div className="text-center max-w-md w-full">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FFCE0A]/10 mb-6">
-          <span className="text-3xl">🐛</span>
+        <div className="flex items-center justify-center mb-6">
+          <img
+            src="https://ynqmisrlahjberhmlviz.supabase.co/storage/v1/object/public/email%20assets/bug%20logo%20wht.png"
+            alt="ListingBug"
+            className="h-12 w-auto"
+          />
         </div>
         <h1 className="text-3xl font-bold text-white mb-3">Welcome to ListingBug</h1>
         <p className="text-gray-400 mb-8 leading-relaxed text-base">
