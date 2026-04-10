@@ -968,7 +968,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
         <HowItWorksSection />
         <AdditionalDataSection />
         <DataFieldsSection />
-        <DataEnrichmentSection />
+        {/* <DataEnrichmentSection /> */}
         <IntegrationsSection />
         <UseCaseSection />
         <BottomCTASection onNavigate={onNavigate} />
