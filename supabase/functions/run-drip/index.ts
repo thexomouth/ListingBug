@@ -35,6 +35,146 @@ function randomDelay() {
   return Math.round((4 + Math.random() * 14) * 1000);
 }
 
+type SgErrorClass =
+  | 'ok'
+  | 'rate_limited'       // 429 — too many requests, temporary
+  | 'plan_limit_daily'   // 400/403 — daily sending limit exhausted
+  | 'plan_limit_monthly' // 400/403 — monthly/plan credits exhausted
+  | 'account_suspended'  // 403 — account suspended or send access revoked
+  | 'invalid_api_key'    // 401 — bad or revoked API key
+  | 'sender_unverified'  // 400 — from address not a verified sender identity
+  | 'permanent_bounce'   // 550–553 — address doesn't exist / policy reject
+  | 'spam_block'         // 554 / spam report
+  | 'transient'          // 4xx/5xx retryable errors
+  | 'unknown';
+
+interface SgErrorResult {
+  cls: SgErrorClass;
+  message: string;        // human-readable for notification
+  contactError: string;   // stored on the drip_contact row
+  shouldBreak: boolean;   // stop processing this batch immediately
+  runAction?: 'pause' | 'stop';
+  notifLevel?: 'warning' | 'error' | 'critical';
+}
+
+function classifySendGridError(status: number, body: any, retryAfter?: string | null): SgErrorResult {
+  const rawMsg: string = body?.errors?.[0]?.message || body?.message || `HTTP ${status}`;
+  const msg = rawMsg.toLowerCase();
+
+  // 429 — rate limited
+  if (status === 429) {
+    const wait = retryAfter ? ` SendGrid says retry after ${retryAfter}s.` : '';
+    return {
+      cls: 'rate_limited', shouldBreak: true, runAction: 'pause',
+      notifLevel: 'warning',
+      contactError: `Rate limited by SendGrid (429)`,
+      message: `SendGrid rate limit hit — too many requests in a short window.${wait} Run paused; will resume next cycle.`,
+    };
+  }
+
+  // 401 — invalid/revoked API key
+  if (status === 401) {
+    return {
+      cls: 'invalid_api_key', shouldBreak: true, runAction: 'stop',
+      notifLevel: 'critical',
+      contactError: `Invalid SendGrid API key (401)`,
+      message: 'SendGrid API key is invalid or has been revoked (401). Run stopped — update your API key in Messaging Setup.',
+    };
+  }
+
+  if (status === 403) {
+    if (msg.includes('send access') || msg.includes('not allowed to send') || msg.includes('suspended') || msg.includes('forbidden')) {
+      return {
+        cls: 'account_suspended', shouldBreak: true, runAction: 'stop',
+        notifLevel: 'critical',
+        contactError: `SendGrid account suspended or send access revoked (403)`,
+        message: 'Your SendGrid account has been suspended or send access revoked (403). Run stopped — check your SendGrid account immediately.',
+      };
+    }
+    // Generic 403
+    return {
+      cls: 'account_suspended', shouldBreak: true, runAction: 'stop',
+      notifLevel: 'critical',
+      contactError: `SendGrid access forbidden (403): ${rawMsg}`,
+      message: `SendGrid returned 403 Forbidden: "${rawMsg}". Run stopped — check your SendGrid account.`,
+    };
+  }
+
+  if (status === 400 || status === 402) {
+    // Monthly / plan credit limit
+    if (msg.includes('monthly') || msg.includes('credits') || msg.includes('plan limit') || msg.includes('upgrade') || msg.includes('maximum credits')) {
+      return {
+        cls: 'plan_limit_monthly', shouldBreak: true, runAction: 'stop',
+        notifLevel: 'critical',
+        contactError: `SendGrid monthly/plan send limit reached`,
+        message: `SendGrid plan limit reached: "${rawMsg}". You have exhausted your monthly email credits. Run stopped — upgrade your SendGrid plan to continue.`,
+      };
+    }
+    // Daily limit
+    if (msg.includes('daily') || msg.includes('day limit') || msg.includes('sending limit') || msg.includes('per day')) {
+      return {
+        cls: 'plan_limit_daily', shouldBreak: true, runAction: 'pause',
+        notifLevel: 'error',
+        contactError: `SendGrid daily send limit reached`,
+        message: `SendGrid daily send limit reached: "${rawMsg}". Run paused — will automatically resume tomorrow.`,
+      };
+    }
+    // Sender not verified
+    if (msg.includes('verified sender') || msg.includes('sender identity') || msg.includes('from address')) {
+      return {
+        cls: 'sender_unverified', shouldBreak: true, runAction: 'pause',
+        notifLevel: 'error',
+        contactError: `Sender identity not verified in SendGrid`,
+        message: `SendGrid rejected the from address — sender identity is not verified: "${rawMsg}". Run paused — verify the sender in SendGrid settings.`,
+      };
+    }
+    // No send access (sometimes comes as 400)
+    if (msg.includes('send access') || msg.includes('not permitted') || msg.includes('account') && msg.includes('access')) {
+      return {
+        cls: 'account_suspended', shouldBreak: true, runAction: 'stop',
+        notifLevel: 'critical',
+        contactError: `SendGrid account lacks send access`,
+        message: `SendGrid account does not have send access: "${rawMsg}". Run stopped — check your SendGrid account status.`,
+      };
+    }
+  }
+
+  // Permanent bounce codes (550–553)
+  if (status >= 550 && status <= 553) {
+    return {
+      cls: 'permanent_bounce', shouldBreak: false,
+      contactError: `Permanent bounce (${status}): ${rawMsg}`,
+      message: '',
+    };
+  }
+
+  // Spam / policy block (554)
+  if (status === 554 || msg.includes('spam') || msg.includes('policy violation')) {
+    return {
+      cls: 'spam_block', shouldBreak: true, runAction: 'stop',
+      notifLevel: 'critical',
+      contactError: `Spam/policy block (${status}): ${rawMsg}`,
+      message: `SendGrid reported a spam or policy violation (${status}): "${rawMsg}". Run stopped immediately to protect domain reputation.`,
+    };
+  }
+
+  // 5xx transient
+  if (status >= 500) {
+    return {
+      cls: 'transient', shouldBreak: false,
+      contactError: `SendGrid server error (${status}): ${rawMsg}`,
+      message: '',
+    };
+  }
+
+  // Fallback unknown
+  return {
+    cls: 'unknown', shouldBreak: false,
+    contactError: `SendGrid error (${status}): ${rawMsg}`,
+    message: '',
+  };
+}
+
 function resolveMergeTags(text: string, c: Record<string, string>): string {
   return text
     .replace(/\{\{first_name\}\}/gi, c.first_name || '')
@@ -248,6 +388,7 @@ Deno.serve(async (req) => {
     }
 
     let sentCount = 0, failedCount = 0;
+    let criticalBreak = false; // set true when a limit/account error requires stopping the batch
 
     for (let i = 0; i < contacts.length; i++) {
       const contact = contacts[i];
@@ -284,11 +425,33 @@ Deno.serve(async (req) => {
           sentCount++;
         } else {
           const errData = await res.json().catch(() => ({}));
-          const errMsg = errData?.errors?.[0]?.message || `HTTP ${res.status}`;
+          const retryAfter = res.headers.get('Retry-After');
+          const classified = classifySendGridError(res.status, errData, retryAfter);
+
           await supabase.from('drip_contacts').update({
-            status: 'failed', error_message: errMsg,
+            status: 'failed', error_message: classified.contactError,
           }).eq('id', contact.id);
           failedCount++;
+
+          // If this is a limit/account/key error: notify + act on the run immediately
+          if (classified.shouldBreak && classified.runAction && classified.message) {
+            const newStatus = classified.runAction === 'stop' ? 'stopped' : 'paused';
+            await supabase.from('drip_runs').update({
+              status: newStatus,
+              pause_reason: classified.message,
+              sends_today: sendsToday + sentCount,
+              total_sent: run.total_sent + sentCount,
+              total_failed: run.total_failed + failedCount,
+              updated_at: new Date().toISOString(),
+            }).eq('id', run.id);
+            await supabase.from('drip_notifications').insert({
+              run_id: run.id,
+              level: classified.notifLevel || 'error',
+              message: classified.message,
+            });
+            criticalBreak = true;
+            break; // stop sending to remaining contacts in this batch
+          }
         }
       } catch (e: any) {
         await supabase.from('drip_contacts').update({
@@ -298,28 +461,30 @@ Deno.serve(async (req) => {
       }
 
       // Random delay between sends (skip after last one)
-      if (i < contacts.length - 1) await sleep(randomDelay());
+      if (!criticalBreak && i < contacts.length - 1) await sleep(randomDelay());
     }
 
-    // Update run counters
-    await supabase.from('drip_runs').update({
-      sends_today: sendsToday + sentCount,
-      total_sent: run.total_sent + sentCount,
-      total_failed: run.total_failed + failedCount,
-      updated_at: new Date().toISOString(),
-    }).eq('id', run.id);
+    // Update run counters (skip if criticalBreak already wrote them)
+    if (!criticalBreak) {
+      await supabase.from('drip_runs').update({
+        sends_today: sendsToday + sentCount,
+        total_sent: run.total_sent + sentCount,
+        total_failed: run.total_failed + failedCount,
+        updated_at: new Date().toISOString(),
+      }).eq('id', run.id);
 
-    // Safety check after batch
-    if (sentCount + failedCount > 0) {
-      const safety = await checkSafety(supabase, run.id);
-      if (!safety.safe && safety.reason) {
-        await supabase.from('drip_runs').update({
-          status: safety.newStatus || 'paused',
-          pause_reason: safety.reason,
-        }).eq('id', run.id);
-        await supabase.from('drip_notifications').insert({
-          run_id: run.id, level: safety.level || 'error', message: safety.reason,
-        });
+      // Safety check after batch (bounce rate, domain blocks, etc.)
+      if (sentCount + failedCount > 0) {
+        const safety = await checkSafety(supabase, run.id);
+        if (!safety.safe && safety.reason) {
+          await supabase.from('drip_runs').update({
+            status: safety.newStatus || 'paused',
+            pause_reason: safety.reason,
+          }).eq('id', run.id);
+          await supabase.from('drip_notifications').insert({
+            run_id: run.id, level: safety.level || 'error', message: safety.reason,
+          });
+        }
       }
     }
 
