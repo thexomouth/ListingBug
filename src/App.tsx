@@ -65,6 +65,7 @@ const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ defau
 const MessagingPage = lazy(() => import("./components/MessagingPage").then(m => ({ default: m.MessagingPage })));
 const UnsubscribePage = lazy(() => import("./components/UnsubscribePage").then(m => ({ default: m.UnsubscribePage })));
 const CleanPage = lazy(() => import("./components/CleanPage").then(m => ({ default: m.CleanPage })));
+const DripPage = lazy(() => import("./components/DripPage").then(m => ({ default: m.DripPage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -81,7 +82,8 @@ type Page =
   | "legal-dpa" | "legal-subprocessors"
   | "messaging"
   | "unsubscribe"
-  | "clean";
+  | "clean"
+  | "drip";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -109,6 +111,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "messaging": "/messaging",
   "unsubscribe": "/unsubscribe",
   "clean": "/clean",
+  "drip": "/drip",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -132,6 +135,7 @@ function pathToPage(pathname: string): Page {
   if (pathname.startsWith('/messaging')) return 'messaging';
   if (pathname.startsWith('/unsubscribe')) return 'unsubscribe';
   if (pathname.startsWith('/clean')) return 'clean';
+  if (pathname.startsWith('/drip')) return 'drip';
   return 'home';
 }
 
@@ -385,7 +389,7 @@ export default function App() {
   };
 
   const isAuthPage = currentPage === 'login' || currentPage === 'signup';
-  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe', 'clean'].includes(currentPage);
+  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe', 'clean', 'drip'].includes(currentPage);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -480,6 +484,7 @@ export default function App() {
       case "messaging": return <MessagingPage />;
       case "unsubscribe": return <UnsubscribePage />;
       case "clean": return <CleanPage />;
+      case "drip": return <DripPage />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
