@@ -261,15 +261,25 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
       if (useCustomUnsub && !customUnsubUrl.trim()) { toast.error('Enter a custom unsubscribe URL or switch back to ListingBug.'); return; }
       if (useCustomUnsub) { try { new URL(customUnsubUrl.trim()); } catch { toast.error('Custom unsubscribe URL must be a valid URL.'); return; } }
 
-      // Check for an existing automation with this name
-      const { data: existingAuto } = await supabase
+      // Fetch all existing automations with this name (maybeSingle errors on duplicates)
+      const { data: existingAutos } = await supabase
         .from('messaging_automations')
         .select('id, list_id, unsubscribe_url')
         .eq('user_id', user.id)
-        .eq('name', name)
-        .maybeSingle();
+        .eq('name', name);
 
-      // Preserve existing ID/URL when overwriting so suppressions stay valid
+      const existingAuto = existingAutos?.[0] ?? null;
+
+      // Delete all (clears any duplicates that may have accumulated)
+      if (existingAutos && existingAutos.length > 0) {
+        await supabase
+          .from('messaging_automations')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('name', name);
+      }
+
+      // Preserve first existing ID/URL so suppressions stay valid
       const automationId = existingAuto?.id ?? crypto.randomUUID();
       const unsubscribeUrl = useCustomUnsub
         ? customUnsubUrl.trim()
@@ -313,19 +323,10 @@ export function CreateTab({ selectedRecipients, onClearRecipients, onCampaignSen
         updated_at: new Date().toISOString(),
       };
 
-      let saveError;
-      if (existingAuto) {
-        const { error } = await supabase
-          .from('messaging_automations')
-          .update(payload)
-          .eq('id', automationId);
-        saveError = error;
-      } else {
-        const { error } = await supabase
-          .from('messaging_automations')
-          .insert({ id: automationId, ...payload });
-        saveError = error;
-      }
+      // Always insert (deleted above); preserves ID so suppressions stay valid
+      const { error: saveError } = await supabase
+        .from('messaging_automations')
+        .insert({ id: automationId, ...payload });
 
       if (saveError) { toast.error(saveError.message); return; }
       toast.success(`Campaign "${name}" ${existingAuto ? 'updated' : 'saved'}.`);
