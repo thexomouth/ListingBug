@@ -31,13 +31,14 @@ export function MessagingPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from('messaging_config')
-        .select('config')
-        .eq('user_id', user.id)
-        .eq('platform', 'sendgrid')
-        .limit(1);
-      setHasSender(!!(data?.length && data[0]?.config?.api_key));
+      // Check messaging_config first, then integration_connections as fallback
+      const [{ data: mc }, { data: conn }] = await Promise.all([
+        supabase.from('messaging_config').select('config').eq('user_id', user.id).eq('platform', 'sendgrid').limit(1),
+        supabase.from('integration_connections').select('credentials').eq('user_id', user.id).eq('integration_id', 'sendgrid').limit(1),
+      ]);
+      const hasKey = !!(mc?.length && mc[0]?.config?.api_key)
+        || !!(conn?.length && (conn[0]?.credentials as any)?.api_key);
+      setHasSender(hasKey);
     })();
   }, []);
 

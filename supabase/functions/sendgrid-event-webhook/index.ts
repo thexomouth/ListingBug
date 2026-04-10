@@ -5,10 +5,23 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const STATUS_MAP: Record<string, string> = {
   delivered: 'delivered',
+  open: 'delivered',      // opened implies delivered
+  click: 'delivered',     // clicked implies delivered
   bounce: 'bounced',
   dropped: 'failed',
   spamreport: 'failed',
-  unsubscribe: 'delivered', // still delivered; also sets unsubscribed flag
+  unsubscribe: 'delivered',
+};
+
+// Maps event type to the timestamp column to set (first-event-wins — only set if null)
+const TIMESTAMP_COL: Record<string, string> = {
+  delivered:   'delivered_at',
+  open:        'opened_at',
+  click:       'clicked_at',
+  bounce:      'bounced_at',
+  dropped:     'dropped_at',
+  unsubscribe: 'unsubscribed_at',
+  spamreport:  'spam_reported_at',
 };
 
 /**
@@ -110,9 +123,14 @@ Deno.serve(async (req: Request) => {
     const newStatus = STATUS_MAP[eventType];
     if (!newStatus) continue;
 
+    const now = new Date().toISOString();
+    const tsCol = TIMESTAMP_COL[eventType];
+    const updatePayload: Record<string, string> = { status: newStatus, updated_at: now };
+    if (tsCol) updatePayload[tsCol] = now;
+
     const { error: updateErr } = await serviceClient
       .from('marketing_sends')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('sg_message_id', sgMessageId);
 
     if (updateErr) console.error('[sendgrid-event-webhook] send update error:', updateErr.message);
