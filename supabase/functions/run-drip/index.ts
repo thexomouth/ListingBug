@@ -374,7 +374,28 @@ Deno.serve(async (req) => {
         run_id: run.id, level: 'info',
         message: `All ${run.total_sent} emails sent. Drip run completed successfully.`,
       });
-      summary.push({ run_id: run.id, completed: true });
+
+      // Activate the next queued run if one exists
+      const { data: nextQueued } = await supabase
+        .from('drip_runs')
+        .select('id, campaign_name')
+        .eq('status', 'queued')
+        .order('queue_position', { ascending: true })
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (nextQueued) {
+        await supabase.from('drip_runs').update({
+          status: 'active', updated_at: new Date().toISOString(),
+        }).eq('id', nextQueued.id);
+        await supabase.from('drip_notifications').insert({
+          run_id: nextQueued.id, level: 'info',
+          message: `Previous run completed. "${nextQueued.campaign_name}" is now active and sending.`,
+        });
+      }
+
+      summary.push({ run_id: run.id, completed: true, activated_next: nextQueued?.id ?? null });
       continue;
     }
 

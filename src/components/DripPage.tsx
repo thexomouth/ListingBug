@@ -14,10 +14,10 @@ interface DripRun {
   sender_id: string; daily_limit: number; status: string; pause_reason: string | null;
   sends_today: number; sends_today_date: string | null;
   total_sent: number; total_failed: number; total_contacts: number;
-  current_list_name: string | null; created_at: string; updated_at: string;
+  current_list_name: string | null; queue_position: number; created_at: string; updated_at: string;
 }
 interface Notification { id: string; run_id: string; level: string; message: string; read: boolean; created_at: string; }
-interface CsvFile { file: File; name: string; rowCount: number; rows: Record<string, string>[]; headers: string[]; }
+interface CsvFile { file: File; name: string; rowCount: number; rows: Record<string, string>[]; headers: string[]; campaignId: string; }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +41,7 @@ function parseCSV(text: string): { headers: string[]; rows: Record<string, strin
 function statusColor(status: string) {
   return status === 'active'    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
        : status === 'paused'    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+       : status === 'queued'    ? 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
        : status === 'completed' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
        : status === 'stopped'   ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
        : 'bg-zinc-100 text-zinc-500';
@@ -212,7 +213,6 @@ function DripPageInner() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   // Create form state
-  const [selectedCampaignId, setSelectedCampaignId] = useState('');
   const [dailyLimit, setDailyLimit] = useState(500);
   const [csvFiles, setCsvFiles] = useState<CsvFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -241,56 +241,60 @@ function DripPageInner() {
       const text = await file.text();
       const { headers, rows } = parseCSV(text);
       if (!headers.includes('email')) { alert(`"${file.name}" has no email column — skipped.`); continue; }
-      setCsvFiles(prev => [...prev, { file, name: file.name, rowCount: rows.length, rows, headers }]);
+      setCsvFiles(prev => [...prev, { file, name: file.name, rowCount: rows.length, rows, headers, campaignId: '' }]);
     }
   };
 
   const removeCsv = (i: number) => setCsvFiles(prev => prev.filter((_, idx) => idx !== i));
 
-  const moveCsv = (i: number, dir: -1 | 1) => {
-    setCsvFiles(prev => {
-      const arr = [...prev];
-      const j = i + dir;
-      if (j < 0 || j >= arr.length) return arr;
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-      return arr;
-    });
+  const setCsvCampaign = (i: number, campaignId: string) => {
+    setCsvFiles(prev => prev.map((f, idx) => idx === i ? { ...f, campaignId } : f));
   };
 
-  const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId);
+  const allAssigned = csvFiles.length > 0 && csvFiles.every(f => f.campaignId !== '');
+  const totalQueueContacts = csvFiles.reduce((s, f) => s + f.rowCount, 0);
+  const estDays = dailyLimit > 0 ? Math.ceil(totalQueueContacts / dailyLimit) : 0;
 
-  const createRun = async () => {
-    if (!selectedCampaign) { alert('Select a campaign.'); return; }
-    if (csvFiles.length === 0) { alert('Upload at least one contact list.'); return; }
+  const createQueue = async () => {
+    if (!allAssigned) { alert('Assign a campaign to every list.'); return; }
 
     setCreating(true);
     try {
-      const totalContacts = csvFiles.reduce((s, f) => s + f.rowCount, 0);
+      // Determine current max queue position so new runs slot after any existing queued/active runs
+      const existingActive = runs.filter(r => r.status === 'active' || r.status === 'queued');
+      const maxPos = existingActive.length > 0 ? Math.max(...existingActive.map(r => r.queue_position ?? 0)) : -1;
 
-      // Create the run
-      const { data: run, error: runErr } = await supabase
-        .from('drip_runs')
-        .insert({
-          campaign_name: selectedCampaign.name,
-          subject: selectedCampaign.subject,
-          body: selectedCampaign.body,
-          sender_id: selectedCampaign.sender_id,
-          unsubscribe_url: selectedCampaign.unsubscribe_url,
-          daily_limit: dailyLimit,
-          total_contacts: totalContacts,
-        })
-        .select('id')
-        .single();
-
-      if (runErr || !run) { alert('Failed to create run: ' + runErr?.message); setCreating(false); return; }
-
-      // Insert contacts in batches of 200
       for (let fi = 0; fi < csvFiles.length; fi++) {
         const csvFile = csvFiles[fi];
+        const campaign = campaigns.find(c => c.id === csvFile.campaignId)!;
+        const queuePos = maxPos + 1 + fi;
+        // First in queue is active if no existing active run, otherwise queued
+        const isFirst = fi === 0 && !runs.some(r => r.status === 'active');
+        const status = isFirst ? 'active' : 'queued';
+
+        const { data: run, error: runErr } = await supabase
+          .from('drip_runs')
+          .insert({
+            campaign_name: campaign.name,
+            subject: campaign.subject,
+            body: campaign.body,
+            sender_id: campaign.sender_id,
+            unsubscribe_url: campaign.unsubscribe_url,
+            daily_limit: dailyLimit,
+            total_contacts: csvFile.rowCount,
+            status,
+            queue_position: queuePos,
+          })
+          .select('id')
+          .single();
+
+        if (runErr || !run) { alert(`Failed to create run for "${csvFile.name}": ${runErr?.message}`); break; }
+
+        // Insert contacts in batches of 200
         const contactRows = csvFile.rows.map(row => ({
           run_id: run.id,
           list_name: csvFile.name,
-          list_order: fi,
+          list_order: 0,
           email: (row['email'] || '').toLowerCase().trim(),
           first_name: row['first_name'] || row['name']?.split(' ')[0] || '',
           last_name: row['last_name'] || row['name']?.split(' ').slice(1).join(' ') || '',
@@ -301,23 +305,22 @@ function DripPageInner() {
 
         const CHUNK = 200;
         for (let i = 0; i < contactRows.length; i += CHUNK) {
-          const { error: cErr } = await supabase.from('drip_contacts').insert(contactRows.slice(i, i + CHUNK));
-          if (cErr) { console.error('Insert error:', cErr); }
+          await supabase.from('drip_contacts').insert(contactRows.slice(i, i + CHUNK));
         }
+
+        await supabase.from('drip_notifications').insert({
+          run_id: run.id, level: 'info',
+          message: status === 'active'
+            ? `Run started — ${csvFile.rowCount.toLocaleString()} contacts, ${dailyLimit}/day from 6am PST.`
+            : `Queued at position ${queuePos + 1} — will activate automatically when the previous run completes.`,
+        });
       }
 
-      // Add start notification
-      await supabase.from('drip_notifications').insert({
-        run_id: run.id, level: 'info',
-        message: `Drip run started — ${totalContacts.toLocaleString()} contacts across ${csvFiles.length} list${csvFiles.length !== 1 ? 's' : ''}. Sending ${dailyLimit}/day starting at 6am PST.`,
-      });
-
       setCsvFiles([]);
-      setSelectedCampaignId('');
       setShowCreate(false);
       load();
     } catch (e: any) {
-      alert(e?.message || 'Unexpected error creating run.');
+      alert(e?.message || 'Unexpected error creating queue.');
     }
     setCreating(false);
   };
@@ -338,6 +341,7 @@ function DripPageInner() {
   }
 
   const activeRuns = runs.filter(r => r.status === 'active' || r.status === 'paused');
+  const queuedRuns = runs.filter(r => r.status === 'queued').sort((a, b) => (a.queue_position ?? 0) - (b.queue_position ?? 0));
   const completedRuns = runs.filter(r => r.status === 'completed' || r.status === 'stopped');
 
   return (
@@ -393,88 +397,84 @@ function DripPageInner() {
         </div>
       )}
 
-      {/* Create run form */}
+      {/* Create queue form */}
       {showCreate && (
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 space-y-5">
-          <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">New Drip Run</h2>
-
-          {/* Campaign selector */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Campaign</label>
-            {campaigns.length === 0 ? (
-              <p className="text-sm text-zinc-400">No saved campaigns — save one in the Messaging tab first.</p>
-            ) : (
-              <select value={selectedCampaignId} onChange={e => setSelectedCampaignId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
-                <option value="">Select a saved campaign…</option>
-                {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            )}
-            {selectedCampaign && (
-              <div className="mt-2 px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-500 space-y-0.5">
-                <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Subject:</span> {selectedCampaign.subject}</p>
-                <p className="truncate"><span className="font-medium text-zinc-700 dark:text-zinc-300">Body preview:</span> {selectedCampaign.body.slice(0, 100)}…</p>
+            <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">Build Send Queue</h2>
+            <p className="text-xs text-zinc-400 mt-0.5">Upload your CSVs, assign a campaign to each, then queue them all. Runs fire in order automatically.</p>
+          </div>
+
+          {/* Daily limit */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Daily send limit</label>
+              <input type="number" min={1} max={5000} value={dailyLimit} onChange={e => setDailyLimit(Number(e.target.value))}
+                className="w-28 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              />
+            </div>
+            {totalQueueContacts > 0 && (
+              <div className="pt-4 text-xs text-zinc-400">
+                <span className="font-semibold text-zinc-600 dark:text-zinc-300">{totalQueueContacts.toLocaleString()}</span> total contacts
+                {' · est. '}
+                <span className="font-semibold text-zinc-600 dark:text-zinc-300">{estDays} day{estDays !== 1 ? 's' : ''}</span> to complete
               </div>
             )}
           </div>
 
-          {/* Daily limit */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Daily send limit</label>
-            <input type="number" min={1} max={5000} value={dailyLimit} onChange={e => setDailyLimit(Number(e.target.value))}
-              className="w-32 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            />
-            <p className="text-xs text-zinc-400 mt-1">Spread evenly from 6am PST with random delays between sends.</p>
+          {/* CSV upload zone */}
+          <div
+            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={e => { e.preventDefault(); setIsDragging(false); addCsvFiles(e.dataTransfer.files); }}
+            onClick={() => fileRef.current?.click()}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer text-sm transition-colors ${
+              isDragging ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
+              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-500 dark:text-zinc-400'
+            }`}
+          >
+            <Upload size={15} />
+            <span>{csvFiles.length > 0 ? 'Drop more CSVs to add them' : 'Drop cleaned CSVs here or click to browse'}</span>
+            <input ref={fileRef} type="file" accept=".csv" multiple className="hidden"
+              onChange={e => { if (e.target.files) addCsvFiles(e.target.files); if (e.target) e.target.value = ''; }} />
           </div>
 
-          {/* CSV upload */}
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Contact lists <span className="text-zinc-400 font-normal">(in send order — drag to reorder)</span>
-            </label>
-            <div
-              onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={e => { e.preventDefault(); setIsDragging(false); addCsvFiles(e.dataTransfer.files); }}
-              onClick={() => fileRef.current?.click()}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer text-sm transition-colors ${
-                isDragging ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300'
-                : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-500 dark:text-zinc-400'
-              }`}
-            >
-              <Upload size={15} />
-              <span>Drop cleaned CSVs here or click to browse</span>
-              <input ref={fileRef} type="file" accept=".csv" multiple className="hidden"
-                onChange={e => { if (e.target.files) addCsvFiles(e.target.files); if (e.target) e.target.value = ''; }} />
+          {/* Per-CSV campaign assignment */}
+          {csvFiles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-zinc-500">Assign a campaign to each list — they'll run in this order:</p>
+              {csvFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-500 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate text-zinc-800 dark:text-zinc-200">{f.name}</p>
+                    <p className="text-xs text-zinc-400">{f.rowCount.toLocaleString()} contacts</p>
+                  </div>
+                  <select
+                    value={f.campaignId}
+                    onChange={e => setCsvCampaign(i, e.target.value)}
+                    className={`shrink-0 px-2 py-1.5 rounded-lg border text-xs bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
+                      f.campaignId ? 'border-green-300 dark:border-green-700' : 'border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  >
+                    <option value="">Select campaign…</option>
+                    {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <button onClick={() => removeCsv(i)} className="shrink-0 text-zinc-400 hover:text-zinc-600"><X size={13} /></button>
+                </div>
+              ))}
             </div>
+          )}
 
-            {csvFiles.length > 0 && (
-              <ul className="mt-2 space-y-1.5">
-                {csvFiles.map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm">
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button onClick={() => moveCsv(i, -1)} disabled={i === 0} className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 leading-none">▲</button>
-                      <button onClick={() => moveCsv(i, 1)} disabled={i === csvFiles.length - 1} className="text-zinc-400 hover:text-zinc-600 disabled:opacity-30 leading-none">▼</button>
-                    </div>
-                    <span className="text-xs font-medium text-zinc-400 w-5 text-center">{i + 1}</span>
-                    <span className="flex-1 truncate text-zinc-800 dark:text-zinc-200">{f.name}</span>
-                    <span className="text-xs text-zinc-400 shrink-0">{f.rowCount.toLocaleString()} contacts</span>
-                    <button onClick={() => removeCsv(i)} className="shrink-0 text-zinc-400 hover:text-zinc-600"><X size={13} /></button>
-                  </li>
-                ))}
-                <li className="px-3 py-1.5 text-xs text-zinc-400">
-                  Total: <span className="font-semibold text-zinc-600 dark:text-zinc-300">{csvFiles.reduce((s,f)=>s+f.rowCount,0).toLocaleString()} contacts</span>
-                  {' · '}Est. completion: <span className="font-semibold text-zinc-600 dark:text-zinc-300">
-                    {Math.ceil(csvFiles.reduce((s,f)=>s+f.rowCount,0) / dailyLimit)} day{Math.ceil(csvFiles.reduce((s,f)=>s+f.rowCount,0) / dailyLimit) !== 1 ? 's' : ''}
-                  </span>
-                </li>
-              </ul>
-            )}
-          </div>
+          {campaigns.length === 0 && (
+            <p className="text-sm text-amber-600 dark:text-amber-400">No saved campaigns yet — save one in the Messaging tab first.</p>
+          )}
 
-          <button onClick={createRun} disabled={creating || !selectedCampaignId || csvFiles.length === 0}
+          <button onClick={createQueue} disabled={creating || !allAssigned}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-zinc-900 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-            {creating ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : <><Play size={14} /> Start Drip Run</>}
+            {creating
+              ? <><Loader2 size={14} className="animate-spin" /> Queuing…</>
+              : <><Play size={14} /> Queue {csvFiles.length > 0 ? `${csvFiles.length} Run${csvFiles.length !== 1 ? 's' : ''}` : 'All'}</>}
           </button>
         </div>
       )}
@@ -484,6 +484,27 @@ function DripPageInner() {
         <div className="space-y-3">
           <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Active</p>
           {activeRuns.map(r => <RunCard key={r.id} run={r} onRefresh={load} />)}
+        </div>
+      )}
+
+      {/* Queued runs */}
+      {queuedRuns.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Queue ({queuedRuns.length})</p>
+          {queuedRuns.map((r, i) => (
+            <div key={r.id} className="flex items-center gap-3 rounded-xl border border-zinc-200 dark:border-zinc-700 px-4 py-3 bg-white dark:bg-zinc-900">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 text-xs font-bold flex items-center justify-center">{i + 1}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">{r.campaign_name}</p>
+                <p className="text-xs text-zinc-400">{r.total_contacts.toLocaleString()} contacts · {r.current_list_name || 'awaiting activation'}</p>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor('queued')}`}>queued</span>
+              <button onClick={() => { if (confirm('Remove this run from queue?')) supabase.from('drip_runs').update({ status: 'stopped', pause_reason: 'Removed from queue' }).eq('id', r.id).then(load); }}
+                className="shrink-0 text-zinc-300 hover:text-red-400 transition-colors">
+                <X size={13} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
