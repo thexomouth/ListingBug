@@ -64,6 +64,7 @@ const ComparisonPage = lazy(() => import("./components/ComparisonPage").then(m =
 const LegalPage = lazy(() => import("./components/LegalPage").then(m => ({ default: m.LegalPage })));
 const MessagingPage = lazy(() => import("./components/MessagingPage").then(m => ({ default: m.MessagingPage })));
 const UnsubscribePage = lazy(() => import("./components/UnsubscribePage").then(m => ({ default: m.UnsubscribePage })));
+const CleanPage = lazy(() => import("./components/CleanPage").then(m => ({ default: m.CleanPage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -79,7 +80,8 @@ type Page =
   | "blog-post" | "persona-page" | "comparison-page"
   | "legal-dpa" | "legal-subprocessors"
   | "messaging"
-  | "unsubscribe";
+  | "unsubscribe"
+  | "clean";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -106,6 +108,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "legal-subprocessors": "/legal/subprocessors",
   "messaging": "/messaging",
   "unsubscribe": "/unsubscribe",
+  "clean": "/clean",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -128,6 +131,7 @@ function pathToPage(pathname: string): Page {
   }
   if (pathname.startsWith('/messaging')) return 'messaging';
   if (pathname.startsWith('/unsubscribe')) return 'unsubscribe';
+  if (pathname.startsWith('/clean')) return 'clean';
   return 'home';
 }
 
@@ -381,7 +385,7 @@ export default function App() {
   };
 
   const isAuthPage = currentPage === 'login' || currentPage === 'signup';
-  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe'].includes(currentPage);
+  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe', 'clean'].includes(currentPage);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -475,6 +479,7 @@ export default function App() {
       case "legal-subprocessors": return <LegalPage />;
       case "messaging": return <MessagingPage />;
       case "unsubscribe": return <UnsubscribePage />;
+      case "clean": return <CleanPage />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
