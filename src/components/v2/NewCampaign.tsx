@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
+import { CityAutocomplete } from '../CityAutocomplete';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +62,10 @@ function interpolatePreview(text: string, city: string): string {
 export function NewCampaign() {
   const [step, setStep] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  // Whether the user already has profile data saved — determines confirm vs edit mode on step 0
+  const [hasExistingProfile, setHasExistingProfile] = useState(false);
+  // 'confirm' = show summary card for returning users; 'edit' = show full form
+  const [step0Mode, setStep0Mode] = useState<'confirm' | 'edit'>('edit');
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     business_name: '',
     contact_name: '',
@@ -83,6 +88,7 @@ export function NewCampaign() {
     body: '',
   });
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -100,14 +106,20 @@ export function NewCampaign() {
         .eq('id', user.id)
         .single();
       if (userRecord) {
-        setBusinessInfo({
+        const info: BusinessInfo = {
           business_name: userRecord.business_name || '',
           contact_name: userRecord.contact_name || '',
           forward_to: userRecord.forward_to || userRecord.email || '',
           service_type: userRecord.service_type
             ? userRecord.service_type.split(',').map((s: string) => s.trim()).filter(Boolean)
             : [],
-        });
+        };
+        setBusinessInfo(info);
+        // Returning user: already has a business name saved — show confirm view
+        if (userRecord.business_name && userRecord.forward_to) {
+          setHasExistingProfile(true);
+          setStep0Mode('confirm');
+        }
       }
     };
     init();
@@ -135,8 +147,28 @@ export function NewCampaign() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleNext = () => {
+  // Save business info to DB — called when proceeding past step 0
+  const saveBusinessInfo = async () => {
+    if (!userId) return;
+    setIsSavingProfile(true);
+    try {
+      await supabase.from('users').update({
+        business_name: businessInfo.business_name,
+        contact_name: businessInfo.contact_name,
+        forward_to: businessInfo.forward_to,
+        service_type: businessInfo.service_type.join(','),
+      }).eq('id', userId);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleNext = async () => {
     if (!validateStep(step)) return;
+    // Save profile to DB immediately on leaving step 0
+    if (step === 0) {
+      await saveBusinessInfo();
+    }
     setStep(s => s + 1);
   };
 
@@ -159,7 +191,6 @@ export function NewCampaign() {
     const end = ta.selectionEnd;
     const newBody = messageInfo.body.slice(0, start) + v + messageInfo.body.slice(end);
     setMessageInfo(m => ({ ...m, body: newBody }));
-    // Restore cursor after state update
     requestAnimationFrame(() => {
       ta.selectionStart = ta.selectionEnd = start + v.length;
       ta.focus();
@@ -174,7 +205,7 @@ export function NewCampaign() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      // 1. Upsert business info
+      // 1. Ensure latest business info is saved (already saved at step 0 exit, but belt-and-suspenders)
       await supabase.from('users').update({
         business_name: businessInfo.business_name,
         contact_name: businessInfo.contact_name,
@@ -268,9 +299,51 @@ export function NewCampaign() {
     </div>
   );
 
-  const renderStep0 = () => (
+  // Step 0 — confirm view for returning users
+  const renderStep0Confirm = () => (
     <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
-      <div className="text-base font-medium text-foreground mb-1">Tell us about your business</div>
+      <div className="text-base font-medium text-foreground mb-1">Confirm your business details</div>
+      <div className="text-sm text-muted-foreground mb-5">These appear in emails sent on your behalf</div>
+
+      <div className="space-y-2 mb-5">
+        {[
+          { label: 'Business', value: businessInfo.business_name },
+          { label: 'Your name', value: businessInfo.contact_name || '—' },
+          { label: 'Reply-to', value: businessInfo.forward_to },
+          { label: 'Services', value: businessInfo.service_type.length ? businessInfo.service_type.join(', ') : '—' },
+        ].map(row => (
+          <div key={row.label} className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+            <span className="text-sm text-muted-foreground">{row.label}</span>
+            <span className="text-sm font-medium text-foreground">{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setStep0Mode('edit')}
+        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+      >
+        Edit details
+      </button>
+    </div>
+  );
+
+  // Step 0 — full edit form
+  const renderStep0Edit = () => (
+    <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-base font-medium text-foreground">Tell us about your business</div>
+        {hasExistingProfile && (
+          <button
+            type="button"
+            onClick={() => { setStepErrors({}); setStep0Mode('confirm'); }}
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+          >
+            ← Back to confirm
+          </button>
+        )}
+      </div>
       <div className="text-sm text-muted-foreground mb-5">This appears in emails sent on your behalf</div>
 
       <label className="block text-sm text-muted-foreground mb-1.5">Business name</label>
@@ -328,27 +401,18 @@ export function NewCampaign() {
       <div className="text-base font-medium text-foreground mb-1">Where do you want listings from?</div>
       <div className="text-sm text-muted-foreground mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
 
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">City</label>
-          <Input
-            value={searchCriteria.city}
-            onChange={e => setSearchCriteria(c => ({ ...c, city: e.target.value }))}
-            placeholder="e.g. Denver"
-          />
-          {stepErrors.city && <p className="text-xs text-red-500 mt-1">{stepErrors.city}</p>}
-        </div>
-        <div style={{ width: '80px' }}>
-          <label className="block text-sm text-muted-foreground mb-1.5">State</label>
-          <Input
-            value={searchCriteria.state}
-            onChange={e => setSearchCriteria(c => ({ ...c, state: e.target.value.toUpperCase().slice(0, 2) }))}
-            placeholder="CO"
-            maxLength={2}
-          />
-          {stepErrors.state && <p className="text-xs text-red-500 mt-1">{stepErrors.state}</p>}
-        </div>
-      </div>
+      <label className="block text-sm text-muted-foreground mb-1.5">City</label>
+      <CityAutocomplete
+        value={searchCriteria.city}
+        stateValue={searchCriteria.state}
+        onSelect={(city, state) => {
+          setSearchCriteria(c => ({ ...c, city, state }));
+          setStepErrors(e => ({ ...e, city: '', state: '' }));
+        }}
+      />
+      {(stepErrors.city || stepErrors.state) && (
+        <p className="text-xs text-red-500 mt-1">{stepErrors.city || stepErrors.state}</p>
+      )}
 
       <div className="flex gap-3 mt-3.5">
         <div className="flex-1">
@@ -595,7 +659,7 @@ export function NewCampaign() {
       <div className="max-w-[680px] mx-auto px-4 py-6">
         {renderProgress()}
 
-        {step === 0 && renderStep0()}
+        {step === 0 && (step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
@@ -614,10 +678,11 @@ export function NewCampaign() {
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-6 py-2 rounded-lg text-sm font-medium"
+                disabled={isSavingProfile}
+                className="px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
                 style={{ background: '#F3C302', color: '#2c2600' }}
               >
-                Next →
+                {isSavingProfile ? 'Saving...' : 'Next →'}
               </button>
             )}
           </div>
