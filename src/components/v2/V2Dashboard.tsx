@@ -92,7 +92,7 @@ function StatusToggle({ active, onChange }: { active: boolean; onChange: (next: 
       aria-checked={active}
       onClick={e => { e.stopPropagation(); onChange(!active); }}
       className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none"
-      style={{ background: active ? '#F3C302' : 'hsl(var(--muted))' }}
+      style={{ background: active ? '#FFCE0A' : '#d1d5db' }}
     >
       <span
         className="pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
@@ -183,10 +183,10 @@ export function V2Dashboard() {
   // ---------------------------------------------------------------------------
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
         <div
           className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: '#F3C302', borderTopColor: 'transparent' }}
+          style={{ borderColor: '#FFCE0A', borderTopColor: 'transparent' }}
         />
       </div>
     );
@@ -199,35 +199,38 @@ export function V2Dashboard() {
     : null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
       <div className="max-w-[720px] mx-auto px-4 py-6">
 
-        {/* Page header — matches original Dashboard style */}
+        {/* Page header */}
         <div className="flex items-start justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Your active campaigns and send activity</p>
+          </div>
           <button
             onClick={() => navigate('/v2/newcampaign')}
-            className="px-4 py-2 rounded-lg text-sm font-medium"
-            style={{ background: '#F3C302', color: '#2c2600' }}
+            className="px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
           >
             + New campaign
           </button>
         </div>
 
         {/* Usage bar */}
-        <div className="rounded-xl border p-4 mb-6" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+        <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-6">
           <div className="flex justify-between items-baseline mb-2">
-            <span className="text-sm font-medium text-foreground">Account usage this period</span>
-            <span className="text-sm text-muted-foreground">{usageCount.toLocaleString()} / {planLimit.toLocaleString()} messages</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">Account usage this period</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{usageCount.toLocaleString()} / {planLimit.toLocaleString()} messages</span>
           </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(var(--muted))' }}>
+          <div className="h-1.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
             <div
               className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${usagePct}%`, background: isNearLimit ? '#EF9F27' : '#F3C302' }}
+              style={{ width: `${usagePct}%`, background: isNearLimit ? '#EF9F27' : '#FFCE0A' }}
             />
           </div>
           <div className="flex justify-between mt-1.5">
-            <span className="text-[11px] text-muted-foreground/60">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
               {periodEndLabel ? `Resets ${periodEndLabel}` : 'All time'} · {Math.max(0, planLimit - usageCount).toLocaleString()} remaining
             </span>
             {isNearLimit && (
@@ -238,12 +241,12 @@ export function V2Dashboard() {
 
         {/* Campaign list */}
         {campaigns.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-sm text-muted-foreground mb-4">No campaigns yet</div>
+          <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-12 text-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">No campaigns yet</div>
             <button
               onClick={() => navigate('/v2/newcampaign')}
-              className="px-5 py-2.5 rounded-lg text-sm font-medium"
-              style={{ background: '#F3C302', color: '#2c2600' }}
+              className="px-5 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+              style={{ background: '#FFCE0A', color: '#342e37' }}
             >
               + Create your first campaign
             </button>
@@ -252,8 +255,8 @@ export function V2Dashboard() {
           <>
             {/* Section heading */}
             <div className="mb-3">
-              <div className="text-base font-semibold text-foreground">My Campaigns</div>
-              <div className="text-sm text-muted-foreground mt-0.5">
+              <div className="font-bold text-lg text-[#342e37] dark:text-white">My Campaigns</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
                 {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {campaigns.filter(c => c.status === 'active').length} active
               </div>
             </div>
@@ -268,18 +271,13 @@ export function V2Dashboard() {
                 <div
                   key={campaign.id}
                   onClick={() => navigate(`/v2/campaign?id=${campaign.id}`)}
-                  className="rounded-xl border p-4 mb-2.5 cursor-pointer transition-all hover:border-[#F3C302]/60"
-                  style={{
-                    borderColor: 'hsl(var(--border) / 0.4)',
-                    borderWidth: '0.5px',
-                    background: 'hsl(var(--background))',
-                  }}
+                  className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-2.5 cursor-pointer transition-colors hover:border-[#FFCE0A]/60"
                 >
                   {/* Card top */}
                   <div className="flex items-start justify-between mb-2.5">
                     <div className="flex-1 min-w-0 mr-3">
-                      <div className="text-sm font-medium text-foreground">{campaign.campaign_name}</div>
-                      <div className="text-xs text-muted-foreground/60 mt-0.5">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">{campaign.campaign_name}</div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                         {criteria
                           ? `${criteria.city}, ${criteria.state}${criteria.property_type ? ` · ${criteria.property_type}` : ''} · ${criteria.listing_type}`
                           : '—'}
@@ -287,7 +285,7 @@ export function V2Dashboard() {
                     </div>
                     {/* On/off toggle */}
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      <span className="text-xs text-muted-foreground">{isActive ? 'On' : 'Off'}</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
                       <StatusToggle
                         active={isActive}
                         onChange={next => !isToggling && handleToggle(campaign, next)}
@@ -303,32 +301,29 @@ export function V2Dashboard() {
                       { label: 'Replies', value: String(stats.replies), sub: '' },
                       { label: 'Last send', value: stats.lastSendLabel, sub: stats.lastAddress ?? '' },
                     ].map(stat => (
-                      <div key={stat.label} className="rounded-lg px-2.5 py-2" style={{ background: 'hsl(var(--muted))' }}>
-                        <div className="text-[10px] text-muted-foreground/60 mb-0.5">{stat.label}</div>
+                      <div key={stat.label} className="rounded-lg px-2.5 py-2 bg-gray-50 dark:bg-[#1a1a1a]">
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{stat.label}</div>
                         <div
-                          className="font-medium text-foreground leading-none"
+                          className="font-medium text-gray-900 dark:text-white leading-none"
                           style={{ fontSize: stat.label === 'Last send' ? '13px' : '16px' }}
                         >
                           {stat.value}
                         </div>
                         {stat.sub && (
-                          <div className="text-[10px] text-muted-foreground/60 mt-0.5 truncate">{stat.sub}</div>
+                          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{stat.sub}</div>
                         )}
                       </div>
                     ))}
                   </div>
 
                   {/* Card footer */}
-                  <div
-                    className="flex items-center justify-between mt-2.5 pt-2.5 border-t"
-                    style={{ borderColor: 'hsl(var(--border) / 0.4)' }}
-                  >
-                    <div className="text-[11px] text-muted-foreground/60 flex-1 mr-3 truncate">
+                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-200 dark:border-white/10">
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 flex-1 mr-3 truncate">
                       {campaign.body
                         ? `"${campaign.body.slice(0, 80)}${campaign.body.length > 80 ? '...' : ''}"`
                         : '—'}
                     </div>
-                    <span className="text-xs text-muted-foreground/60 shrink-0">View →</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">View →</span>
                   </div>
                 </div>
               );

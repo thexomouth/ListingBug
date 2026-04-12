@@ -48,11 +48,11 @@ interface Campaign {
 function statusBadge(status: string, hasReply: boolean) {
   if (hasReply) return { label: 'Replied', bg: '#dcfce7', color: '#15803d' };
   switch (status) {
-    case 'sent':    return { label: 'Sent', bg: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' };
+    case 'sent':    return { label: 'Sent', bg: '#f3f4f6', color: '#6b7280' };
     case 'opened':  return { label: 'Opened', bg: '#eff6ff', color: '#1d4ed8' };
     case 'failed':  return { label: 'Failed', bg: '#fef2f2', color: '#dc2626' };
-    case 'queued':  return { label: 'Queued', bg: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' };
-    default:        return { label: status, bg: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' };
+    case 'queued':  return { label: 'Queued', bg: '#f3f4f6', color: '#6b7280' };
+    default:        return { label: status, bg: '#f3f4f6', color: '#6b7280' };
   }
 }
 
@@ -77,7 +77,7 @@ function StatusToggle({ active, onChange }: { active: boolean; onChange: (next: 
       aria-checked={active}
       onClick={() => onChange(!active)}
       className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none"
-      style={{ background: active ? '#F3C302' : 'hsl(var(--muted))' }}
+      style={{ background: active ? '#FFCE0A' : '#d1d5db' }}
     >
       <span
         className="pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
@@ -138,10 +138,10 @@ export function V2Campaign() {
   // ---------------------------------------------------------------------------
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
         <div
           className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: '#F3C302', borderTopColor: 'transparent' }}
+          style={{ borderColor: '#FFCE0A', borderTopColor: 'transparent' }}
         />
       </div>
     );
@@ -149,9 +149,9 @@ export function V2Campaign() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
         <div className="text-center px-4">
-          <div className="text-sm text-muted-foreground mb-4">Campaign not found.</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">Campaign not found.</div>
           <button
             onClick={() => { window.location.href = '/v2/dashboard'; }}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
@@ -186,13 +186,13 @@ export function V2Campaign() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
       <div className="max-w-[720px] mx-auto px-4 py-6">
 
         {/* Back link */}
         <button
           onClick={() => { window.location.href = '/v2/dashboard'; }}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-5 flex items-center gap-1"
+          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-5 flex items-center gap-1"
         >
           ← Dashboard
         </button>
@@ -203,13 +203,13 @@ export function V2Campaign() {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {campaign.campaign_name}
             </h2>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {criteria ? `${criteria.city}, ${criteria.state}` : '—'}
               {campaign.channel === 'sms' ? ' · SMS' : ' · Email'}
             </div>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm text-muted-foreground">{isActive ? 'On' : 'Off'}</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
             <StatusToggle active={isActive} onChange={handleToggle} />
           </div>
         </div>
@@ -222,16 +222,16 @@ export function V2Campaign() {
             { label: 'Replies', value: String(totalReplies) },
             { label: 'Status', value: isActive ? 'Active' : 'Paused' },
           ].map(stat => (
-            <div key={stat.label} className="rounded-xl border p-3.5" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
-              <div className="text-[11px] text-muted-foreground/60 mb-1">{stat.label}</div>
-              <div className="text-xl font-semibold text-foreground leading-none">{stat.value}</div>
+            <div key={stat.label} className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-3.5">
+              <div className="text-[11px] text-gray-400 dark:text-gray-500 mb-1">{stat.label}</div>
+              <div className="text-xl font-semibold text-gray-900 dark:text-white leading-none">{stat.value}</div>
             </div>
           ))}
         </div>
 
         {/* Campaign details */}
-        <div className="rounded-xl border p-4 mb-6" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
-          <div className="text-sm font-medium text-foreground mb-3">Campaign settings</div>
+        <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-6">
+          <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign settings</div>
           <div className="space-y-2">
             {[
               criteria && { label: 'Location', value: `${criteria.city}, ${criteria.state}` },
@@ -246,9 +246,9 @@ export function V2Campaign() {
               { label: 'Reply-to', value: campaign.forward_to || '—' },
               { label: 'Created', value: formatDate(campaign.created_at) },
             ].filter(Boolean).map((row: any) => (
-              <div key={row.label} className="flex justify-between py-1.5 border-b" style={{ borderColor: 'hsl(var(--border) / 0.3)' }}>
-                <span className="text-sm text-muted-foreground">{row.label}</span>
-                <span className="text-sm text-foreground font-medium text-right max-w-[60%] truncate">{row.value}</span>
+              <div key={row.label} className="flex justify-between py-1.5 border-b border-gray-100 dark:border-white/10">
+                <span className="text-sm text-gray-600 dark:text-gray-400">{row.label}</span>
+                <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{row.value}</span>
               </div>
             ))}
           </div>
@@ -256,11 +256,8 @@ export function V2Campaign() {
           {/* Message body preview */}
           {campaign.body && (
             <div className="mt-4">
-              <div className="text-xs text-muted-foreground/60 mb-1.5">Message body</div>
-              <div
-                className="rounded-lg p-3 text-sm text-foreground leading-relaxed whitespace-pre-wrap"
-                style={{ background: 'hsl(var(--muted))', border: '0.5px solid hsl(var(--border) / 0.4)' }}
-              >
+              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Message body</div>
+              <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
                 {campaign.body}
               </div>
             </div>
@@ -269,15 +266,15 @@ export function V2Campaign() {
 
         {/* Send activity */}
         <div className="mb-3">
-          <div className="text-base font-semibold text-foreground">Activity</div>
-          <div className="text-sm text-muted-foreground mt-0.5">
+          <div className="font-bold text-lg text-[#342e37] dark:text-white">Activity</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             {totalSent} sent · {totalReplies} repl{totalReplies !== 1 ? 'ies' : 'y'}
           </div>
         </div>
 
         {sortedSends.length === 0 ? (
-          <div className="text-center py-12 rounded-xl border" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
-            <div className="text-sm text-muted-foreground">No sends yet — the campaign will run tonight.</div>
+          <div className="bg-white dark:bg-[#2F2F2F] text-center py-12 rounded-lg border border-gray-200 dark:border-white/10">
+            <div className="text-sm text-gray-600 dark:text-gray-400">No sends yet — the campaign will run tonight.</div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -287,8 +284,7 @@ export function V2Campaign() {
               return (
                 <div
                   key={send.id}
-                  className="rounded-xl border p-3.5 flex items-start gap-3"
-                  style={{ borderColor: 'hsl(var(--border) / 0.4)' }}
+                  className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-3.5 flex items-start gap-3"
                 >
                   {/* Status dot */}
                   <div
@@ -298,7 +294,7 @@ export function V2Campaign() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-medium text-foreground truncate">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {send.agent_name || send.agent_email}
                       </div>
                       <span
@@ -309,14 +305,14 @@ export function V2Campaign() {
                       </span>
                     </div>
 
-                    <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">
+                    <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
                       {send.listing_address
                         ? `${send.listing_address}${send.listing_price ? ` · $${send.listing_price.toLocaleString()}` : ''}`
                         : send.agent_email}
                     </div>
 
                     {send.sent_at && (
-                      <div className="text-[11px] text-muted-foreground/40 mt-1">
+                      <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
                         {formatDate(send.sent_at)} at {formatTime(send.sent_at)}
                       </div>
                     )}

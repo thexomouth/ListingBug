@@ -310,23 +310,23 @@ export function NewCampaign() {
               className="w-7 h-7 rounded-full border flex items-center justify-center text-xs font-medium transition-all"
               style={
                 i === step
-                  ? { background: '#F3C302', borderColor: '#F3C302', color: '#2c2600' }
+                  ? { background: '#FFCE0A', borderColor: '#FFCE0A', color: '#342e37' }
                   : i < step
                   ? { background: 'rgb(240 253 244)', borderColor: 'rgb(187 247 208)', color: 'rgb(21 128 61)' }
-                  : { background: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }
+                  : { background: '#f3f4f6', borderColor: '#d1d5db', color: '#6b7280' }
               }
             >
               {i < step ? '✓' : i + 1}
             </div>
             <span
               className="text-[11px] text-center"
-              style={{ color: i === step ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))', fontWeight: i === step ? 500 : 400 }}
+              style={{ color: i === step ? '#111827' : '#6b7280', fontWeight: i === step ? 500 : 400 }}
             >
               {s.short}
             </span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className="flex-1 h-px mx-2 mt-[-14px]" style={{ background: 'hsl(var(--border) / 0.4)' }} />
+            <div className="flex-1 h-px mx-2 mt-[-14px] bg-gray-200 dark:bg-white/10" />
           )}
         </div>
       ))}
@@ -335,8 +335,8 @@ export function NewCampaign() {
 
   const renderStep0Confirm = () => (
     <div className="mb-2">
-      <div className="text-base font-medium text-foreground mb-1">Confirm your business details</div>
-      <div className="text-sm text-muted-foreground mb-5">These appear in emails sent on your behalf</div>
+      <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Confirm your business details</div>
+      <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">These appear in emails sent on your behalf</div>
 
       <div className="space-y-2 mb-5">
         {[
@@ -345,9 +345,9 @@ export function NewCampaign() {
           { label: 'Reply-to', value: businessInfo.forward_to },
           { label: 'Services', value: businessInfo.service_type.length ? businessInfo.service_type.join(', ') : '—' },
         ].map(row => (
-          <div key={row.label} className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
-            <span className="text-sm text-muted-foreground">{row.label}</span>
-            <span className="text-sm font-medium text-foreground">{row.value}</span>
+          <div key={row.label} className="flex justify-between py-2 border-b border-gray-100 dark:border-white/10">
+            <span className="text-sm text-gray-600 dark:text-gray-400">{row.label}</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">{row.value}</span>
           </div>
         ))}
       </div>
@@ -355,7 +355,7 @@ export function NewCampaign() {
       <button
         type="button"
         onClick={() => setStep0Mode('edit')}
-        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+        className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 transition-colors"
       >
         Edit details
       </button>
@@ -365,20 +365,20 @@ export function NewCampaign() {
   const renderStep0Edit = () => (
     <div className="mb-2">
       <div className="flex items-center justify-between mb-1">
-        <div className="text-base font-medium text-foreground">Tell us about your business</div>
+        <div className="text-base font-medium text-gray-900 dark:text-white">Tell us about your business</div>
         {hasExistingProfile && (
           <button
             type="button"
             onClick={() => { setStepErrors({}); setStep0Mode('confirm'); }}
-            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 transition-colors"
           >
             ← Back to confirm
           </button>
         )}
       </div>
-      <div className="text-sm text-muted-foreground mb-5">This appears in emails sent on your behalf</div>
+      <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">This appears in emails sent on your behalf</div>
 
-      <label className="block text-sm text-muted-foreground mb-1.5">Business name</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Business name</label>
       <Input
         value={businessInfo.business_name}
         onChange={e => setBusinessInfo(b => ({ ...b, business_name: e.target.value }))}
@@ -386,14 +386,14 @@ export function NewCampaign() {
       />
       {stepErrors.business_name && <p className="text-xs text-red-500 mt-1">{stepErrors.business_name}</p>}
 
-      <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">Your name</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Your name</label>
       <Input
         value={businessInfo.contact_name}
         onChange={e => setBusinessInfo(b => ({ ...b, contact_name: e.target.value }))}
         placeholder="e.g. Mike Thornton"
       />
 
-      <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">Reply-to email</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Reply-to email</label>
       <Input
         type="email"
         value={businessInfo.forward_to}
@@ -402,7 +402,7 @@ export function NewCampaign() {
       />
       {stepErrors.forward_to && <p className="text-xs text-red-500 mt-1">{stepErrors.forward_to}</p>}
 
-      <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">Service type</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Service type</label>
       <div className="flex flex-wrap gap-2 mt-1.5">
         {SERVICE_TAGS.map(tag => (
           <button
@@ -417,8 +417,8 @@ export function NewCampaign() {
             className="px-3 py-1 rounded-full border text-xs transition-all"
             style={
               businessInfo.service_type.includes(tag)
-                ? { background: '#F3C302', borderColor: '#F3C302', color: '#2c2600' }
-                : { background: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }
+                ? { background: '#FFCE0A', borderColor: '#FFCE0A', color: '#342e37' }
+                : { background: '#f3f4f6', borderColor: '#d1d5db', color: '#6b7280' }
             }
           >
             {tag}
@@ -430,12 +430,12 @@ export function NewCampaign() {
 
   const renderStep1 = () => (
     <div className="mb-2">
-      <div className="text-base font-medium text-foreground mb-1">Where do you want listings from?</div>
-      <div className="text-sm text-muted-foreground mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
+      <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Where do you want listings from?</div>
+      <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
 
       {/* Location */}
       <div className="mb-4">
-        <label className="block text-sm text-muted-foreground mb-1.5">Location</label>
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Location</label>
         <CityAutocomplete
           value={searchCriteria.city}
           stateValue={searchCriteria.state}
@@ -450,11 +450,11 @@ export function NewCampaign() {
       </div>
 
       {/* Property Details */}
-      <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3 mt-5">Property Details</div>
+      <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 mt-5">Property Details</div>
 
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Property Type</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Property Type</label>
           <select
             value={searchCriteria.property_type}
             onChange={e => setSearchCriteria(c => ({ ...c, property_type: e.target.value }))}
@@ -464,7 +464,7 @@ export function NewCampaign() {
           </select>
         </div>
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Listing Status</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Listing Status</label>
           <select
             disabled
             className="w-full h-9 rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground cursor-not-allowed"
@@ -475,11 +475,11 @@ export function NewCampaign() {
       </div>
 
       {/* Price Range */}
-      <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3 mt-5">Price Range</div>
+      <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 mt-5">Price Range</div>
 
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Min Price</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Min Price</label>
           <Input
             type="number"
             value={searchCriteria.price_min ?? ''}
@@ -488,7 +488,7 @@ export function NewCampaign() {
           />
         </div>
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Max Price</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Max Price</label>
           <Input
             type="number"
             value={searchCriteria.price_max ?? ''}
@@ -499,11 +499,11 @@ export function NewCampaign() {
       </div>
 
       {/* Listing Details */}
-      <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3 mt-5">Listing Details</div>
+      <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 mt-5">Listing Details</div>
 
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Year Built (min)</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Year Built (min)</label>
           <Input
             type="number"
             value={searchCriteria.year_built_min ?? ''}
@@ -512,7 +512,7 @@ export function NewCampaign() {
           />
         </div>
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Year Built (max)</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Year Built (max)</label>
           <Input
             type="number"
             value={searchCriteria.year_built_max ?? ''}
@@ -523,7 +523,7 @@ export function NewCampaign() {
       </div>
 
       <div className="mt-3.5">
-        <label className="block text-sm text-muted-foreground mb-1.5">Days Listed</label>
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Days Listed</label>
         <Input
           type="number"
           min={1}
@@ -532,19 +532,19 @@ export function NewCampaign() {
           placeholder="1"
           className="max-w-[120px]"
         />
-        <p className="text-xs text-muted-foreground/60 mt-1">Search tip: each search yields up to 500 listings.</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Search tip: each search yields up to 500 listings.</p>
       </div>
     </div>
   );
 
   const renderStep2 = () => (
     <div className="mb-2">
-      <div className="text-base font-medium text-foreground mb-1">Write your intro message</div>
-      <div className="text-sm text-muted-foreground mb-5">
+      <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Write your intro message</div>
+      <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
         Sent to every listing agent when a new listing matches your search. Keep it short and personal.
       </div>
 
-      <label className="block text-sm text-muted-foreground mb-1.5">Campaign name</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Campaign name</label>
       <Input
         value={messageInfo.campaign_name}
         onChange={e => setMessageInfo(m => ({ ...m, campaign_name: e.target.value }))}
@@ -552,7 +552,7 @@ export function NewCampaign() {
       />
       {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
 
-      <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">Channel</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Channel</label>
       <div className="flex gap-2">
         {['email', 'sms'].map(ch => (
           <button
@@ -562,8 +562,8 @@ export function NewCampaign() {
             className="px-4 py-1.5 rounded-full border text-xs font-medium transition-all capitalize"
             style={
               messageInfo.channel === ch
-                ? { background: '#F3C302', borderColor: '#F3C302', color: '#2c2600' }
-                : { background: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }
+                ? { background: '#FFCE0A', borderColor: '#FFCE0A', color: '#342e37' }
+                : { background: '#f3f4f6', borderColor: '#d1d5db', color: '#6b7280' }
             }
           >
             {ch === 'email' ? 'Email' : 'SMS'}
@@ -573,7 +573,7 @@ export function NewCampaign() {
 
       {messageInfo.channel === 'email' && (
         <>
-          <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">Subject line</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Subject line</label>
           <Input
             value={messageInfo.subject}
             onChange={e => setMessageInfo(m => ({ ...m, subject: e.target.value }))}
@@ -584,34 +584,34 @@ export function NewCampaign() {
       )}
 
       {messageInfo.channel === 'sms' && (
-        <div className="mt-3.5 rounded-lg border p-4 space-y-3" style={{ borderColor: 'hsl(var(--border) / 0.4)', background: 'hsl(var(--muted) / 0.4)' }}>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">SMS Delivery</div>
+        <div className="mt-3.5 rounded-lg border border-gray-200 dark:border-white/10 p-4 space-y-3 bg-gray-50 dark:bg-[#1a1a1a]">
+          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">SMS Delivery</div>
           <div>
-            <label className="block text-sm text-muted-foreground mb-1.5">Sending number</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Sending number</label>
             <Input
               type="tel"
               value={smsConfig.twilio_from_number}
               onChange={e => setSmsConfig(s => ({ ...s, twilio_from_number: e.target.value }))}
               placeholder="+18885550100"
             />
-            <p className="text-xs text-muted-foreground/60 mt-1">Your Twilio number — must be SMS-capable</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Your Twilio number — must be SMS-capable</p>
             {stepErrors.twilio_from_number && <p className="text-xs text-red-500 mt-1">{stepErrors.twilio_from_number}</p>}
           </div>
           <div>
-            <label className="block text-sm text-muted-foreground mb-1.5">Forward replies to</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Forward replies to</label>
             <Input
               type="tel"
               value={smsConfig.forward_to_phone}
               onChange={e => setSmsConfig(s => ({ ...s, forward_to_phone: e.target.value }))}
               placeholder="+13035550100"
             />
-            <p className="text-xs text-muted-foreground/60 mt-1">Your phone — agent replies will be forwarded here</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Your phone — agent replies will be forwarded here</p>
             {stepErrors.forward_to_phone && <p className="text-xs text-red-500 mt-1">{stepErrors.forward_to_phone}</p>}
           </div>
         </div>
       )}
 
-      <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">Message body</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Message body</label>
       <Textarea
         ref={textareaRef}
         value={messageInfo.body}
@@ -623,7 +623,7 @@ export function NewCampaign() {
       {stepErrors.body && <p className="text-xs text-red-500 mt-1">{stepErrors.body}</p>}
 
       <div className="mt-2.5 mb-1">
-        <span className="text-xs text-muted-foreground/60">Insert variable: </span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">Insert variable: </span>
         {VARS.map(v => (
           <button
             key={v}
@@ -638,16 +638,13 @@ export function NewCampaign() {
         ))}
       </div>
 
-      <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">
-        Preview <span className="text-xs text-muted-foreground/60">(how it looks to the agent)</span>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">
+        Preview <span className="text-xs text-gray-400 dark:text-gray-500">(how it looks to the agent)</span>
       </label>
-      <div
-        className="rounded-lg p-4 text-sm text-foreground leading-relaxed min-h-[80px]"
-        style={{ background: 'hsl(var(--muted))', border: '0.5px solid hsl(var(--border) / 0.4)' }}
-      >
+      <div className="rounded-lg p-4 text-sm text-gray-900 dark:text-white leading-relaxed min-h-[80px] bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
         {messageInfo.body
           ? interpolatePreview(messageInfo.body, searchCriteria.city)
-          : <span className="text-muted-foreground/60">Your message preview will appear here...</span>
+          : <span className="text-gray-400 dark:text-gray-500">Your message preview will appear here...</span>
         }
       </div>
     </div>
@@ -659,9 +656,9 @@ export function NewCampaign() {
         <div className="flex flex-col items-center justify-center gap-4 mb-2" style={{ minHeight: '260px' }}>
           <div
             className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: '#F3C302', borderTopColor: 'transparent' }}
+            style={{ borderColor: '#FFCE0A', borderTopColor: 'transparent' }}
           />
-          <p className="text-sm text-muted-foreground text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
             Searching listings and sending emails to agents in {searchCriteria.city}...
           </p>
         </div>
@@ -671,8 +668,8 @@ export function NewCampaign() {
     if (emailsSent !== null) {
       return (
         <div className="mb-2">
-          <div className="text-base font-medium text-foreground mb-1">You're live</div>
-          <div className="text-sm text-muted-foreground mb-5">
+          <div className="text-base font-medium text-gray-900 dark:text-white mb-1">You're live</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
             ListingBug is watching {searchCriteria.city}, {searchCriteria.state} and emailing agents on your behalf
           </div>
 
@@ -682,24 +679,23 @@ export function NewCampaign() {
               { label: 'Replies', value: '0' },
               { label: 'City', value: searchCriteria.city || '—' },
             ].map(stat => (
-              <div key={stat.label} className="rounded-lg p-3" style={{ background: 'hsl(var(--muted))' }}>
-                <div className="text-[11px] text-muted-foreground/60 mb-1">{stat.label}</div>
-                <div className="text-[22px] font-medium text-foreground leading-none">{stat.value}</div>
+              <div key={stat.label} className="rounded-lg p-3 bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
+                <div className="text-[11px] text-gray-400 dark:text-gray-500 mb-1">{stat.label}</div>
+                <div className="text-[22px] font-semibold text-gray-900 dark:text-white leading-none">{stat.value}</div>
               </div>
             ))}
           </div>
 
           <div
-            className="text-sm font-medium mb-5 px-3 py-2 rounded-lg"
-            style={{ background: '#F3C302', color: '#2c2600' }}
+            className="text-sm font-bold mb-5 px-3 py-2 rounded-lg"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
           >
             {emailsSent} email{emailsSent !== 1 ? 's' : ''} sent to agents in {searchCriteria.city}
           </div>
 
           <button
             onClick={() => window.location.href = '/v2/dashboard'}
-            className="w-full py-2.5 rounded-lg text-sm font-medium border transition-colors hover:bg-muted"
-            style={{ borderColor: 'hsl(var(--border))' }}
+            className="w-full py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
           >
             Go to dashboard →
           </button>
@@ -717,8 +713,8 @@ export function NewCampaign() {
 
     return (
       <div className="mb-2">
-        <div className="text-base font-medium text-foreground mb-1">Review and go live</div>
-        <div className="text-sm text-muted-foreground mb-5">
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Review and go live</div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
           ListingBug will start watching {searchCriteria.city}, {searchCriteria.state} and email matching agents daily.
         </div>
 
@@ -734,9 +730,9 @@ export function NewCampaign() {
             { label: 'Campaign', value: messageInfo.campaign_name },
             { label: 'Channel', value: messageInfo.channel === 'email' ? 'Email' : 'SMS' },
           ].map(row => (
-            <div key={row.label} className="flex justify-between py-2 border-b" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
-              <span className="text-sm text-muted-foreground">{row.label}</span>
-              <span className="text-sm font-medium text-foreground">{row.value || '—'}</span>
+            <div key={row.label} className="flex justify-between py-2 border-b border-gray-100 dark:border-white/10">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{row.label}</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">{row.value || '—'}</span>
             </div>
           ))}
         </div>
@@ -750,8 +746,8 @@ export function NewCampaign() {
         <button
           onClick={handleGoLive}
           disabled={isSubmitting}
-          className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
-          style={{ background: '#F3C302', color: '#2c2600' }}
+          className="w-full py-2.5 rounded-lg text-sm font-bold transition-opacity disabled:opacity-60 hover:opacity-90"
+          style={{ background: '#FFCE0A', color: '#342e37' }}
         >
           Send first emails →
         </button>
@@ -767,21 +763,21 @@ export function NewCampaign() {
   const isDone = emailsSent !== null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
       <div className="max-w-[680px] mx-auto px-4 py-8">
 
         {/* Page header */}
-        <h1 className="text-xl font-semibold text-foreground mb-6">New Campaign</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">New Campaign</h1>
 
         {/* Card wrapping steps + nav */}
-        <div className="rounded-2xl border" style={{ borderColor: 'hsl(var(--border) / 0.5)' }}>
+        <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10">
 
           {/* Progress bar inside card */}
-          <div className="px-6 pt-6 pb-5 border-b" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+          <div className="px-6 pt-6 pb-5 border-b border-gray-200 dark:border-white/10">
             {renderProgress()}
           </div>
 
-          {/* Step content — remove the individual step card's outer border radius/padding since it's now inside the outer card */}
+          {/* Step content */}
           <div className="px-6 py-6">
             {step === 0 && (step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
             {step === 1 && renderStep1()}
@@ -795,8 +791,8 @@ export function NewCampaign() {
               <button
                 type="button"
                 onClick={handleBack}
-                className="px-5 py-2 rounded-lg border text-sm text-muted-foreground transition-colors hover:bg-muted"
-                style={{ visibility: isFirstStep ? 'hidden' : 'visible', borderColor: 'hsl(var(--border))' }}
+                className="px-5 py-2 rounded-lg border border-gray-200 dark:border-white/10 text-sm text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1a1a]"
+                style={{ visibility: isFirstStep ? 'hidden' : 'visible' }}
               >
                 Back
               </button>
@@ -805,8 +801,8 @@ export function NewCampaign() {
                   type="button"
                   onClick={handleNext}
                   disabled={isSavingProfile}
-                  className="px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
-                  style={{ background: '#F3C302', color: '#2c2600' }}
+                  className="px-6 py-2 rounded-lg text-sm font-bold disabled:opacity-60 hover:opacity-90 transition-opacity"
+                  style={{ background: '#FFCE0A', color: '#342e37' }}
                 >
                   {isSavingProfile ? 'Saving...' : 'Next →'}
                 </button>
