@@ -49,7 +49,7 @@ const STEPS = [
   { label: 'Your business', short: 'Business' },
   { label: 'Search area', short: 'Search' },
   { label: 'Your message', short: 'Message' },
-  { label: 'Go live', short: 'Live' },
+  { label: 'Review', short: 'Review' },
 ];
 const PROPERTY_TYPES = [
   'Single Family',
