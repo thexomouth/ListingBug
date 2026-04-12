@@ -24,6 +24,7 @@ interface Send {
   status: string;
   sent_at: string | null;
   opened_at: string | null;
+  clicked_at: string | null;
   channel: string;
   campaign_replies: { id: string; replied_at: string }[];
 }
@@ -112,7 +113,7 @@ export function V2Campaign() {
         ),
         campaign_sends (
           id, agent_email, agent_name, listing_address, listing_city,
-          listing_price, status, sent_at, opened_at, channel,
+          listing_price, status, sent_at, opened_at, clicked_at, channel,
           campaign_replies ( id, replied_at )
         )
       `)
@@ -172,6 +173,7 @@ export function V2Campaign() {
 
   const totalSent = sends.filter(s => s.status === 'sent' || s.status === 'opened' || s.status === 'replied').length;
   const totalOpened = sends.filter(s => s.opened_at !== null).length;
+  const totalClicks = sends.filter(s => s.clicked_at !== null).length;
   const totalReplies = sends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
   const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
 
@@ -219,8 +221,8 @@ export function V2Campaign() {
           {[
             { label: 'Sent', value: String(totalSent) },
             { label: 'Open rate', value: `${openRate}%` },
+            { label: 'Clicks', value: String(totalClicks) },
             { label: 'Replies', value: String(totalReplies) },
-            { label: 'Status', value: isActive ? 'Active' : 'Paused' },
           ].map(stat => (
             <div key={stat.label} className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-3.5">
               <div className="text-[11px] text-gray-400 dark:text-gray-500 mb-1">{stat.label}</div>
@@ -231,7 +233,7 @@ export function V2Campaign() {
 
         {/* Campaign details */}
         <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-6">
-          <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign settings</div>
+          <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign Overview</div>
           <div className="space-y-2">
             {[
               criteria && { label: 'Location', value: `${criteria.city}, ${criteria.state}` },
@@ -252,6 +254,14 @@ export function V2Campaign() {
               </div>
             ))}
           </div>
+
+          {/* Edit button */}
+          <button
+            onClick={() => { window.location.href = `/v2/editcampaign?id=${campaign.id}`; }}
+            className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+          >
+            Edit campaign
+          </button>
 
           {/* Message body preview */}
           {campaign.body && (
