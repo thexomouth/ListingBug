@@ -18,11 +18,14 @@ interface BusinessInfo {
 interface SearchCriteria {
   city: string;
   state: string;
+  // listing_type kept in state but not shown in UI — always 'For Sale'
   listing_type: string;
-  days_old: number;
+  days_old: number | string;
   price_min: number | null;
   price_max: number | null;
-  property_type: string | null;
+  property_type: string;
+  year_built_min: number | null;
+  year_built_max: number | null;
 }
 
 interface MessageInfo {
@@ -43,6 +46,15 @@ const STEPS = [
   { label: 'Your message', short: 'Message' },
   { label: 'Go live', short: 'Live' },
 ];
+const PROPERTY_TYPES = [
+  'Single Family',
+  'Condo',
+  'Townhouse',
+  'Manufactured',
+  'Multi-Family',
+  'Apartment',
+  'Land',
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,9 +74,7 @@ function interpolatePreview(text: string, city: string): string {
 export function NewCampaign() {
   const [step, setStep] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
-  // Whether the user already has profile data saved — determines confirm vs edit mode on step 0
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
-  // 'confirm' = show summary card for returning users; 'edit' = show full form
   const [step0Mode, setStep0Mode] = useState<'confirm' | 'edit'>('edit');
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     business_name: '',
@@ -79,7 +89,9 @@ export function NewCampaign() {
     days_old: 1,
     price_min: null,
     price_max: null,
-    property_type: null,
+    property_type: 'Single Family',
+    year_built_min: null,
+    year_built_max: null,
   });
   const [messageInfo, setMessageInfo] = useState<MessageInfo>({
     campaign_name: '',
@@ -115,7 +127,6 @@ export function NewCampaign() {
             : [],
         };
         setBusinessInfo(info);
-        // Returning user: already has a business name saved — show confirm view
         if (userRecord.business_name && userRecord.forward_to) {
           setHasExistingProfile(true);
           setStep0Mode('confirm');
@@ -135,7 +146,7 @@ export function NewCampaign() {
       if (!businessInfo.forward_to.trim()) errors.forward_to = 'Reply-to email is required';
     }
     if (s === 1) {
-      if (!searchCriteria.city.trim()) errors.city = 'City is required';
+      if (!searchCriteria.city.trim()) errors.city = 'City is required — select one from the dropdown';
       if (!searchCriteria.state.trim()) errors.state = 'State is required';
     }
     if (s === 2) {
@@ -147,7 +158,6 @@ export function NewCampaign() {
     return Object.keys(errors).length === 0;
   };
 
-  // Save business info to DB — called when proceeding past step 0
   const saveBusinessInfo = async () => {
     if (!userId) return;
     setIsSavingProfile(true);
@@ -165,10 +175,7 @@ export function NewCampaign() {
 
   const handleNext = async () => {
     if (!validateStep(step)) return;
-    // Save profile to DB immediately on leaving step 0
-    if (step === 0) {
-      await saveBusinessInfo();
-    }
+    if (step === 0) await saveBusinessInfo();
     setStep(s => s + 1);
   };
 
@@ -205,7 +212,6 @@ export function NewCampaign() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      // 1. Ensure latest business info is saved (already saved at step 0 exit, but belt-and-suspenders)
       await supabase.from('users').update({
         business_name: businessInfo.business_name,
         contact_name: businessInfo.contact_name,
@@ -213,7 +219,6 @@ export function NewCampaign() {
         service_type: businessInfo.service_type.join(','),
       }).eq('id', userId);
 
-      // 2. Create campaign
       const { data: campaign, error: campaignErr } = await supabase
         .from('campaigns')
         .insert({
@@ -232,26 +237,30 @@ export function NewCampaign() {
 
       if (campaignErr || !campaign) throw new Error(campaignErr?.message || 'Failed to create campaign');
 
-      // 3. Create search criteria
+      const daysOldNum = typeof searchCriteria.days_old === 'string'
+        ? parseInt(searchCriteria.days_old, 10) || 1
+        : searchCriteria.days_old;
+
       await supabase.from('campaign_search_criteria').insert({
         campaign_id: campaign.id,
         city: searchCriteria.city,
         state: searchCriteria.state,
         listing_type: searchCriteria.listing_type,
-        days_old: searchCriteria.days_old,
+        active_status: 'Active',
+        days_old: daysOldNum,
         price_min: searchCriteria.price_min,
         price_max: searchCriteria.price_max,
         property_type: searchCriteria.property_type,
+        year_built_min: searchCriteria.year_built_min,
+        year_built_max: searchCriteria.year_built_max,
       });
 
-      // 4. Trigger immediate first send
       const { data: result, error: fnErr } = await supabase.functions.invoke('send-campaign-emails', {
         body: { campaign_id: campaign.id },
       });
 
       if (fnErr) throw new Error(fnErr.message);
 
-      // 5. Show result
       setEmailsSent(result?.emails_sent ?? 0);
     } catch (err: any) {
       console.error('Campaign creation failed:', err);
@@ -299,7 +308,6 @@ export function NewCampaign() {
     </div>
   );
 
-  // Step 0 — confirm view for returning users
   const renderStep0Confirm = () => (
     <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
       <div className="text-base font-medium text-foreground mb-1">Confirm your business details</div>
@@ -329,7 +337,6 @@ export function NewCampaign() {
     </div>
   );
 
-  // Step 0 — full edit form
   const renderStep0Edit = () => (
     <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
       <div className="flex items-center justify-between mb-1">
@@ -401,49 +408,53 @@ export function NewCampaign() {
       <div className="text-base font-medium text-foreground mb-1">Where do you want listings from?</div>
       <div className="text-sm text-muted-foreground mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
 
-      <label className="block text-sm text-muted-foreground mb-1.5">City</label>
-      <CityAutocomplete
-        value={searchCriteria.city}
-        stateValue={searchCriteria.state}
-        onSelect={(city, state) => {
-          setSearchCriteria(c => ({ ...c, city, state }));
-          setStepErrors(e => ({ ...e, city: '', state: '' }));
-        }}
-      />
-      {(stepErrors.city || stepErrors.state) && (
-        <p className="text-xs text-red-500 mt-1">{stepErrors.city || stepErrors.state}</p>
-      )}
+      {/* Location */}
+      <div className="mb-4">
+        <label className="block text-sm text-muted-foreground mb-1.5">Location</label>
+        <CityAutocomplete
+          value={searchCriteria.city}
+          stateValue={searchCriteria.state}
+          onSelect={(city, state) => {
+            setSearchCriteria(c => ({ ...c, city, state }));
+            setStepErrors(e => ({ ...e, city: '', state: '' }));
+          }}
+        />
+        {(stepErrors.city || stepErrors.state) && (
+          <p className="text-xs text-red-500 mt-1">{stepErrors.city || stepErrors.state}</p>
+        )}
+      </div>
 
-      <div className="flex gap-3 mt-3.5">
+      {/* Property Details */}
+      <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3 mt-5">Property Details</div>
+
+      <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Listing type</label>
+          <label className="block text-sm text-muted-foreground mb-1.5">Property Type</label>
           <select
-            value={searchCriteria.listing_type}
-            onChange={e => setSearchCriteria(c => ({ ...c, listing_type: e.target.value }))}
+            value={searchCriteria.property_type}
+            onChange={e => setSearchCriteria(c => ({ ...c, property_type: e.target.value }))}
             className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
           >
-            <option>For Sale</option>
-            <option>For Rent</option>
+            {PROPERTY_TYPES.map(t => <option key={t}>{t}</option>)}
           </select>
         </div>
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Property type</label>
+          <label className="block text-sm text-muted-foreground mb-1.5">Listing Status</label>
           <select
-            value={searchCriteria.property_type || ''}
-            onChange={e => setSearchCriteria(c => ({ ...c, property_type: e.target.value || null }))}
-            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+            disabled
+            className="w-full h-9 rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground cursor-not-allowed"
           >
-            <option value="">Any</option>
-            <option>Single Family</option>
-            <option>Condo</option>
-            <option>Townhouse</option>
+            <option>Active</option>
           </select>
         </div>
       </div>
 
-      <div className="flex gap-3 mt-3.5">
+      {/* Price Range */}
+      <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3 mt-5">Price Range</div>
+
+      <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Min price</label>
+          <label className="block text-sm text-muted-foreground mb-1.5">Min Price</label>
           <Input
             type="number"
             value={searchCriteria.price_min ?? ''}
@@ -452,7 +463,7 @@ export function NewCampaign() {
           />
         </div>
         <div className="flex-1">
-          <label className="block text-sm text-muted-foreground mb-1.5">Max price</label>
+          <label className="block text-sm text-muted-foreground mb-1.5">Max Price</label>
           <Input
             type="number"
             value={searchCriteria.price_max ?? ''}
@@ -460,6 +471,43 @@ export function NewCampaign() {
             placeholder="Any"
           />
         </div>
+      </div>
+
+      {/* Listing Details */}
+      <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-3 mt-5">Listing Details</div>
+
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="block text-sm text-muted-foreground mb-1.5">Year Built (min)</label>
+          <Input
+            type="number"
+            value={searchCriteria.year_built_min ?? ''}
+            onChange={e => setSearchCriteria(c => ({ ...c, year_built_min: e.target.value ? Number(e.target.value) : null }))}
+            placeholder="e.g. 2000"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm text-muted-foreground mb-1.5">Year Built (max)</label>
+          <Input
+            type="number"
+            value={searchCriteria.year_built_max ?? ''}
+            onChange={e => setSearchCriteria(c => ({ ...c, year_built_max: e.target.value ? Number(e.target.value) : null }))}
+            placeholder="e.g. 2020"
+          />
+        </div>
+      </div>
+
+      <div className="mt-3.5">
+        <label className="block text-sm text-muted-foreground mb-1.5">Days Listed</label>
+        <Input
+          type="number"
+          min={1}
+          value={searchCriteria.days_old}
+          onChange={e => setSearchCriteria(c => ({ ...c, days_old: e.target.value }))}
+          placeholder="1"
+          className="max-w-[120px]"
+        />
+        <p className="text-xs text-muted-foreground/60 mt-1">Search tip: each search yields up to 500 listings.</p>
       </div>
     </div>
   );
@@ -606,6 +654,13 @@ export function NewCampaign() {
     }
 
     // Pre-submission summary
+    const daysNum = typeof searchCriteria.days_old === 'string'
+      ? parseInt(searchCriteria.days_old, 10) || 1
+      : searchCriteria.days_old;
+    const ybSummary = searchCriteria.year_built_min || searchCriteria.year_built_max
+      ? `${searchCriteria.year_built_min ?? '?'}–${searchCriteria.year_built_max ?? '?'}`
+      : '—';
+
     return (
       <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
         <div className="text-base font-medium text-foreground mb-1">Review and go live</div>
@@ -618,7 +673,10 @@ export function NewCampaign() {
             { label: 'Business', value: businessInfo.business_name },
             { label: 'Reply-to', value: businessInfo.forward_to },
             { label: 'Location', value: `${searchCriteria.city}, ${searchCriteria.state}` },
-            { label: 'Listing type', value: searchCriteria.listing_type },
+            { label: 'Property type', value: searchCriteria.property_type },
+            { label: 'Days listed', value: String(daysNum) },
+            { label: 'Price range', value: (searchCriteria.price_min || searchCriteria.price_max) ? `$${(searchCriteria.price_min ?? 0).toLocaleString()} – $${(searchCriteria.price_max ?? 0).toLocaleString()}` : 'Any' },
+            { label: 'Year built', value: ybSummary },
             { label: 'Campaign', value: messageInfo.campaign_name },
             { label: 'Channel', value: messageInfo.channel === 'email' ? 'Email' : 'SMS' },
           ].map(row => (

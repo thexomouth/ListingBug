@@ -56,6 +56,8 @@ async function fetchListings(criteria: Record<string, unknown>): Promise<unknown
     price_max,
     beds_min,
     baths_min,
+    year_built_min,
+    year_built_max,
   } = criteria;
 
   const endpoint =
@@ -76,6 +78,13 @@ async function fetchListings(criteria: Record<string, unknown>): Promise<unknown
   if (days_old != null && days_old !== "") {
     const n = parseInt(String(days_old), 10);
     if (n > 0) params.set("daysOld", `${Math.max(0.1, n - 0.1)}-${n + 0.9}`);
+  }
+
+  // yearBuilt: format as "YYYY-YYYY" for RentCast if either bound is set
+  if (year_built_min != null || year_built_max != null) {
+    const ybMin = year_built_min ?? year_built_max;
+    const ybMax = year_built_max ?? year_built_min;
+    params.set("yearBuilt", `${ybMin}-${ybMax}`);
   }
 
   params.set("status", String(active_status));
@@ -280,7 +289,6 @@ serve(async (req) => {
     );
 
     // 7. Load today's sends for this campaign to handle dedup in memory as fallback
-    const todayCT = new Date().toLocaleDateString("en-US", { timeZone: "America/Chicago" });
     const { data: todaySends } = await supabase
       .from("campaign_sends")
       .select("agent_email")
