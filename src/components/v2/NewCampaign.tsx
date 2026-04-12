@@ -114,8 +114,6 @@ export function NewCampaign() {
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Tracks last known cursor position before chip buttons steal focus
-  const cursorPos = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   // Load auth + pre-populate for returning users
   useEffect(() => {
@@ -204,23 +202,21 @@ export function NewCampaign() {
   // ---------------------------------------------------------------------------
   // Variable chip insertion
   // ---------------------------------------------------------------------------
-  const saveCursor = () => {
-    const ta = textareaRef.current;
-    if (ta) cursorPos.current = { start: ta.selectionStart, end: ta.selectionEnd };
-  };
-
+  // onMouseDown + e.preventDefault() on each chip prevents the button from
+  // stealing focus from the textarea, so selectionStart/End remain valid
+  // and we can read them directly at click time.
   const insertVar = (v: string) => {
-    const { start, end } = cursorPos.current;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
     const newBody = messageInfo.body.slice(0, start) + v + messageInfo.body.slice(end);
     const newPos = start + v.length;
-    cursorPos.current = { start: newPos, end: newPos };
     setMessageInfo(m => ({ ...m, body: newBody }));
+    // Restore cursor after React re-render
     requestAnimationFrame(() => {
-      const ta = textareaRef.current;
-      if (ta) {
-        ta.focus();
-        ta.setSelectionRange(newPos, newPos);
-      }
+      ta.setSelectionRange(newPos, newPos);
+      ta.focus();
     });
   };
 
@@ -620,10 +616,6 @@ export function NewCampaign() {
         ref={textareaRef}
         value={messageInfo.body}
         onChange={e => setMessageInfo(m => ({ ...m, body: e.target.value }))}
-        onSelect={saveCursor}
-        onKeyUp={saveCursor}
-        onMouseUp={saveCursor}
-        onFocus={saveCursor}
         rows={5}
         placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
         className="resize-y"
@@ -636,6 +628,7 @@ export function NewCampaign() {
           <button
             key={v}
             type="button"
+            onMouseDown={e => e.preventDefault()}
             onClick={() => insertVar(v)}
             className="inline-block px-2 py-0.5 rounded-md text-xs mx-0.5 cursor-pointer transition-opacity hover:opacity-80"
             style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
