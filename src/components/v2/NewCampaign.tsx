@@ -303,7 +303,7 @@ export function NewCampaign() {
   // Render helpers
   // ---------------------------------------------------------------------------
   const renderProgress = () => (
-    <div className="flex gap-0 mb-8">
+    <div className="flex gap-0">
       {STEPS.map((s, i) => (
         <div key={i} className="flex items-center" style={{ flex: i < STEPS.length - 1 ? '1' : 'none' }}>
           <div
@@ -338,7 +338,7 @@ export function NewCampaign() {
   );
 
   const renderStep0Confirm = () => (
-    <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+    <div className="mb-2">
       <div className="text-base font-medium text-foreground mb-1">Confirm your business details</div>
       <div className="text-sm text-muted-foreground mb-5">These appear in emails sent on your behalf</div>
 
@@ -367,7 +367,7 @@ export function NewCampaign() {
   );
 
   const renderStep0Edit = () => (
-    <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+    <div className="mb-2">
       <div className="flex items-center justify-between mb-1">
         <div className="text-base font-medium text-foreground">Tell us about your business</div>
         {hasExistingProfile && (
@@ -433,7 +433,7 @@ export function NewCampaign() {
   );
 
   const renderStep1 = () => (
-    <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+    <div className="mb-2">
       <div className="text-base font-medium text-foreground mb-1">Where do you want listings from?</div>
       <div className="text-sm text-muted-foreground mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
 
@@ -542,7 +542,7 @@ export function NewCampaign() {
   );
 
   const renderStep2 = () => (
-    <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+    <div className="mb-2">
       <div className="text-base font-medium text-foreground mb-1">Write your intro message</div>
       <div className="text-sm text-muted-foreground mb-5">
         Sent to every listing agent when a new listing matches your search. Keep it short and personal.
@@ -663,7 +663,7 @@ export function NewCampaign() {
   const renderStep3 = () => {
     if (isSubmitting) {
       return (
-        <div className="rounded-xl border p-8 mb-4 flex flex-col items-center justify-center gap-4" style={{ borderColor: 'hsl(var(--border) / 0.4)', minHeight: '260px' }}>
+        <div className="flex flex-col items-center justify-center gap-4 mb-2" style={{ minHeight: '260px' }}>
           <div
             className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
             style={{ borderColor: '#F3C302', borderTopColor: 'transparent' }}
@@ -677,7 +677,7 @@ export function NewCampaign() {
 
     if (emailsSent !== null) {
       return (
-        <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+        <div className="mb-2">
           <div className="text-base font-medium text-foreground mb-1">You're live</div>
           <div className="text-sm text-muted-foreground mb-5">
             ListingBug is watching {searchCriteria.city}, {searchCriteria.state} and emailing agents on your behalf
@@ -723,7 +723,7 @@ export function NewCampaign() {
       : '—';
 
     return (
-      <div className="rounded-xl border p-6 mb-4" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+      <div className="mb-2">
         <div className="text-base font-medium text-foreground mb-1">Review and go live</div>
         <div className="text-sm text-muted-foreground mb-5">
           ListingBug will start watching {searchCriteria.city}, {searchCriteria.state} and email matching agents daily.
@@ -775,37 +775,53 @@ export function NewCampaign() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
-      <div className="max-w-[680px] mx-auto px-4 py-6">
-        {renderProgress()}
+      <div className="max-w-[680px] mx-auto px-4 py-8">
 
-        {step === 0 && (step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
+        {/* Page header */}
+        <h1 className="text-xl font-semibold text-foreground mb-6">New Campaign</h1>
 
-        {!isDone && (
-          <div className="flex justify-between mt-5">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="px-5 py-2 rounded-lg border text-sm text-muted-foreground transition-colors hover:bg-muted"
-              style={{ visibility: isFirstStep ? 'hidden' : 'visible', borderColor: 'hsl(var(--border))' }}
-            >
-              Back
-            </button>
-            {!isLastStep && (
+        {/* Card wrapping steps + nav */}
+        <div className="rounded-2xl border" style={{ borderColor: 'hsl(var(--border) / 0.5)' }}>
+
+          {/* Progress bar inside card */}
+          <div className="px-6 pt-6 pb-5 border-b" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
+            {renderProgress()}
+          </div>
+
+          {/* Step content — remove the individual step card's outer border radius/padding since it's now inside the outer card */}
+          <div className="px-6 py-6">
+            {step === 0 && (step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+          </div>
+
+          {/* Nav buttons inside card footer */}
+          {!isDone && (
+            <div className="flex justify-between px-6 pb-6">
               <button
                 type="button"
-                onClick={handleNext}
-                disabled={isSavingProfile}
-                className="px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
-                style={{ background: '#F3C302', color: '#2c2600' }}
+                onClick={handleBack}
+                className="px-5 py-2 rounded-lg border text-sm text-muted-foreground transition-colors hover:bg-muted"
+                style={{ visibility: isFirstStep ? 'hidden' : 'visible', borderColor: 'hsl(var(--border))' }}
               >
-                {isSavingProfile ? 'Saving...' : 'Next →'}
+                Back
               </button>
-            )}
-          </div>
-        )}
+              {!isLastStep && (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={isSavingProfile}
+                  className="px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
+                  style={{ background: '#F3C302', color: '#2c2600' }}
+                >
+                  {isSavingProfile ? 'Saving...' : 'Next →'}
+                </button>
+              )}
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );
