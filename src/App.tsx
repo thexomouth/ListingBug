@@ -66,6 +66,9 @@ const MessagingPage = lazy(() => import("./components/MessagingPage").then(m => 
 const UnsubscribePage = lazy(() => import("./components/UnsubscribePage").then(m => ({ default: m.UnsubscribePage })));
 const CleanPage = lazy(() => import("./components/CleanPage").then(m => ({ default: m.CleanPage })));
 const DripPage = lazy(() => import("./components/DripPage").then(m => ({ default: m.DripPage })));
+const NewCampaign = lazy(() => import("./components/v2/NewCampaign").then(m => ({ default: m.NewCampaign })));
+const V2Dashboard = lazy(() => import("./components/v2/V2Dashboard").then(m => ({ default: m.V2Dashboard })));
+const V2Campaign = lazy(() => import("./components/v2/V2Campaign").then(m => ({ default: m.V2Campaign })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -83,7 +86,10 @@ type Page =
   | "messaging"
   | "unsubscribe"
   | "clean"
-  | "drip";
+  | "drip"
+  | "v2-dashboard"
+  | "v2-new-campaign"
+  | "v2-campaign";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -112,6 +118,9 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "unsubscribe": "/unsubscribe",
   "clean": "/clean",
   "drip": "/drip",
+  "v2-dashboard": "/v2/dashboard",
+  "v2-new-campaign": "/v2/newcampaign",
+  "v2-campaign": "/v2/campaign",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -136,6 +145,9 @@ function pathToPage(pathname: string): Page {
   if (pathname.startsWith('/unsubscribe')) return 'unsubscribe';
   if (pathname.startsWith('/clean')) return 'clean';
   if (pathname.startsWith('/drip')) return 'drip';
+  if (pathname === '/v2/dashboard') return 'v2-dashboard';
+  if (pathname === '/v2/newcampaign') return 'v2-new-campaign';
+  if (pathname.startsWith('/v2/campaign')) return 'v2-campaign';
   return 'home';
 }
 
@@ -485,6 +497,9 @@ export default function App() {
       case "unsubscribe": return <UnsubscribePage />;
       case "clean": return <CleanPage />;
       case "drip": return <DripPage />;
+      case "v2-dashboard": return isLoggedIn ? <V2Dashboard /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-new-campaign": return isLoggedIn ? <NewCampaign /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-campaign": return isLoggedIn ? <V2Campaign /> : <LoginPage onLogin={handleLogin} />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
