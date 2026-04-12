@@ -46,10 +46,8 @@ function computeStats(sends: CampaignSend[]): CampaignStats {
   const sent = sends.filter(s => s.status === 'sent' || s.status === 'replied').length;
   const opened = sends.filter(s => s.opened_at !== null).length;
   const replies = sends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
-
   const openRate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
 
-  // Most recent sent_at
   const sentSends = sends
     .filter(s => s.sent_at)
     .sort((a, b) => new Date(b.sent_at!).getTime() - new Date(a.sent_at!).getTime());
@@ -71,38 +69,55 @@ function computeStats(sends: CampaignSend[]): CampaignStats {
 }
 
 // ---------------------------------------------------------------------------
-// Plan limits — TODO: wire to Stripe product metadata when billing is live
+// Plan limits
 // ---------------------------------------------------------------------------
 const PLAN_LIMITS: Record<string, number> = {
   trial: 100,
   home: 2500,
   market: 5000,
   region: 10000,
-  // V1 plan names for backward compat
   starter: 2500,
   pro: 5000,
   enterprise: 10000,
 };
 
 // ---------------------------------------------------------------------------
+// Toggle component
+// ---------------------------------------------------------------------------
+function StatusToggle({ active, onChange }: { active: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      onClick={e => { e.stopPropagation(); onChange(!active); }}
+      className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none"
+      style={{ background: active ? '#F3C302' : 'hsl(var(--muted))' }}
+    >
+      <span
+        className="pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+        style={{ transform: active ? 'translateX(16px)' : 'translateX(0px)' }}
+      />
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 export function V2Dashboard() {
-  const [userId, setUserId] = useState<string | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [usageCount, setUsageCount] = useState(0);
   const [planLimit, setPlanLimit] = useState(100);
   const [stripePeriodEnd, setStripePeriodEnd] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setIsLoading(false); return; }
-      setUserId(user.id);
 
-      // Load user plan + stripe period
       const { data: userData } = await supabase
         .from('users')
         .select('plan, stripe_subscription_end')
@@ -115,7 +130,6 @@ export function V2Dashboard() {
         setStripePeriodEnd(userData.stripe_subscription_end || null);
       }
 
-      // Load campaigns with sends + replies
       const { data: campaignData } = await supabase
         .from('campaigns')
         .select(`
@@ -131,22 +145,17 @@ export function V2Dashboard() {
 
       if (campaignData) setCampaigns(campaignData as Campaign[]);
 
-      // Usage this billing period
       if (userData?.stripe_subscription_end) {
-        // Derive period start: subtract 1 month from period end
         const periodEnd = new Date(userData.stripe_subscription_end);
         const periodStart = new Date(periodEnd);
         periodStart.setMonth(periodStart.getMonth() - 1);
-
         const { data: usageLogs } = await supabase
           .from('usage_logs')
           .select('id')
           .eq('user_id', user.id)
           .gte('logged_at', periodStart.toISOString());
-
         setUsageCount(usageLogs?.length ?? 0);
       } else {
-        // No Stripe yet — count all usage_logs for this user
         const { count } = await supabase
           .from('usage_logs')
           .select('id', { count: 'exact', head: true })
@@ -160,6 +169,14 @@ export function V2Dashboard() {
   }, []);
 
   const navigate = (path: string) => { window.location.href = path; };
+
+  const handleToggle = async (campaign: Campaign, next: boolean) => {
+    setTogglingId(campaign.id);
+    const newStatus = next ? 'active' : 'paused';
+    await supabase.from('campaigns').update({ status: newStatus }).eq('id', campaign.id);
+    setCampaigns(cs => cs.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c));
+    setTogglingId(null);
+  };
 
   // ---------------------------------------------------------------------------
   // Render
@@ -185,14 +202,9 @@ export function V2Dashboard() {
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       <div className="max-w-[720px] mx-auto px-4 py-6">
 
-        {/* Top bar */}
+        {/* Page header — matches original Dashboard style */}
         <div className="flex items-start justify-between mb-6">
-          <div>
-            <div className="text-lg font-medium text-foreground">My campaigns</div>
-            <div className="text-sm text-muted-foreground mt-0.5">
-              {campaigns.filter(c => c.status === 'active').length} active
-            </div>
-          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h2>
           <button
             onClick={() => navigate('/v2/newcampaign')}
             className="px-4 py-2 rounded-lg text-sm font-medium"
@@ -203,10 +215,7 @@ export function V2Dashboard() {
         </div>
 
         {/* Usage bar */}
-        <div
-          className="rounded-xl border p-4 mb-5"
-          style={{ borderColor: 'hsl(var(--border) / 0.4)' }}
-        >
+        <div className="rounded-xl border p-4 mb-6" style={{ borderColor: 'hsl(var(--border) / 0.4)' }}>
           <div className="flex justify-between items-baseline mb-2">
             <span className="text-sm font-medium text-foreground">Account usage this period</span>
             <span className="text-sm text-muted-foreground">{usageCount.toLocaleString()} / {planLimit.toLocaleString()} messages</span>
@@ -222,9 +231,7 @@ export function V2Dashboard() {
               {periodEndLabel ? `Resets ${periodEndLabel}` : 'All time'} · {Math.max(0, planLimit - usageCount).toLocaleString()} remaining
             </span>
             {isNearLimit && (
-              <span className="text-[11px] font-medium" style={{ color: '#BA7517' }}>
-                Approaching limit
-              </span>
+              <span className="text-[11px] font-medium" style={{ color: '#BA7517' }}>Approaching limit</span>
             )}
           </div>
         </div>
@@ -243,28 +250,34 @@ export function V2Dashboard() {
           </div>
         ) : (
           <>
-            <div className="text-sm font-medium text-foreground mb-2.5">
-              {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''}
+            {/* Section heading */}
+            <div className="mb-3">
+              <div className="text-base font-semibold text-foreground">My Campaigns</div>
+              <div className="text-sm text-muted-foreground mt-0.5">
+                {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {campaigns.filter(c => c.status === 'active').length} active
+              </div>
             </div>
+
             {campaigns.map(campaign => {
               const criteria = campaign.campaign_search_criteria?.[0];
               const stats = computeStats(campaign.campaign_sends ?? []);
-              const isSelected = selectedId === campaign.id;
+              const isActive = campaign.status === 'active';
+              const isToggling = togglingId === campaign.id;
 
               return (
                 <div
                   key={campaign.id}
-                  onClick={() => setSelectedId(isSelected ? null : campaign.id)}
-                  className="rounded-xl border p-4 mb-2.5 cursor-pointer transition-all"
+                  onClick={() => navigate(`/v2/campaign?id=${campaign.id}`)}
+                  className="rounded-xl border p-4 mb-2.5 cursor-pointer transition-all hover:border-[#F3C302]/60"
                   style={{
-                    borderColor: isSelected ? '#F3C302' : 'hsl(var(--border) / 0.4)',
-                    borderWidth: isSelected ? '1.5px' : '0.5px',
+                    borderColor: 'hsl(var(--border) / 0.4)',
+                    borderWidth: '0.5px',
                     background: 'hsl(var(--background))',
                   }}
                 >
                   {/* Card top */}
                   <div className="flex items-start justify-between mb-2.5">
-                    <div>
+                    <div className="flex-1 min-w-0 mr-3">
                       <div className="text-sm font-medium text-foreground">{campaign.campaign_name}</div>
                       <div className="text-xs text-muted-foreground/60 mt-0.5">
                         {criteria
@@ -272,16 +285,14 @@ export function V2Dashboard() {
                           : '—'}
                       </div>
                     </div>
-                    <span
-                      className="text-[11px] px-2.5 py-0.5 rounded-full shrink-0 ml-2"
-                      style={
-                        campaign.status === 'active'
-                          ? { background: '#F3C302', color: '#2c2600' }
-                          : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '0.5px solid hsl(var(--border))' }
-                      }
-                    >
-                      {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
-                    </span>
+                    {/* On/off toggle */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                      <span className="text-xs text-muted-foreground">{isActive ? 'On' : 'Off'}</span>
+                      <StatusToggle
+                        active={isActive}
+                        onChange={next => !isToggling && handleToggle(campaign, next)}
+                      />
+                    </div>
                   </div>
 
                   {/* Stats grid */}
@@ -312,27 +323,12 @@ export function V2Dashboard() {
                     className="flex items-center justify-between mt-2.5 pt-2.5 border-t"
                     style={{ borderColor: 'hsl(var(--border) / 0.4)' }}
                   >
-                    <div
-                      className="text-[11px] text-muted-foreground/60 flex-1 mr-3 truncate"
-                    >
+                    <div className="text-[11px] text-muted-foreground/60 flex-1 mr-3 truncate">
                       {campaign.body
                         ? `"${campaign.body.slice(0, 80)}${campaign.body.length > 80 ? '...' : ''}"`
                         : '—'}
                     </div>
-                    <div className="flex gap-3 shrink-0" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => navigate(`/v2/newcampaign?campaign_id=${campaign.id}`)}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Edit →
-                      </button>
-                      <button
-                        onClick={() => navigate(`/v2/campaign?id=${campaign.id}`)}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Activity →
-                      </button>
-                    </div>
+                    <span className="text-xs text-muted-foreground/60 shrink-0">View →</span>
                   </div>
                 </div>
               );
