@@ -35,6 +35,11 @@ interface MessageInfo {
   body: string;
 }
 
+interface SmsConfig {
+  twilio_from_number: string;
+  forward_to_phone: string;
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -99,12 +104,18 @@ export function NewCampaign() {
     subject: '',
     body: '',
   });
+  const [smsConfig, setSmsConfig] = useState<SmsConfig>({
+    twilio_from_number: '',
+    forward_to_phone: '',
+  });
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Tracks last known cursor position before chip buttons steal focus
+  const cursorPos = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
 
   // Load auth + pre-populate for returning users
   useEffect(() => {
@@ -153,6 +164,8 @@ export function NewCampaign() {
       if (!messageInfo.campaign_name.trim()) errors.campaign_name = 'Campaign name is required';
       if (messageInfo.channel === 'email' && !messageInfo.subject.trim()) errors.subject = 'Subject line is required';
       if (!messageInfo.body.trim()) errors.body = 'Message body is required';
+      if (messageInfo.channel === 'sms' && !smsConfig.twilio_from_number.trim()) errors.twilio_from_number = 'Sending number is required for SMS campaigns';
+      if (messageInfo.channel === 'sms' && !smsConfig.forward_to_phone.trim()) errors.forward_to_phone = 'Forward-to phone is required for SMS campaigns';
     }
     setStepErrors(errors);
     return Object.keys(errors).length === 0;
@@ -191,16 +204,23 @@ export function NewCampaign() {
   // ---------------------------------------------------------------------------
   // Variable chip insertion
   // ---------------------------------------------------------------------------
-  const insertVar = (v: string) => {
+  const saveCursor = () => {
     const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
+    if (ta) cursorPos.current = { start: ta.selectionStart, end: ta.selectionEnd };
+  };
+
+  const insertVar = (v: string) => {
+    const { start, end } = cursorPos.current;
     const newBody = messageInfo.body.slice(0, start) + v + messageInfo.body.slice(end);
+    const newPos = start + v.length;
+    cursorPos.current = { start: newPos, end: newPos };
     setMessageInfo(m => ({ ...m, body: newBody }));
     requestAnimationFrame(() => {
-      ta.selectionStart = ta.selectionEnd = start + v.length;
-      ta.focus();
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.focus();
+        ta.setSelectionRange(newPos, newPos);
+      }
     });
   };
 
@@ -254,6 +274,15 @@ export function NewCampaign() {
         year_built_min: searchCriteria.year_built_min,
         year_built_max: searchCriteria.year_built_max,
       });
+
+      // Write SMS config when channel is sms
+      if (messageInfo.channel === 'sms') {
+        await supabase.from('campaign_sms_config').insert({
+          campaign_id: campaign.id,
+          twilio_from_number: smsConfig.twilio_from_number,
+          forward_to_phone: smsConfig.forward_to_phone,
+        });
+      }
 
       const { data: result, error: fnErr } = await supabase.functions.invoke('send-campaign-emails', {
         body: { campaign_id: campaign.id },
@@ -558,11 +587,43 @@ export function NewCampaign() {
         </>
       )}
 
+      {messageInfo.channel === 'sms' && (
+        <div className="mt-3.5 rounded-lg border p-4 space-y-3" style={{ borderColor: 'hsl(var(--border) / 0.4)', background: 'hsl(var(--muted) / 0.4)' }}>
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">SMS Delivery</div>
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1.5">Sending number</label>
+            <Input
+              type="tel"
+              value={smsConfig.twilio_from_number}
+              onChange={e => setSmsConfig(s => ({ ...s, twilio_from_number: e.target.value }))}
+              placeholder="+18885550100"
+            />
+            <p className="text-xs text-muted-foreground/60 mt-1">Your Twilio number — must be SMS-capable</p>
+            {stepErrors.twilio_from_number && <p className="text-xs text-red-500 mt-1">{stepErrors.twilio_from_number}</p>}
+          </div>
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1.5">Forward replies to</label>
+            <Input
+              type="tel"
+              value={smsConfig.forward_to_phone}
+              onChange={e => setSmsConfig(s => ({ ...s, forward_to_phone: e.target.value }))}
+              placeholder="+13035550100"
+            />
+            <p className="text-xs text-muted-foreground/60 mt-1">Your phone — agent replies will be forwarded here</p>
+            {stepErrors.forward_to_phone && <p className="text-xs text-red-500 mt-1">{stepErrors.forward_to_phone}</p>}
+          </div>
+        </div>
+      )}
+
       <label className="block text-sm text-muted-foreground mt-3.5 mb-1.5">Message body</label>
       <Textarea
         ref={textareaRef}
         value={messageInfo.body}
         onChange={e => setMessageInfo(m => ({ ...m, body: e.target.value }))}
+        onSelect={saveCursor}
+        onKeyUp={saveCursor}
+        onMouseUp={saveCursor}
+        onFocus={saveCursor}
         rows={5}
         placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
         className="resize-y"
