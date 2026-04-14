@@ -46,6 +46,8 @@ interface SmsConfig {
 // ---------------------------------------------------------------------------
 const SERVICE_TAGS = ['Roofing', 'Staging', 'Cleaning', 'Landscaping', 'Contracting', 'Photography', 'Inspection'];
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
+const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
+
 const STEPS = [
   { label: 'Your business', short: 'Business' },
   { label: 'Search area', short: 'Search' },
@@ -67,11 +69,11 @@ const PROPERTY_TYPES = [
 // ---------------------------------------------------------------------------
 function interpolatePreview(text: string, city: string): string {
   return text
-    .replace(/\{\{agent_name\}\}/g, 'Sarah')
-    .replace(/\{\{address\}\}/g, '1842 Maple St')
-    .replace(/\{\{city\}\}/g, city || 'your city')
-    .replace(/\{\{price\}\}/g, '$485,000')
-    .replace(/\{\{listing_date\}\}/g, 'today');
+    .replace(/\{\{agent_name\}\}/g, '[AGENT NAME]')
+    .replace(/\{\{address\}\}/g, '[LISTING ADDRESS]')
+    .replace(/\{\{city\}\}/g, city || '[CITY]')
+    .replace(/\{\{price\}\}/g, '[LISTING PRICE]')
+    .replace(/\{\{listing_date\}\}/g, '[LISTING DATE]');
 }
 
 function renderBodyPreview(text: string, city: string): string {
@@ -130,7 +132,9 @@ export function NewCampaign() {
   // Tracks cursor position so insertVar works even if selectionStart
   // can't be read at click time (e.g. focus already moved)
   const cursorPos = useRef(0);
+  const cursorEnd = useRef(0);
   const [linkForm, setLinkForm] = useState({ open: false, text: '', url: '' });
+  const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
 
   // Load auth + pre-populate for returning users
   useEffect(() => {
@@ -239,6 +243,27 @@ export function NewCampaign() {
       ta.setSelectionRange(newPos, newPos);
       ta.focus();
     }
+  };
+
+  // Replaces the current selection (or inserts at cursor) with [text](url)
+  const doInsertLink = (text: string, url: string) => {
+    const token = `[${text}](${url})`;
+    const start = cursorPos.current;
+    const end = cursorEnd.current;
+    const body = messageInfo.body;
+    const newBody = body.slice(0, start) + token + body.slice(end);
+    const newPos = start + token.length;
+    cursorPos.current = newPos;
+    cursorEnd.current = newPos;
+    flushSync(() => {
+      setMessageInfo(m => ({ ...m, body: newBody }));
+    });
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.setSelectionRange(newPos, newPos);
+      ta.focus();
+    }
+    setLinkForm({ open: false, text: '', url: '' });
   };
 
   // ---------------------------------------------------------------------------
@@ -642,11 +667,21 @@ export function NewCampaign() {
         value={messageInfo.body}
         onChange={e => {
           cursorPos.current = e.target.selectionStart ?? 0;
+          cursorEnd.current = e.target.selectionEnd ?? 0;
           setMessageInfo(m => ({ ...m, body: e.target.value }));
         }}
-        onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; }}
-        onClick={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; }}
-        onKeyUp={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; }}
+        onSelect={e => {
+          cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
+          cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0;
+        }}
+        onClick={e => {
+          cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
+          cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0;
+        }}
+        onKeyUp={e => {
+          cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
+          cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0;
+        }}
         rows={5}
         placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
         className="resize-y"
@@ -670,8 +705,17 @@ export function NewCampaign() {
         {!linkForm.open && (
           <button
             type="button"
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => setLinkForm(f => ({ ...f, open: true }))}
+            onMouseDown={e => {
+              e.preventDefault();
+              // Read selection directly from the textarea while it still has focus
+              const ta = textareaRef.current;
+              const start = ta?.selectionStart ?? cursorPos.current;
+              const end = ta?.selectionEnd ?? cursorEnd.current;
+              cursorPos.current = start;
+              cursorEnd.current = end;
+              const selectedText = messageInfo.body.slice(start, end);
+              setLinkForm({ open: true, text: selectedText, url: '' });
+            }}
             className="inline-block px-2 py-0.5 rounded-md text-xs mx-0.5 cursor-pointer transition-opacity hover:opacity-80"
             style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
           >
@@ -683,7 +727,7 @@ export function NewCampaign() {
       {linkForm.open && (
         <div className="mt-2 mb-1 flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
           <input
-            autoFocus
+            autoFocus={!linkForm.text}
             type="text"
             placeholder="Display text"
             value={linkForm.text}
@@ -691,14 +735,14 @@ export function NewCampaign() {
             className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-32 outline-none focus:border-[#FFCE0A]"
           />
           <input
+            autoFocus={!!linkForm.text}
             type="url"
             placeholder="https://..."
             value={linkForm.url}
             onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))}
             onKeyDown={e => {
               if (e.key === 'Enter' && linkForm.text.trim() && linkForm.url.trim()) {
-                insertVar(`[${linkForm.text.trim()}](${linkForm.url.trim()})`);
-                setLinkForm({ open: false, text: '', url: '' });
+                doInsertLink(linkForm.text.trim(), linkForm.url.trim());
               }
             }}
             className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-48 outline-none focus:border-[#FFCE0A]"
@@ -706,10 +750,7 @@ export function NewCampaign() {
           <button
             type="button"
             disabled={!linkForm.text.trim() || !linkForm.url.trim()}
-            onClick={() => {
-              insertVar(`[${linkForm.text.trim()}](${linkForm.url.trim()})`);
-              setLinkForm({ open: false, text: '', url: '' });
-            }}
+            onClick={() => doInsertLink(linkForm.text.trim(), linkForm.url.trim())}
             className="text-xs px-2.5 py-1 rounded font-medium transition-colors disabled:opacity-40"
             style={{ background: '#FFCE0A', color: '#342e37' }}
           >
@@ -834,14 +875,23 @@ export function NewCampaign() {
           </div>
         )}
 
-        <button
-          onClick={handleGoLive}
-          disabled={isSubmitting}
-          className="w-full py-2.5 rounded-lg text-sm font-bold transition-opacity disabled:opacity-60 hover:opacity-90"
-          style={{ background: '#FFCE0A', color: '#342e37' }}
-        >
-          Send first emails →
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTestModal({ open: true, address: businessInfo.forward_to || '', sending: false, sent: false, error: null })}
+            className="flex-none py-2.5 px-4 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+          >
+            Send test email
+          </button>
+          <button
+            onClick={handleGoLive}
+            disabled={isSubmitting}
+            className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity disabled:opacity-60 hover:opacity-90"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
+          >
+            Send first emails →
+          </button>
+        </div>
       </div>
     );
   };
@@ -903,6 +953,135 @@ export function NewCampaign() {
 
         </div>
       </div>
+
+      {/* Test email modal */}
+      {testModal.open && (() => {
+        const fromName = businessInfo.business_name || businessInfo.contact_name || 'ListingBug';
+        const previewSubject = messageInfo.subject
+          ? messageInfo.subject
+              .replace(/\{\{agent_name\}\}/g, 'Sarah')
+              .replace(/\{\{address\}\}/g, '1842 Maple St')
+              .replace(/\{\{city\}\}/g, searchCriteria.city || 'your city')
+              .replace(/\{\{price\}\}/g, '$485,000')
+              .replace(/\{\{listing_date\}\}/g, 'today')
+          : '(no subject)';
+        const previewHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${
+          renderBodyPreview(messageInfo.body, searchCriteria.city)
+            .replace(/<br>/g, '<br/>')
+        }</div>`;
+
+        const handleSendTest = async () => {
+          if (!testModal.address.trim()) return;
+          setTestModal(m => ({ ...m, sending: true, error: null }));
+          try {
+            const { error } = await supabase.functions.invoke('send-test-email', {
+              body: { to: testModal.address.trim(), subject: previewSubject, html_body: previewHtml, from_name: fromName },
+            });
+            if (error) throw new Error(error.message);
+            setTestModal(m => ({ ...m, sending: false, sent: true }));
+          } catch (e: any) {
+            setTestModal(m => ({ ...m, sending: false, error: e.message ?? 'Send failed' }));
+          }
+        };
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            onClick={() => setTestModal(m => ({ ...m, open: false }))}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div
+              className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10">
+                <span className="font-semibold text-gray-900 dark:text-white">Send test email</span>
+                <button
+                  onClick={() => setTestModal(m => ({ ...m, open: false }))}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
+                >×</button>
+              </div>
+
+              <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* From / Subject */}
+                <div className="space-y-1.5">
+                  <div className="flex gap-2 text-xs">
+                    <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">From</span>
+                    <span className="text-gray-700 dark:text-gray-300">{fromName} &lt;{FROM_EMAIL_DISPLAY}&gt;</span>
+                  </div>
+                  {messageInfo.channel === 'email' && (
+                    <div className="flex gap-2 text-xs">
+                      <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">Subject</span>
+                      <span className="text-gray-700 dark:text-gray-300">{previewSubject}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Body preview */}
+                <div className="rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] p-4">
+                  <div
+                    className="text-sm text-gray-900 dark:text-white leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+                  />
+                </div>
+
+                {/* Address input */}
+                {!testModal.sent ? (
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Send to</label>
+                    <input
+                      type="email"
+                      autoFocus
+                      placeholder="you@example.com"
+                      value={testModal.address}
+                      onChange={e => setTestModal(m => ({ ...m, address: e.target.value, error: null }))}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSendTest(); }}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white outline-none focus:border-[#FFCE0A]"
+                    />
+                    {testModal.error && (
+                      <p className="text-xs text-red-500 mt-1">{testModal.error}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+                    Test email sent to {testModal.address}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 px-5 pb-5">
+                {!testModal.sent ? (
+                  <>
+                    <button
+                      onClick={() => setTestModal(m => ({ ...m, open: false }))}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendTest}
+                      disabled={testModal.sending || !testModal.address.trim()}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity disabled:opacity-50 hover:opacity-90"
+                      style={{ background: '#FFCE0A', color: '#342e37' }}
+                    >
+                      {testModal.sending ? 'Sending…' : 'Send test'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setTestModal(m => ({ ...m, open: false }))}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    Done
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
