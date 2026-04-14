@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { CityAutocomplete } from '../CityAutocomplete';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,6 +49,8 @@ interface Campaign {
   body: string;
   forward_to: string | null;
   drip_delay_minutes: number;
+  city: string;
+  state: string;
   created_at: string;
   campaign_search_criteria: SearchCriteria[];
   campaign_sends: Send[];
@@ -59,6 +62,8 @@ interface EditDraft {
   body: string;
   forward_to: string;
   drip_delay_minutes: number;
+  city: string;
+  state: string;
   days_old: string;
   price_min: string;
   price_max: string;
@@ -128,6 +133,10 @@ export function V2Campaign() {
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Delete
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const cursorPos = useRef(0);
 
@@ -173,6 +182,13 @@ export function V2Campaign() {
     setIsToggling(false);
   };
 
+  const handleDelete = async () => {
+    if (!campaign || isDeleting) return;
+    setIsDeleting(true);
+    await supabase.from('campaigns').delete().eq('id', campaign.id);
+    window.location.href = '/v2/dashboard';
+  };
+
   const openEdit = () => {
     if (!campaign) return;
     const c = campaign.campaign_search_criteria?.[0];
@@ -186,6 +202,8 @@ export function V2Campaign() {
       price_min: c?.price_min != null ? String(c.price_min) : '',
       price_max: c?.price_max != null ? String(c.price_max) : '',
       property_type: c?.property_type ?? 'Single Family',
+      city: c?.city ?? '',
+      state: c?.state ?? '',
     });
     setSaveError(null);
     setIsEditing(true);
@@ -224,6 +242,8 @@ export function V2Campaign() {
       const { error: critErr } = await supabase
         .from('campaign_search_criteria')
         .update({
+          city: editDraft.city,
+          state: editDraft.state,
           property_type: editDraft.property_type || null,
           days_old: editDraft.days_old ? parseInt(editDraft.days_old, 10) : null,
           price_min: editDraft.price_min ? parseInt(editDraft.price_min, 10) : null,
@@ -371,6 +391,31 @@ export function V2Campaign() {
           >
             Edit campaign
           </button>
+
+          {!deleteConfirm ? (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            >
+              Delete campaign
+            </button>
+          ) : (
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting…' : 'Yes, delete'}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
           {campaign.body && (
             <div className="mt-4">
@@ -520,6 +565,14 @@ export function V2Campaign() {
 
               <div>
                 <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Search criteria</div>
+                <div className="mb-3">
+                  <label className={labelClass}>City</label>
+                  <CityAutocomplete
+                    value={editDraft.city}
+                    stateValue={editDraft.state}
+                    onSelect={(city, state) => setEditDraft(d => d ? { ...d, city, state } : d)}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Property type</label>
