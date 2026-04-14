@@ -261,7 +261,7 @@ export function NewCampaign() {
         ? parseInt(searchCriteria.days_old, 10) || 1
         : searchCriteria.days_old;
 
-      await supabase.from('campaign_search_criteria').insert({
+      const { error: criteriaErr } = await supabase.from('campaign_search_criteria').insert({
         campaign_id: campaign.id,
         city: searchCriteria.city,
         state: searchCriteria.state,
@@ -274,6 +274,7 @@ export function NewCampaign() {
         year_built_min: searchCriteria.year_built_min,
         year_built_max: searchCriteria.year_built_max,
       });
+      if (criteriaErr) throw new Error(`Failed to save search criteria: ${criteriaErr.message}`);
 
       // Write SMS config when channel is sms
       if (messageInfo.channel === 'sms') {
@@ -288,7 +289,11 @@ export function NewCampaign() {
         body: { campaign_id: campaign.id },
       });
 
-      if (fnErr) throw new Error(fnErr.message);
+      if (fnErr) {
+        // Extract actual error message from the function response body when available
+        const detail = (result as any)?.error || (result as any)?.details || fnErr.message;
+        throw new Error(detail);
+      }
 
       setEmailsSent(result?.emails_sent ?? 0);
     } catch (err: any) {
