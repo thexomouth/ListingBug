@@ -228,13 +228,40 @@ serve(async (req) => {
       : (user.contact_name || "ListingBug");
     const stripePeriodEnd = user.stripe_subscription_end ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    // 4. Fetch listings from RentCast
+    // 4. Fetch listings — test mode bypasses RentCast
     let listings: any[] = [];
-    try {
-      listings = (await fetchListings(criteria)) as any[];
-      console.log(`[send-campaign-emails] Fetched ${listings.length} listings for campaign ${campaign_id}`);
-    } catch (e: any) {
-      return json({ error: `RentCast error: ${e.message}` }, 502);
+    const isTestMode = criteria.city?.toString().toLowerCase() === "test";
+
+    if (isTestMode) {
+      console.log(`[send-campaign-emails] TEST MODE — loading from test_contacts`);
+      const { data: testContacts, error: tcErr } = await supabase
+        .from("test_contacts")
+        .select("*");
+      if (tcErr) return json({ error: `test_contacts query failed: ${tcErr.message}` }, 500);
+      // Shape test contacts into the same structure fetchListings returns
+      listings = (testContacts ?? []).map((tc: any) => ({
+        id: tc.id,
+        formattedAddress: `${tc.listing_address}, ${tc.city}, ${tc.state}`,
+        addressLine1: tc.listing_address,
+        city: tc.city,
+        state: tc.state,
+        price: tc.price,
+        listingType: tc.listing_type,
+        listedDate: tc.listed_date,
+        listingAgent: {
+          email: tc.agent_email,
+          name: tc.agent_name,
+          phone: tc.agent_phone ?? "",
+        },
+      }));
+      console.log(`[send-campaign-emails] Test mode: ${listings.length} test contacts loaded`);
+    } else {
+      try {
+        listings = (await fetchListings(criteria)) as any[];
+        console.log(`[send-campaign-emails] Fetched ${listings.length} listings for campaign ${campaign_id}`);
+      } catch (e: any) {
+        return json({ error: `RentCast error: ${e.message}` }, 502);
+      }
     }
 
     if (listings.length === 0) {

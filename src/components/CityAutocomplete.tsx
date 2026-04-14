@@ -21,6 +21,8 @@ const STATE_ABBR: Record<string, string> = {
 // Top ~2,000 US cities by population — covers every market a real estate
 // professional would realistically search. Format: "City, ST"
 const US_CITIES: { city: string; state: string; label: string }[] = [
+  // Sandbox test mode — bypasses RentCast, uses test_contacts table
+  { city: 'test', state: 'TEST', label: '🧪 test (sandbox mode)' },
   // Alabama
   { city: 'Birmingham', state: 'AL', label: 'Birmingham, AL' },
   { city: 'Montgomery', state: 'AL', label: 'Montgomery, AL' },
