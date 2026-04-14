@@ -296,7 +296,13 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
               )}
 
               <button
-                onClick={() => handleNavigate(isLoggedIn ? 'dashboard' : 'home')}
+                onClick={() => {
+                  if (isLoggedIn && isV2Page) {
+                    window.location.href = '/v2/dashboard';
+                  } else {
+                    handleNavigate(isLoggedIn ? 'dashboard' : 'home');
+                  }
+                }}
                 className={`flex items-center group absolute left-1/2 -translate-x-1/2 ${!isLoggedIn ? 'md:relative md:left-auto md:translate-x-0' : ''}`}
                 aria-label={isLoggedIn ? "ListingBug dashboard" : "ListingBug home"}
               >
@@ -579,9 +585,100 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
       {/* Account Menu - Right Side */}
       {isAccountMenuOpen && isLoggedIn && (
         <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={handleCloseAccountMenu} />
           {/* Account Sidebar */}
           <div ref={accountMenuRef} className="fixed top-0 right-0 h-full w-[85vw] max-w-[256px] bg-white dark:bg-[#252525] z-50 shadow-xl transform transition-transform duration-300 ease-out overflow-y-auto">
-            {!showNotifications ? (
+
+            {/* ------------------------------------------------------------------ */}
+            {/* V2 account menu                                                     */}
+            {/* ------------------------------------------------------------------ */}
+            {isV2Page ? (
+              <>
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-[#342e37] flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm truncate dark:text-white">My Account</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCloseAccountMenu}
+                    className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition-colors flex-shrink-0"
+                    aria-label="Close menu"
+                  >
+                    <X className="w-5 h-5 text-[#342e37] dark:text-white" />
+                  </button>
+                </div>
+
+                {/* Navigation */}
+                <nav className="flex flex-col p-4">
+                  <button
+                    onClick={() => { window.location.href = '/v2/account/profile'; handleCloseAccountMenu(); }}
+                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={() => { window.location.href = '/v2/account/usage'; handleCloseAccountMenu(); }}
+                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Usage
+                  </button>
+                  <button
+                    onClick={() => { window.location.href = '/v2/account/billing'; handleCloseAccountMenu(); }}
+                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Billing
+                  </button>
+                  <button
+                    onClick={() => { window.location.href = '/v2/setup'; handleCloseAccountMenu(); }}
+                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Setup
+                  </button>
+
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+
+                  {/* Dark Mode Toggle */}
+                  {onToggleDarkMode && (
+                    <div className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <div className="flex items-center gap-2">
+                        {isDarkMode ? (
+                          <Moon className="w-4 h-4 text-[#342e37] dark:text-white" />
+                        ) : (
+                          <Sun className="w-4 h-4 text-[#342e37] dark:text-white" />
+                        )}
+                        <span className="font-bold text-sm text-[#342e37] dark:text-white">
+                          {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={onToggleDarkMode}
+                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${isDarkMode ? 'bg-[#342e37]' : 'bg-gray-300'}`}
+                        aria-label="Toggle dark mode"
+                        role="switch"
+                        aria-checked={isDarkMode}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${isDarkMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+
+                  <button
+                    onClick={() => { onSignOut && onSignOut(); handleCloseAccountMenu(); }}
+                    className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </nav>
+              </>
+            ) : !showNotifications ? (
               <>
                 {/* Sidebar Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -682,7 +779,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
 
                   {/* Divider */}
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
-                  
+
                   <button
                     onClick={() => onSignOut && onSignOut()}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-colors"

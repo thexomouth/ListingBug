@@ -69,6 +69,10 @@ const DripPage = lazy(() => import("./components/DripPage").then(m => ({ default
 const NewCampaign = lazy(() => import("./components/v2/NewCampaign").then(m => ({ default: m.NewCampaign })));
 const V2Dashboard = lazy(() => import("./components/v2/V2Dashboard").then(m => ({ default: m.V2Dashboard })));
 const V2Campaign = lazy(() => import("./components/v2/V2Campaign").then(m => ({ default: m.V2Campaign })));
+const V2AccountProfile = lazy(() => import("./components/v2/V2AccountProfile").then(m => ({ default: m.V2AccountProfile })));
+const V2AccountUsage = lazy(() => import("./components/v2/V2AccountUsage").then(m => ({ default: m.V2AccountUsage })));
+const V2AccountBilling = lazy(() => import("./components/v2/V2AccountBilling").then(m => ({ default: m.V2AccountBilling })));
+const V2Setup = lazy(() => import("./components/v2/V2Setup").then(m => ({ default: m.V2Setup })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -89,7 +93,11 @@ type Page =
   | "drip"
   | "v2-dashboard"
   | "v2-new-campaign"
-  | "v2-campaign";
+  | "v2-campaign"
+  | "v2-account-profile"
+  | "v2-account-usage"
+  | "v2-account-billing"
+  | "v2-setup";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -121,6 +129,10 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "v2-dashboard": "/v2/dashboard",
   "v2-new-campaign": "/v2/newcampaign",
   "v2-campaign": "/v2/campaign",
+  "v2-account-profile": "/v2/account/profile",
+  "v2-account-usage": "/v2/account/usage",
+  "v2-account-billing": "/v2/account/billing",
+  "v2-setup": "/v2/setup",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -148,6 +160,10 @@ function pathToPage(pathname: string): Page {
   if (pathname === '/v2/dashboard') return 'v2-dashboard';
   if (pathname === '/v2/newcampaign') return 'v2-new-campaign';
   if (pathname.startsWith('/v2/campaign')) return 'v2-campaign';
+  if (pathname === '/v2/account/profile') return 'v2-account-profile';
+  if (pathname === '/v2/account/usage') return 'v2-account-usage';
+  if (pathname === '/v2/account/billing') return 'v2-account-billing';
+  if (pathname === '/v2/setup') return 'v2-setup';
   return 'home';
 }
 
@@ -500,6 +516,10 @@ export default function App() {
       case "v2-dashboard": return isLoggedIn ? <V2Dashboard /> : <LoginPage onLogin={handleLogin} />;
       case "v2-new-campaign": return isLoggedIn ? <NewCampaign /> : <LoginPage onLogin={handleLogin} />;
       case "v2-campaign": return isLoggedIn ? <V2Campaign /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-account-profile": return isLoggedIn ? <V2AccountProfile /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-account-usage": return isLoggedIn ? <V2AccountUsage /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-account-billing": return isLoggedIn ? <V2AccountBilling /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-setup": return isLoggedIn ? <V2Setup /> : <LoginPage onLogin={handleLogin} />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };

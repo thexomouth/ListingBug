@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { LayoutDashboard, Send, MessageSquare, Zap } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -183,7 +184,7 @@ export function V2Dashboard() {
   // ---------------------------------------------------------------------------
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-[#0f0f0f] flex items-center justify-center">
         <div
           className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
           style={{ borderColor: '#FFCE0A', borderTopColor: 'transparent' }}
@@ -198,54 +199,113 @@ export function V2Dashboard() {
     ? new Date(stripePeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null;
 
+  // Aggregate stats across all campaigns
+  const totalSent = campaigns.reduce((acc, c) => acc + computeStats(c.campaign_sends ?? []).sent, 0);
+  const totalReplies = campaigns.reduce((acc, c) => acc + computeStats(c.campaign_sends ?? []).replies, 0);
+  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
 
         {/* Page header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Your active campaigns and send activity</p>
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-1">
+            <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
           </div>
-          <button
-            onClick={() => navigate('/v2/newcampaign')}
-            className="px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
-            style={{ background: '#FFCE0A', color: '#342e37' }}
-          >
-            + New campaign
-          </button>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Track your campaign activity and messaging performance</p>
         </div>
 
-        {/* Usage bar */}
-        <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-6">
-          <div className="flex justify-between items-baseline mb-2">
-            <span className="text-sm font-medium text-gray-900 dark:text-white">Account usage this period</span>
-            <span className="text-sm text-gray-600 dark:text-gray-400">{usageCount.toLocaleString()} / {planLimit.toLocaleString()} messages</span>
+        {/* Top stat cards */}
+        <div className="flex gap-2 md:gap-3 mb-4">
+          <div className="flex-1 border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center mb-2">
+              <Send className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalSent.toLocaleString()}</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Messages Sent</div>
           </div>
-          <div className="h-1.5 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${usagePct}%`, background: isNearLimit ? '#EF9F27' : '#FFCE0A' }}
-            />
+          <div className="flex-1 border-2 border-green-200 dark:border-green-900 hover:border-green-300 dark:hover:border-green-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center mb-2">
+              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalReplies.toLocaleString()}</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Total Replies</div>
           </div>
-          <div className="flex justify-between mt-1.5">
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">
-              {periodEndLabel ? `Resets ${periodEndLabel}` : 'All time'} · {Math.max(0, planLimit - usageCount).toLocaleString()} remaining
-            </span>
-            {isNearLimit && (
-              <span className="text-[11px] font-medium" style={{ color: '#BA7517' }}>Approaching limit</span>
-            )}
+          <div className="flex-1 border-2 border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
+              <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{activeCampaigns}</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active<br />Campaigns</div>
           </div>
+        </div>
+
+        {/* Usage section */}
+        <div className="mt-4 mb-8">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-lg text-[#342e37] dark:text-white mb-1">Account Usage This Period</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {usageCount.toLocaleString()} of {planLimit.toLocaleString()} messages used
+                {periodEndLabel && <> · Resets {periodEndLabel}</>}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-[#342e37] dark:text-white">{usageCount.toLocaleString()}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {Math.max(0, planLimit - usageCount).toLocaleString()} remaining
+              </div>
+            </div>
+          </div>
+          <div className="mb-3">
+            <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${usagePct}%`, background: isNearLimit ? '#fa824c' : '#FFCE0A' }}
+              />
+            </div>
+          </div>
+          {isNearLimit && (
+            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex-1">
+                <p className="text-sm text-amber-900 dark:text-amber-200 font-medium">
+                  You're at {Math.round(usagePct)}% of your message limit this period
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Campaign list */}
-        {campaigns.length === 0 ? (
-          <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-12 text-center">
-            <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">No campaigns yet</div>
+        <div className="pt-8 border-t-2 border-gray-200 dark:border-white/10">
+          <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">My Campaigns</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
+              </p>
+            </div>
             <button
               onClick={() => navigate('/v2/newcampaign')}
-              className="px-5 py-2.5 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto"
+              style={{ background: '#FFCE0A', color: '#342e37' }}
+            >
+              + New campaign
+            </button>
+          </div>
+
+        {campaigns.length === 0 ? (
+          <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+              <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+            </div>
+            <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No campaigns yet</h3>
+            <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Create your first campaign to start reaching out to listing owners</p>
+            <button
+              onClick={() => navigate('/v2/newcampaign')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all"
               style={{ background: '#FFCE0A', color: '#342e37' }}
             >
               + Create your first campaign
@@ -253,13 +313,6 @@ export function V2Dashboard() {
           </div>
         ) : (
           <>
-            {/* Section heading */}
-            <div className="mb-3">
-              <div className="font-bold text-lg text-[#342e37] dark:text-white">My Campaigns</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-                {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {campaigns.filter(c => c.status === 'active').length} active
-              </div>
-            </div>
 
             {campaigns.map(campaign => {
               const criteria = campaign.campaign_search_criteria?.[0];
@@ -330,6 +383,7 @@ export function V2Dashboard() {
             })}
           </>
         )}
+        </div>
       </div>
     </div>
   );
