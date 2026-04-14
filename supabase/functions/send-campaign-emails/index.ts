@@ -21,9 +21,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RENTCAST_API_KEY = Deno.env.get("RENTCAST_API_KEY") ?? "";
-const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY") ?? "";
-const SENDGRID_API = "https://api.sendgrid.com/v3/mail/send";
-const FROM_EMAIL = "outreach@listingping.com";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const RESEND_API = "https://api.resend.com/emails";
+const FROM_EMAIL = "hello@listingping.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,7 +120,7 @@ function buildUnsubUrl(userId: string, agentEmail: string, customUrl?: string): 
 }
 
 // ---------------------------------------------------------------------------
-// SendGrid send — adapted from run-drip
+// Resend send
 // ---------------------------------------------------------------------------
 async function sendEmail(params: {
   toEmail: string;
@@ -132,36 +132,30 @@ async function sendEmail(params: {
   replyTo: string;
 }): Promise<{ ok: boolean; messageId: string | null; error?: string }> {
   const payload = {
-    personalizations: [{ to: [{ email: params.toEmail, name: params.toName }] }],
-    from: { email: FROM_EMAIL, name: params.fromName },
-    reply_to: { email: params.replyTo },
+    from: `${params.fromName} <${FROM_EMAIL}>`,
+    to: [params.toEmail],
+    reply_to: params.replyTo,
     subject: params.subject,
-    content: [
-      { type: "text/plain", value: params.bodyText },
-      { type: "text/html", value: params.bodyHtml },
-    ],
-    tracking_settings: {
-      click_tracking: { enable: true },
-      open_tracking: { enable: true },
-    },
+    html: params.bodyHtml,
+    text: params.bodyText,
   };
 
-  const res = await fetch(SENDGRID_API, {
+  const res = await fetch(RESEND_API, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SENDGRID_API_KEY}`,
+      Authorization: `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
 
-  if (res.ok || res.status === 202) {
-    const messageId = res.headers.get("X-Message-Id") ?? null;
-    return { ok: true, messageId };
+  if (res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, messageId: data?.id ?? null };
   }
 
   const errData = await res.json().catch(() => ({}));
-  const errMsg = errData?.errors?.[0]?.message ?? `HTTP ${res.status}`;
+  const errMsg = errData?.message ?? errData?.name ?? `HTTP ${res.status}`;
   return { ok: false, messageId: null, error: errMsg };
 }
 
