@@ -245,13 +245,27 @@ serve(async (req) => {
         addressLine1: tc.listing_address,
         city: tc.city,
         state: tc.state,
+        zipCode: tc.zip,
         price: tc.price,
         listingType: tc.listing_type,
+        propertyType: tc.property_type,
         listedDate: tc.listed_date,
+        bedrooms: tc.beds,
+        bathrooms: tc.baths,
+        squareFootage: tc.sqft,
+        yearBuilt: tc.year_built,
+        photos: tc.photo_url ? [tc.photo_url] : [],
+        brokerage: tc.brokerage,
+        mlsNumber: tc.mls_number,
+        daysOnMarket: tc.days_on_market,
         listingAgent: {
           email: tc.agent_email,
           name: tc.agent_name,
           phone: tc.agent_phone ?? "",
+          office: tc.brokerage ?? "",
+        },
+        listingOffice: {
+          name: tc.office_name ?? "",
         },
       }));
       console.log(`[send-campaign-emails] Test mode: ${listings.length} test contacts loaded`);
@@ -278,9 +292,19 @@ serve(async (req) => {
       address: string;
       city: string;
       state: string;
+      zip: string;
       price: number;
       listingType: string;
+      propertyType: string;
       listedDate: string;
+      beds: number | null;
+      baths: number | null;
+      sqft: number | null;
+      yearBuilt: number | null;
+      photoUrl: string | null;
+      brokerage: string;
+      mlsNumber: string;
+      daysOnMarket: number | null;
     }> = [];
 
     for (const l of listings) {
@@ -295,9 +319,19 @@ serve(async (req) => {
         address: l.addressLine1 ?? l.formattedAddress ?? "",
         city: l.city ?? "",
         state: l.state ?? "",
+        zip: l.zipCode ?? l.zip ?? "",
         price: l.price ?? 0,
         listingType: l.listingType ?? "",
+        propertyType: l.propertyType ?? "",
         listedDate: l.listedDate ? new Date(l.listedDate).toLocaleDateString("en-US") : "",
+        beds: l.bedrooms ?? l.beds ?? null,
+        baths: l.bathrooms ?? l.baths ?? null,
+        sqft: l.squareFootage ?? l.sqft ?? null,
+        yearBuilt: l.yearBuilt ?? null,
+        photoUrl: Array.isArray(l.photos) && l.photos.length > 0 ? l.photos[0] : (l.photo_url ?? null),
+        brokerage: l.listingAgent?.office ?? l.listingOffice?.name ?? l.brokerage ?? "",
+        mlsNumber: l.mlsNumber ?? l.mls_number ?? "",
+        daysOnMarket: l.daysOnMarket ?? l.days_on_market ?? null,
       });
     }
 
@@ -389,6 +423,16 @@ serve(async (req) => {
           listing_state: agent.state,
           listing_price: agent.price || null,
           listing_type: agent.listingType,
+          listing_beds: agent.beds,
+          listing_baths: agent.baths,
+          listing_sqft: agent.sqft,
+          listing_year_built: agent.yearBuilt,
+          listing_zip: agent.zip || null,
+          listing_property_type: agent.propertyType || null,
+          listing_photo_url: agent.photoUrl,
+          listing_brokerage: agent.brokerage || null,
+          listing_mls_number: agent.mlsNumber || null,
+          listing_days_on_market: agent.daysOnMarket,
           status: "queued",
           channel: "email",
         })
