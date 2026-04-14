@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 
 // ---------------------------------------------------------------------------
@@ -18,10 +18,20 @@ interface Send {
   id: string;
   agent_email: string;
   agent_name: string | null;
+  agent_phone: string | null;
   listing_address: string | null;
   listing_city: string | null;
+  listing_state: string | null;
   listing_price: number | null;
+  listing_type: string | null;
+  listing_property_type: string | null;
+  listing_beds: number | null;
+  listing_baths: number | null;
+  listing_sqft: number | null;
+  listing_brokerage: string | null;
+  listing_mls_number: string | null;
   status: string;
+  error_message: string | null;
   sent_at: string | null;
   opened_at: string | null;
   clicked_at: string | null;
@@ -42,6 +52,21 @@ interface Campaign {
   campaign_search_criteria: SearchCriteria[];
   campaign_sends: Send[];
 }
+
+interface EditDraft {
+  campaign_name: string;
+  subject: string;
+  body: string;
+  forward_to: string;
+  drip_delay_minutes: number;
+  days_old: string;
+  price_min: string;
+  price_max: string;
+  property_type: string;
+}
+
+const PROPERTY_TYPES = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', 'Multi-Family', 'Apartment', 'Land'];
+const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -96,13 +121,17 @@ export function V2Campaign() {
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
   const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [selectedSend, setSelectedSend] = useState<Send | null>(null);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-    if (!id) { setIsLoading(false); return; }
-    setCampaignId(id);
+  // Edit modal
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const cursorPos = useRef(0);
 
+  const loadCampaign = (id: string) =>
     supabase
       .from('campaigns')
       .select(`
@@ -112,8 +141,11 @@ export function V2Campaign() {
           city, state, listing_type, property_type, days_old, price_min, price_max
         ),
         campaign_sends (
-          id, agent_email, agent_name, listing_address, listing_city,
-          listing_price, status, sent_at, opened_at, clicked_at, channel,
+          id, agent_email, agent_name, agent_phone,
+          listing_address, listing_city, listing_state, listing_price,
+          listing_type, listing_property_type, listing_beds, listing_baths,
+          listing_sqft, listing_brokerage, listing_mls_number,
+          status, error_message, sent_at, opened_at, clicked_at, channel,
           campaign_replies ( id, replied_at )
         )
       `)
@@ -123,6 +155,13 @@ export function V2Campaign() {
         if (data) setCampaign(data as Campaign);
         setIsLoading(false);
       });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (!id) { setIsLoading(false); return; }
+    setCampaignId(id);
+    loadCampaign(id);
   }, []);
 
   const handleToggle = async (next: boolean) => {
@@ -132,6 +171,75 @@ export function V2Campaign() {
     await supabase.from('campaigns').update({ status: newStatus }).eq('id', campaign.id);
     setCampaign(c => c ? { ...c, status: newStatus } : c);
     setIsToggling(false);
+  };
+
+  const openEdit = () => {
+    if (!campaign) return;
+    const c = campaign.campaign_search_criteria?.[0];
+    setEditDraft({
+      campaign_name: campaign.campaign_name,
+      subject: campaign.subject ?? '',
+      body: campaign.body,
+      forward_to: campaign.forward_to ?? '',
+      drip_delay_minutes: campaign.drip_delay_minutes ?? 2,
+      days_old: c?.days_old != null ? String(c.days_old) : '',
+      price_min: c?.price_min != null ? String(c.price_min) : '',
+      price_max: c?.price_max != null ? String(c.price_max) : '',
+      property_type: c?.property_type ?? 'Single Family',
+    });
+    setSaveError(null);
+    setIsEditing(true);
+  };
+
+  const insertVar = (v: string) => {
+    if (!editDraft) return;
+    const pos = cursorPos.current;
+    const newBody = editDraft.body.slice(0, pos) + v + editDraft.body.slice(pos);
+    const newPos = pos + v.length;
+    cursorPos.current = newPos;
+    setEditDraft(d => d ? { ...d, body: newBody } : d);
+    requestAnimationFrame(() => {
+      const ta = bodyRef.current;
+      if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
+    });
+  };
+
+  const handleSave = async () => {
+    if (!campaign || !editDraft || !campaignId) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const { error: campErr } = await supabase
+        .from('campaigns')
+        .update({
+          campaign_name: editDraft.campaign_name.trim(),
+          subject: editDraft.subject.trim() || null,
+          body: editDraft.body,
+          forward_to: editDraft.forward_to.trim() || null,
+          drip_delay_minutes: Number(editDraft.drip_delay_minutes) || 2,
+        })
+        .eq('id', campaignId);
+      if (campErr) throw new Error(campErr.message);
+
+      const { error: critErr } = await supabase
+        .from('campaign_search_criteria')
+        .update({
+          property_type: editDraft.property_type || null,
+          days_old: editDraft.days_old ? parseInt(editDraft.days_old, 10) : null,
+          price_min: editDraft.price_min ? parseInt(editDraft.price_min, 10) : null,
+          price_max: editDraft.price_max ? parseInt(editDraft.price_max, 10) : null,
+        })
+        .eq('campaign_id', campaignId);
+      if (critErr) throw new Error(critErr.message);
+
+      setIsEditing(false);
+      setIsLoading(true);
+      await loadCampaign(campaignId);
+    } catch (e: any) {
+      setSaveError(e.message ?? 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -177,12 +285,14 @@ export function V2Campaign() {
   const totalReplies = sends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
   const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
 
-  // Sort sends newest first
   const sortedSends = [...sends].sort((a, b) => {
     const at = a.sent_at ? new Date(a.sent_at).getTime() : 0;
     const bt = b.sent_at ? new Date(b.sent_at).getTime() : 0;
     return bt - at;
   });
+
+  const labelClass = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1';
+  const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50';
 
   // ---------------------------------------------------------------------------
   // Render
@@ -255,15 +365,13 @@ export function V2Campaign() {
             ))}
           </div>
 
-          {/* Edit button */}
           <button
-            onClick={() => { window.location.href = `/v2/editcampaign?id=${campaign.id}`; }}
+            onClick={openEdit}
             className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
           >
             Edit campaign
           </button>
 
-          {/* Message body preview */}
           {campaign.body && (
             <div className="mt-4">
               <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Message body</div>
@@ -294,14 +402,13 @@ export function V2Campaign() {
               return (
                 <div
                   key={send.id}
-                  className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-3.5 flex items-start gap-3"
+                  onClick={() => setSelectedSend(send)}
+                  className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-3.5 flex items-start gap-3 cursor-pointer hover:border-gray-300 dark:hover:border-white/20 transition-colors"
                 >
-                  {/* Status dot */}
                   <div
                     className="w-2 h-2 rounded-full mt-1.5 shrink-0"
                     style={{ background: badge.color }}
                   />
-
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
@@ -314,13 +421,11 @@ export function V2Campaign() {
                         {badge.label}
                       </span>
                     </div>
-
                     <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
                       {send.listing_address
                         ? `${send.listing_address}${send.listing_price ? ` · $${send.listing_price.toLocaleString()}` : ''}`
                         : send.agent_email}
                     </div>
-
                     {send.sent_at && (
                       <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
                         {formatDate(send.sent_at)} at {formatTime(send.sent_at)}
@@ -334,6 +439,315 @@ export function V2Campaign() {
         )}
 
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Edit campaign modal                                                  */}
+      {/* ------------------------------------------------------------------ */}
+      {isEditing && editDraft && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          onClick={() => setIsEditing(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10">
+              <span className="font-semibold text-gray-900 dark:text-white">Edit campaign</span>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div>
+                <label className={labelClass}>Campaign name</label>
+                <input
+                  className={inputClass}
+                  value={editDraft.campaign_name}
+                  onChange={e => setEditDraft(d => d ? { ...d, campaign_name: e.target.value } : d)}
+                />
+              </div>
+
+              {campaign.channel === 'email' && (
+                <div>
+                  <label className={labelClass}>Subject line</label>
+                  <input
+                    className={inputClass}
+                    value={editDraft.subject}
+                    onChange={e => setEditDraft(d => d ? { ...d, subject: e.target.value } : d)}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className={labelClass}>Message body</label>
+                <div className="flex flex-wrap gap-1 mb-1.5">
+                  {VARS.map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => insertVar(v)}
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-400/20 transition-colors font-mono"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  ref={bodyRef}
+                  className={`${inputClass} min-h-[120px] resize-y`}
+                  value={editDraft.body}
+                  onChange={e => setEditDraft(d => d ? { ...d, body: e.target.value } : d)}
+                  onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
+                  onBlur={e => { cursorPos.current = e.target.selectionStart; }}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Reply-to email</label>
+                <input
+                  className={inputClass}
+                  type="email"
+                  value={editDraft.forward_to}
+                  onChange={e => setEditDraft(d => d ? { ...d, forward_to: e.target.value } : d)}
+                />
+              </div>
+
+              <div>
+                <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Search criteria</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass}>Property type</label>
+                    <select
+                      className={inputClass}
+                      value={editDraft.property_type}
+                      onChange={e => setEditDraft(d => d ? { ...d, property_type: e.target.value } : d)}
+                    >
+                      {PROPERTY_TYPES.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Days listed</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 1"
+                      value={editDraft.days_old}
+                      onChange={e => setEditDraft(d => d ? { ...d, days_old: e.target.value } : d)}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Min price</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 200000"
+                      value={editDraft.price_min}
+                      onChange={e => setEditDraft(d => d ? { ...d, price_min: e.target.value } : d)}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Max price</label>
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 800000"
+                      value={editDraft.price_max}
+                      onChange={e => setEditDraft(d => d ? { ...d, price_max: e.target.value } : d)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {saveError && (
+                <div className="text-sm text-red-600 dark:text-red-400">{saveError}</div>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-gray-100 dark:border-white/10 flex gap-2">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-[#342e37] transition-colors disabled:opacity-50"
+                style={{ background: '#FFCE0A' }}
+              >
+                {isSaving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Send detail modal                                                    */}
+      {/* ------------------------------------------------------------------ */}
+      {selectedSend && (() => {
+        const send = selectedSend;
+        const hasReply = (send.campaign_replies?.length ?? 0) > 0;
+        const badge = statusBadge(send.status, hasReply);
+        const isFailed = send.status === 'failed';
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+            onClick={() => setSelectedSend(null)}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div
+              className="relative w-full sm:max-w-md bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    style={{ background: badge.bg, color: badge.color }}
+                  >
+                    {badge.label}
+                  </span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                    {send.channel}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedSend(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                {isFailed && send.error_message && (
+                  <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 px-4 py-3">
+                    <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">Send failed</div>
+                    <div className="text-sm text-red-700 dark:text-red-300 font-mono break-all">{send.error_message}</div>
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Agent</div>
+                  <div className="space-y-1.5">
+                    {send.agent_name && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Name</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{send.agent_name}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Email</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{send.agent_email}</span>
+                    </div>
+                    {send.agent_phone && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Phone</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{send.agent_phone}</span>
+                      </div>
+                    )}
+                    {send.listing_brokerage && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Brokerage</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white text-right max-w-[60%] truncate">{send.listing_brokerage}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {send.listing_address && (
+                  <div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Listing</div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Address</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white text-right max-w-[60%]">
+                          {send.listing_address}{send.listing_city ? `, ${send.listing_city}` : ''}{send.listing_state ? `, ${send.listing_state}` : ''}
+                        </span>
+                      </div>
+                      {send.listing_price != null && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Price</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">${send.listing_price.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {send.listing_property_type && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Type</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{send.listing_property_type}</span>
+                        </div>
+                      )}
+                      {(send.listing_beds != null || send.listing_baths != null) && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Bed / Bath</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {send.listing_beds ?? '—'} bd · {send.listing_baths ?? '—'} ba
+                          </span>
+                        </div>
+                      )}
+                      {send.listing_sqft != null && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Sq ft</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{send.listing_sqft.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {send.listing_mls_number && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">MLS #</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{send.listing_mls_number}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Timeline</div>
+                  <div className="space-y-1.5">
+                    {send.sent_at && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Sent</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(send.sent_at)} at {formatTime(send.sent_at)}</span>
+                      </div>
+                    )}
+                    {send.opened_at && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Opened</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(send.opened_at)} at {formatTime(send.opened_at)}</span>
+                      </div>
+                    )}
+                    {send.clicked_at && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Clicked</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(send.clicked_at)} at {formatTime(send.clicked_at)}</span>
+                      </div>
+                    )}
+                    {hasReply && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Replied</span>
+                        <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                          {formatDate(send.campaign_replies[0].replied_at)} at {formatTime(send.campaign_replies[0].replied_at)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

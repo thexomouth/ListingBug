@@ -10,19 +10,19 @@
  *  4. Check user_suppressions — skip suppressed agents
  *  5. Check campaign_sends dedup index — skip if already sent today (Central Time)
  *  6. Send via drip — respect drip_delay_minutes between each send
- *  7. For each send: interpolate variables, send via SendGrid (listingping.com), store Message-ID, write send record
+ *  7. For each send: interpolate variables, send via Zoho SMTP (hello@listingping.com), store Message-ID, write send record
  *  8. Write to usage_logs with stripe_period_end
  *  9. Return { emails_sent: N }
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RENTCAST_API_KEY = Deno.env.get("RENTCAST_API_KEY") ?? "";
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
-const RESEND_API = "https://api.resend.com/emails";
+const ZOHO_SMTP_PASSWORD = Deno.env.get("ZOHO_SMTP_PASSWORD") ?? "";
 const FROM_EMAIL = "hello@listingping.com";
 
 const corsHeaders = {
@@ -120,7 +120,7 @@ function buildUnsubUrl(userId: string, agentEmail: string, customUrl?: string): 
 }
 
 // ---------------------------------------------------------------------------
-// Resend send
+// Zoho SMTP send
 // ---------------------------------------------------------------------------
 async function sendEmail(params: {
   toEmail: string;
@@ -131,32 +131,33 @@ async function sendEmail(params: {
   bodyText: string;
   replyTo: string;
 }): Promise<{ ok: boolean; messageId: string | null; error?: string }> {
-  const payload = {
-    from: `${params.fromName} <${FROM_EMAIL}>`,
-    to: [params.toEmail],
-    reply_to: params.replyTo,
-    subject: params.subject,
-    html: params.bodyHtml,
-    text: params.bodyText,
-  };
-
-  const res = await fetch(RESEND_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
+  const client = new SMTPClient({
+    connection: {
+      hostname: "smtp.zoho.com",
+      port: 587,
+      tls: false,
+      auth: {
+        username: FROM_EMAIL,
+        password: ZOHO_SMTP_PASSWORD,
+      },
     },
-    body: JSON.stringify(payload),
   });
 
-  if (res.ok) {
-    const data = await res.json().catch(() => ({}));
-    return { ok: true, messageId: data?.id ?? null };
+  try {
+    await client.send({
+      from: `${params.fromName} <${FROM_EMAIL}>`,
+      to: params.toEmail,
+      replyTo: params.replyTo,
+      subject: params.subject,
+      html: params.bodyHtml,
+      content: params.bodyText,
+    });
+    await client.close();
+    return { ok: true, messageId: null };
+  } catch (e: any) {
+    await client.close().catch(() => {});
+    return { ok: false, messageId: null, error: e.message };
   }
-
-  const errData = await res.json().catch(() => ({}));
-  const errMsg = errData?.message ?? errData?.name ?? `HTTP ${res.status}`;
-  return { ok: false, messageId: null, error: errMsg };
 }
 
 // ---------------------------------------------------------------------------
@@ -396,11 +397,17 @@ serve(async (req) => {
         campaign.unsub_type === "custom" ? campaign.custom_unsub_url : undefined
       );
 
-      const bodyHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${
-        bodyText.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")
-      }<p style="margin-top:2em;font-size:12px;color:#999"><a href="${unsubUrl}" style="color:#999">Unsubscribe</a></p></div>`;
+      // Convert [text](url) markdown links → <a> tags, then newlines → <br>
+      const bodyHtmlContent = bodyText
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+          (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`)
+        .replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>");
+      const bodyHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${bodyHtmlContent}<p style="margin-top:2em;font-size:12px;color:#999"><a href="${unsubUrl}" style="color:#999">Unsubscribe</a></p></div>`;
 
-      const bodyTextWithUnsub = `${bodyText}\n\nUnsubscribe: ${unsubUrl}`;
+      // Plain text: render [text](url) as "text (url)"
+      const bodyTextPlain = bodyText.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => `${t} (${u})`);
+      const bodyTextWithUnsub = `${bodyTextPlain}\n\nUnsubscribe: ${unsubUrl}`;
 
       // Write send record first (queued status)
       const { data: sendRecord, error: insertErr } = await supabase
@@ -445,7 +452,7 @@ serve(async (req) => {
 
       const sendId = sendRecord.id;
 
-      // Send via SendGrid
+      // Send via Zoho SMTP
       const result = await sendEmail({
         toEmail: agent.email,
         toName: agent.name,
@@ -482,7 +489,7 @@ serve(async (req) => {
       } else {
         await supabase
           .from("campaign_sends")
-          .update({ status: "failed" })
+          .update({ status: "failed", error_message: result.error ?? "Unknown error" })
           .eq("id", sendId);
         console.error(`[send-campaign-emails] Failed to send to ${agent.email}: ${result.error}`);
       }

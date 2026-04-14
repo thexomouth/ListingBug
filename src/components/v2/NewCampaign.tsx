@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -73,6 +74,18 @@ function interpolatePreview(text: string, city: string): string {
     .replace(/\{\{listing_date\}\}/g, 'today');
 }
 
+function renderBodyPreview(text: string, city: string): string {
+  let s = interpolatePreview(text, city);
+  // HTML-escape
+  s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Convert [text](url) → clickable link
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline" target="_blank" rel="noopener noreferrer">${t}</a>`);
+  // Newlines → <br>
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -114,6 +127,10 @@ export function NewCampaign() {
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Tracks cursor position so insertVar works even if selectionStart
+  // can't be read at click time (e.g. focus already moved)
+  const cursorPos = useRef(0);
+  const [linkForm, setLinkForm] = useState({ open: false, text: '', url: '' });
 
   // Load auth + pre-populate for returning users
   useEffect(() => {
@@ -206,22 +223,22 @@ export function NewCampaign() {
   // ---------------------------------------------------------------------------
   // Variable chip insertion
   // ---------------------------------------------------------------------------
-  // onMouseDown + e.preventDefault() on each chip prevents the button from
-  // stealing focus from the textarea, so selectionStart/End remain valid
-  // and we can read them directly at click time.
   const insertVar = (v: string) => {
+    const pos = cursorPos.current;
+    const body = messageInfo.body;
+    const newBody = body.slice(0, pos) + v + body.slice(pos);
+    const newPos = pos + v.length;
+    cursorPos.current = newPos;
+    // flushSync forces React to commit the DOM update synchronously so
+    // setSelectionRange runs after the textarea value is already updated.
+    flushSync(() => {
+      setMessageInfo(m => ({ ...m, body: newBody }));
+    });
     const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const newBody = messageInfo.body.slice(0, start) + v + messageInfo.body.slice(end);
-    const newPos = start + v.length;
-    setMessageInfo(m => ({ ...m, body: newBody }));
-    // Restore cursor after React re-render
-    requestAnimationFrame(() => {
+    if (ta) {
       ta.setSelectionRange(newPos, newPos);
       ta.focus();
-    });
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -328,8 +345,7 @@ export function NewCampaign() {
               {i < step ? '✓' : i + 1}
             </div>
             <span
-              className="text-[11px] text-center"
-              style={{ color: i === step ? '#111827' : '#6b7280', fontWeight: i === step ? 500 : 400 }}
+              className={`text-[11px] text-center ${i === step ? 'font-medium text-gray-900 dark:text-white' : 'font-normal text-gray-500'}`}
             >
               {s.short}
             </span>
@@ -624,7 +640,13 @@ export function NewCampaign() {
       <Textarea
         ref={textareaRef}
         value={messageInfo.body}
-        onChange={e => setMessageInfo(m => ({ ...m, body: e.target.value }))}
+        onChange={e => {
+          cursorPos.current = e.target.selectionStart ?? 0;
+          setMessageInfo(m => ({ ...m, body: e.target.value }));
+        }}
+        onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; }}
+        onClick={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; }}
+        onKeyUp={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; }}
         rows={5}
         placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
         className="resize-y"
@@ -645,17 +667,77 @@ export function NewCampaign() {
             {v}
           </button>
         ))}
+        {!linkForm.open && (
+          <button
+            type="button"
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => setLinkForm(f => ({ ...f, open: true }))}
+            className="inline-block px-2 py-0.5 rounded-md text-xs mx-0.5 cursor-pointer transition-opacity hover:opacity-80"
+            style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
+          >
+            + link
+          </button>
+        )}
       </div>
+
+      {linkForm.open && (
+        <div className="mt-2 mb-1 flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Display text"
+            value={linkForm.text}
+            onChange={e => setLinkForm(f => ({ ...f, text: e.target.value }))}
+            className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-32 outline-none focus:border-[#FFCE0A]"
+          />
+          <input
+            type="url"
+            placeholder="https://..."
+            value={linkForm.url}
+            onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && linkForm.text.trim() && linkForm.url.trim()) {
+                insertVar(`[${linkForm.text.trim()}](${linkForm.url.trim()})`);
+                setLinkForm({ open: false, text: '', url: '' });
+              }
+            }}
+            className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-48 outline-none focus:border-[#FFCE0A]"
+          />
+          <button
+            type="button"
+            disabled={!linkForm.text.trim() || !linkForm.url.trim()}
+            onClick={() => {
+              insertVar(`[${linkForm.text.trim()}](${linkForm.url.trim()})`);
+              setLinkForm({ open: false, text: '', url: '' });
+            }}
+            className="text-xs px-2.5 py-1 rounded font-medium transition-colors disabled:opacity-40"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
+          >
+            Insert
+          </button>
+          <button
+            type="button"
+            onClick={() => setLinkForm({ open: false, text: '', url: '' })}
+            className="text-xs px-2 py-1 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">
         Preview <span className="text-xs text-gray-400 dark:text-gray-500">(how it looks to the agent)</span>
       </label>
-      <div className="rounded-lg p-4 text-sm text-gray-900 dark:text-white leading-relaxed min-h-[80px] bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
-        {messageInfo.body
-          ? interpolatePreview(messageInfo.body, searchCriteria.city)
-          : <span className="text-gray-400 dark:text-gray-500">Your message preview will appear here...</span>
-        }
-      </div>
+      {messageInfo.body ? (
+        <div
+          className="rounded-lg p-4 text-sm text-gray-900 dark:text-white leading-relaxed min-h-[80px] bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10"
+          dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+        />
+      ) : (
+        <div className="rounded-lg p-4 text-sm leading-relaxed min-h-[80px] bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
+          <span className="text-gray-400 dark:text-gray-500">Your message preview will appear here...</span>
+        </div>
+      )}
     </div>
   );
 

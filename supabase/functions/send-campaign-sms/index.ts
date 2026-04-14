@@ -175,7 +175,7 @@ serve(async (req) => {
       } else {
         await supabase
           .from("campaign_sends")
-          .update({ status: "failed" })
+          .update({ status: "failed", error_message: result.error ?? "Unknown error" })
           .eq("id", sendRecord.id);
         console.error(`[send-campaign-sms] Failed to send to ${agent.phone}: ${result.error}`);
       }

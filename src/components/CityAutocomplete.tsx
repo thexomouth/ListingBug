@@ -685,7 +685,8 @@ interface CityAutocompleteProps {
 
 export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, className }: CityAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value ? (stateValue ? `${value}, ${stateValue}` : value) : '');
-  const [suggestions, setSuggestions] = useState<typeof US_CITIES>([]);
+  const [staticSuggestions, setStaticSuggestions] = useState<typeof US_CITIES>([]);
+  const [apiSuggestions, setApiSuggestions] = useState<typeof US_CITIES>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isSelected, setIsSelected] = useState(!!value);
@@ -758,7 +759,7 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
       }
 
       if (apiResults.length > 0) {
-        setSuggestions(apiResults);
+        setApiSuggestions(apiResults);
         setIsOpen(true);
       }
     } catch (e: any) {
@@ -779,7 +780,8 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (val.length < 2) {
-      setSuggestions([]);
+      setStaticSuggestions([]);
+      setApiSuggestions([]);
       setIsOpen(false);
       setIsLoading(false);
       return;
@@ -787,7 +789,8 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
 
     // Show static list immediately for instant feedback
     const staticResults = getStaticSuggestions(val);
-    setSuggestions(staticResults);
+    setStaticSuggestions(staticResults);
+    setApiSuggestions([]);
     setIsOpen(staticResults.length > 0);
 
     // Fetch comprehensive results from Nominatim after short pause
@@ -800,23 +803,26 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
     setInputValue(item.label);
     setIsSelected(true);
     setIsOpen(false);
-    setSuggestions([]);
+    setStaticSuggestions([]);
+    setApiSuggestions([]);
     setHighlightedIndex(-1);
     onSelect(item.city, item.state);
   };
+
+  const allSuggestions = [...staticSuggestions, ...apiSuggestions];
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlightedIndex(i => Math.min(i + 1, suggestions.length - 1));
+      setHighlightedIndex(i => Math.min(i + 1, allSuggestions.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setHighlightedIndex(i => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        handleSelect(suggestions[highlightedIndex]);
+      if (highlightedIndex >= 0 && allSuggestions[highlightedIndex]) {
+        handleSelect(allSuggestions[highlightedIndex]);
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
@@ -866,20 +872,22 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
 
       {/* Validation hint */}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      {!isSelected && !isLoading && inputValue.length >= 2 && suggestions.length === 0 && (
+      {!isSelected && !isLoading && inputValue.length >= 2 && allSuggestions.length === 0 && (
         <p className="text-xs text-amber-500 dark:text-amber-400 mt-1">No matching city — please select from the list</p>
       )}
 
       {/* Dropdown */}
-      {(isOpen && suggestions.length > 0) || (isLoading && inputValue.length >= 2) ? (
+      {(isOpen && allSuggestions.length > 0) || (isLoading && inputValue.length >= 2) ? (
         <ul
           ref={listRef}
           className="absolute z-50 w-full mt-1 bg-white dark:bg-[#1a1a2e] border border-gray-200 dark:border-white/10 rounded-lg shadow-xl overflow-hidden"
         >
-          {isLoading && suggestions.length === 0 && (
+          {isLoading && allSuggestions.length === 0 && (
             <li className="px-4 py-2.5 text-sm text-gray-400 dark:text-white/40 italic">Searching cities…</li>
           )}
-          {suggestions.map((item, index) => (
+
+          {/* Static (local) results */}
+          {staticSuggestions.map((item, index) => (
             <li
               key={item.label}
               onMouseDown={() => handleSelect(item)}
@@ -889,11 +897,34 @@ export function CityAutocomplete({ value, stateValue, onSelect, onBlur, error, c
                   : 'hover:bg-gray-50 dark:hover:bg-white/5 text-gray-900 dark:text-white'
               }`}
             >
-              <span className="font-medium">{item.city}</span>
-              <span className="text-gray-500 dark:text-white/50">, {item.state}</span>
+              {item.label}
             </li>
           ))}
-          {isLoading && suggestions.length > 0 && (
+
+          {/* Separator between static and API results */}
+          {staticSuggestions.length > 0 && apiSuggestions.length > 0 && (
+            <li aria-hidden="true" className="h-px bg-gray-200 dark:bg-white/10 mx-3" />
+          )}
+
+          {/* API (Nominatim) results */}
+          {apiSuggestions.map((item, index) => {
+            const globalIndex = staticSuggestions.length + index;
+            return (
+              <li
+                key={item.label}
+                onMouseDown={() => handleSelect(item)}
+                className={`px-4 py-2.5 cursor-pointer text-sm transition-colors ${
+                  globalIndex === highlightedIndex
+                    ? 'bg-[#FFCE0A] text-[#0F1115] font-semibold'
+                    : 'hover:bg-gray-50 dark:hover:bg-white/5 text-gray-900 dark:text-white'
+                }`}
+              >
+                {item.label}
+              </li>
+            );
+          })}
+
+          {isLoading && allSuggestions.length > 0 && (
             <li className="px-4 py-1.5 text-xs text-gray-400 dark:text-white/30 border-t border-gray-100 dark:border-white/5 italic">
               Updating…
             </li>
