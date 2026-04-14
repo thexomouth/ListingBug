@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Send, MessageSquare, Zap } from 'lucide-react';
+import { LayoutDashboard, Send, MessageSquare, Zap, MousePointer } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -9,6 +9,7 @@ interface CampaignSend {
   id: string;
   status: string;
   opened_at: string | null;
+  clicked_at: string | null;
   sent_at: string | null;
   listing_address: string | null;
   campaign_replies: { id: string }[];
@@ -34,6 +35,8 @@ interface Campaign {
 
 interface CampaignStats {
   sent: number;
+  opens: number;
+  clicks: number;
   openRate: number;
   replies: number;
   lastSendLabel: string;
@@ -45,9 +48,10 @@ interface CampaignStats {
 // ---------------------------------------------------------------------------
 function computeStats(sends: CampaignSend[]): CampaignStats {
   const sent = sends.filter(s => s.status === 'sent' || s.status === 'replied').length;
-  const opened = sends.filter(s => s.opened_at !== null).length;
+  const opens = sends.filter(s => s.opened_at !== null).length;
+  const clicks = sends.filter(s => s.clicked_at !== null).length;
   const replies = sends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
-  const openRate = sent > 0 ? Math.round((opened / sent) * 100) : 0;
+  const openRate = sent > 0 ? Math.round((opens / sent) * 100) : 0;
 
   const sentSends = sends
     .filter(s => s.sent_at)
@@ -66,7 +70,7 @@ function computeStats(sends: CampaignSend[]): CampaignStats {
     else lastSendLabel = `${diffDays} days ago`;
   }
 
-  return { sent, openRate, replies, lastSendLabel, lastAddress };
+  return { sent, opens, clicks, openRate, replies, lastSendLabel, lastAddress };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +141,7 @@ export function V2Dashboard() {
           id, campaign_name, status, channel, body, created_at,
           campaign_search_criteria ( city, state, listing_type, property_type ),
           campaign_sends (
-            id, status, opened_at, sent_at, listing_address,
+            id, status, opened_at, clicked_at, sent_at, listing_address,
             campaign_replies ( id )
           )
         `)
@@ -200,8 +204,10 @@ export function V2Dashboard() {
     : null;
 
   // Aggregate stats across all campaigns
-  const totalSent = campaigns.reduce((acc, c) => acc + computeStats(c.campaign_sends ?? []).sent, 0);
-  const totalReplies = campaigns.reduce((acc, c) => acc + computeStats(c.campaign_sends ?? []).replies, 0);
+  const allStats = campaigns.map(c => computeStats(c.campaign_sends ?? []));
+  const totalSent = allStats.reduce((acc, s) => acc + s.sent, 0);
+  const totalOpens = allStats.reduce((acc, s) => acc + s.opens, 0);
+  const totalClicks = allStats.reduce((acc, s) => acc + s.clicks, 0);
   const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
   return (
@@ -224,21 +230,28 @@ export function V2Dashboard() {
               <Send className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalSent.toLocaleString()}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Messages Sent</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Sent</div>
           </div>
           <div className="flex-1 border-2 border-green-200 dark:border-green-900 hover:border-green-300 dark:hover:border-green-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center mb-2">
               <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalReplies.toLocaleString()}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Total Replies</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalOpens.toLocaleString()}</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Opens</div>
+          </div>
+          <div className="flex-1 border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-purple-50 dark:bg-purple-950 flex items-center justify-center mb-2">
+              <MousePointer className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalClicks.toLocaleString()}</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Clicks</div>
           </div>
           <div className="flex-1 border-2 border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
               <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{activeCampaigns}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active<br />Campaigns</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active</div>
           </div>
         </div>
 
@@ -349,9 +362,9 @@ export function V2Dashboard() {
                   {/* Stats grid */}
                   <div className="grid grid-cols-4 gap-2">
                     {[
-                      { label: 'Sent', value: String(stats.sent), sub: 'all time' },
-                      { label: 'Open rate', value: `${stats.openRate}%`, sub: '' },
-                      { label: 'Replies', value: String(stats.replies), sub: '' },
+                      { label: 'Sent', value: String(stats.sent), sub: '' },
+                      { label: 'Opens', value: String(stats.opens), sub: '' },
+                      { label: 'Clicks', value: String(stats.clicks), sub: '' },
                       { label: 'Last send', value: stats.lastSendLabel, sub: stats.lastAddress ?? '' },
                     ].map(stat => (
                       <div key={stat.label} className="rounded-lg px-2.5 py-2 bg-gray-50 dark:bg-[#1a1a1a]">
