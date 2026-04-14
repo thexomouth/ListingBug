@@ -80,7 +80,7 @@ export function NewCampaign() {
   const [step, setStep] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [hasExistingProfile, setHasExistingProfile] = useState(false);
-  const [step0Mode, setStep0Mode] = useState<'confirm' | 'edit'>('edit');
+  const [step0Mode, setStep0Mode] = useState<'confirm' | 'edit' | null>(null);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     business_name: '',
     contact_name: '',
@@ -139,7 +139,11 @@ export function NewCampaign() {
         if (userRecord.business_name && userRecord.forward_to) {
           setHasExistingProfile(true);
           setStep0Mode('confirm');
+        } else {
+          setStep0Mode('edit');
         }
+      } else {
+        setStep0Mode('edit');
       }
     };
     init();
@@ -779,14 +783,14 @@ export function NewCampaign() {
 
           {/* Step content */}
           <div className="px-6 py-6">
-            {step === 0 && (step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
+            {step === 0 && (step0Mode === null ? null : step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
           </div>
 
           {/* Nav buttons inside card footer */}
-          {!isDone && (
+          {!isDone && step0Mode !== null && (
             <div className="flex justify-between px-6 pb-6">
               <button
                 type="button"
