@@ -4,6 +4,7 @@ import headerLogoFull from 'figma:asset/507fab16b51ccf6be96c685cf4c76a6b2a4bb7b0
 import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
 import headerLogoWhite from 'figma:asset/ac9d14a9fc5e2f8315c311b8dec3220da367a867.png';
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { LBToggle } from './design-system/LBToggle';
 import { fetchUserNotifications, deleteNotification, markNotificationAsRead } from '../lib/notifications';
 import { supabase } from '../lib/supabase';
@@ -37,6 +38,8 @@ const initializeNotifications = (): Notification[] => {
 };
 
 export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccountTabChange, onOpenNotifications, onToggleDarkMode, isDarkMode }: HeaderProps) {
+  const location = useLocation();
+  const isV2Page = location.pathname.startsWith('/v2/');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -278,17 +281,19 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             {/* Left side */}
             <div className="flex items-center gap-4">
               {/* Hamburger Menu Button */}
-              <button
-                onClick={() => {
-                  setIsMenuOpen(true);
-                  setIsAccountMenuOpen(false);
-                }}
-                className={`${isLoggedIn ? '' : 'md:hidden'} relative z-10 w-12 h-12 flex items-center justify-center transition-colors group font-bold`}
-                aria-label="Open navigation menu"
-                aria-expanded={isMenuOpen}
-              >
-                <Menu className="w-6 h-6 text-[#342e37]" strokeWidth={2.5} />
-              </button>
+              {!isV2Page && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(true);
+                    setIsAccountMenuOpen(false);
+                  }}
+                  className={`${isLoggedIn ? '' : 'md:hidden'} relative z-10 w-12 h-12 flex items-center justify-center transition-colors group font-bold`}
+                  aria-label="Open navigation menu"
+                  aria-expanded={isMenuOpen}
+                >
+                  <Menu className="w-6 h-6 text-[#342e37]" strokeWidth={2.5} />
+                </button>
+              )}
 
               <button
                 onClick={() => handleNavigate(isLoggedIn ? 'dashboard' : 'home')}
@@ -457,7 +462,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
       </header>
 
       {/* Sidebar Menu */}
-      {isMenuOpen && (
+      {!isV2Page && isMenuOpen && (
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setIsMenuOpen(false)} />

@@ -200,7 +200,7 @@ export function V2Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
-      <div className="max-w-[720px] mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
 
         {/* Page header */}
         <div className="flex items-start justify-between mb-6">
