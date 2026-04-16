@@ -110,6 +110,8 @@ function StatusToggle({ active, onChange }: { active: boolean; onChange: (next: 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
+const PENDING_ONBOARDING_KEY = 'lb_pending_onboarding';
+
 export function V2Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [usageCount, setUsageCount] = useState(0);
@@ -117,6 +119,90 @@ export function V2Dashboard() {
   const [stripePeriodEnd, setStripePeriodEnd] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  // Claim any pending onboarding campaign created while unauthenticated
+  useEffect(() => {
+    const claimPending = async () => {
+      const raw = localStorage.getItem(PENDING_ONBOARDING_KEY);
+      if (!raw) return;
+      let pending: any;
+      try { pending = JSON.parse(raw); } catch { localStorage.removeItem(PENDING_ONBOARDING_KEY); return; }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      try {
+        const { businessInfo, searchCriteria, messageInfo, smsConfig } = pending;
+
+        await supabase.from('users').upsert({
+          id: user.id,
+          business_name: businessInfo.business_name,
+          contact_name: businessInfo.contact_name,
+          forward_to: businessInfo.forward_to,
+          service_type: Array.isArray(businessInfo.service_type)
+            ? businessInfo.service_type.join(',')
+            : businessInfo.service_type,
+        });
+
+        const campaignName = searchCriteria.city
+          ? `${searchCriteria.city} - ${messageInfo.campaign_name}`
+          : messageInfo.campaign_name;
+
+        const { data: campaign, error: campaignErr } = await supabase
+          .from('campaigns')
+          .insert({
+            user_id: user.id,
+            campaign_name: campaignName,
+            status: 'active',
+            channel: messageInfo.channel,
+            sender_type: 'default',
+            subject: messageInfo.subject,
+            body: messageInfo.body,
+            forward_to: businessInfo.forward_to,
+            drip_delay_minutes: 2,
+          })
+          .select()
+          .single();
+
+        if (campaignErr || !campaign) throw new Error(campaignErr?.message || 'Failed to create campaign');
+
+        const daysOldNum = typeof searchCriteria.days_old === 'string'
+          ? parseInt(searchCriteria.days_old, 10) || 1
+          : searchCriteria.days_old;
+
+        await supabase.from('campaign_search_criteria').insert({
+          campaign_id: campaign.id,
+          city: searchCriteria.city,
+          state: searchCriteria.state,
+          listing_type: searchCriteria.listing_type,
+          active_status: 'Active',
+          days_old: daysOldNum,
+          price_min: searchCriteria.price_min,
+          price_max: searchCriteria.price_max,
+          property_type: searchCriteria.property_type,
+          year_built_min: searchCriteria.year_built_min,
+          year_built_max: searchCriteria.year_built_max,
+        });
+
+        if (messageInfo.channel === 'sms' && smsConfig) {
+          await supabase.from('campaign_sms_config').insert({
+            campaign_id: campaign.id,
+            twilio_from_number: smsConfig.twilio_from_number,
+            forward_to_phone: smsConfig.forward_to_phone,
+          });
+        }
+
+        await supabase.functions.invoke('send-campaign-emails', {
+          body: { campaign_id: campaign.id },
+        });
+
+        localStorage.removeItem(PENDING_ONBOARDING_KEY);
+      } catch (err) {
+        console.error('Failed to claim pending onboarding campaign:', err);
+      }
+    };
+    claimPending();
+  }, []);
 
   useEffect(() => {
     const load = async () => {

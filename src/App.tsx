@@ -73,6 +73,8 @@ const V2AccountProfile = lazy(() => import("./components/v2/V2AccountProfile").t
 const V2AccountUsage = lazy(() => import("./components/v2/V2AccountUsage").then(m => ({ default: m.V2AccountUsage })));
 const V2AccountBilling = lazy(() => import("./components/v2/V2AccountBilling").then(m => ({ default: m.V2AccountBilling })));
 const V2Setup = lazy(() => import("./components/v2/V2Setup").then(m => ({ default: m.V2Setup })));
+const V2HomePage = lazy(() => import("./components/v2/V2HomePage").then(m => ({ default: m.V2HomePage })));
+const V2Onboarding = lazy(() => import("./components/v2/V2Onboarding").then(m => ({ default: m.V2Onboarding })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -97,7 +99,9 @@ type Page =
   | "v2-account-profile"
   | "v2-account-usage"
   | "v2-account-billing"
-  | "v2-setup";
+  | "v2-setup"
+  | "v2-home"
+  | "v2-onboarding";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -133,6 +137,8 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "v2-account-usage": "/v2/account/usage",
   "v2-account-billing": "/v2/account/billing",
   "v2-setup": "/v2/setup",
+  "v2-home": "/v2",
+  "v2-onboarding": "/v2/onboarding",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -164,6 +170,8 @@ function pathToPage(pathname: string): Page {
   if (pathname === '/v2/account/usage') return 'v2-account-usage';
   if (pathname === '/v2/account/billing') return 'v2-account-billing';
   if (pathname === '/v2/setup') return 'v2-setup';
+  if (pathname === '/v2' || pathname === '/v2/') return 'v2-home';
+  if (pathname === '/v2/onboarding') return 'v2-onboarding';
   return 'home';
 }
 
@@ -284,7 +292,7 @@ export default function App() {
         const authPages = ['/login', '/signup', '/'];
         if (authPages.includes(location.pathname) || location.pathname === '/') {
           // Navigate immediately — no delay — so login form is never interactive with existing session
-          navigate(PAGE_TO_PATH['dashboard']);
+          navigate(PAGE_TO_PATH['v2-dashboard']);
         }
         const { data } = await supabase.from('users').select('plan_status, trial_ends_at, onboarding_seen').eq('id', session.user.id).single();
         if (data) { setPlanStatus(data.plan_status ?? 'active'); setTrialEndsAt(data.trial_ends_at ?? null); setOnboardingSeen(data.onboarding_seen ?? {}); }
@@ -301,7 +309,7 @@ export default function App() {
         const publicPages = ['/login', '/signup', '/forgot-password'];
         if (publicPages.includes(location.pathname)) {
           // Navigate immediately — no delay — so login form is never interactive with existing session
-          navigate(PAGE_TO_PATH['dashboard']);
+          navigate(PAGE_TO_PATH['v2-dashboard']);
         }
       } else {
         setIsLoggedIn(false);
@@ -332,7 +340,7 @@ export default function App() {
   const handleLogin = () => {
     setIsLoggedIn(true);
     localStorage.setItem('listingbug_returning_user', 'true');
-    navigateWithLoading('dashboard');
+    navigateWithLoading('v2-dashboard');
   };
 
   const handleLogout = async () => {
@@ -417,7 +425,7 @@ export default function App() {
   };
 
   const isAuthPage = currentPage === 'login' || currentPage === 'signup';
-  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe', 'clean', 'drip'].includes(currentPage);
+  const isMinimalPage = ['welcome', 'quick-start-guide', 'forgot-password', 'reset-password', 'login', 'signup', 'unsubscribe', 'clean', 'drip', 'v2-onboarding'].includes(currentPage);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -433,7 +441,7 @@ export default function App() {
       case "use-cases": return <UseCasesPage onNavigate={handleSmartNavigate} />;
       case "how-it-works": return <HowItWorksPage onNavigate={navigateWithLoading} />;
       case "login": return <LoginPage onLogin={handleLogin} onNavigateToSignUp={() => navigateWithLoading('signup')} onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
-      case "signup": return <SignUpPage onSignUp={() => { setIsLoggedIn(true); localStorage.removeItem('listingbug_returning_user'); localStorage.setItem('listingbug_saved_searches', JSON.stringify([])); localStorage.setItem('listingbug_saved_listings', JSON.stringify([])); localStorage.setItem('listingbug_automations', JSON.stringify([])); localStorage.setItem('listingbug_integrations', JSON.stringify([])); localStorage.setItem('listingbug_walkthrough_step', '1'); localStorage.removeItem('listingbug_walkthrough_completed'); navigateWithLoading('dashboard'); }} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
+      case "signup": return <SignUpPage onSignUp={() => { setIsLoggedIn(true); localStorage.removeItem('listingbug_returning_user'); localStorage.setItem('listingbug_saved_searches', JSON.stringify([])); localStorage.setItem('listingbug_saved_listings', JSON.stringify([])); localStorage.setItem('listingbug_automations', JSON.stringify([])); localStorage.setItem('listingbug_integrations', JSON.stringify([])); localStorage.setItem('listingbug_walkthrough_step', '1'); localStorage.removeItem('listingbug_walkthrough_completed'); navigateWithLoading('v2-new-campaign'); }} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
       case "forgot-password": return <ForgotPasswordPage onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToContactSupport={() => navigateWithLoading('contact-support')} />;
       case "reset-password": return <ResetPasswordPage token={undefined} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')} />;
       case "welcome": return <WelcomePage userName="User" onContinue={() => navigateWithLoading('quick-start-guide')} onSkipToReport={() => navigateWithLoading('search-listings')} />;
@@ -520,6 +528,8 @@ export default function App() {
       case "v2-account-usage": return isLoggedIn ? <V2AccountUsage /> : <LoginPage onLogin={handleLogin} />;
       case "v2-account-billing": return isLoggedIn ? <V2AccountBilling /> : <LoginPage onLogin={handleLogin} />;
       case "v2-setup": return isLoggedIn ? <V2Setup /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-home": return <V2HomePage />;
+      case "v2-onboarding": return <V2Onboarding />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };

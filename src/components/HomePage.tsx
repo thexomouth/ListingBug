@@ -828,10 +828,10 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
         <HeroSection onNavigate={onNavigate} onGenerateSample={handleGenerateSample} />
         <TrialCTASection onNavigate={onNavigate} />
         <HowItWorksSection />
-        <AdditionalDataSection />
-        <DataFieldsSection />
+        {/* <AdditionalDataSection /> */}
+        {/* <DataFieldsSection /> */}
         {/* <DataEnrichmentSection /> */}
-        <IntegrationsSection />
+        {/* <IntegrationsSection /> */}
         <UseCaseSection />
         <BottomCTASection onNavigate={onNavigate} />
       </div>
