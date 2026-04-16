@@ -343,19 +343,6 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 <span className="text-[#342e37]/30 font-normal">|</span>
                 */}
                 <button
-                  onClick={() => handleNavigate('data-sets')}
-                  className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
-                >
-                  Listing Data
-                  {currentPage === 'data-sets' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37] rounded-full" />
-                  )}
-                  {currentPage !== 'data-sets' && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                  )}
-                </button>
-                <span className="text-[#342e37] font-normal">|</span>
-                <button
                   onClick={() => handleNavigate('use-cases')}
                   className={`font-bold text-[18px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
                 >
@@ -500,16 +487,6 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             <nav className="flex flex-col p-4">
               {!isLoggedIn ? (
                 <>
-                  <button
-                    onClick={() => handleNavigate('data-sets')}
-                    className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
-                      currentPage === 'data-sets'
-                        ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
-                        : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    Listing Data
-                  </button>
                   <button
                     onClick={() => handleNavigate('use-cases')}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
