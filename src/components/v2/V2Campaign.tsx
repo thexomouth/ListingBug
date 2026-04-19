@@ -757,6 +757,12 @@ export function V2Campaign() {
           if (!testModal.address.trim()) return;
           setTestModal(m => ({ ...m, sending: true, error: null }));
           try {
+            // Ensure we have a valid session before calling the edge function
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+              throw new Error('Not authenticated. Please refresh the page and try again.');
+            }
+
             const { error } = await supabase.functions.invoke('send-test-email', {
               body: {
                 to: testModal.address.trim(),
