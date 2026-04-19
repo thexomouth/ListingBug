@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
+import { formatSenderName } from '../../lib/senderName';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1003,7 +1004,7 @@ export function V2Onboarding() {
 
       {/* Test email modal (identical to NewCampaign) */}
       {testModal.open && (() => {
-        const fromName = businessInfo.business_name || businessInfo.contact_name || 'ListingBug';
+        const fromName = formatSenderName(businessInfo.contact_name, businessInfo.business_name);
         const previewSubject = messageInfo.subject
           ? messageInfo.subject.replace(/\{\{agent_name\}\}/g, 'Sarah').replace(/\{\{address\}\}/g, '1842 Maple St').replace(/\{\{city\}\}/g, searchCriteria.city || 'your city').replace(/\{\{price\}\}/g, '$485,000').replace(/\{\{listing_date\}\}/g, 'today')
           : '(no subject)';

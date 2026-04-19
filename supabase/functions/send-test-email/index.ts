@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { formatSenderName } from "../_shared/senderName.ts";
 
 const RESEND_API_KEY    = Deno.env.get("SHARED_MAILBOX_RESEND_API_KEY") ?? "";
 const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
@@ -42,22 +43,24 @@ serve(async (req) => {
     const { to, subject, body: rawBody, from_name, user_id } = body;
     if (!to || !rawBody) return json({ error: "to and body are required" }, 400);
 
-    const fromName = from_name || "ListingBug";
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Load user plan info for usage logging
+    // Load user info for sender name and usage logging
+    let fromName = from_name || "ListingBug";
     let stripePeriodEnd: string | null = null;
     let planType: string | null = null;
+
     if (user_id) {
       const { data: userData } = await supabase
         .from("users")
-        .select("stripe_subscription_end, plan")
+        .select("stripe_subscription_end, plan, contact_name, business_name")
         .eq("id", user_id)
         .single();
       if (userData) {
         stripePeriodEnd = userData.stripe_subscription_end ?? null;
         planType = userData.plan ?? "trial";
+        // Use formatSenderName if we have user data
+        fromName = formatSenderName(userData.contact_name, userData.business_name);
       }
     }
 

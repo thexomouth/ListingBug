@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { CityAutocomplete } from '../CityAutocomplete';
+import { formatSenderName } from '../../lib/senderName';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -162,6 +163,7 @@ export function V2Campaign() {
 
   // Test email modal
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
+  const [userContactName, setUserContactName] = useState<string | null>(null);
   const [userBusinessName, setUserBusinessName] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -203,7 +205,12 @@ export function V2Campaign() {
       if (!user) return;
       setUserId(user.id);
       supabase.from('users').select('business_name, contact_name').eq('id', user.id).single()
-        .then(({ data }) => { if (data) setUserBusinessName(data.business_name || data.contact_name || null); });
+        .then(({ data }) => {
+          if (data) {
+            setUserContactName(data.contact_name || null);
+            setUserBusinessName(data.business_name || null);
+          }
+        });
     });
   }, []);
 
@@ -723,7 +730,7 @@ export function V2Campaign() {
       {/* Send test email modal                                                */}
       {/* ------------------------------------------------------------------ */}
       {testModal.open && (() => {
-        const fromName = userBusinessName || 'ListingBug';
+        const fromName = formatSenderName(userContactName, userBusinessName);
         const emailData = editDraft || { subject: campaign?.subject || '', body: campaign?.body || '', city: criteria?.city || '' };
         const previewSubject = emailData.subject
           ? emailData.subject

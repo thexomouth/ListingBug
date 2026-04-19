@@ -7,6 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
 import { CityLimitModal } from './CityLimitModal';
 import { normalizePlan, canAddCity, type PlanType } from '../utils/planLimits';
+import { formatSenderName } from '../../lib/senderName';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1140,7 +1141,7 @@ export function NewCampaign() {
 
       {/* Test email modal */}
       {testModal.open && (() => {
-        const fromName = businessInfo.business_name || businessInfo.contact_name || 'ListingBug';
+        const fromName = formatSenderName(businessInfo.contact_name, businessInfo.business_name);
         const previewSubject = messageInfo.subject
           ? messageInfo.subject
               .replace(/\{\{agent_name\}\}/g, 'Sarah')
