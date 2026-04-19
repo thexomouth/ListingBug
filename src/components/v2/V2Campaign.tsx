@@ -72,10 +72,29 @@ interface EditDraft {
 
 const PROPERTY_TYPES = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', 'Multi-Family', 'Apartment', 'Land'];
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
+const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+function renderBodyPreview(text: string, city: string): string {
+  let s = text
+    .replace(/\{\{agent_name\}\}/g, '[AGENT NAME]')
+    .replace(/\{\{address\}\}/g, '[LISTING ADDRESS]')
+    .replace(/\{\{city\}\}/g, city || '[CITY]')
+    .replace(/\{\{price\}\}/g, '[LISTING PRICE]')
+    .replace(/\{\{listing_date\}\}/g, '[LISTING DATE]');
+  s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline" target="_blank" rel="noopener noreferrer">${t}</a>`);
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
+function toTitleCase(str: string): string {
+  return str.replace(/\b\w+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+}
+
 function statusBadge(status: string, hasReply: boolean) {
   if (hasReply) return { label: 'Replied', bg: '#dcfce7', color: '#15803d' };
   switch (status) {
@@ -137,6 +156,14 @@ export function V2Campaign() {
   // Delete
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Save as template
+  const [templateModal, setTemplateModal] = useState({ open: false, name: '', saving: false, error: null as string | null, saved: false });
+
+  // Test email modal
+  const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
+  const [userBusinessName, setUserBusinessName] = useState<string | null>(null);
+
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const cursorPos = useRef(0);
 
@@ -171,6 +198,11 @@ export function V2Campaign() {
     if (!id) { setIsLoading(false); return; }
     setCampaignId(id);
     loadCampaign(id);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from('users').select('business_name, contact_name').eq('id', user.id).single()
+        .then(({ data }) => { if (data) setUserBusinessName(data.business_name || data.contact_name || null); });
+    });
   }, []);
 
   const handleToggle = async (next: boolean) => {
@@ -187,6 +219,26 @@ export function V2Campaign() {
     setIsDeleting(true);
     await supabase.from('campaigns').delete().eq('id', campaign.id);
     window.location.href = '/v2/dashboard';
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!campaign || !templateModal.name.trim()) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setTemplateModal(m => ({ ...m, saving: true, error: null }));
+    const { error } = await supabase.from('marketing_templates').insert({
+      user_id: user.id,
+      template_name: templateModal.name.trim(),
+      channel: campaign.channel,
+      subject: campaign.subject,
+      body: campaign.body,
+    });
+    if (error) {
+      setTemplateModal(m => ({ ...m, saving: false, error: error.message }));
+    } else {
+      setTemplateModal(m => ({ ...m, saving: false, saved: true }));
+      setTimeout(() => setTemplateModal({ open: false, name: '', saving: false, error: null, saved: false }), 1500);
+    }
   };
 
   const openEdit = () => {
@@ -392,30 +444,12 @@ export function V2Campaign() {
             Edit campaign
           </button>
 
-          {!deleteConfirm ? (
-            <button
-              onClick={() => setDeleteConfirm(true)}
-              className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-            >
-              Delete campaign
-            </button>
-          ) : (
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
-              >
-                {isDeleting ? 'Deleting…' : 'Yes, delete'}
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(false)}
-                className="flex-1 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => setTemplateModal({ open: true, name: campaign.campaign_name, saving: false, error: null, saved: false })}
+            className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+          >
+            Save as template
+          </button>
 
           {campaign.body && (
             <div className="mt-4">
@@ -423,6 +457,14 @@ export function V2Campaign() {
               <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
                 {campaign.body}
               </div>
+              {campaign.channel === 'email' && (
+                <button
+                  onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
+                  className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                >
+                  Send test email
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -483,6 +525,34 @@ export function V2Campaign() {
           </div>
         )}
 
+        {/* Delete campaign — own row at bottom */}
+        <div className="mt-6 mb-2">
+          {!deleteConfirm ? (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="w-full py-2 rounded-lg text-sm font-medium border border-red-200 dark:border-red-900/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            >
+              Delete campaign
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting…' : 'Yes, delete'}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* ------------------------------------------------------------------ */}
@@ -490,7 +560,7 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {isEditing && editDraft && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-50 flex items-end sm:items-start sm:pt-6 justify-center"
           onClick={() => setIsEditing(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -514,7 +584,7 @@ export function V2Campaign() {
                 <input
                   className={inputClass}
                   value={editDraft.campaign_name}
-                  onChange={e => setEditDraft(d => d ? { ...d, campaign_name: e.target.value } : d)}
+                  onChange={e => setEditDraft(d => d ? { ...d, campaign_name: toTitleCase(e.target.value) } : d)}
                 />
               </div>
 
@@ -626,12 +696,14 @@ export function V2Campaign() {
             </div>
 
             <div className="px-5 py-4 border-t border-gray-100 dark:border-white/10 flex gap-2">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-              >
-                Cancel
-              </button>
+              {campaign?.channel === 'email' && (
+                <button
+                  onClick={() => setTestModal({ open: true, address: editDraft?.forward_to || '', sending: false, sent: false, error: null })}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                >
+                  Send test
+                </button>
+              )}
               <button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -644,6 +716,143 @@ export function V2Campaign() {
           </div>
         </div>
       )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Send test email modal                                                */}
+      {/* ------------------------------------------------------------------ */}
+      {testModal.open && editDraft && (() => {
+        const fromName = userBusinessName || 'ListingBug';
+        const previewSubject = editDraft.subject
+          ? editDraft.subject
+              .replace(/\{\{agent_name\}\}/g, 'Sarah')
+              .replace(/\{\{address\}\}/g, '1842 Maple St')
+              .replace(/\{\{city\}\}/g, editDraft.city || 'your city')
+              .replace(/\{\{price\}\}/g, '$485,000')
+              .replace(/\{\{listing_date\}\}/g, 'today')
+          : '(no subject)';
+        const sampleBody = editDraft.body
+          .replace(/\{\{agent_name\}\}/g, 'Sarah')
+          .replace(/\{\{address\}\}/g, '1842 Maple St')
+          .replace(/\{\{city\}\}/g, editDraft.city || 'Austin')
+          .replace(/\{\{price\}\}/g, '$485,000')
+          .replace(/\{\{listing_date\}\}/g, 'today');
+        const sampleBodyHtml = sampleBody
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+            (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`)
+          .replace(/\n/g, '<br/>');
+        const previewHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${sampleBodyHtml}</div>`;
+
+        const handleSendTest = async () => {
+          if (!testModal.address.trim()) return;
+          setTestModal(m => ({ ...m, sending: true, error: null }));
+          try {
+            const { error } = await supabase.functions.invoke('send-test-email', {
+              body: { to: testModal.address.trim(), subject: editDraft.subject, body: editDraft.body, from_name: fromName },
+            });
+            if (error) throw new Error(error.message);
+            setTestModal(m => ({ ...m, sending: false, sent: true }));
+          } catch (e: any) {
+            setTestModal(m => ({ ...m, sending: false, error: e.message ?? 'Send failed' }));
+          }
+        };
+
+        return (
+          <div
+            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+            onClick={() => setTestModal(m => ({ ...m, open: false }))}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div
+              className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              style={{ maxHeight: '85svh' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10 shrink-0">
+                <span className="font-semibold text-gray-900 dark:text-white">Send test email</span>
+                <button
+                  onClick={() => setTestModal(m => ({ ...m, open: false }))}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
+                >×</button>
+              </div>
+
+              <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
+                {/* From / Subject */}
+                <div className="space-y-1.5">
+                  <div className="flex gap-2 text-xs">
+                    <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">From</span>
+                    <span className="text-gray-700 dark:text-gray-300">{fromName} &lt;{FROM_EMAIL_DISPLAY}&gt;</span>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">Subject</span>
+                    <span className="text-gray-700 dark:text-gray-300">{previewSubject}</span>
+                  </div>
+                </div>
+
+                {/* Body preview */}
+                <div className="rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] p-4">
+                  <div
+                    className="text-sm text-gray-900 dark:text-white leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: renderBodyPreview(editDraft.body, editDraft.city) }}
+                  />
+                </div>
+
+                {/* Address input / success */}
+                {!testModal.sent ? (
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Send to</label>
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={testModal.address}
+                      onChange={e => setTestModal(m => ({ ...m, address: e.target.value, error: null }))}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSendTest(); }}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white outline-none focus:border-[#FFCE0A]"
+                    />
+                    {testModal.error && (
+                      <p className="text-xs text-red-500 mt-1">{testModal.error}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+                    Test email sent to {testModal.address}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 px-5 pb-5 shrink-0">
+                {!testModal.sent ? (
+                  <>
+                    <button
+                      onClick={() => setTestModal(m => ({ ...m, open: false }))}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendTest}
+                      disabled={testModal.sending || !testModal.address.trim()}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity disabled:opacity-50 hover:opacity-90"
+                      style={{ background: '#FFCE0A', color: '#342e37' }}
+                    >
+                      {testModal.sending ? 'Sending…' : 'Send test'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setTestModal(m => ({ ...m, open: false }))}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                  >
+                    Done
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ------------------------------------------------------------------ */}
       {/* Send detail modal                                                    */}
@@ -801,6 +1010,51 @@ export function V2Campaign() {
           </div>
         );
       })()}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Save as template modal                                               */}
+      {/* ------------------------------------------------------------------ */}
+      {templateModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          onClick={() => setTemplateModal(m => ({ ...m, open: false }))}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative w-full sm:max-w-sm bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl p-5"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="font-semibold text-gray-900 dark:text-white mb-1">Save as template</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">Name this template to load it into future campaigns</div>
+            <label className={labelClass}>Template name</label>
+            <input
+              className={inputClass}
+              value={templateModal.name}
+              onChange={e => setTemplateModal(m => ({ ...m, name: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveTemplate(); }}
+              placeholder="e.g. Denver Email Outreach"
+              autoFocus
+            />
+            {templateModal.error && <p className="text-xs text-red-500 mt-1">{templateModal.error}</p>}
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={handleSaveTemplate}
+                disabled={templateModal.saving || !templateModal.name.trim()}
+                className="flex-1 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+                style={{ background: '#FFCE0A', color: '#342e37' }}
+              >
+                {templateModal.saved ? 'Saved!' : templateModal.saving ? 'Saving…' : 'Save template'}
+              </button>
+              <button
+                onClick={() => setTemplateModal(m => ({ ...m, open: false }))}
+                className="flex-1 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
