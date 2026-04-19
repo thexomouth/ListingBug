@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { LayoutDashboard, Send, MessageSquare, Zap, MousePointer } from 'lucide-react';
+import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,18 +74,6 @@ function computeStats(sends: CampaignSend[]): CampaignStats {
   return { sent, opens, clicks, openRate, replies, lastSendLabel, lastAddress };
 }
 
-// ---------------------------------------------------------------------------
-// Plan limits
-// ---------------------------------------------------------------------------
-const PLAN_LIMITS: Record<string, number> = {
-  trial: 100,
-  home: 2500,
-  market: 5000,
-  region: 10000,
-  starter: 2500,
-  pro: 5000,
-  enterprise: 10000,
-};
 
 // ---------------------------------------------------------------------------
 // Toggle component
@@ -142,6 +131,7 @@ export function V2Dashboard() {
           service_type: Array.isArray(businessInfo.service_type)
             ? businessInfo.service_type.join(',')
             : businessInfo.service_type,
+          mailing_address: businessInfo.mailing_address ?? '',
         });
 
         const campaignName = searchCriteria.city
@@ -216,8 +206,8 @@ export function V2Dashboard() {
         .single();
 
       if (userData) {
-        const plan = (userData.plan || 'trial').toLowerCase();
-        setPlanLimit(PLAN_LIMITS[plan] ?? 100);
+        const plan = normalizePlan(userData.plan);
+        setPlanLimit(PLAN_CONFIG[plan].messagesPerMonth);
         setStripePeriodEnd(userData.stripe_subscription_end || null);
       }
 

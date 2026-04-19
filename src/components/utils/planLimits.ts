@@ -1,254 +1,120 @@
-/**
- * PLAN LIMITS UTILITY
- * 
- * Centralized logic for plan-based feature limits
- * Ensures consistent enforcement across all components
- */
-
-export type PlanType = 'trial' | 'starter' | 'pro' | 'enterprise';
+export type PlanType = 'trial' | 'city' | 'market' | 'region';
 
 export interface PlanLimits {
   name: string;
-  automationSlots: number;
-  listingsCap: number;
+  messagesPerMonth: number;
+  citiesAllowed: number;
   price: number | null;
-  features: {
-    crmIntegrations: boolean;
-    automationPlatforms: boolean;
-    customAPI: boolean;
-    whiteLabel: boolean;
-    prioritySupport: boolean;
-  };
 }
 
-/**
- * Plan configuration
- */
 export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
   trial: {
     name: 'Trial',
-    automationSlots: 3,
-    listingsCap: 1000,
+    messagesPerMonth: 100,
+    citiesAllowed: 1,
     price: 0,
-    features: {
-      crmIntegrations: false,
-      automationPlatforms: false,
-      customAPI: false,
-      whiteLabel: false,
-      prioritySupport: false
-    }
   },
-  starter: {
-    name: 'Starter',
-    automationSlots: 3,
-    listingsCap: 4000,
+  city: {
+    name: 'City',
+    messagesPerMonth: 2500,
+    citiesAllowed: 1,
     price: 19,
-    features: {
-      crmIntegrations: false,
-      automationPlatforms: false,
-      customAPI: false,
-      whiteLabel: false,
-      prioritySupport: false
-    }
   },
-  pro: {
-    name: 'Professional',
-    automationSlots: 9,
-    listingsCap: 10000,
+  market: {
+    name: 'Market',
+    messagesPerMonth: 5000,
+    citiesAllowed: 3,
     price: 49,
-    features: {
-      crmIntegrations: true,
-      automationPlatforms: true,
-      customAPI: false,
-      whiteLabel: false,
-      prioritySupport: true
-    }
   },
-  enterprise: {
-    name: 'Enterprise',
-    automationSlots: Infinity,
-    listingsCap: Infinity,
-    price: null,
-    features: {
-      crmIntegrations: true,
-      automationPlatforms: true,
-      customAPI: true,
-      whiteLabel: true,
-      prioritySupport: true
-    }
-  }
+  region: {
+    name: 'Region',
+    messagesPerMonth: 10000,
+    citiesAllowed: 10,
+    price: 99,
+  },
 };
 
-/**
- * Get user's current plan from localStorage
- */
-export function getCurrentPlan(): PlanType {
-  const storedPlan = localStorage.getItem('listingbug_user_plan');
-  if (storedPlan && ['trial', 'starter', 'pro', 'enterprise'].includes(storedPlan)) {
-    return storedPlan as PlanType;
-  }
-  
-  // Check if user has sandbox data (returning user) - default to Pro
-  const hasAutomations = localStorage.getItem('listingbug_automations');
-  if (hasAutomations) {
-    try {
-      const automations = JSON.parse(hasAutomations);
-      if (Array.isArray(automations) && automations.length > 0) {
-        localStorage.setItem('listingbug_user_plan', 'pro');
-        return 'pro';
-      }
-    } catch (e) {
-      // Ignore parse errors
-    }
-  }
-  
-  // First-time user - default to Starter
-  return 'starter';
-}
-
-/**
- * Set user's plan
- */
-export function setUserPlan(plan: PlanType): void {
-  localStorage.setItem('listingbug_user_plan', plan);
-  
-  // Dispatch custom event to notify components of plan change
-  window.dispatchEvent(new CustomEvent('userPlanChanged', { detail: { plan } }));
-}
-
-/**
- * Get plan limits for a specific plan
- */
 export function getPlanLimits(plan: PlanType): PlanLimits {
   return PLAN_CONFIG[plan];
 }
 
-/**
- * Check if user can create a new automation
- */
-export function canCreateAutomation(plan?: PlanType, actualCount?: number): {
-  allowed: boolean;
-  reason?: string;
-  currentCount?: number;
-  maxSlots?: number;
-} {
-  const currentPlan = plan || getCurrentPlan();
-  const limits = getPlanLimits(currentPlan);
+export function normalizePlan(raw: string | null | undefined): PlanType {
+  if (!raw) return 'trial';
+  const lower = raw.toLowerCase();
+  // Accept legacy plan names from old product
+  if (lower === 'city' || lower === 'home') return 'city';
+  if (lower === 'market' || lower === 'pro' || lower === 'professional') return 'market';
+  if (lower === 'region' || lower === 'enterprise') return 'region';
+  if (lower === 'starter') return 'city';
+  return 'trial';
+}
 
-  // Use provided count, or fall back to localStorage (legacy)
-  let currentCount = actualCount;
-  if (currentCount === undefined) {
-    const stored = localStorage.getItem('listingbug_automations');
-    currentCount = 0;
-    if (stored) {
-      try {
-        const automations = JSON.parse(stored);
-        currentCount = Array.isArray(automations) ? automations.length : 0;
-      } catch (e) {
-        currentCount = 0;
-      }
-    }
-  }
+export function getNextPlan(plan: PlanType): { plan: PlanType | null; name: string | null; price: string | null } {
+  if (plan === 'trial' || plan === 'city') return { plan: 'market', name: 'Market', price: '$49/mo' };
+  if (plan === 'market') return { plan: 'region', name: 'Region', price: '$99/mo' };
+  return { plan: null, name: null, price: null };
+}
 
-  // Check if limit is reached
-  const allowed = limits.automationSlots === Infinity || currentCount < limits.automationSlots;
-
+export function canAddCity(plan: PlanType, activeCityCount: number): { allowed: boolean; reason?: string } {
+  const { citiesAllowed, name } = PLAN_CONFIG[plan];
+  if (activeCityCount < citiesAllowed) return { allowed: true };
   return {
-    allowed,
-    reason: allowed ? undefined : `You've reached your plan limit of ${limits.automationSlots} automation${limits.automationSlots !== 1 ? 's' : ''}`,
-    currentCount,
-    maxSlots: limits.automationSlots === Infinity ? Infinity : limits.automationSlots
+    allowed: false,
+    reason: `Your ${name} plan includes ${citiesAllowed} ${citiesAllowed === 1 ? 'city' : 'cities'}. Upgrade to add more.`,
   };
 }
 
-/**
- * Check if user is approaching automation limit
- */
-export function isApproachingAutomationLimit(plan?: PlanType): boolean {
-  const currentPlan = plan || getCurrentPlan();
-  const limits = getPlanLimits(currentPlan);
-  
-  if (limits.automationSlots === Infinity) {
-    return false;
-  }
-  
-  const { currentCount } = canCreateAutomation(currentPlan);
-  const threshold = limits.automationSlots - 1; // One slot remaining
-  
-  return (currentCount || 0) >= threshold;
+// ---------------------------------------------------------------------------
+// V1 compat shims — used by AutomationsManagementPage (legacy)
+// These map old automation-slot concepts to no-ops so V1 keeps building.
+// ---------------------------------------------------------------------------
+export function getCurrentPlan(): PlanType {
+  return normalizePlan(localStorage.getItem('listingbug_user_plan'));
 }
 
-/**
- * Get automation usage info
- */
-export function getAutomationUsage(plan?: PlanType): {
-  current: number;
-  max: number;
-  percentage: number;
+export function setUserPlan(plan: PlanType): void {
+  localStorage.setItem('listingbug_user_plan', plan);
+  window.dispatchEvent(new CustomEvent('userPlanChanged', { detail: { plan } }));
+}
+
+export function canCreateAutomation(_plan?: PlanType, _count?: number): {
+  allowed: boolean; reason?: string; currentCount?: number; maxSlots?: number;
+} {
+  return { allowed: true, currentCount: 0, maxSlots: Infinity };
+}
+
+export function isApproachingAutomationLimit(_plan?: PlanType): boolean {
+  return false;
+}
+
+export function getAutomationUsage(_plan?: PlanType): {
+  current: number; max: number; percentage: number; remaining: number; isAtLimit: boolean;
+} {
+  return { current: 0, max: Infinity, percentage: 0, remaining: Infinity, isAtLimit: false };
+}
+
+export function hasFeatureAccess(_feature: string, _plan?: PlanType): boolean {
+  return true;
+}
+// ---------------------------------------------------------------------------
+
+export function getMessageUsage(plan: PlanType, usedThisPeriod: number): {
+  used: number;
+  limit: number;
   remaining: number;
-  isAtLimit: boolean;
+  pct: number;
+  isNearLimit: boolean;
+  isOverLimit: boolean;
 } {
-  const currentPlan = plan || getCurrentPlan();
-  const limits = getPlanLimits(currentPlan);
-  const { currentCount = 0, maxSlots = 0 } = canCreateAutomation(currentPlan);
-  
-  const max = limits.automationSlots === Infinity ? Infinity : limits.automationSlots;
-  const percentage = max === Infinity ? 0 : (currentCount / max) * 100;
-  const remaining = max === Infinity ? Infinity : Math.max(0, max - currentCount);
-  const isAtLimit = currentCount >= max;
-  
+  const limit = PLAN_CONFIG[plan].messagesPerMonth;
+  const remaining = Math.max(0, limit - usedThisPeriod);
+  const pct = Math.min(Math.round((usedThisPeriod / limit) * 100), 100);
   return {
-    current: currentCount,
-    max,
-    percentage,
+    used: usedThisPeriod,
+    limit,
     remaining,
-    isAtLimit
-  };
-}
-
-/**
- * Check if user can access a feature based on plan
- */
-export function hasFeatureAccess(
-  feature: keyof PlanLimits['features'],
-  plan?: PlanType
-): boolean {
-  const currentPlan = plan || getCurrentPlan();
-  const limits = getPlanLimits(currentPlan);
-  return limits.features[feature];
-}
-
-/**
- * Get next plan recommendation
- */
-export function getNextPlan(currentPlan: PlanType): {
-  plan: PlanType | null;
-  name: string | null;
-  automationSlots: number | null;
-  price: string | null;
-} {
-  if (currentPlan === 'starter') {
-    return {
-      plan: 'pro',
-      name: 'Professional',
-      automationSlots: 9,
-      price: '$49/mo'
-    };
-  }
-  
-  if (currentPlan === 'pro') {
-    return {
-      plan: 'enterprise',
-      name: 'Enterprise',
-      automationSlots: Infinity,
-      price: 'Custom pricing'
-    };
-  }
-  
-  return {
-    plan: null,
-    name: null,
-    automationSlots: null,
-    price: null
+    pct,
+    isNearLimit: pct >= 80,
+    isOverLimit: usedThisPeriod > limit,
   };
 }

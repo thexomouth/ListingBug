@@ -15,6 +15,7 @@ interface BusinessInfo {
   contact_name: string;
   forward_to: string;
   service_type: string[];
+  mailing_address: string;
 }
 
 interface SearchCriteria {
@@ -99,7 +100,7 @@ export function V2Onboarding() {
 
   // Form state
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
-    business_name: '', contact_name: '', forward_to: '', service_type: [],
+    business_name: '', contact_name: '', forward_to: '', service_type: [], mailing_address: '',
   });
   const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>({
     city: '', state: '', listing_type: 'For Sale', days_old: 1,
@@ -161,6 +162,7 @@ export function V2Onboarding() {
     if (s === 0) {
       if (!businessInfo.business_name.trim()) errors.business_name = 'Business name is required';
       if (!businessInfo.forward_to.trim()) errors.forward_to = 'Reply-to email is required';
+      if (!businessInfo.mailing_address.trim()) errors.mailing_address = 'Mailing address is required (CAN-SPAM compliance)';
     }
     if (s === 1) {
       if (!searchCriteria.city.trim()) errors.city = 'City is required — select one from the dropdown';
@@ -236,6 +238,7 @@ export function V2Onboarding() {
       contact_name: businessInfo.contact_name,
       forward_to: businessInfo.forward_to,
       service_type: businessInfo.service_type.join(','),
+      mailing_address: businessInfo.mailing_address,
     });
 
     const campaignName = searchCriteria.city
@@ -485,6 +488,17 @@ export function V2Onboarding() {
         placeholder="you@yourbusiness.com"
       />
       {stepErrors.forward_to && <p className="text-xs text-red-500 mt-1">{stepErrors.forward_to}</p>}
+
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">
+        Mailing address <span className="text-gray-400 dark:text-gray-500 font-normal">(required for CAN-SPAM compliance)</span>
+      </label>
+      <Input
+        value={businessInfo.mailing_address}
+        onChange={e => setBusinessInfo(b => ({ ...b, mailing_address: e.target.value }))}
+        placeholder="123 Main St, Denver, CO 80202"
+      />
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Appears in the footer of every email sent on your behalf.</p>
+      {stepErrors.mailing_address && <p className="text-xs text-red-500 mt-1">{stepErrors.mailing_address}</p>}
 
       <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Service type</label>
       <div className="flex flex-wrap gap-2 mt-1.5">
@@ -775,6 +789,7 @@ export function V2Onboarding() {
           {[
             { label: 'Business', value: businessInfo.business_name },
             { label: 'Reply-to', value: businessInfo.forward_to },
+            { label: 'Mailing address', value: businessInfo.mailing_address || '—' },
             { label: 'Location', value: `${searchCriteria.city}, ${searchCriteria.state}` },
             { label: 'Property type', value: searchCriteria.property_type },
             { label: 'Days listed', value: String(daysNum) },

@@ -332,11 +332,11 @@ select::placeholder {
 }
 
 /* Optimize rendering performance */
-/* NOTE: contain:layout is intentionally excluded — it breaks position:fixed
-   descendants (overlays, modals) by making them position relative to main
-   instead of the viewport. style+paint containment is sufficient. */
+/* NOTE: contain:layout and contain:paint are intentionally excluded — both
+   make main a containing block for position:fixed descendants, positioning
+   modals/overlays relative to main instead of the viewport. style only. */
 main {
-  contain: style paint;
+  contain: style;
 }
 
 /* Prioritize above-the-fold content */

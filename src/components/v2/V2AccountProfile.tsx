@@ -15,6 +15,7 @@ export function V2AccountProfile() {
   const [emailPlaceholder, setEmailPlaceholder] = useState('');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
+  const [mailingAddress, setMailingAddress] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,7 +37,7 @@ export function V2AccountProfile() {
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('name, company, phone, created_at')
+            .select('name, company, phone, mailing_address, created_at')
             .eq('id', user.id)
             .single();
           if (profileData) {
@@ -48,6 +49,7 @@ export function V2AccountProfile() {
             }
             if (profileData.company) setCompany(profileData.company);
             if (profileData.phone) setPhone(profileData.phone);
+            if (profileData.mailing_address) setMailingAddress(profileData.mailing_address);
           } else if (googleName) {
             setName(googleName);
             await supabase.from('users').update({ name: googleName, updated_at: new Date().toISOString() }).eq('id', user.id);
@@ -65,6 +67,7 @@ export function V2AccountProfile() {
     if (name.trim()) updates.name = name.trim();
     if (company.trim()) updates.company = company.trim();
     if (phone.trim()) updates.phone = phone.trim();
+    if (mailingAddress.trim()) updates.mailing_address = mailingAddress.trim();
     if (Object.keys(updates).length === 1) {
       toast.error('Please fill in at least one field to save');
       return;
@@ -150,7 +153,7 @@ export function V2AccountProfile() {
   };
 
   const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
-  const isProfileFormValid = name.trim() || company.trim() || phone.trim();
+  const isProfileFormValid = name.trim() || company.trim() || phone.trim() || mailingAddress.trim();
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">
@@ -192,6 +195,13 @@ export function V2AccountProfile() {
               <div className="space-y-1.5">
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input id="phone" type="tel" placeholder="Enter your phone number" value={phone} onChange={(e) => setPhone(e.target.value)} className="placeholder:text-gray-400" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="mailing-address">
+                  Mailing Address
+                  <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">(CAN-SPAM — appears in email footers)</span>
+                </Label>
+                <Input id="mailing-address" placeholder="123 Main St, Denver, CO 80202" value={mailingAddress} onChange={(e) => setMailingAddress(e.target.value)} className="placeholder:text-gray-400" />
               </div>
               <Separator className="dark:bg-white/10" />
               <Button onClick={handleSave} disabled={!isProfileFormValid} className="mt-1 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Save Changes</Button>

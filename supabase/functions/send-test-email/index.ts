@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ZOHO_SMTP_PASSWORD = Deno.env.get("ZOHO_SMTP_PASSWORD") ?? "";
-const FROM_EMAIL = "hello@listingping.com";
+const RESEND_API_KEY    = Deno.env.get("SHARED_MAILBOX_RESEND_API_KEY") ?? "";
+const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const FROM_EMAIL        = "hello@listingping.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +18,20 @@ function json(data: unknown, status = 200) {
   });
 }
 
+function interpolate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+}
+
+function buildHtml(text: string): string {
+  const body = text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`)
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+  return `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222"><p>${body}</p></div>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -23,34 +39,81 @@ serve(async (req) => {
     let body: any;
     try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
 
-    const { to, subject, html_body, from_name } = body;
-    if (!to || !html_body) return json({ error: "to and html_body are required" }, 400);
+    const { to, subject, body: rawBody, from_name, user_id } = body;
+    if (!to || !rawBody) return json({ error: "to and body are required" }, 400);
 
     const fromName = from_name || "ListingBug";
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: "smtp.zoho.com",
-        port: 587,
-        tls: false,
-        auth: { username: FROM_EMAIL, password: ZOHO_SMTP_PASSWORD },
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // Load user plan info for usage logging
+    let stripePeriodEnd: string | null = null;
+    let planType: string | null = null;
+    if (user_id) {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("stripe_subscription_end, plan")
+        .eq("id", user_id)
+        .single();
+      if (userData) {
+        stripePeriodEnd = userData.stripe_subscription_end ?? null;
+        planType = userData.plan ?? "trial";
+      }
+    }
+
+    // Load first test contact to populate merge tags
+    const { data: contacts, error: tcErr } = await supabase
+      .from("test_contacts")
+      .select("agent_name, agent_email, listing_address, city, state, price, listed_date")
+      .limit(1);
+
+    if (tcErr) return json({ error: `test_contacts error: ${tcErr.message}` }, 500);
+
+    const contact = contacts?.[0];
+    const vars: Record<string, string> = contact ? {
+      agent_name:   contact.agent_name ?? "",
+      address:      contact.listing_address ?? "",
+      city:         contact.city ?? "",
+      price:        contact.price ? `$${Number(contact.price).toLocaleString()}` : "",
+      listing_date: contact.listed_date
+        ? new Date(contact.listed_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        : "",
+    } : {};
+
+    const renderedSubject = interpolate(subject ?? "(no subject)", vars);
+    const renderedBody    = interpolate(rawBody, vars);
+    const htmlBody        = buildHtml(renderedBody);
+    const textBody        = renderedBody.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => `${t} (${u})`);
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        from:    `${fromName} <${FROM_EMAIL}>`,
+        to:      [to],
+        subject: renderedSubject,
+        html:    htmlBody,
+        text:    textBody,
+      }),
     });
 
-    try {
-      await client.send({
-        from: `${fromName} <${FROM_EMAIL}>`,
-        to,
-        subject: subject || "(Test email)",
-        html: html_body,
-        content: html_body.replace(/<[^>]+>/g, ""),
+    const data = await res.json();
+    if (!res.ok) return json({ ok: false, error: data?.message ?? "Resend error" }, 500);
+
+    // Write usage log so test sends appear in dashboard counts
+    if (user_id) {
+      await supabase.from("usage_logs").insert({
+        user_id,
+        channel: "email",
+        stripe_period_end: stripePeriodEnd,
+        plan_type: planType,
       });
-      await client.close();
-      return json({ ok: true });
-    } catch (e: any) {
-      await client.close().catch(() => {});
-      return json({ ok: false, error: e.message }, 500);
     }
+
+    return json({ ok: true, id: data.id });
   } catch (err: any) {
     return json({ error: err.message }, 500);
   }

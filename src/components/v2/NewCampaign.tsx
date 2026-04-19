@@ -5,6 +5,8 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
+import { CityLimitModal } from './CityLimitModal';
+import { normalizePlan, canAddCity, type PlanType } from '../utils/planLimits';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,6 +16,7 @@ interface BusinessInfo {
   contact_name: string;
   forward_to: string;
   service_type: string[];
+  mailing_address: string;
 }
 
 interface SearchCriteria {
@@ -76,6 +79,10 @@ function interpolatePreview(text: string, city: string): string {
     .replace(/\{\{listing_date\}\}/g, '[LISTING DATE]');
 }
 
+function toTitleCase(str: string): string {
+  return str.replace(/\b\w+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+}
+
 function renderBodyPreview(text: string, city: string): string {
   let s = interpolatePreview(text, city);
   // HTML-escape
@@ -101,6 +108,7 @@ export function NewCampaign() {
     contact_name: '',
     forward_to: '',
     service_type: [],
+    mailing_address: '',
   });
   const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>({
     city: '',
@@ -135,6 +143,12 @@ export function NewCampaign() {
   const cursorEnd = useRef(0);
   const [linkForm, setLinkForm] = useState({ open: false, text: '', url: '' });
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
+  type Template = { id: string; template_name: string; channel: string; subject: string | null; body: string; is_shared: boolean };
+  const [templatePicker, setTemplatePicker] = useState<{ open: boolean; loading: boolean; myTemplates: Template[]; sharedTemplates: Template[] }>({ open: false, loading: false, myTemplates: [], sharedTemplates: [] });
+  const templateDropdownRef = useRef<HTMLDivElement>(null);
+  const [userPlan, setUserPlan] = useState<PlanType>('trial');
+  const [activeCityCount, setActiveCityCount] = useState(0);
+  const [cityLimitOpen, setCityLimitOpen] = useState(false);
 
   // Load auth + pre-populate for returning users
   useEffect(() => {
@@ -144,7 +158,7 @@ export function NewCampaign() {
       setUserId(user.id);
       const { data: userRecord } = await supabase
         .from('users')
-        .select('business_name, contact_name, forward_to, service_type, email')
+        .select('business_name, contact_name, forward_to, service_type, email, plan, mailing_address')
         .eq('id', user.id)
         .single();
       if (userRecord) {
@@ -155,8 +169,10 @@ export function NewCampaign() {
           service_type: userRecord.service_type
             ? userRecord.service_type.split(',').map((s: string) => s.trim()).filter(Boolean)
             : [],
+          mailing_address: userRecord.mailing_address || '',
         };
         setBusinessInfo(info);
+        setUserPlan(normalizePlan(userRecord.plan));
         if (userRecord.business_name && userRecord.forward_to) {
           setHasExistingProfile(true);
           setStep0Mode('confirm');
@@ -165,6 +181,22 @@ export function NewCampaign() {
         }
       } else {
         setStep0Mode('edit');
+      }
+
+      // Count distinct cities already in active campaigns
+      const { data: activeCampaigns } = await supabase
+        .from('campaigns')
+        .select('campaign_search_criteria(city)')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      if (activeCampaigns) {
+        const cities = new Set(
+          activeCampaigns.flatMap((c: any) =>
+            (c.campaign_search_criteria ?? []).map((cr: any) => cr.city?.toLowerCase().trim()).filter(Boolean)
+          )
+        );
+        setActiveCityCount(cities.size);
       }
     };
     init();
@@ -178,6 +210,7 @@ export function NewCampaign() {
     if (s === 0) {
       if (!businessInfo.business_name.trim()) errors.business_name = 'Business name is required';
       if (!businessInfo.forward_to.trim()) errors.forward_to = 'Reply-to email is required';
+      if (!businessInfo.mailing_address.trim()) errors.mailing_address = 'Mailing address is required (CAN-SPAM compliance)';
     }
     if (s === 1) {
       if (!searchCriteria.city.trim()) errors.city = 'City is required — select one from the dropdown';
@@ -203,6 +236,7 @@ export function NewCampaign() {
         contact_name: businessInfo.contact_name,
         forward_to: businessInfo.forward_to,
         service_type: businessInfo.service_type.join(','),
+        mailing_address: businessInfo.mailing_address,
       }).eq('id', userId);
     } finally {
       setIsSavingProfile(false);
@@ -212,6 +246,29 @@ export function NewCampaign() {
   const handleNext = async () => {
     if (!validateStep(step)) return;
     if (step === 0) await saveBusinessInfo();
+    if (step === 1) {
+      // Check city limit before proceeding past city selection
+      const cityLower = searchCriteria.city.toLowerCase().trim();
+      // Count cities: existing active ones, minus this city if already included
+      const { data: activeCampaigns } = await supabase
+        .from('campaigns')
+        .select('campaign_search_criteria(city)')
+        .eq('user_id', userId!)
+        .eq('status', 'active');
+      const existingCities = new Set(
+        (activeCampaigns ?? []).flatMap((c: any) =>
+          (c.campaign_search_criteria ?? []).map((cr: any) => cr.city?.toLowerCase().trim()).filter(Boolean)
+        )
+      );
+      // Only counts as a new city if not already covered by an active campaign
+      const newCityCount = existingCities.has(cityLower) ? existingCities.size : existingCities.size + 1;
+      const check = canAddCity(userPlan, newCityCount);
+      if (!check.allowed) {
+        setActiveCityCount(existingCities.size);
+        setCityLimitOpen(true);
+        return;
+      }
+    }
     setStep(s => s + 1);
   };
 
@@ -285,7 +342,7 @@ export function NewCampaign() {
         .from('campaigns')
         .insert({
           user_id: userId,
-          campaign_name: messageInfo.campaign_name,
+          campaign_name: searchCriteria.city ? `${searchCriteria.city} - ${messageInfo.campaign_name}` : messageInfo.campaign_name,
           status: 'active',
           channel: messageInfo.channel,
           sender_type: 'default',
@@ -346,6 +403,42 @@ export function NewCampaign() {
     }
   };
 
+  const loadTemplates = async () => {
+    if (templatePicker.open) { setTemplatePicker(p => ({ ...p, open: false })); return; }
+    setTemplatePicker(p => ({ ...p, open: true, loading: true }));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setTemplatePicker(p => ({ ...p, loading: false })); return; }
+    const { data } = await supabase
+      .from('marketing_templates')
+      .select('id, template_name, channel, subject, body, is_shared')
+      .or(`user_id.eq.${user.id},is_shared.eq.true`)
+      .order('created_at', { ascending: false });
+    const all = data ?? [];
+    setTemplatePicker(p => ({
+      ...p,
+      loading: false,
+      myTemplates: all.filter(t => !t.is_shared),
+      sharedTemplates: all.filter(t => t.is_shared),
+    }));
+  };
+
+  const applyTemplate = (t: { channel: string; subject: string | null; body: string }) => {
+    setMessageInfo(m => ({ ...m, channel: t.channel, subject: t.subject ?? '', body: t.body }));
+    setTemplatePicker(p => ({ ...p, open: false }));
+  };
+
+  // Close template dropdown on outside click
+  useEffect(() => {
+    if (!templatePicker.open) return;
+    const handler = (e: MouseEvent) => {
+      if (templateDropdownRef.current && !templateDropdownRef.current.contains(e.target as Node)) {
+        setTemplatePicker(p => ({ ...p, open: false }));
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [templatePicker.open]);
+
   // ---------------------------------------------------------------------------
   // Render helpers
   // ---------------------------------------------------------------------------
@@ -393,6 +486,7 @@ export function NewCampaign() {
           { label: 'Business', value: businessInfo.business_name },
           { label: 'Your name', value: businessInfo.contact_name || '—' },
           { label: 'Reply-to', value: businessInfo.forward_to },
+          { label: 'Mailing address', value: businessInfo.mailing_address || '—' },
           { label: 'Services', value: businessInfo.service_type.length ? businessInfo.service_type.join(', ') : '—' },
         ].map(row => (
           <div key={row.label} className="flex justify-between py-2 border-b border-gray-100 dark:border-white/10">
@@ -451,6 +545,17 @@ export function NewCampaign() {
         placeholder="you@yourbusiness.com"
       />
       {stepErrors.forward_to && <p className="text-xs text-red-500 mt-1">{stepErrors.forward_to}</p>}
+
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">
+        Mailing address <span className="text-gray-400 dark:text-gray-500 font-normal">(required for CAN-SPAM compliance)</span>
+      </label>
+      <Input
+        value={businessInfo.mailing_address}
+        onChange={e => setBusinessInfo(b => ({ ...b, mailing_address: e.target.value }))}
+        placeholder="123 Main St, Denver, CO 80202"
+      />
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Appears in the footer of every email sent on your behalf.</p>
+      {stepErrors.mailing_address && <p className="text-xs text-red-500 mt-1">{stepErrors.mailing_address}</p>}
 
       <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Service type</label>
       <div className="flex flex-wrap gap-2 mt-1.5">
@@ -597,8 +702,8 @@ export function NewCampaign() {
       <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Campaign name</label>
       <Input
         value={messageInfo.campaign_name}
-        onChange={e => setMessageInfo(m => ({ ...m, campaign_name: e.target.value }))}
-        placeholder="e.g. Denver SFH outreach"
+        onChange={e => setMessageInfo(m => ({ ...m, campaign_name: toTitleCase(e.target.value) }))}
+        placeholder="e.g. $500 Off; New Client Offer"
       />
       {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
 
@@ -619,6 +724,76 @@ export function NewCampaign() {
             {ch === 'email' ? 'Email' : 'SMS'}
           </button>
         ))}
+      </div>
+
+      {/* Templates dropdown */}
+      <div className="mt-2 relative inline-block" ref={templateDropdownRef}>
+        <button
+          type="button"
+          onClick={loadTemplates}
+          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+        >
+          Templates
+          <span className="text-[10px] opacity-60">▾</span>
+        </button>
+
+        {templatePicker.open && (
+          <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
+            {templatePicker.loading ? (
+              <div className="py-4 text-center text-xs text-gray-400">Loading…</div>
+            ) : (
+              <div className="max-h-[280px] overflow-y-auto">
+                {/* My Templates */}
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
+                  My Templates
+                </div>
+                {templatePicker.myTemplates.filter(t => t.channel === messageInfo.channel).length === 0 ? (
+                  <div className="px-3 py-2.5 text-xs text-gray-400 italic">No saved templates yet</div>
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-white/5">
+                    {templatePicker.myTemplates.filter(t => t.channel === messageInfo.channel).map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => applyTemplate(t)}
+                        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{t.template_name}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">
+                          {t.channel} · {t.body.slice(0, 45)}{t.body.length > 45 ? '…' : ''}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Shared Templates */}
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-white/5 border-t border-b border-gray-100 dark:border-white/5">
+                  Shared Templates
+                </div>
+                {templatePicker.sharedTemplates.filter(t => t.channel === messageInfo.channel).length === 0 ? (
+                  <div className="px-3 py-2.5 text-xs text-gray-400 italic">No shared templates yet</div>
+                ) : (
+                  <div className="divide-y divide-gray-100 dark:divide-white/5">
+                    {templatePicker.sharedTemplates.filter(t => t.channel === messageInfo.channel).map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => applyTemplate(t)}
+                        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{t.template_name}</div>
+                        <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">
+                          {t.channel} · {t.body.slice(0, 45)}{t.body.length > 45 ? '…' : ''}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {messageInfo.channel === 'email' && (
@@ -854,12 +1029,13 @@ export function NewCampaign() {
           {[
             { label: 'Business', value: businessInfo.business_name },
             { label: 'Reply-to', value: businessInfo.forward_to },
+            { label: 'Mailing address', value: businessInfo.mailing_address || '—' },
             { label: 'Location', value: `${searchCriteria.city}, ${searchCriteria.state}` },
             { label: 'Property type', value: searchCriteria.property_type },
             { label: 'Days listed', value: String(daysNum) },
             { label: 'Price range', value: (searchCriteria.price_min || searchCriteria.price_max) ? `$${(searchCriteria.price_min ?? 0).toLocaleString()} – $${(searchCriteria.price_max ?? 0).toLocaleString()}` : 'Any' },
             { label: 'Year built', value: ybSummary },
-            { label: 'Campaign', value: messageInfo.campaign_name },
+            { label: 'Campaign', value: searchCriteria.city ? `${searchCriteria.city} - ${messageInfo.campaign_name}` : messageInfo.campaign_name },
             { label: 'Channel', value: messageInfo.channel === 'email' ? 'Email' : 'SMS' },
           ].map(row => (
             <div key={row.label} className="flex justify-between py-2 border-b border-gray-100 dark:border-white/10">
@@ -954,6 +1130,14 @@ export function NewCampaign() {
         </div>
       </div>
 
+      <CityLimitModal
+        isOpen={cityLimitOpen}
+        onClose={() => setCityLimitOpen(false)}
+        currentPlan={userPlan}
+        citiesUsed={activeCityCount}
+        onUpgrade={() => { window.location.href = '/billing'; }}
+      />
+
       {/* Test email modal */}
       {testModal.open && (() => {
         const fromName = businessInfo.business_name || businessInfo.contact_name || 'ListingBug';
@@ -965,17 +1149,25 @@ export function NewCampaign() {
               .replace(/\{\{price\}\}/g, '$485,000')
               .replace(/\{\{listing_date\}\}/g, 'today')
           : '(no subject)';
-        const previewHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${
-          renderBodyPreview(messageInfo.body, searchCriteria.city)
-            .replace(/<br>/g, '<br/>')
-        }</div>`;
+        const sampleBody = messageInfo.body
+          .replace(/\{\{agent_name\}\}/g, 'Sarah')
+          .replace(/\{\{address\}\}/g, '1842 Maple St')
+          .replace(/\{\{city\}\}/g, searchCriteria.city || 'Austin')
+          .replace(/\{\{price\}\}/g, '$485,000')
+          .replace(/\{\{listing_date\}\}/g, 'today');
+        const sampleBodyHtml = sampleBody
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+            (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`)
+          .replace(/\n/g, '<br/>');
+        const previewHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${sampleBodyHtml}</div>`;
 
         const handleSendTest = async () => {
           if (!testModal.address.trim()) return;
           setTestModal(m => ({ ...m, sending: true, error: null }));
           try {
             const { error } = await supabase.functions.invoke('send-test-email', {
-              body: { to: testModal.address.trim(), subject: previewSubject, html_body: previewHtml, from_name: fromName },
+              body: { to: testModal.address.trim(), subject: messageInfo.subject, body: messageInfo.body, from_name: fromName, user_id: userId },
             });
             if (error) throw new Error(error.message);
             setTestModal(m => ({ ...m, sending: false, sent: true }));
@@ -991,11 +1183,12 @@ export function NewCampaign() {
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div
-              className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden"
+              className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              style={{ maxHeight: '85svh' }}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10 shrink-0">
                 <span className="font-semibold text-gray-900 dark:text-white">Send test email</span>
                 <button
                   onClick={() => setTestModal(m => ({ ...m, open: false }))}
@@ -1003,7 +1196,7 @@ export function NewCampaign() {
                 >×</button>
               </div>
 
-              <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 min-h-0">
                 {/* From / Subject */}
                 <div className="space-y-1.5">
                   <div className="flex gap-2 text-xs">
@@ -1032,7 +1225,6 @@ export function NewCampaign() {
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Send to</label>
                     <input
                       type="email"
-                      autoFocus
                       placeholder="you@example.com"
                       value={testModal.address}
                       onChange={e => setTestModal(m => ({ ...m, address: e.target.value, error: null }))}
@@ -1051,7 +1243,7 @@ export function NewCampaign() {
               </div>
 
               {/* Footer */}
-              <div className="flex gap-2 px-5 pb-5">
+              <div className="flex gap-2 px-5 pb-5 shrink-0">
                 {!testModal.sent ? (
                   <>
                     <button

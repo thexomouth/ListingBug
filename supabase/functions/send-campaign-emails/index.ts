@@ -9,21 +9,19 @@
  *  3. Extract agents with email addresses
  *  4. Check user_suppressions — skip suppressed agents
  *  5. Check campaign_sends dedup index — skip if already sent today (Central Time)
- *  6. Send via drip — respect drip_delay_minutes between each send
- *  7. For each send: interpolate variables, send via Zoho SMTP (hello@listingping.com), store Message-ID, write send record
- *  8. Write to usage_logs with stripe_period_end
- *  9. Return { emails_sent: N }
+ *  6. Render subject/body/unsub URL for each agent
+ *  7. Insert campaign_sends (status: queued) + email_queue rows with scheduled_at
+ *     spaced by drip_delay_minutes — returns immediately (no blocking sleep)
+ *  8. run-email-queue cron drains the queue and writes usage_logs on actual send
+ *  9. Return { queued: N, first_send_at }
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@0.12.0/mod.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_URL         = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const RENTCAST_API_KEY = Deno.env.get("RENTCAST_API_KEY") ?? "";
-const ZOHO_SMTP_PASSWORD = Deno.env.get("ZOHO_SMTP_PASSWORD") ?? "";
-const FROM_EMAIL = "hello@listingping.com";
+const RENTCAST_API_KEY     = Deno.env.get("RENTCAST_API_KEY") ?? "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,12 +35,8 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 // ---------------------------------------------------------------------------
-// RentCast listing fetch — adapted from run-automation
+// RentCast listing fetch
 // ---------------------------------------------------------------------------
 async function fetchListings(criteria: Record<string, unknown>): Promise<unknown[]> {
   const {
@@ -80,7 +74,6 @@ async function fetchListings(criteria: Record<string, unknown>): Promise<unknown
     if (n > 0) params.set("daysOld", `${Math.max(0.1, n - 0.1)}-${n + 0.9}`);
   }
 
-  // yearBuilt: format as "YYYY-YYYY" for RentCast if either bound is set
   if (year_built_min != null || year_built_max != null) {
     const ybMin = year_built_min ?? year_built_max;
     const ybMax = year_built_max ?? year_built_min;
@@ -113,51 +106,46 @@ function interpolate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
 }
 
-function buildUnsubUrl(userId: string, agentEmail: string, customUrl?: string): string {
+// Generates path-based URL: /unsubscribe/{userId}/{campaignId}?email=...
+// UnsubscribePage parses this and calls campaign-unsubscribe edge function.
+function buildUnsubUrl(userId: string, campaignId: string, agentEmail: string, customUrl?: string): string {
   if (customUrl) return customUrl;
   const encoded = encodeURIComponent(agentEmail);
-  return `https://thelistingbug.com/unsubscribe?user=${userId}&email=${encoded}`;
+  return `https://thelistingbug.com/unsubscribe/${userId}/${campaignId}?email=${encoded}`;
 }
 
 // ---------------------------------------------------------------------------
-// Zoho SMTP send
+// Render email body for a single agent
 // ---------------------------------------------------------------------------
-async function sendEmail(params: {
-  toEmail: string;
-  toName: string;
-  fromName: string;
-  subject: string;
-  bodyHtml: string;
-  bodyText: string;
-  replyTo: string;
-}): Promise<{ ok: boolean; messageId: string | null; error?: string }> {
-  const client = new SMTPClient({
-    connection: {
-      hostname: "smtp.zoho.com",
-      port: 587,
-      tls: false,
-      auth: {
-        username: FROM_EMAIL,
-        password: ZOHO_SMTP_PASSWORD,
-      },
-    },
-  });
+function renderEmail(
+  bodyText: string,
+  unsubUrl: string,
+  mailingAddress: string
+): { bodyHtml: string; bodyTextWithUnsub: string } {
+  const bodyHtmlContent = bodyText
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`
+    )
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
 
-  try {
-    await client.send({
-      from: `${params.fromName} <${FROM_EMAIL}>`,
-      to: params.toEmail,
-      replyTo: params.replyTo,
-      subject: params.subject,
-      html: params.bodyHtml,
-      content: params.bodyText,
-    });
-    await client.close();
-    return { ok: true, messageId: null };
-  } catch (e: any) {
-    await client.close().catch(() => {});
-    return { ok: false, messageId: null, error: e.message };
-  }
+  const footerAddress = mailingAddress
+    ? `<br>${mailingAddress.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}`
+    : "";
+
+  const bodyHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${bodyHtmlContent}<p style="margin-top:2em;font-size:12px;color:#999"><a href="${unsubUrl}" style="color:#999">Unsubscribe</a>${footerAddress}</p></div>`;
+
+  const bodyTextPlain = bodyText.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    (_, t, u) => `${t} (${u})`
+  );
+  const bodyTextWithUnsub = mailingAddress
+    ? `${bodyTextPlain}\n\nUnsubscribe: ${unsubUrl}\n${mailingAddress}`
+    : `${bodyTextPlain}\n\nUnsubscribe: ${unsubUrl}`;
+
+  return { bodyHtml, bodyTextWithUnsub };
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +157,6 @@ serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Parse body
     let body: any;
     try {
       body = await req.json();
@@ -189,7 +176,6 @@ serve(async (req) => {
 
     if (campaignErr || !campaign) return json({ error: "Campaign not found" }, 404);
     if (campaign.channel === "sms") {
-      // Delegate to send-campaign-sms
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-campaign-sms`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
@@ -211,17 +197,18 @@ serve(async (req) => {
     // 3. Load user
     const { data: user, error: userErr } = await supabase
       .from("users")
-      .select("id, email, business_name, contact_name, forward_to, stripe_subscription_end")
+      .select("id, email, business_name, contact_name, forward_to, stripe_subscription_end, plan, mailing_address")
       .eq("id", campaign.user_id)
       .single();
 
     if (userErr || !user) return json({ error: "User not found" }, 404);
 
     const replyTo = campaign.forward_to || user.forward_to || user.email;
-    const fromName = user.business_name
-      ? `${user.business_name}`
-      : (user.contact_name || "ListingBug");
-    const stripePeriodEnd = user.stripe_subscription_end ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const fromName = user.business_name ? user.business_name : (user.contact_name || "ListingBug");
+    const stripePeriodEnd = user.stripe_subscription_end
+      ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const planType: string = user.plan ?? "trial";
+    const mailingAddress: string = user.mailing_address ?? "";
 
     // 4. Fetch listings — test mode bypasses RentCast
     let listings: any[] = [];
@@ -233,7 +220,6 @@ serve(async (req) => {
         .from("test_contacts")
         .select("*");
       if (tcErr) return json({ error: `test_contacts query failed: ${tcErr.message}` }, 500);
-      // Shape test contacts into the same structure fetchListings returns
       listings = (testContacts ?? []).map((tc: any) => ({
         id: tc.id,
         formattedAddress: `${tc.listing_address}, ${tc.city}, ${tc.state}`,
@@ -259,9 +245,7 @@ serve(async (req) => {
           phone: tc.agent_phone ?? "",
           office: tc.brokerage ?? "",
         },
-        listingOffice: {
-          name: tc.office_name ?? "",
-        },
+        listingOffice: { name: tc.office_name ?? "" },
       }));
       console.log(`[send-campaign-emails] Test mode: ${listings.length} test contacts loaded`);
     } else {
@@ -274,32 +258,18 @@ serve(async (req) => {
     }
 
     if (listings.length === 0) {
-      return json({ emails_sent: 0, details: "No listings matched search criteria" });
+      return json({ queued: 0, details: "No listings matched search criteria" });
     }
 
     // 5. Extract unique agents with emails
     const seenEmails = new Set<string>();
     const agents: Array<{
-      email: string;
-      name: string;
-      phone: string;
-      listingId: string;
-      address: string;
-      city: string;
-      state: string;
-      zip: string;
-      price: number;
-      listingType: string;
-      propertyType: string;
-      listedDate: string;
-      beds: number | null;
-      baths: number | null;
-      sqft: number | null;
-      yearBuilt: number | null;
-      photoUrl: string | null;
-      brokerage: string;
-      mlsNumber: string;
-      daysOnMarket: number | null;
+      email: string; name: string; phone: string; listingId: string;
+      address: string; city: string; state: string; zip: string;
+      price: number; listingType: string; propertyType: string; listedDate: string;
+      beds: number | null; baths: number | null; sqft: number | null;
+      yearBuilt: number | null; photoUrl: string | null;
+      brokerage: string; mlsNumber: string; daysOnMarket: number | null;
     }> = [];
 
     for (const l of listings) {
@@ -331,7 +301,7 @@ serve(async (req) => {
     }
 
     if (agents.length === 0) {
-      return json({ emails_sent: 0, details: "No agents with email addresses found in listings" });
+      return json({ queued: 0, details: "No agents with email addresses found in listings" });
     }
 
     // 6. Load suppressions for this user
@@ -344,7 +314,7 @@ serve(async (req) => {
       (suppressions ?? []).map((s: any) => s.agent_email?.toLowerCase().trim()).filter(Boolean)
     );
 
-    // 7. Load today's sends for this campaign to handle dedup in memory as fallback
+    // 7. Load today's sends for dedup
     const { data: todaySends } = await supabase
       .from("campaign_sends")
       .select("agent_email")
@@ -355,7 +325,7 @@ serve(async (req) => {
       (todaySends ?? []).map((s: any) => s.agent_email?.toLowerCase().trim()).filter(Boolean)
     );
 
-    // 8. Build send queue — filtered
+    // 8. Build filtered queue
     const queue = agents.filter((a) => {
       if (suppressedEmails.has(a.email)) {
         console.log(`[send-campaign-emails] Skipping suppressed: ${a.email}`);
@@ -371,12 +341,13 @@ serve(async (req) => {
     console.log(`[send-campaign-emails] Queue: ${queue.length} agents after suppression + dedup filter`);
 
     if (queue.length === 0) {
-      return json({ emails_sent: 0, details: "All agents already contacted today or suppressed" });
+      return json({ queued: 0, details: "All agents already contacted today or suppressed" });
     }
 
-    // 9. Drip send
-    const delayMs = (campaign.drip_delay_minutes ?? 2) * 60 * 1000;
-    let emailsSent = 0;
+    // 9. Enqueue — schedule each email spaced by drip_delay_minutes
+    const dripDelayMs = (campaign.drip_delay_minutes ?? 2) * 60 * 1000;
+    let queued = 0;
+    const firstSendAt = new Date(Date.now()).toISOString();
 
     for (let i = 0; i < queue.length; i++) {
       const agent = queue[i];
@@ -393,23 +364,13 @@ serve(async (req) => {
       const bodyText = interpolate(campaign.body, vars);
       const unsubUrl = buildUnsubUrl(
         campaign.user_id,
+        campaign_id,
         agent.email,
         campaign.unsub_type === "custom" ? campaign.custom_unsub_url : undefined
       );
+      const { bodyHtml, bodyTextWithUnsub } = renderEmail(bodyText, unsubUrl, mailingAddress);
 
-      // Convert [text](url) markdown links → <a> tags, then newlines → <br>
-      const bodyHtmlContent = bodyText
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-          (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`)
-        .replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>");
-      const bodyHtml = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${bodyHtmlContent}<p style="margin-top:2em;font-size:12px;color:#999"><a href="${unsubUrl}" style="color:#999">Unsubscribe</a></p></div>`;
-
-      // Plain text: render [text](url) as "text (url)"
-      const bodyTextPlain = bodyText.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, u) => `${t} (${u})`);
-      const bodyTextWithUnsub = `${bodyTextPlain}\n\nUnsubscribe: ${unsubUrl}`;
-
-      // Write send record first (queued status)
+      // Insert campaign_sends record
       const { data: sendRecord, error: insertErr } = await supabase
         .from("campaign_sends")
         .insert({
@@ -440,7 +401,6 @@ serve(async (req) => {
         .select("id")
         .single();
 
-      // If dedup constraint fires, skip silently
       if (insertErr) {
         if (insertErr.code === "23505") {
           console.log(`[send-campaign-emails] Dedup constraint hit for ${agent.email}, skipping`);
@@ -450,59 +410,34 @@ serve(async (req) => {
         continue;
       }
 
-      const sendId = sendRecord.id;
+      const scheduledAt = new Date(Date.now() + i * dripDelayMs).toISOString();
 
-      // Send via Zoho SMTP
-      const result = await sendEmail({
-        toEmail: agent.email,
-        toName: agent.name,
-        fromName,
+      const { error: qErr } = await supabase.from("email_queue").insert({
+        campaign_id,
+        send_id: sendRecord.id,
+        user_id: campaign.user_id,
+        to_email: agent.email,
+        from_name: fromName,
+        reply_to: replyTo,
         subject,
-        bodyHtml,
-        bodyText: bodyTextWithUnsub,
-        replyTo,
+        body_html: bodyHtml,
+        body_text: bodyTextWithUnsub,
+        scheduled_at: scheduledAt,
+        stripe_period_end: stripePeriodEnd,
+        plan_type: planType,
       });
 
-      const now = new Date().toISOString();
-
-      if (result.ok) {
-        await supabase
-          .from("campaign_sends")
-          .update({
-            status: "sent",
-            sent_at: now,
-            sendgrid_message_id: result.messageId,
-          })
-          .eq("id", sendId);
-
-        // Write usage log
-        await supabase.from("usage_logs").insert({
-          user_id: campaign.user_id,
-          campaign_id,
-          send_id: sendId,
-          channel: "email",
-          stripe_period_end: stripePeriodEnd,
-        });
-
-        emailsSent++;
-        console.log(`[send-campaign-emails] Sent to ${agent.email} (${emailsSent}/${queue.length})`);
-      } else {
-        await supabase
-          .from("campaign_sends")
-          .update({ status: "failed", error_message: result.error ?? "Unknown error" })
-          .eq("id", sendId);
-        console.error(`[send-campaign-emails] Failed to send to ${agent.email}: ${result.error}`);
+      if (qErr) {
+        console.error(`[send-campaign-emails] Queue insert error for ${agent.email}:`, qErr.message);
+        continue;
       }
 
-      // Drip delay between sends (skip after last)
-      if (i < queue.length - 1) {
-        await sleep(delayMs);
-      }
+      queued++;
     }
 
-    console.log(`[send-campaign-emails] Complete — ${emailsSent} sent for campaign ${campaign_id}`);
+    console.log(`[send-campaign-emails] Queued ${queued} emails for campaign ${campaign_id}, first send at ${firstSendAt}`);
+    return json({ queued, first_send_at: firstSendAt });
 
-    return json({ emails_sent: emailsSent, queued: queue.length });
   } catch (err: any) {
     console.error("[send-campaign-emails] Unhandled error:", err.message);
     return json({ error: err.message }, 500);
