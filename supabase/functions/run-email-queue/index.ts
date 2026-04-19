@@ -58,8 +58,13 @@ async function sendEmail(params: {
   }
 }
 
+// NOTE: This function uses SERVICE_ROLE_KEY and does NOT require JWT verification.
+// Called by pg_cron every minute to drain the email queue.
+// JWT verification can be disabled in Supabase Edge Function settings.
 serve(async () => {
   try {
+    // Use service role key for all database operations
+    // This bypasses RLS and does not require user JWT
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const now = new Date().toISOString();
 

@@ -39,8 +39,13 @@ async function sendSms(to: string, body: string): Promise<{ ok: boolean; message
   }
 }
 
+// NOTE: This function uses SERVICE_ROLE_KEY and does NOT require JWT verification.
+// Called by pg_cron every minute to drain the SMS queue.
+// JWT verification can be disabled in Supabase Edge Function settings.
 serve(async (req) => {
   try {
+    // Use service role key for all database operations
+    // This bypasses RLS and does not require user JWT
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const now = new Date().toISOString();
 

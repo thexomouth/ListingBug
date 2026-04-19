@@ -85,10 +85,18 @@ async function fetchListings(criteria: Record<string, unknown>): Promise<unknown
 // ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
+// NOTE: This function uses SERVICE_ROLE_KEY and does NOT require JWT verification.
+// It can be called from:
+// - Frontend (user-initiated campaign creation)
+// - send-campaign-emails function (when channel is SMS)
+// - Cron jobs (scheduled campaigns)
+// JWT verification can be disabled in Supabase Edge Function settings.
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    // Use service role key for all database operations
+    // This bypasses RLS and does not require user JWT
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     let body: any;
