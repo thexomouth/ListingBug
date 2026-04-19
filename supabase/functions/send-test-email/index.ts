@@ -61,13 +61,11 @@ serve(async (req) => {
       }
     }
 
-    // Load first test contact to populate merge tags
-    const { data: contacts, error: tcErr } = await supabase
+    // Load first test contact to populate merge tags (gracefully handle errors)
+    const { data: contacts } = await supabase
       .from("test_contacts")
       .select("agent_name, agent_email, listing_address, city, state, price, listed_date")
       .limit(1);
-
-    if (tcErr) return json({ error: `test_contacts error: ${tcErr.message}` }, 500);
 
     const contact = contacts?.[0];
     const vars: Record<string, string> = contact ? {
@@ -78,7 +76,13 @@ serve(async (req) => {
       listing_date: contact.listed_date
         ? new Date(contact.listed_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
         : "",
-    } : {};
+    } : {
+      agent_name: "Sarah Smith",
+      address: "1842 Maple Street",
+      city: "Denver",
+      price: "$485,000",
+      listing_date: "Jan 15, 2024",
+    };
 
     const renderedSubject = interpolate(subject ?? "(no subject)", vars);
     const renderedBody    = interpolate(rawBody, vars);
