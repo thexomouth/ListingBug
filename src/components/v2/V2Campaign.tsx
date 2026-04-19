@@ -163,6 +163,7 @@ export function V2Campaign() {
   // Test email modal
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
   const [userBusinessName, setUserBusinessName] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const cursorPos = useRef(0);
@@ -200,6 +201,7 @@ export function V2Campaign() {
     loadCampaign(id);
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
+      setUserId(user.id);
       supabase.from('users').select('business_name, contact_name').eq('id', user.id).single()
         .then(({ data }) => { if (data) setUserBusinessName(data.business_name || data.contact_name || null); });
     });
@@ -749,7 +751,13 @@ export function V2Campaign() {
           setTestModal(m => ({ ...m, sending: true, error: null }));
           try {
             const { error } = await supabase.functions.invoke('send-test-email', {
-              body: { to: testModal.address.trim(), subject: emailData.subject, body: emailData.body, from_name: fromName },
+              body: {
+                to: testModal.address.trim(),
+                subject: emailData.subject,
+                body: emailData.body,
+                from_name: fromName,
+                user_id: userId
+              },
             });
             if (error) throw new Error(error.message);
             setTestModal(m => ({ ...m, sending: false, sent: true }));
