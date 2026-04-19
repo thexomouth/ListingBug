@@ -720,20 +720,21 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {/* Send test email modal                                                */}
       {/* ------------------------------------------------------------------ */}
-      {testModal.open && editDraft && (() => {
+      {testModal.open && (() => {
         const fromName = userBusinessName || 'ListingBug';
-        const previewSubject = editDraft.subject
-          ? editDraft.subject
+        const emailData = editDraft || { subject: campaign?.subject || '', body: campaign?.body || '', city: criteria?.city || '' };
+        const previewSubject = emailData.subject
+          ? emailData.subject
               .replace(/\{\{agent_name\}\}/g, 'Sarah')
               .replace(/\{\{address\}\}/g, '1842 Maple St')
-              .replace(/\{\{city\}\}/g, editDraft.city || 'your city')
+              .replace(/\{\{city\}\}/g, emailData.city || 'your city')
               .replace(/\{\{price\}\}/g, '$485,000')
               .replace(/\{\{listing_date\}\}/g, 'today')
           : '(no subject)';
-        const sampleBody = editDraft.body
+        const sampleBody = emailData.body
           .replace(/\{\{agent_name\}\}/g, 'Sarah')
           .replace(/\{\{address\}\}/g, '1842 Maple St')
-          .replace(/\{\{city\}\}/g, editDraft.city || 'Austin')
+          .replace(/\{\{city\}\}/g, emailData.city || 'Austin')
           .replace(/\{\{price\}\}/g, '$485,000')
           .replace(/\{\{listing_date\}\}/g, 'today');
         const sampleBodyHtml = sampleBody
@@ -748,7 +749,7 @@ export function V2Campaign() {
           setTestModal(m => ({ ...m, sending: true, error: null }));
           try {
             const { error } = await supabase.functions.invoke('send-test-email', {
-              body: { to: testModal.address.trim(), subject: editDraft.subject, body: editDraft.body, from_name: fromName },
+              body: { to: testModal.address.trim(), subject: emailData.subject, body: emailData.body, from_name: fromName },
             });
             if (error) throw new Error(error.message);
             setTestModal(m => ({ ...m, sending: false, sent: true }));
@@ -794,7 +795,7 @@ export function V2Campaign() {
                 <div className="rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] p-4">
                   <div
                     className="text-sm text-gray-900 dark:text-white leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: renderBodyPreview(editDraft.body, editDraft.city) }}
+                    dangerouslySetInnerHTML={{ __html: renderBodyPreview(emailData.body, emailData.city) }}
                   />
                 </div>
 
