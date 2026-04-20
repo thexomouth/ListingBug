@@ -8,6 +8,8 @@ import { CityAutocomplete } from '../CityAutocomplete';
 import { CityLimitModal } from './CityLimitModal';
 import { normalizePlan, canAddCity, type PlanType } from '../utils/planLimits';
 import { formatSenderName } from '../../lib/senderName';
+import { SMTPSetupModal } from '../SMTPSetupModal';
+import { Plus } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -151,6 +153,11 @@ export function NewCampaign() {
   const [activeCityCount, setActiveCityCount] = useState(0);
   const [cityLimitOpen, setCityLimitOpen] = useState(false);
 
+  // Sender selection state
+  const [senders, setSenders] = useState<Array<{ id: string; display_name: string; from_email: string; integration_id: string }>>([]);
+  const [selectedSender, setSelectedSender] = useState<string | null>(null);
+  const [smtpModalOpen, setSMTPModalOpen] = useState(false);
+
   // Load auth + pre-populate for returning users
   useEffect(() => {
     const init = async () => {
@@ -198,6 +205,30 @@ export function NewCampaign() {
           )
         );
         setActiveCityCount(cities.size);
+      }
+
+      // Load connected sending identities
+      const { data: sendersData } = await supabase
+        .from('integration_connections')
+        .select('id, display_name, from_email, integration_id')
+        .eq('user_id', user.id)
+        .eq('is_sender', true);
+
+      if (sendersData && sendersData.length > 0) {
+        setSenders(sendersData);
+
+        // Load default sender
+        const { data: userDefault } = await supabase
+          .from('users')
+          .select('default_sender_id')
+          .eq('id', user.id)
+          .single();
+
+        if (userDefault?.default_sender_id) {
+          setSelectedSender(userDefault.default_sender_id);
+        } else {
+          setSelectedSender(sendersData[0].id);
+        }
       }
     };
     init();
@@ -347,6 +378,7 @@ export function NewCampaign() {
           status: 'active',
           channel: messageInfo.channel,
           sender_type: 'default',
+          sender_id: selectedSender,  // User-selected sending identity
           subject: messageInfo.subject,
           body: messageInfo.body,
           forward_to: businessInfo.forward_to,
@@ -584,14 +616,63 @@ export function NewCampaign() {
     </div>
   );
 
-  const renderStep1 = () => (
-    <div className="mb-2">
-      <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Where do you want listings from?</div>
-      <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
+  const renderStep1 = () => {
+    const handleSMTPSuccess = (connectionId: string) => {
+      // Reload senders and select the new one
+      const loadNewSender = async () => {
+        if (!userId) return;
+        const { data } = await supabase
+          .from('integration_connections')
+          .select('id, display_name, from_email, integration_id')
+          .eq('id', connectionId)
+          .single();
 
-      {/* Location */}
-      <div className="mb-4">
-        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Location</label>
+        if (data) {
+          setSenders(prev => [...prev, data]);
+          setSelectedSender(connectionId);
+        }
+      };
+      loadNewSender();
+      setSMTPModalOpen(false);
+    };
+
+    return (
+      <div className="mb-2">
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Where do you want listings from?</div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
+
+        {/* Sender Selection */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Send from</label>
+          <div className="flex gap-2">
+            <select
+              value={selectedSender || ''}
+              onChange={(e) => {
+                if (e.target.value === 'add_new') {
+                  setSMTPModalOpen(true);
+                } else {
+                  setSelectedSender(e.target.value || null);
+                }
+              }}
+              className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+            >
+              <option value="">Shared mailbox (hello@listingping.com)</option>
+              {senders.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.display_name || `${s.integration_id} (${s.from_email})`}
+                </option>
+              ))}
+              <option value="add_new">+ Connect new account</option>
+            </select>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Emails will be sent from this account. Connect your own for better deliverability.
+          </p>
+        </div>
+
+        {/* Location */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Location</label>
         <CityAutocomplete
           value={searchCriteria.city}
           stateValue={searchCriteria.state}
@@ -690,8 +771,21 @@ export function NewCampaign() {
         />
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Search tip: each search yields up to 500 listings.</p>
       </div>
+
+      {/* SMTP Setup Modal */}
+      {smtpModalOpen && (
+        <SMTPSetupModal
+          isOpen={smtpModalOpen}
+          onClose={() => setSMTPModalOpen(false)}
+          onSuccess={handleSMTPSuccess}
+          userId={userId || ''}
+          userContactName={businessInfo.contact_name}
+          userBusinessName={businessInfo.business_name}
+        />
+      )}
     </div>
   );
+};
 
   const renderStep2 = () => (
     <div className="mb-2">

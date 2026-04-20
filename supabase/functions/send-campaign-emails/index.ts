@@ -353,8 +353,9 @@ serve(async (req) => {
       return json({ queued: 0, details: "All agents already contacted today or suppressed" });
     }
 
-    // 9. Enqueue — schedule each email spaced by drip_delay_minutes
-    const dripDelayMs = (campaign.drip_delay_minutes ?? 2) * 60 * 1000;
+    // 9. Enqueue — schedule each email with randomized human-like delays
+    // Base delay: 2-5 minutes random per email
+    // Additional jitter: 0-3 minutes random offset
     let queued = 0;
     const firstSendAt = new Date(Date.now()).toISOString();
 
@@ -419,12 +420,19 @@ serve(async (req) => {
         continue;
       }
 
-      const scheduledAt = new Date(Date.now() + i * dripDelayMs).toISOString();
+      // Calculate human-like randomized delay
+      // Each email: 2-5 minute base delay + 0-3 minute random jitter
+      const baseDripMinutes = 2 + Math.random() * 3;  // 2-5 minutes
+      const jitterMinutes = Math.random() * 3;         // 0-3 minutes
+      const totalDelayMs = (i * baseDripMinutes * 60 * 1000) + (jitterMinutes * 60 * 1000);
+      const scheduledAt = new Date(Date.now() + totalDelayMs).toISOString();
 
       const { error: qErr } = await supabase.from("email_queue").insert({
         campaign_id,
         send_id: sendRecord.id,
         user_id: campaign.user_id,
+        sender_id: campaign.sender_id || null,  // User-selected sending identity
+        user_drip_position: i,  // Position in this user's drip sequence
         to_email: agent.email,
         from_name: fromName,
         reply_to: replyTo,

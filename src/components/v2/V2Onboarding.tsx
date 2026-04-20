@@ -7,6 +7,8 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
 import { formatSenderName } from '../../lib/senderName';
+import { SMTPSetupModal } from '../SMTPSetupModal';
+import { Mail, Server } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,8 +52,9 @@ const SERVICE_TAGS = ['Roofing', 'Staging', 'Cleaning', 'Landscaping', 'Contract
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
 const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 
-// 5-step flow: same 4 steps as NewCampaign + Create Account at the end
+// 6-step flow: Connect account + business info + search + message + review + create account
 const STEPS = [
+  { label: 'Connect account', short: 'Connect' },
   { label: 'Your business', short: 'Business' },
   { label: 'Search area', short: 'Search' },
   { label: 'Your message', short: 'Message' },
@@ -118,6 +121,11 @@ export function V2Onboarding() {
   // Step-level errors
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
 
+  // Sender selection state
+  const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
+  const [smtpModalOpen, setSMTPModalOpen] = useState(false);
+  const [pendingSMTPConfig, setPendingSMTPConfig] = useState<any | null>(null);
+
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
@@ -160,23 +168,32 @@ export function V2Onboarding() {
   // ---------------------------------------------------------------------------
   const validateStep = (s: number): boolean => {
     const errors: Record<string, string> = {};
+    // Step 0: Sender selection (optional - can skip)
     if (s === 0) {
+      // No validation - sender is optional
+    }
+    // Step 1: Business info
+    if (s === 1) {
       if (!businessInfo.business_name.trim()) errors.business_name = 'Business name is required';
       if (!businessInfo.forward_to.trim()) errors.forward_to = 'Reply-to email is required';
       if (!businessInfo.mailing_address.trim()) errors.mailing_address = 'Mailing address is required (CAN-SPAM compliance)';
     }
-    if (s === 1) {
+    // Step 2: Search area
+    if (s === 2) {
       if (!searchCriteria.city.trim()) errors.city = 'City is required — select one from the dropdown';
       if (!searchCriteria.state.trim()) errors.state = 'State is required';
     }
-    if (s === 2) {
+    // Step 3: Message
+    if (s === 3) {
       if (!messageInfo.campaign_name.trim()) errors.campaign_name = 'Campaign name is required';
       if (messageInfo.channel === 'email' && !messageInfo.subject.trim()) errors.subject = 'Subject line is required';
       if (!messageInfo.body.trim()) errors.body = 'Message body is required';
       if (messageInfo.channel === 'sms' && !smsConfig.twilio_from_number.trim()) errors.twilio_from_number = 'Sending number is required for SMS campaigns';
       if (messageInfo.channel === 'sms' && !smsConfig.forward_to_phone.trim()) errors.forward_to_phone = 'Forward-to phone is required for SMS campaigns';
     }
-    if (s === 4) {
+    // Step 4: Review (no validation)
+    // Step 5: Create account
+    if (s === 5) {
       if (!signupEmail.trim()) errors.signupEmail = 'Email is required';
       if (!signupPassword.trim()) errors.signupPassword = 'Password is required';
       if (signupPassword && signupPassword.length < 8) errors.signupPassword = 'Password must be at least 8 characters';
@@ -254,6 +271,7 @@ export function V2Onboarding() {
         status: 'active',
         channel: messageInfo.channel,
         sender_type: 'default',
+        sender_id: selectedSenderId,  // User-selected sending identity
         subject: messageInfo.subject,
         body: messageInfo.body,
         forward_to: businessInfo.forward_to,
@@ -460,8 +478,89 @@ export function V2Onboarding() {
     </div>
   );
 
-  // Step 0 — Business info (always edit mode, no returning-user check)
-  const renderStep0 = () => (
+  // Step 0 — Connect sending account (informational for now)
+  const renderStep0 = () => {
+    return (
+      <div className="mb-2">
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Choose your sending method</div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+          For your first campaign, we'll use our shared mailbox. After creating your account, you can connect your own email provider for better deliverability.
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          {/* SMTP Card */}
+          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Server className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">Custom SMTP</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Use your own mail server
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Gmail - Coming Soon */}
+          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">Gmail</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Send via Google OAuth
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Outlook */}
+          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">Outlook</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Send via Microsoft OAuth
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SendGrid/Mailchimp/HubSpot */}
+          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">SendGrid/Mailchimp</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Use your existing integration
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            <strong>For now:</strong> We'll use our shared mailbox (hello@listingping.com) with your business name as the sender.
+            After signup, you can connect your own email provider in Settings → Sending Accounts.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  // Step 1 — Business info (always edit mode, no returning-user check)
+  const renderStep1 = () => (
     <div className="mb-2">
       <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Tell us about your business</div>
       <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">This appears in emails sent on your behalf</div>
@@ -527,8 +626,8 @@ export function V2Onboarding() {
     </div>
   );
 
-  // Step 1 — Search area (identical to NewCampaign)
-  const renderStep1 = () => (
+  // Step 2 — Search area (identical to NewCampaign)
+  const renderStep2 = () => (
     <div className="mb-2">
       <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Where do you want listings from?</div>
       <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
@@ -600,8 +699,8 @@ export function V2Onboarding() {
     </div>
   );
 
-  // Step 2 — Message (identical to NewCampaign)
-  const renderStep2 = () => (
+  // Step 3 — Message (identical to NewCampaign)
+  const renderStep3 = () => (
     <div className="mb-2">
       <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Write your intro message</div>
       <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
@@ -770,8 +869,8 @@ export function V2Onboarding() {
     </div>
   );
 
-  // Step 3 — Review summary (no submit button here; user clicks Next → to proceed to step 4)
-  const renderStep3 = () => {
+  // Step 4 — Review summary (no submit button here; user clicks Next → to proceed to step 5)
+  const renderStep4 = () => {
     const daysNum = typeof searchCriteria.days_old === 'string'
       ? parseInt(searchCriteria.days_old, 10) || 1
       : searchCriteria.days_old;
@@ -818,8 +917,8 @@ export function V2Onboarding() {
     );
   };
 
-  // Step 4 — Create account
-  const renderStep4 = () => {
+  // Step 5 — Create account
+  const renderStep5 = () => {
     // Sending spinner
     if (isSubmitting) {
       return (
@@ -974,6 +1073,7 @@ export function V2Onboarding() {
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
             {step === 4 && renderStep4()}
+            {step === 5 && renderStep5()}
           </div>
 
           {/* Nav buttons — hidden on last step (step 4 has its own inline CTA) and when done */}
