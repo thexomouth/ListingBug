@@ -11,6 +11,8 @@ import { SMTPSetupModal } from '../SMTPSetupModal';
 import { Mail, Server } from 'lucide-react';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1060,9 +1062,14 @@ export function V2Onboarding() {
       <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
 
       {/* Minimal header */}
-      <div className="border-b border-[#342e37]/10 bg-[#ffce0a] px-4 py-3 flex items-center justify-between relative z-10">
-        <a href="/v2" className="text-[17px] font-bold text-[#342e37] tracking-tight">ListingBug</a>
-        <span className="text-xs text-[#342e37]/70">Set up your first campaign</span>
+      <div className="border-b border-[#342e37]/10 bg-[#ffce0a] px-4 py-3 flex items-center justify-center relative z-10">
+        <a href="/v2" className="flex items-center" aria-label="ListingBug home">
+          <ImageWithFallback
+            src={headerLogoSimplified}
+            alt="ListingBug"
+            className="h-13 w-13 object-contain"
+          />
+        </a>
       </div>
 
       <div className="max-w-[680px] mx-auto px-4 py-8 relative z-10">
