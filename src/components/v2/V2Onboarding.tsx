@@ -134,6 +134,7 @@ export function V2Onboarding() {
   const [pendingSMTPConfig, setPendingSMTPConfig] = useState<any | null>(null);
   const [connectedSender, setConnectedSender] = useState<{ id: string; email: string; provider: string } | null>(null);
   const [checkingSender, setCheckingSender] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,6 +192,11 @@ export function V2Onboarding() {
 
         currentSession = data.session;
         console.log('[V2Onboarding] Anonymous session created:', currentSession?.user.id);
+      }
+
+      // Store current user ID
+      if (currentSession?.user?.id) {
+        setCurrentUserId(currentSession.user.id);
       }
 
       return currentSession;
@@ -422,6 +428,89 @@ export function V2Onboarding() {
   };
 
   // ---------------------------------------------------------------------------
+  // Create campaign record without sending (for email verification flow)
+  // ---------------------------------------------------------------------------
+  const createCampaignRecord = async (userId: string): Promise<string> => {
+    // Write business info to user record
+    await supabase.from('users').upsert({
+      id: userId,
+      business_name: businessInfo.business_name,
+      contact_name: businessInfo.contact_name,
+      forward_to: businessInfo.forward_to,
+      service_type: businessInfo.service_type.join(','),
+      mailing_address: businessInfo.mailing_address,
+    });
+
+    const campaignName = searchCriteria.city
+      ? `${searchCriteria.city} - ${messageInfo.campaign_name}`
+      : messageInfo.campaign_name;
+
+    const { data: campaign, error: campaignErr } = await supabase
+      .from('campaigns')
+      .insert({
+        user_id: userId,
+        campaign_name: campaignName,
+        status: 'active',
+        channel: messageInfo.channel,
+        sender_type: 'default',
+        sender_id: selectedSenderId,  // User-selected sending identity
+        subject: messageInfo.subject,
+        body: messageInfo.body,
+        forward_to: businessInfo.forward_to,
+        drip_delay_minutes: 2,
+      })
+      .select()
+      .single();
+
+    if (campaignErr || !campaign) throw new Error(campaignErr?.message || 'Failed to create campaign');
+
+    const daysOldNum = typeof searchCriteria.days_old === 'string'
+      ? parseInt(searchCriteria.days_old, 10) || 1
+      : searchCriteria.days_old;
+
+    const { error: criteriaErr } = await supabase.from('campaign_search_criteria').insert({
+      campaign_id: campaign.id,
+      city: searchCriteria.city,
+      state: searchCriteria.state,
+      listing_type: searchCriteria.listing_type,
+      active_status: 'Active',
+      days_old: daysOldNum,
+      price_min: searchCriteria.price_min,
+      price_max: searchCriteria.price_max,
+      property_type: searchCriteria.property_type,
+      year_built_min: searchCriteria.year_built_min,
+      year_built_max: searchCriteria.year_built_max,
+    });
+    if (criteriaErr) throw new Error(`Failed to save search criteria: ${criteriaErr.message}`);
+
+    if (messageInfo.channel === 'sms') {
+      await supabase.from('campaign_sms_config').insert({
+        campaign_id: campaign.id,
+        twilio_from_number: smsConfig.twilio_from_number,
+        forward_to_phone: smsConfig.forward_to_phone,
+      });
+    }
+
+    return campaign.id;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Send campaign emails (separate from creation for email verification gate)
+  // ---------------------------------------------------------------------------
+  const sendCampaignEmails = async (userId: string, campaignId: string): Promise<number> => {
+    const { data: result, error: fnErr } = await supabase.functions.invoke('send-campaign-emails', {
+      body: { campaign_id: campaignId },
+    });
+
+    if (fnErr) {
+      const detail = (result as any)?.error || (result as any)?.details || fnErr.message;
+      throw new Error(detail);
+    }
+
+    return result?.emails_sent ?? 0;
+  };
+
+  // ---------------------------------------------------------------------------
   // Signup + go live (called from step 4)
   // ---------------------------------------------------------------------------
   const handleSignupAndGoLive = async () => {
@@ -431,44 +520,49 @@ export function V2Onboarding() {
     setSignupError('');
 
     try {
-      const { data: signupData, error: authErr } = await supabase.auth.signUp({
+      // Upgrade anonymous account to permanent account
+      const { data: updateData, error: authErr } = await supabase.auth.updateUser({
         email: signupEmail,
         password: signupPassword,
-        options: { emailRedirectTo: `${window.location.origin}/v2/dashboard` },
       });
 
-      // Supabase silently "succeeds" for existing emails → empty identities
-      const emailAlreadyExists = !authErr && signupData?.user?.identities?.length === 0;
-      if (emailAlreadyExists) {
-        setSignupError('An account with that email already exists. Please sign in instead.');
-        setIsSubmitting(false);
-        return;
-      }
-
       if (authErr) {
-        setSignupError(authErr.message);
+        // Handle case where email already exists
+        if (authErr.message.includes('already registered')) {
+          setSignupError('An account with that email already exists. Please sign in instead.');
+        } else {
+          setSignupError(authErr.message);
+        }
         setIsSubmitting(false);
         return;
       }
 
-      const userId = signupData?.user?.id;
+      const userId = updateData?.user?.id;
       if (!userId) {
         setSignupError('Something went wrong. Please try again.');
         setIsSubmitting(false);
         return;
       }
 
-      // Case 1: Session returned immediately (email confirmation disabled)
-      if (signupData?.session) {
-        const sent = await createCampaignAndSend(userId);
+      // Check if email is verified
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Create campaign (always allowed)
+      const campaignId = await createCampaignRecord(userId);
+
+      // Case 1: Email verified - send immediately
+      if (user?.email_confirmed_at) {
+        const sent = await sendCampaignEmails(userId, campaignId);
         setEmailsSent(sent);
         setIsSubmitting(false);
         return;
       }
 
-      // Case 2: Email confirmation required — save data to localStorage, show verification UI
+      // Case 2: Email not verified - show verification prompt
+      // Save data to localStorage for retry after verification
       localStorage.setItem(PENDING_KEY, JSON.stringify({
         userId,
+        campaignId,
         businessInfo,
         searchCriteria,
         messageInfo,
@@ -478,23 +572,24 @@ export function V2Onboarding() {
       setIsVerificationStep(true);
       setIsSubmitting(false);
 
-      // Poll for email confirmation — same pattern as SignUpPage
+      // Poll for email confirmation
       pollingRef.current = setInterval(async () => {
         const { data: pollData, error: pollErr } = await supabase.auth.signInWithPassword({
           email: signupEmail,
           password: signupPassword,
         });
-        if (pollData?.session && !pollErr) {
+        if (pollData?.session && !pollErr && pollData?.user?.email_confirmed_at) {
           clearInterval(pollingRef.current!);
-          // Now confirmed — create campaign
+          // Now confirmed — send campaign emails
           const pending = localStorage.getItem(PENDING_KEY);
           if (pending) {
             try {
-              const sent = await createCampaignAndSend(pollData.session.user.id);
+              const pendingData = JSON.parse(pending);
+              const sent = await sendCampaignEmails(pendingData.userId, pendingData.campaignId);
               localStorage.removeItem(PENDING_KEY);
               setEmailsSent(sent);
             } catch (err: any) {
-              console.error('Failed to create campaign after confirmation:', err);
+              console.error('Failed to send campaign after confirmation:', err);
               // Still navigate to dashboard — V2Dashboard will retry via localStorage
               navigate('/v2/dashboard');
             }
@@ -504,7 +599,7 @@ export function V2Onboarding() {
         }
       }, 3000);
     } catch (err: any) {
-      console.error('Signup/campaign creation failed:', err);
+      console.error('Account upgrade/campaign creation failed:', err);
       setSubmitError(err.message || 'Something went wrong. Please try again.');
       setIsSubmitting(false);
     }
@@ -587,7 +682,7 @@ export function V2Onboarding() {
           toast.error('Session expired. Please refresh the page.');
           return;
         }
-        const authUrl = buildGmailAuthUrl(session.user.id);
+        const authUrl = await buildGmailAuthUrl(session.user.id);
         window.location.href = authUrl;
       } catch (err) {
         console.error('[V2Onboarding] Gmail auth failed:', err);
@@ -602,7 +697,7 @@ export function V2Onboarding() {
           toast.error('Session expired. Please refresh the page.');
           return;
         }
-        const authUrl = buildOutlookAuthUrl(session.user.id);
+        const authUrl = await buildOutlookAuthUrl(session.user.id);
         window.location.href = authUrl;
       } catch (err) {
         console.error('[V2Onboarding] Outlook auth failed:', err);
@@ -629,7 +724,8 @@ export function V2Onboarding() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        {/* Gmail & Outlook - 2 column grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           {/* Gmail Card */}
           <button
             type="button"
@@ -685,13 +781,18 @@ export function V2Onboarding() {
               )}
             </div>
           </button>
+        </div>
 
-          {/* SMTP Card - TODO: Wire up later */}
+        {/* Custom SMTP - Full width card */}
+        <div className="mb-5">
           <button
             type="button"
-            disabled={true}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left opacity-40 cursor-not-allowed"
-            style={{ borderColor: 'rgb(229 231 235)', backgroundColor: '#f9fafb' }}
+            onClick={() => setSMTPModalOpen(true)}
+            className={`w-full group relative p-4 rounded-lg border-2 transition-all text-left ${
+              connectedSender?.provider === 'smtp'
+                ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                : 'border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] bg-white dark:bg-[#1a1a1a]'
+            }`}
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
@@ -700,27 +801,7 @@ export function V2Onboarding() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Custom SMTP</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Coming soon
-                </div>
-              </div>
-            </div>
-          </button>
-
-          {/* SendGrid/Mailchimp - TODO: Wire up later */}
-          <button
-            type="button"
-            disabled={true}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left opacity-40 cursor-not-allowed"
-            style={{ borderColor: 'rgb(229 231 235)', backgroundColor: '#f9fafb' }}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
-                <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-gray-900 dark:text-white mb-1">SendGrid/Mailchimp</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Coming soon
+                  {connectedSender?.provider === 'smtp' ? 'Connected' : 'Use your own mail server (SendGrid, Mailchimp, or any SMTP provider)'}
                 </div>
               </div>
             </div>
@@ -1097,7 +1178,7 @@ export function V2Onboarding() {
     );
   };
 
-  // Step 5 — Create account
+  // Step 5 — Complete profile
   const renderStep5 = () => {
     // Sending spinner
     if (isSubmitting) {
@@ -1162,9 +1243,9 @@ export function V2Onboarding() {
     // Default: signup form
     return (
       <div className="mb-2">
-        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Create your account</div>
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Complete your profile</div>
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-          You're almost there. Create a free account and we'll send your first emails to agents in {searchCriteria.city}.
+          Finalize your account with email and password to start sending emails to agents in {searchCriteria.city}.
         </div>
 
         <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Email</label>
@@ -1360,6 +1441,42 @@ export function V2Onboarding() {
           </div>
         );
       })()}
+
+      {/* SMTP Setup Modal */}
+      <SMTPSetupModal
+        isOpen={smtpModalOpen}
+        onClose={() => setSMTPModalOpen(false)}
+        onSuccess={async (connectionId) => {
+          // Set as selected sender
+          setSelectedSenderId(connectionId);
+
+          // Reload connected senders
+          const session = await supabase.auth.getSession();
+          if (session.data.session) {
+            const { data: senders } = await supabase
+              .from('integration_connections')
+              .select('id, integration_id, sending_email, from_email, display_name')
+              .eq('user_id', session.data.session.user.id)
+              .eq('is_sender', true)
+              .order('connected_at', { ascending: false });
+
+            if (senders && senders.length > 0) {
+              const smtp = senders.find(s => s.integration_id === 'smtp');
+              if (smtp) {
+                setConnectedSender({
+                  id: smtp.id,
+                  provider: 'smtp',
+                  email: smtp.sending_email || smtp.from_email,
+                  displayName: smtp.display_name,
+                });
+              }
+            }
+          }
+        }}
+        userId={currentUserId}
+        userContactName={businessInfo.contact_name}
+        userBusinessName={businessInfo.business_name}
+      />
     </div>
   );
 }

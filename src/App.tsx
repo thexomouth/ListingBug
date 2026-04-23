@@ -449,7 +449,35 @@ export default function App() {
       case "use-cases": return <UseCasesPage onNavigate={handleSmartNavigate} />;
       case "how-it-works": return <HowItWorksPage onNavigate={navigateWithLoading} />;
       case "login": return <LoginPage onLogin={handleLogin} onNavigateToSignUp={() => navigateWithLoading('signup')} onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
-      case "signup": return <SignUpPage onSignUp={() => { setIsLoggedIn(true); localStorage.removeItem('listingbug_returning_user'); localStorage.setItem('listingbug_saved_searches', JSON.stringify([])); localStorage.setItem('listingbug_saved_listings', JSON.stringify([])); localStorage.setItem('listingbug_automations', JSON.stringify([])); localStorage.setItem('listingbug_integrations', JSON.stringify([])); localStorage.setItem('listingbug_walkthrough_step', '1'); localStorage.removeItem('listingbug_walkthrough_completed'); navigateWithLoading('v2-new-campaign'); }} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
+      case "signup": return <SignUpPage onSignUp={async () => {
+        setIsLoggedIn(true);
+        localStorage.removeItem('listingbug_returning_user');
+        localStorage.setItem('listingbug_saved_searches', JSON.stringify([]));
+        localStorage.setItem('listingbug_saved_listings', JSON.stringify([]));
+        localStorage.setItem('listingbug_automations', JSON.stringify([]));
+        localStorage.setItem('listingbug_integrations', JSON.stringify([]));
+        localStorage.setItem('listingbug_walkthrough_step', '1');
+        localStorage.removeItem('listingbug_walkthrough_completed');
+
+        // Check if onboarding has been completed
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('onboarding_seen')
+            .eq('id', user.id)
+            .single();
+
+          if (!profile?.onboarding_seen) {
+            // First time user - go to onboarding
+            navigate('/v2/onboarding');
+            return;
+          }
+        }
+
+        // Existing user or onboarding already completed
+        navigateWithLoading('v2-new-campaign');
+      }} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToHelp={() => navigateWithLoading('help-center')} />;
       case "forgot-password": return <ForgotPasswordPage onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToContactSupport={() => navigateWithLoading('contact-support')} />;
       case "reset-password": return <ResetPasswordPage token={undefined} onNavigateToLogin={() => navigateWithLoading('login')} onNavigateToForgotPassword={() => navigateWithLoading('forgot-password')} />;
       case "welcome": return <WelcomePage userName="User" onContinue={() => navigateWithLoading('quick-start-guide')} onSkipToReport={() => navigateWithLoading('search-listings')} />;

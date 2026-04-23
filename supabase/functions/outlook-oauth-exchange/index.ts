@@ -33,6 +33,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Validate secrets exist
+    if (!OUTLOOK_CLIENT_ID || !OUTLOOK_CLIENT_SECRET) {
+      console.error('[outlook-oauth-exchange] Missing required secrets');
+      console.error('[outlook-oauth-exchange] OUTLOOK_CLIENT_ID exists:', !!OUTLOOK_CLIENT_ID);
+      console.error('[outlook-oauth-exchange] OUTLOOK_CLIENT_SECRET exists:', !!OUTLOOK_CLIENT_SECRET);
+      return json({ error: 'Outlook OAuth not configured. Missing client credentials.' }, 500);
+    }
+
     // Authenticate the user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -64,6 +72,11 @@ Deno.serve(async (req: Request) => {
 
     // Exchange code for tokens
     console.log('[outlook-oauth-exchange] Exchanging code for tokens');
+    console.log('[outlook-oauth-exchange] Client ID exists:', !!OUTLOOK_CLIENT_ID);
+    console.log('[outlook-oauth-exchange] Client ID length:', OUTLOOK_CLIENT_ID?.length || 0);
+    console.log('[outlook-oauth-exchange] Client Secret exists:', !!OUTLOOK_CLIENT_SECRET);
+    console.log('[outlook-oauth-exchange] Redirect URI:', redirectUri);
+
     const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

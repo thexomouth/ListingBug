@@ -3,9 +3,7 @@
  * Builds OAuth URLs and handles CSRF state validation
  */
 
-// These will be read from Supabase secrets on the backend
-// Frontend uses hardcoded client ID (public, not secret)
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''; // TODO: Add to .env
+import { supabase } from '../lib/supabase';
 
 const GMAIL_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GMAIL_SCOPES = [
@@ -15,12 +13,43 @@ const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
 ];
 
+// Cache for OAuth config to avoid repeated fetches
+let oauthConfigCache: { gmail?: { clientId: string; redirectUri: string } } = {};
+
+/**
+ * Fetch OAuth configuration from backend
+ */
+async function getOAuthConfig() {
+  if (oauthConfigCache.gmail) {
+    return oauthConfigCache.gmail;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('get-oauth-config');
+
+    if (error) throw error;
+
+    oauthConfigCache = data;
+    return data.gmail;
+  } catch (err) {
+    console.error('[gmailOAuth] Failed to fetch OAuth config:', err);
+    throw new Error('Failed to load OAuth configuration');
+  }
+}
+
 /**
  * Build the Gmail OAuth authorization URL
  * @param userId Current user's ID (embedded in state for verification)
  * @returns Full OAuth URL to redirect to
  */
-export function buildGmailAuthUrl(userId: string): string {
+export async function buildGmailAuthUrl(userId: string): Promise<string> {
+  // Fetch OAuth config from backend
+  const config = await getOAuthConfig();
+
+  if (!config || !config.clientId) {
+    throw new Error('Gmail OAuth not configured');
+  }
+
   // Generate a random nonce for CSRF protection
   const nonce = crypto.randomUUID();
 
@@ -31,11 +60,11 @@ export function buildGmailAuthUrl(userId: string): string {
   sessionStorage.setItem('gmail_oauth_state', state);
   sessionStorage.setItem('gmail_oauth_nonce', nonce);
 
-  // Build redirect URI - must match what's configured in Google Cloud Console
-  const redirectUri = `${window.location.origin}/v2/integrations/gmail/callback`;
+  // Use redirect URI from config (or fall back to current origin)
+  const redirectUri = config.redirectUri || `${window.location.origin}/v2/integrations/gmail/callback`;
 
   const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: config.clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: GMAIL_SCOPES.join(' '),

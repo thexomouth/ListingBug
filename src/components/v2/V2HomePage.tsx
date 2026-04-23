@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Mail, MessageSquare, MapPin, Zap, Sparkles, Home, Palette, Trees, Hammer, Shield, Building2, Wrench, Package } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 // ---------------------------------------------------------------------------
 // Data
@@ -44,7 +45,17 @@ const HOW_STEPS = [
 export function V2HomePage() {
   const navigate = useNavigate();
 
-  const goToOnboarding = () => navigate('/v2/onboarding');
+  const goToOnboarding = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session && !session.user.is_anonymous) {
+      // Existing user with real account
+      navigate('/v2/newcampaign');
+    } else {
+      // New user or anonymous - start onboarding
+      navigate('/v2/onboarding');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0F1115]">

@@ -68,10 +68,22 @@ serve(async () => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const now = new Date().toISOString();
 
-    // Fetch due messages
+    // Fetch due messages with sender information
     const { data: due, error: fetchErr } = await supabase
       .from("email_queue")
-      .select("id, send_id, user_id, campaign_id, to_email, from_name, reply_to, subject, body_html, body_text, stripe_period_end, plan_type")
+      .select(`
+        id, send_id, user_id, campaign_id, to_email, from_name, reply_to, subject, body_html, body_text, stripe_period_end, plan_type,
+        sender:integration_connections!sender_id(
+          id,
+          integration_id,
+          sending_email,
+          credentials,
+          daily_limit,
+          emails_sent_today,
+          last_reset_at,
+          status
+        )
+      `)
       .eq("status", "pending")
       .lte("scheduled_at", now)
       .order("scheduled_at", { ascending: true })
@@ -84,6 +96,40 @@ serve(async () => {
     let sent = 0;
 
     for (const row of due) {
+      // Check sender daily limit if using OAuth sender
+      const sender = (row as any).sender;
+      if (sender) {
+        // Reset counter if last_reset_at is a previous day
+        const lastReset = new Date(sender.last_reset_at || 0);
+        const today = new Date();
+
+        if (lastReset.toDateString() !== today.toDateString()) {
+          await supabase
+            .from('integration_connections')
+            .update({
+              emails_sent_today: 0,
+              last_reset_at: today.toISOString(),
+            })
+            .eq('id', sender.id);
+
+          sender.emails_sent_today = 0;
+        }
+
+        // Check daily limit
+        if (sender.emails_sent_today >= sender.daily_limit) {
+          console.log(`[run-email-queue] Sender ${sender.id} over daily limit`);
+          // Mark email as deferred, will retry tomorrow
+          await supabase
+            .from('email_queue')
+            .update({
+              status: 'deferred',
+              scheduled_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            })
+            .eq('id', row.id);
+          continue;
+        }
+      }
+
       // Optimistic lock — prevents double-send on concurrent invocations
       const { error: lockErr } = await supabase
         .from("email_queue")
@@ -96,14 +142,40 @@ serve(async () => {
         continue;
       }
 
-      const result = await sendEmail({
-        toEmail:  row.to_email,
-        fromName: row.from_name,
-        subject:  row.subject,
-        bodyHtml: row.body_html,
-        bodyText: row.body_text,
-        replyTo:  row.reply_to,
-      });
+      // Route to appropriate sender
+      let result: { ok: boolean; messageId: string | null; error?: string };
+
+      if (sender?.integration_id === 'gmail') {
+        try {
+          const { data, error } = await supabase.functions.invoke('send-via-gmail', {
+            body: { emailQueueId: row.id, senderId: sender.id },
+          });
+          if (error) throw error;
+          result = { ok: true, messageId: data?.messageId || null };
+        } catch (err: any) {
+          result = { ok: false, messageId: null, error: err.message };
+        }
+      } else if (sender?.integration_id === 'outlook') {
+        try {
+          const { data, error } = await supabase.functions.invoke('send-via-outlook', {
+            body: { emailQueueId: row.id, senderId: sender.id },
+          });
+          if (error) throw error;
+          result = { ok: true, messageId: data?.messageId || null };
+        } catch (err: any) {
+          result = { ok: false, messageId: null, error: err.message };
+        }
+      } else {
+        // Fallback to Resend (shared mailbox)
+        result = await sendEmail({
+          toEmail:  row.to_email,
+          fromName: row.from_name,
+          subject:  row.subject,
+          bodyHtml: row.body_html,
+          bodyText: row.body_text,
+          replyTo:  row.reply_to,
+        });
+      }
 
       const sentAt = new Date().toISOString();
 
@@ -124,6 +196,11 @@ serve(async () => {
           stripe_period_end: row.stripe_period_end,
           plan_type:         row.plan_type,
         });
+
+        // Increment sender counter if using OAuth sender
+        if (sender) {
+          await supabase.rpc('increment_sender_count', { sender_id: sender.id });
+        }
 
         sent++;
         console.log(`[run-email-queue] Sent to ${row.to_email} — ID: ${result.messageId}`);
