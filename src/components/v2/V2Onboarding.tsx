@@ -9,6 +9,8 @@ import { CityAutocomplete } from '../CityAutocomplete';
 import { formatSenderName } from '../../lib/senderName';
 import { SMTPSetupModal } from '../SMTPSetupModal';
 import { Mail, Server } from 'lucide-react';
+import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
+import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1052,14 +1054,18 @@ export function V2Onboarding() {
   const isDone = emailsSent !== null || isVerificationStep;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
+    <div className="min-h-screen relative">
+      {/* Background patterns */}
+      <div className="absolute inset-0 opacity-[0.33] dark:opacity-0 pointer-events-none" style={{ backgroundImage: `url(${patternBgLight})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
+      <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
+
       {/* Minimal header */}
-      <div className="border-b border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] px-4 py-3 flex items-center justify-between">
-        <a href="/v2" className="text-[17px] font-bold text-[#342e37] dark:text-white tracking-tight">ListingBug</a>
-        <span className="text-xs text-gray-400 dark:text-gray-500">Set up your first campaign</span>
+      <div className="border-b border-[#342e37]/10 bg-[#ffce0a] px-4 py-3 flex items-center justify-between relative z-10">
+        <a href="/v2" className="text-[17px] font-bold text-[#342e37] tracking-tight">ListingBug</a>
+        <span className="text-xs text-[#342e37]/70">Set up your first campaign</span>
       </div>
 
-      <div className="max-w-[680px] mx-auto px-4 py-8">
+      <div className="max-w-[680px] mx-auto px-4 py-8 relative z-10">
         <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10">
           {/* Progress */}
           <div className="px-6 pt-6 pb-5 border-b border-gray-200 dark:border-white/10">
