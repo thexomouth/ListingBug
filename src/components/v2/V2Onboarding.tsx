@@ -8,11 +8,14 @@ import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
 import { formatSenderName } from '../../lib/senderName';
 import { SMTPSetupModal } from '../SMTPSetupModal';
-import { Mail, Server } from 'lucide-react';
+import { Mail, Server, CheckCircle2 } from 'lucide-react';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
+import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
+import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
+import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -129,6 +132,8 @@ export function V2Onboarding() {
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
   const [smtpModalOpen, setSMTPModalOpen] = useState(false);
   const [pendingSMTPConfig, setPendingSMTPConfig] = useState<any | null>(null);
+  const [connectedSender, setConnectedSender] = useState<{ id: string; email: string; provider: string } | null>(null);
+  const [checkingSender, setCheckingSender] = useState(true);
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -167,14 +172,83 @@ export function V2Onboarding() {
     }
   }, [signupEmail]);
 
+  // Check for connected sender on mount and handle OAuth callback messages
+  useEffect(() => {
+    const checkConnectedSender = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setCheckingSender(false);
+          return;
+        }
+
+        const { data: senders, error } = await supabase
+          .from('integration_connections')
+          .select('id, sending_email, integration_id, status')
+          .eq('user_id', session.user.id)
+          .eq('is_sender', true)
+          .eq('status', 'active')
+          .order('is_primary_sender', { ascending: false })
+          .limit(1);
+
+        if (!error && senders && senders.length > 0) {
+          const sender = senders[0];
+          setConnectedSender({
+            id: sender.id,
+            email: sender.sending_email,
+            provider: sender.integration_id,
+          });
+          setSelectedSenderId(sender.id);
+        }
+      } catch (err) {
+        console.error('[V2Onboarding] Failed to check connected sender:', err);
+      } finally {
+        setCheckingSender(false);
+      }
+    };
+
+    checkConnectedSender();
+
+    // Check for OAuth callback success/error messages
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+
+    if (success === 'gmail_connected') {
+      toast.success('Gmail account connected successfully!');
+      checkConnectedSender();  // Refresh sender state
+    } else if (success === 'outlook_connected') {
+      toast.success('Outlook account connected successfully!');
+      checkConnectedSender();  // Refresh sender state
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        gmail_canceled: 'Gmail connection was canceled',
+        gmail_invalid: 'Invalid Gmail authorization',
+        gmail_exchange_failed: 'Failed to connect Gmail account',
+        outlook_canceled: 'Outlook connection was canceled',
+        outlook_invalid: 'Invalid Outlook authorization',
+        outlook_exchange_failed: 'Failed to connect Outlook account',
+        state_mismatch: 'Security verification failed',
+      };
+      toast.error(errorMessages[error] || 'Connection failed');
+    }
+
+    // Clean up URL params
+    if (success || error) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Validation
   // ---------------------------------------------------------------------------
   const validateStep = (s: number): boolean => {
     const errors: Record<string, string> = {};
-    // Step 0: Sender selection (optional - can skip)
+    // Step 0: Sender selection (REQUIRED)
     if (s === 0) {
-      // No validation - sender is optional
+      if (!connectedSender) {
+        errors.sender = 'Please connect an email account to continue. Choose Gmail, Outlook, or SMTP.';
+      }
     }
     // Step 1: Business info
     if (s === 1) {
@@ -482,33 +556,74 @@ export function V2Onboarding() {
     </div>
   );
 
-  // Step 0 — Connect sending account (informational for now)
+  // Step 0 — Connect sending account
   const renderStep0 = () => {
+    const handleGmailConnect = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // User needs to create account first - redirect to step 5
+          toast.info('Create your account first, then return here to connect Gmail');
+          setStep(5);  // Jump to account creation step
+          return;
+        }
+        const authUrl = buildGmailAuthUrl(session.user.id);
+        window.location.href = authUrl;
+      } catch (err) {
+        console.error('[V2Onboarding] Gmail auth failed:', err);
+        toast.error('Failed to initiate Gmail connection');
+      }
+    };
+
+    const handleOutlookConnect = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // User needs to create account first - redirect to step 5
+          toast.info('Create your account first, then return here to connect Outlook');
+          setStep(5);  // Jump to account creation step
+          return;
+        }
+        const authUrl = buildOutlookAuthUrl(session.user.id);
+        window.location.href = authUrl;
+      } catch (err) {
+        console.error('[V2Onboarding] Outlook auth failed:', err);
+        toast.error('Failed to initiate Outlook connection');
+      }
+    };
+
+    const isGmailConnected = connectedSender?.provider === 'gmail';
+    const isOutlookConnected = connectedSender?.provider === 'outlook';
+    const isSMTPConnected = connectedSender?.provider === 'smtp';
+
     return (
       <div className="mb-2">
-        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Choose your sending method</div>
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Connect your email account</div>
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-          For your first campaign, we'll use our shared mailbox. After creating your account, you can connect your own email provider for better deliverability.
+          {connectedSender
+            ? `Connected: ${connectedSender.email}. You can change this later in Settings.`
+            : 'Choose how you want to send emails to listing agents. This is required to create your first campaign.'}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-          {/* SMTP Card */}
-          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
-                <Server className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-gray-900 dark:text-white mb-1">Custom SMTP</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Use your own mail server
-                </div>
-              </div>
-            </div>
+        {stepErrors.sender && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+            <p className="text-sm text-red-700 dark:text-red-400">{stepErrors.sender}</p>
           </div>
+        )}
 
-          {/* Gmail - Coming Soon */}
-          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          {/* Gmail Card */}
+          <button
+            type="button"
+            onClick={handleGmailConnect}
+            disabled={checkingSender || !!connectedSender}
+            className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] hover:shadow-sm"
+            style={
+              isGmailConnected
+                ? { borderColor: '#FFCE0A', backgroundColor: '#FFCE0A10' }
+                : { borderColor: 'rgb(229 231 235)', backgroundColor: connectedSender ? '#f9fafb' : 'white' }
+            }
+          >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
                 <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -516,14 +631,27 @@ export function V2Onboarding() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Gmail</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Send via Google OAuth
+                  {isGmailConnected ? connectedSender?.email : 'Send via Google OAuth'}
                 </div>
               </div>
+              {isGmailConnected && (
+                <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+              )}
             </div>
-          </div>
+          </button>
 
-          {/* Outlook */}
-          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
+          {/* Outlook Card */}
+          <button
+            type="button"
+            onClick={handleOutlookConnect}
+            disabled={checkingSender || !!connectedSender}
+            className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] hover:shadow-sm"
+            style={
+              isOutlookConnected
+                ? { borderColor: '#FFCE0A', backgroundColor: '#FFCE0A10' }
+                : { borderColor: 'rgb(229 231 235)', backgroundColor: connectedSender ? '#f9fafb' : 'white' }
+            }
+          >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
                 <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -531,14 +659,42 @@ export function V2Onboarding() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Outlook</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Send via Microsoft OAuth
+                  {isOutlookConnected ? connectedSender?.email : 'Send via Microsoft OAuth'}
+                </div>
+              </div>
+              {isOutlookConnected && (
+                <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+              )}
+            </div>
+          </button>
+
+          {/* SMTP Card - TODO: Wire up later */}
+          <button
+            type="button"
+            disabled={true}
+            className="group relative p-4 rounded-lg border-2 transition-all text-left opacity-40 cursor-not-allowed"
+            style={{ borderColor: 'rgb(229 231 235)', backgroundColor: '#f9fafb' }}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Server className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">Custom SMTP</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Coming soon
                 </div>
               </div>
             </div>
-          </div>
+          </button>
 
-          {/* SendGrid/Mailchimp/HubSpot */}
-          <div className="group relative p-4 rounded-lg border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F]">
+          {/* SendGrid/Mailchimp - TODO: Wire up later */}
+          <button
+            type="button"
+            disabled={true}
+            className="group relative p-4 rounded-lg border-2 transition-all text-left opacity-40 cursor-not-allowed"
+            style={{ borderColor: 'rgb(229 231 235)', backgroundColor: '#f9fafb' }}
+          >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
                 <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -546,19 +702,21 @@ export function V2Onboarding() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">SendGrid/Mailchimp</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Use your existing integration
+                  Coming soon
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
-        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>For now:</strong> We'll use our shared mailbox (hello@listingping.com) with your business name as the sender.
-            After signup, you can connect your own email provider in Settings → Sending Accounts.
-          </p>
-        </div>
+        {connectedSender && (
+          <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-700 dark:text-green-300">
+              <strong>✓ Connected:</strong> Your emails will be sent from {connectedSender.email}.
+              You can change this later in Settings → Sending Accounts.
+            </p>
+          </div>
+        )}
       </div>
     );
   };

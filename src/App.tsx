@@ -75,6 +75,8 @@ const V2AccountBilling = lazy(() => import("./components/v2/V2AccountBilling").t
 const V2Setup = lazy(() => import("./components/v2/V2Setup").then(m => ({ default: m.V2Setup })));
 const V2HomePage = lazy(() => import("./components/v2/V2HomePage").then(m => ({ default: m.V2HomePage })));
 const V2Onboarding = lazy(() => import("./components/v2/V2Onboarding").then(m => ({ default: m.V2Onboarding })));
+const GmailCallbackPage = lazy(() => import("./components/v2/integrations/GmailCallbackPage").then(m => ({ default: m.GmailCallbackPage })));
+const OutlookCallbackPage = lazy(() => import("./components/v2/integrations/OutlookCallbackPage").then(m => ({ default: m.OutlookCallbackPage })));
 
 type Page =
   | "home" | "how-it-works" | "data-sets" | "use-cases" | "integrations"
@@ -101,7 +103,9 @@ type Page =
   | "v2-account-billing"
   | "v2-setup"
   | "v2-home"
-  | "v2-onboarding";
+  | "v2-onboarding"
+  | "v2-gmail-callback"
+  | "v2-outlook-callback";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -139,6 +143,8 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "v2-setup": "/v2/setup",
   "v2-home": "/v2",
   "v2-onboarding": "/v2/onboarding",
+  "v2-gmail-callback": "/v2/integrations/gmail/callback",
+  "v2-outlook-callback": "/v2/integrations/outlook/callback",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -172,6 +178,8 @@ function pathToPage(pathname: string): Page {
   if (pathname === '/v2/setup') return 'v2-setup';
   if (pathname === '/v2' || pathname === '/v2/') return 'v2-home';
   if (pathname === '/v2/onboarding') return 'v2-onboarding';
+  if (pathname === '/v2/integrations/gmail/callback') return 'v2-gmail-callback';
+  if (pathname === '/v2/integrations/outlook/callback') return 'v2-outlook-callback';
   return 'home';
 }
 
@@ -530,6 +538,8 @@ export default function App() {
       case "v2-setup": return isLoggedIn ? <V2Setup /> : <LoginPage onLogin={handleLogin} />;
       case "v2-home": return <V2HomePage />;
       case "v2-onboarding": return <V2Onboarding />;
+      case "v2-gmail-callback": return <GmailCallbackPage />;
+      case "v2-outlook-callback": return <OutlookCallbackPage />;
       default: return <HomePage page="home" onNavigate={handleSmartNavigate} />;
     }
   };
