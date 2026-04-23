@@ -172,11 +172,33 @@ export function V2Onboarding() {
     }
   }, [signupEmail]);
 
-  // Check for connected sender on mount and handle OAuth callback messages
+  // Initialize anonymous session if needed, then check for connected sender
   useEffect(() => {
+    const initializeSession = async () => {
+      let currentSession = (await supabase.auth.getSession()).data.session;
+
+      // Create anonymous session if user is not authenticated
+      if (!currentSession) {
+        console.log('[V2Onboarding] No session found, creating anonymous session');
+        const { data, error } = await supabase.auth.signInAnonymously();
+
+        if (error) {
+          console.error('[V2Onboarding] Failed to create anonymous session:', error);
+          toast.error('Failed to initialize session. Please refresh the page.');
+          setCheckingSender(false);
+          return;
+        }
+
+        currentSession = data.session;
+        console.log('[V2Onboarding] Anonymous session created:', currentSession?.user.id);
+      }
+
+      return currentSession;
+    };
+
     const checkConnectedSender = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = await initializeSession();
         if (!session) {
           setCheckingSender(false);
           return;
@@ -562,9 +584,7 @@ export function V2Onboarding() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // User needs to create account first - redirect to step 5
-          toast.info('Create your account first, then return here to connect Gmail');
-          setStep(5);  // Jump to account creation step
+          toast.error('Session expired. Please refresh the page.');
           return;
         }
         const authUrl = buildGmailAuthUrl(session.user.id);
@@ -579,9 +599,7 @@ export function V2Onboarding() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // User needs to create account first - redirect to step 5
-          toast.info('Create your account first, then return here to connect Outlook');
-          setStep(5);  // Jump to account creation step
+          toast.error('Session expired. Please refresh the page.');
           return;
         }
         const authUrl = buildOutlookAuthUrl(session.user.id);
