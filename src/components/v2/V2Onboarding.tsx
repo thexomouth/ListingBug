@@ -731,7 +731,7 @@ export function V2Onboarding() {
             type="button"
             onClick={handleGmailConnect}
             disabled={checkingSender || !!connectedSender}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] hover:shadow-sm"
+            className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
             style={
               isGmailConnected
                 ? { borderColor: '#FFCE0A', backgroundColor: '#FFCE0A10' }
@@ -759,7 +759,7 @@ export function V2Onboarding() {
             type="button"
             onClick={handleOutlookConnect}
             disabled={checkingSender || !!connectedSender}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] hover:shadow-sm"
+            className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
             style={
               isOutlookConnected
                 ? { borderColor: '#FFCE0A', backgroundColor: '#FFCE0A10' }
