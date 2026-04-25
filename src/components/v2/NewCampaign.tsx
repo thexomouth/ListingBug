@@ -9,7 +9,10 @@ import { CityLimitModal } from './CityLimitModal';
 import { normalizePlan, canAddCity, type PlanType } from '../utils/planLimits';
 import { formatSenderName } from '../../lib/senderName';
 import { SMTPSetupModal } from '../SMTPSetupModal';
-import { Plus } from 'lucide-react';
+import { Mail, Server, CheckCircle2, Plus } from 'lucide-react';
+import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
+import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
+import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,6 +58,7 @@ const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listi
 const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 
 const STEPS = [
+  { label: 'Which mailbox', short: 'Mailbox' },
   { label: 'Your business', short: 'Business' },
   { label: 'Search area', short: 'Search' },
   { label: 'Your message', short: 'Message' },
@@ -240,15 +244,22 @@ export function NewCampaign() {
   const validateStep = (s: number): boolean => {
     const errors: Record<string, string> = {};
     if (s === 0) {
+      if (senders.length === 0) {
+        errors.sender = 'Please connect at least one email account to continue.';
+      } else if (!selectedSender) {
+        errors.sender = 'Please select which mailbox you want to use for this campaign.';
+      }
+    }
+    if (s === 1) {
       if (!businessInfo.business_name.trim()) errors.business_name = 'Business name is required';
       if (!businessInfo.forward_to.trim()) errors.forward_to = 'Reply-to email is required';
       if (!businessInfo.mailing_address.trim()) errors.mailing_address = 'Mailing address is required (CAN-SPAM compliance)';
     }
-    if (s === 1) {
+    if (s === 2) {
       if (!searchCriteria.city.trim()) errors.city = 'City is required — select one from the dropdown';
       if (!searchCriteria.state.trim()) errors.state = 'State is required';
     }
-    if (s === 2) {
+    if (s === 3) {
       if (!messageInfo.campaign_name.trim()) errors.campaign_name = 'Campaign name is required';
       if (messageInfo.channel === 'email' && !messageInfo.subject.trim()) errors.subject = 'Subject line is required';
       if (!messageInfo.body.trim()) errors.body = 'Message body is required';
@@ -277,8 +288,8 @@ export function NewCampaign() {
 
   const handleNext = async () => {
     if (!validateStep(step)) return;
-    if (step === 0) await saveBusinessInfo();
-    if (step === 1) {
+    if (step === 1) await saveBusinessInfo();
+    if (step === 2) {
       // Check city limit before proceeding past city selection
       const cityLower = searchCriteria.city.toLowerCase().trim();
       // Count cities: existing active ones, minus this city if already included

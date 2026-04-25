@@ -132,7 +132,7 @@ export function V2Onboarding() {
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
   const [smtpModalOpen, setSMTPModalOpen] = useState(false);
   const [pendingSMTPConfig, setPendingSMTPConfig] = useState<any | null>(null);
-  const [connectedSender, setConnectedSender] = useState<{ id: string; email: string; provider: string } | null>(null);
+  const [connectedSenders, setConnectedSenders] = useState<Array<{ id: string; email: string; provider: string; display_name: string }>>([]);
   const [checkingSender, setCheckingSender] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
@@ -212,21 +212,23 @@ export function V2Onboarding() {
 
         const { data: senders, error } = await supabase
           .from('integration_connections')
-          .select('id, sending_email, integration_id, status')
+          .select('id, sending_email, integration_id, status, display_name, is_primary_sender')
           .eq('user_id', session.user.id)
           .eq('is_sender', true)
           .eq('status', 'active')
-          .order('is_primary_sender', { ascending: false })
-          .limit(1);
+          .order('is_primary_sender', { ascending: false });
 
         if (!error && senders && senders.length > 0) {
-          const sender = senders[0];
-          setConnectedSender({
-            id: sender.id,
-            email: sender.sending_email,
-            provider: sender.integration_id,
-          });
-          setSelectedSenderId(sender.id);
+          setConnectedSenders(senders.map(s => ({
+            id: s.id,
+            email: s.sending_email,
+            provider: s.integration_id,
+            display_name: s.display_name || s.sending_email,
+          })));
+
+          // Auto-select primary sender or first sender
+          const primarySender = senders.find(s => s.is_primary_sender) || senders[0];
+          setSelectedSenderId(primarySender.id);
         }
       } catch (err) {
         console.error('[V2Onboarding] Failed to check connected sender:', err);
@@ -274,8 +276,10 @@ export function V2Onboarding() {
     const errors: Record<string, string> = {};
     // Step 0: Sender selection (REQUIRED)
     if (s === 0) {
-      if (!connectedSender) {
-        errors.sender = 'Please connect an email account to continue. Choose Gmail, Outlook, or SMTP.';
+      if (connectedSenders.length === 0) {
+        errors.sender = 'Please connect at least one email account to continue. Choose Gmail, Outlook, or SMTP.';
+      } else if (!selectedSenderId) {
+        errors.sender = 'Please select which mailbox you want to use for this campaign.';
       }
     }
     // Step 1: Business info
@@ -705,17 +709,17 @@ export function V2Onboarding() {
       }
     };
 
-    const isGmailConnected = connectedSender?.provider === 'gmail';
-    const isOutlookConnected = connectedSender?.provider === 'outlook';
-    const isSMTPConnected = connectedSender?.provider === 'smtp';
+    const gmailSenders = connectedSenders.filter(s => s.provider === 'gmail');
+    const outlookSenders = connectedSenders.filter(s => s.provider === 'outlook');
+    const smtpSenders = connectedSenders.filter(s => s.provider === 'smtp');
 
     return (
       <div className="mb-2">
-        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Connect your email account</div>
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Connect your email accounts</div>
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-          {connectedSender
-            ? `Connected: ${connectedSender.email}. You can change this later in Settings.`
-            : 'Choose how you want to send emails to listing agents. This is required to create your first campaign.'}
+          {connectedSenders.length > 0
+            ? 'You can connect multiple accounts. Select which one to use for this campaign below.'
+            : 'Connect at least one email account to send emails to listing agents. You can connect multiple accounts.'}
         </div>
 
         {stepErrors.sender && (
@@ -730,12 +734,12 @@ export function V2Onboarding() {
           <button
             type="button"
             onClick={handleGmailConnect}
-            disabled={checkingSender || !!connectedSender}
+            disabled={checkingSender}
             className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
             style={
-              isGmailConnected
-                ? { borderColor: '#FFCE0A', backgroundColor: '#FFCE0A10' }
-                : { borderColor: 'rgb(229 231 235)', backgroundColor: connectedSender ? '#f9fafb' : 'white' }
+              gmailSenders.length > 0
+                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
+                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
             }
           >
             <div className="flex items-start gap-3">
@@ -745,10 +749,10 @@ export function V2Onboarding() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Gmail</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {isGmailConnected ? connectedSender?.email : 'Send via Google OAuth'}
+                  {gmailSenders.length > 0 ? `${gmailSenders.length} account${gmailSenders.length > 1 ? 's' : ''} connected` : 'Send via Google OAuth'}
                 </div>
               </div>
-              {isGmailConnected && (
+              {gmailSenders.length > 0 && (
                 <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
               )}
             </div>
@@ -758,12 +762,12 @@ export function V2Onboarding() {
           <button
             type="button"
             onClick={handleOutlookConnect}
-            disabled={checkingSender || !!connectedSender}
+            disabled={checkingSender}
             className="group relative p-4 rounded-lg border-2 transition-all text-left disabled:opacity-60 disabled:cursor-not-allowed hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
             style={
-              isOutlookConnected
-                ? { borderColor: '#FFCE0A', backgroundColor: '#FFCE0A10' }
-                : { borderColor: 'rgb(229 231 235)', backgroundColor: connectedSender ? '#f9fafb' : 'white' }
+              outlookSenders.length > 0
+                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
+                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
             }
           >
             <div className="flex items-start gap-3">
@@ -773,10 +777,10 @@ export function V2Onboarding() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Outlook</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {isOutlookConnected ? connectedSender?.email : 'Send via Microsoft OAuth'}
+                  {outlookSenders.length > 0 ? `${outlookSenders.length} account${outlookSenders.length > 1 ? 's' : ''} connected` : 'Send via Microsoft OAuth'}
                 </div>
               </div>
-              {isOutlookConnected && (
+              {outlookSenders.length > 0 && (
                 <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
               )}
             </div>
@@ -789,7 +793,7 @@ export function V2Onboarding() {
             type="button"
             onClick={() => setSMTPModalOpen(true)}
             className={`w-full group relative p-4 rounded-lg border-2 transition-all text-left ${
-              connectedSender?.provider === 'smtp'
+              smtpSenders.length > 0
                 ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
                 : 'border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] bg-white dark:bg-[#1a1a1a]'
             }`}
@@ -801,18 +805,42 @@ export function V2Onboarding() {
               <div className="flex-1">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Custom SMTP</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {connectedSender?.provider === 'smtp' ? 'Connected' : 'Use your own mail server (SendGrid, Mailchimp, or any SMTP provider)'}
+                  {smtpSenders.length > 0 ? `${smtpSenders.length} account${smtpSenders.length > 1 ? 's' : ''} connected` : 'Use your own mail server (SendGrid, Mailchimp, or any SMTP provider)'}
                 </div>
               </div>
+              {smtpSenders.length > 0 && (
+                <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+              )}
             </div>
           </button>
         </div>
 
-        {connectedSender && (
+        {/* Mailbox Selector */}
+        {connectedSenders.length > 0 && (
+          <div className="mb-5">
+            <label className="text-sm font-medium text-gray-900 dark:text-white mb-2 block">
+              Which mailbox would you like to use for this campaign?
+            </label>
+            <select
+              value={selectedSenderId || ''}
+              onChange={(e) => setSelectedSenderId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFCE0A]"
+            >
+              <option value="">Select a mailbox...</option>
+              {connectedSenders.map((sender) => (
+                <option key={sender.id} value={sender.id}>
+                  {sender.display_name} ({sender.email})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {connectedSenders.length > 0 && selectedSenderId && (
           <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
             <p className="text-sm text-green-700 dark:text-green-300">
-              <strong>✓ Connected:</strong> Your emails will be sent from {connectedSender.email}.
-              You can change this later in Settings → Sending Accounts.
+              <strong>✓ Ready:</strong> Your emails will be sent from {connectedSenders.find(s => s.id === selectedSenderId)?.email}.
+              You can connect additional accounts or change this later in Settings.
             </p>
           </div>
         )}
@@ -1455,23 +1483,22 @@ export function V2Onboarding() {
           if (session.data.session) {
             const { data: senders } = await supabase
               .from('integration_connections')
-              .select('id, integration_id, sending_email, from_email, display_name')
+              .select('id, integration_id, sending_email, display_name, status')
               .eq('user_id', session.data.session.user.id)
               .eq('is_sender', true)
-              .order('connected_at', { ascending: false });
+              .eq('status', 'active');
 
             if (senders && senders.length > 0) {
-              const smtp = senders.find(s => s.integration_id === 'smtp');
-              if (smtp) {
-                setConnectedSender({
-                  id: smtp.id,
-                  provider: 'smtp',
-                  email: smtp.sending_email || smtp.from_email,
-                  displayName: smtp.display_name,
-                });
-              }
+              setConnectedSenders(senders.map(s => ({
+                id: s.id,
+                email: s.sending_email,
+                provider: s.integration_id,
+                display_name: s.display_name || s.sending_email,
+              })));
             }
           }
+          toast.success('SMTP account connected successfully!');
+          setSMTPModalOpen(false);
         }}
         userId={currentUserId}
         userContactName={businessInfo.contact_name}
