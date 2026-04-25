@@ -120,6 +120,15 @@ Deno.serve(async (req: Request) => {
 
     const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // Check if this connection already exists
+    const { data: existingConnection } = await serviceClient
+      .from('integration_connections')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('integration_id', 'gmail')
+      .eq('provider_account_id', googleId)
+      .maybeSingle();
+
     // Check if this is the first sender for this user
     const { data: existingSenders } = await serviceClient
       .from('integration_connections')
@@ -130,48 +139,62 @@ Deno.serve(async (req: Request) => {
 
     const isFirstSender = !existingSenders || existingSenders.length === 0;
 
-    // Upsert the connection
-    const { data: connection, error: upsertError } = await serviceClient
-      .from('integration_connections')
-      .upsert(
-        {
-          user_id: user.id,
-          integration_id: 'gmail',
-          provider_account_id: googleId,
-          sending_email: googleEmail,
-          display_name: displayName,
-          from_email: googleEmail,
-          from_name: displayName,
-          is_sender: true,
-          is_primary_sender: isFirstSender,  // First sender becomes primary
-          credentials: {
-            access_token_encrypted: encryptedAccessToken,
-            refresh_token_encrypted: encryptedRefreshToken,
-            expires_at: expiresAt,
-            scope,
-          },
-          config: {
-            provider: 'gmail',
-            email: googleEmail,
-          },
-          connected_at: new Date().toISOString(),
-          last_used_at: new Date().toISOString(),
-          status: 'active',
-          daily_limit: 500,  // Gmail API limit
-          emails_sent_today: 0,
-          last_reset_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'user_id,integration_id,provider_account_id',
-          ignoreDuplicates: false,
-        }
-      )
-      .select()
-      .single();
+    const connectionData = {
+      user_id: user.id,
+      integration_id: 'gmail',
+      provider_account_id: googleId,
+      sending_email: googleEmail,
+      display_name: displayName,
+      from_email: googleEmail,
+      from_name: displayName,
+      is_sender: true,
+      is_primary_sender: isFirstSender,  // First sender becomes primary
+      credentials: {
+        access_token_encrypted: encryptedAccessToken,
+        refresh_token_encrypted: encryptedRefreshToken,
+        expires_at: expiresAt,
+        scope,
+      },
+      config: {
+        provider: 'gmail',
+        email: googleEmail,
+      },
+      connected_at: new Date().toISOString(),
+      last_used_at: new Date().toISOString(),
+      status: 'active',
+      daily_limit: 500,  // Gmail API limit
+      emails_sent_today: 0,
+      last_reset_at: new Date().toISOString(),
+    };
 
-    if (upsertError) {
-      console.error('[gmail-oauth-exchange] Upsert failed:', upsertError);
-      return json({ error: 'Failed to save connection', details: upsertError.message }, 500);
+    let connection;
+    if (existingConnection) {
+      // Update existing connection
+      const { data, error: updateError } = await serviceClient
+        .from('integration_connections')
+        .update(connectionData)
+        .eq('id', existingConnection.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('[gmail-oauth-exchange] Update failed:', updateError);
+        return json({ error: 'Failed to update connection', details: updateError.message }, 500);
+      }
+      connection = data;
+    } else {
+      // Insert new connection
+      const { data, error: insertError } = await serviceClient
+        .from('integration_connections')
+        .insert(connectionData)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[gmail-oauth-exchange] Insert failed:', insertError);
+        return json({ error: 'Failed to save connection', details: insertError.message }, 500);
+      }
+      connection = data;
     }
 
     console.log(`[gmail-oauth-exchange] Connection saved: ${connection.id}`);
