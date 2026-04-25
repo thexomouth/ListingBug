@@ -416,7 +416,7 @@ Deno.serve(async (req) => {
       const subject = resolveMergeTags(run.subject, contact);
       const bodyText = resolveMergeTags(run.body, contact);
       const unsubUrl = run.unsubscribe_url || '';
-      const htmlBody = `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222">${
+      const htmlBody = `<div style="font-size:15px;line-height:1.6;max-width:580px;color:#222">${
         bodyText.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')
       }${unsubUrl ? `<p style="margin-top:2em;font-size:12px;color:#999"><a href="${unsubUrl}" style="color:#999">Unsubscribe</a></p>` : ''}</div>`;
 

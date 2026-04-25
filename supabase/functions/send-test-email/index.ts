@@ -30,7 +30,7 @@ function buildHtml(text: string): string {
       (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`)
     .replace(/\n\n/g, "</p><p>")
     .replace(/\n/g, "<br>");
-  return `<div style="font-family:Georgia,serif;font-size:15px;line-height:1.6;max-width:580px;color:#222"><p>${body}</p></div>`;
+  return `<div style="font-size:15px;line-height:1.6;max-width:580px;color:#222"><p>${body}</p></div>`;
 }
 
 serve(async (req) => {
