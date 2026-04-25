@@ -145,24 +145,51 @@ Deno.serve(async (req: Request) => {
 
   // ── action=senders ───────────────────────────────────────────────────────
   if (action === 'senders') {
-    const sgKey = await resolveSendGridKey(serviceClient, user.id);
-    if (!sgKey) return json({ error: 'No SendGrid API key configured. Add one in Setup.' }, 400);
+    const allSenders: any[] = [];
 
-    const res = await fetch('https://api.sendgrid.com/v3/senders', {
-      headers: { Authorization: `Bearer ${sgKey.key}` },
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      return json({ error: `SendGrid error: ${res.status}`, detail: text }, 502);
+    // 1. Get OAuth senders (Gmail, Outlook, SMTP) from integration_connections
+    const { data: oauthSenders } = await serviceClient
+      .from('integration_connections')
+      .select('id, integration_id, sending_email, from_email, from_name, display_name')
+      .eq('user_id', user.id)
+      .eq('is_sender', true)
+      .eq('status', 'active');
+
+    if (oauthSenders && oauthSenders.length > 0) {
+      oauthSenders.forEach(s => {
+        allSenders.push({
+          id: s.id,
+          nickname: s.display_name || s.from_name || s.from_email,
+          from_email: s.sending_email || s.from_email,
+          from_name: s.from_name || s.display_name || '',
+        });
+      });
     }
-    const data: any[] = await res.json();
-    const senders = data.map((s: any) => ({
-      id: String(s.id),
-      nickname: s.nickname ?? '',
-      from_email: s.from?.email ?? '',
-      from_name: s.from?.name ?? '',
-    }));
-    return json({ senders, key_source: sgKey.source });
+
+    // 2. Optionally get SendGrid senders (legacy support)
+    const sgKey = await resolveSendGridKey(serviceClient, user.id);
+    if (sgKey) {
+      try {
+        const res = await fetch('https://api.sendgrid.com/v3/senders', {
+          headers: { Authorization: `Bearer ${sgKey.key}` },
+        });
+        if (res.ok) {
+          const data: any[] = await res.json();
+          data.forEach((s: any) => {
+            allSenders.push({
+              id: `sendgrid_${s.id}`,
+              nickname: s.nickname ?? '',
+              from_email: s.from?.email ?? '',
+              from_name: s.from?.name ?? '',
+            });
+          });
+        }
+      } catch {
+        // Ignore SendGrid errors if OAuth senders exist
+      }
+    }
+
+    return json({ senders: allSenders, key_source: sgKey?.source ?? 'integration' });
   }
 
   // ── action=mailchimp-lists ───────────────────────────────────────────────
