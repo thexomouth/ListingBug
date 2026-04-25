@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { verifyGmailOAuthState, clearGmailOAuthState, getGmailRedirectUri } from '../../../utils/gmailOAuth';
+import { verifyGmailOAuthState, clearGmailOAuthState } from '../../../utils/gmailOAuth';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 export function GmailCallbackPage() {
@@ -51,8 +51,11 @@ export function GmailCallbackPage() {
           return;
         }
 
+        // Get OAuth config to ensure redirect URI matches what was used in auth request
+        const { data: configData } = await supabase.functions.invoke('get-oauth-config');
+        const redirectUri = configData?.gmail?.redirectUri || `${window.location.origin}/v2/integrations/gmail/callback`;
+
         // Exchange code for tokens via edge function
-        const redirectUri = getGmailRedirectUri();
         const { data, error: exchangeError } = await supabase.functions.invoke('gmail-oauth-exchange', {
           body: { code, redirectUri },
         });

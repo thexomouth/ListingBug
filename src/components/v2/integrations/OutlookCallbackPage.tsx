@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import { verifyOutlookOAuthState, clearOutlookOAuthState, getOutlookRedirectUri } from '../../../utils/outlookOAuth';
+import { verifyOutlookOAuthState, clearOutlookOAuthState } from '../../../utils/outlookOAuth';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
 export function OutlookCallbackPage() {
@@ -52,8 +52,11 @@ export function OutlookCallbackPage() {
           return;
         }
 
+        // Get OAuth config to ensure redirect URI matches what was used in auth request
+        const { data: configData } = await supabase.functions.invoke('get-oauth-config');
+        const redirectUri = configData?.outlook?.redirectUri || `${window.location.origin}/v2/integrations/outlook/callback`;
+
         // Exchange code for tokens via edge function
-        const redirectUri = getOutlookRedirectUri();
         const { data, error: exchangeError } = await supabase.functions.invoke('outlook-oauth-exchange', {
           body: { code, redirectUri },
         });
