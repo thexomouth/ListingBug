@@ -380,7 +380,7 @@ export function V2Campaign() {
   // ---------------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
-      <div className="max-w-[720px] mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-12">
 
         {/* Back link */}
         <button
@@ -422,60 +422,61 @@ export function V2Campaign() {
           ))}
         </div>
 
-        {/* Campaign details */}
-        <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-6">
-          <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign Overview</div>
-          <div className="space-y-2">
-            {[
-              criteria && { label: 'Location', value: `${criteria.city}, ${criteria.state}` },
-              criteria?.property_type && { label: 'Property type', value: criteria.property_type },
-              criteria?.listing_type && { label: 'Listing type', value: criteria.listing_type },
-              criteria?.days_old != null && { label: 'Days listed', value: String(criteria.days_old) },
-              (criteria?.price_min || criteria?.price_max) && {
-                label: 'Price range',
-                value: `$${(criteria.price_min ?? 0).toLocaleString()} – $${(criteria.price_max ?? 0).toLocaleString()}`,
-              },
-              campaign.subject && { label: 'Subject', value: campaign.subject },
-              { label: 'Reply-to', value: campaign.forward_to || '—' },
-              { label: 'Created', value: formatDate(campaign.created_at) },
-            ].filter(Boolean).map((row: any) => (
-              <div key={row.label} className="flex justify-between py-1.5 border-b border-gray-100 dark:border-white/10">
-                <span className="text-sm text-gray-600 dark:text-gray-400">{row.label}</span>
-                <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{row.value}</span>
-              </div>
-            ))}
+        {/* Main two-column container */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-8">
+
+          {/* Left: Campaign Overview + action buttons */}
+          <div className="lg:w-[360px] shrink-0 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4">
+            <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign Overview</div>
+            <div className="space-y-2">
+              {[
+                criteria && { label: 'Location', value: `${criteria.city}, ${criteria.state}` },
+                criteria?.property_type && { label: 'Property type', value: criteria.property_type },
+                criteria?.listing_type && { label: 'Listing type', value: criteria.listing_type },
+                criteria?.days_old != null && { label: 'Days listed', value: String(criteria.days_old) },
+                (criteria?.price_min || criteria?.price_max) && {
+                  label: 'Price range',
+                  value: `$${(criteria.price_min ?? 0).toLocaleString()} – $${(criteria.price_max ?? 0).toLocaleString()}`,
+                },
+                campaign.subject && { label: 'Subject', value: campaign.subject },
+                { label: 'Reply-to', value: campaign.forward_to || '—' },
+                { label: 'Created', value: formatDate(campaign.created_at) },
+              ].filter(Boolean).map((row: any) => (
+                <div key={row.label} className="flex justify-between py-1.5 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{row.label}</span>
+                  <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{row.value}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={openEdit}
+              className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+            >
+              Edit campaign
+            </button>
+            <button
+              onClick={() => setTemplateModal({ open: true, name: campaign.campaign_name, saving: false, error: null, saved: false })}
+              className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+            >
+              Save as template
+            </button>
           </div>
 
-          <button
-            onClick={openEdit}
-            className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
-          >
-            Edit campaign
-          </button>
-
-          <button
-            onClick={() => setTemplateModal({ open: true, name: campaign.campaign_name, saving: false, error: null, saved: false })}
-            className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
-          >
-            Save as template
-          </button>
-
-          {campaign.body && (
-            <div className="mt-4">
-              <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Message body</div>
-              <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
-                {campaign.body}
-              </div>
-              {campaign.channel === 'email' && (
-                <button
-                  onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
-                  className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
-                >
-                  Send test email
-                </button>
-              )}
+          {/* Right: Message body + send test email */}
+          <div className="flex-1 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Message body</div>
+            <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
+              {campaign.body || '—'}
             </div>
-          )}
+            {campaign.channel === 'email' && (
+              <button
+                onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
+                className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+              >
+                Send test email
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Send activity */}
@@ -487,55 +488,66 @@ export function V2Campaign() {
         </div>
 
         {sortedSends.length === 0 ? (
-          <div className="bg-white dark:bg-[#2F2F2F] text-center py-12 rounded-lg border border-gray-200 dark:border-white/10">
+          <div className="bg-white dark:bg-[#2F2F2F] text-center py-12 rounded-lg border border-gray-200 dark:border-white/10 mb-8">
             <div className="text-sm text-gray-600 dark:text-gray-400">No sends yet — the campaign will run tonight.</div>
           </div>
         ) : (
-          <div className="space-y-2">
-            {sortedSends.map(send => {
-              const hasReply = (send.campaign_replies?.length ?? 0) > 0;
-              const badge = statusBadge(send.status, hasReply);
-              return (
-                <div
-                  key={send.id}
-                  onClick={() => setSelectedSend(send)}
-                  className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-3.5 flex items-start gap-3 cursor-pointer hover:border-gray-300 dark:hover:border-white/20 transition-colors"
-                >
-                  <div
-                    className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-                    style={{ background: badge.color }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {send.agent_name || send.agent_email}
-                      </div>
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium"
-                        style={{ background: badge.bg, color: badge.color }}
-                      >
-                        {badge.label}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
-                      {send.listing_address
-                        ? `${send.listing_address}${send.listing_price ? ` · $${send.listing_price.toLocaleString()}` : ''}`
-                        : send.agent_email}
-                    </div>
-                    {send.sent_at && (
-                      <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                        {formatDate(send.sent_at)} at {formatTime(send.sent_at)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-white/10 mb-8">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-white/10">
+                <tr>
+                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agent</th>
+                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listing</th>
+                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</th>
+                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
+                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Sent</th>
+                </tr>
+              </thead>
+              <tbody className="[&_tr:last-child]:border-0">
+                {sortedSends.map(send => {
+                  const hasReply = (send.campaign_replies?.length ?? 0) > 0;
+                  const badge = statusBadge(send.status, hasReply);
+                  return (
+                    <tr
+                      key={send.id}
+                      onClick={() => setSelectedSend(send)}
+                      className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <td className="py-3 px-3">
+                        <div className="font-medium text-gray-900 dark:text-white leading-tight">
+                          {send.agent_name || send.agent_email}
+                        </div>
+                        {send.agent_name && (
+                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{send.agent_email}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-gray-700 dark:text-gray-300">
+                        {send.listing_address || '—'}
+                      </td>
+                      <td className="py-3 px-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        {send.listing_price != null ? `$${send.listing_price.toLocaleString()}` : '—'}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                          style={{ background: badge.bg, color: badge.color }}
+                        >
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {send.sent_at ? `${formatDate(send.sent_at)} · ${formatTime(send.sent_at)}` : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
-        {/* Delete campaign — own row at bottom */}
-        <div className="mt-6 mb-2">
+        {/* Delete campaign */}
+        <div className="mb-2">
           {!deleteConfirm ? (
             <button
               onClick={() => setDeleteConfirm(true)}
