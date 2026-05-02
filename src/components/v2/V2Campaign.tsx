@@ -486,15 +486,19 @@ export function V2Campaign() {
             {campaign.subject && (
               <div className="mb-3">
                 <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Subject</div>
-                <div className="rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 truncate">
-                  {campaign.subject}
-                </div>
+                <input
+                  readOnly
+                  value={campaign.subject}
+                  className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
+                />
               </div>
             )}
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Body</div>
-            <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
-              {campaign.body || '—'}
-            </div>
+            <textarea
+              readOnly
+              value={campaign.body || ''}
+              className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none flex-1"
+            />
             {campaign.channel === 'email' && (
               <button
                 onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
