@@ -334,32 +334,32 @@ export function V2Dashboard() {
 
         {/* Top stat cards */}
         <div className="flex gap-2 md:gap-3 mb-1">
-          <div className="flex-1 border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center mb-2">
-              <Send className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
+          <div className="flex-1 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
+              <Send className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{displaySent.toLocaleString()}</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{displaySent.toLocaleString()}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Sent</div>
           </div>
-          <div className="flex-1 border-2 border-green-200 dark:border-green-900 hover:border-green-300 dark:hover:border-green-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center mb-2">
-              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
+          <div className="flex-1 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
+              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{displayOpens.toLocaleString()}</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{displayOpens.toLocaleString()}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Opens</div>
           </div>
-          <div className="flex-1 border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-purple-50 dark:bg-purple-950 flex items-center justify-center mb-2">
-              <Reply className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-purple-400" />
+          <div className="flex-1 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
+              <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{displayReplies.toLocaleString()}</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{displayReplies.toLocaleString()}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Replies</div>
           </div>
-          <div className="flex-1 border-2 border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
+          <div className="flex-1 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
               <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{activeCampaigns}</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{activeCampaigns}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active</div>
           </div>
         </div>
