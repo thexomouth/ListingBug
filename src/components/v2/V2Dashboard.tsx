@@ -405,11 +405,8 @@ export function V2Dashboard() {
           )}
         </div>
 
-      </div>
-
-      {/* Campaign list */}
-      <div className="bg-gray-100 dark:bg-transparent border-t-2 border-gray-200 dark:border-white/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-8">
+        {/* Campaign list */}
+        <div className="bg-gray-100 dark:bg-transparent mt-8 p-6">
           <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">My Campaigns</h2>
