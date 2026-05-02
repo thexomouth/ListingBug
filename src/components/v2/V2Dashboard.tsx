@@ -359,11 +359,11 @@ export function V2Dashboard() {
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
               <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{activeCampaigns}</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{activeCampaigns}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active</div>
           </div>
         </div>
-        <div className="flex justify-center mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
+        <div className="flex justify-end mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
           <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
             {statPhase === 'alltime' ? 'All-Time' : 'Last 7 Days'}
           </span>
