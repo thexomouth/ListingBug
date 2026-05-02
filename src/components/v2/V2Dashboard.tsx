@@ -414,13 +414,13 @@ export function V2Dashboard() {
                 {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
               </p>
             </div>
-            <button
-              onClick={() => navigate('/v2/newcampaign')}
-              className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto"
+            <a
+              href="/v2/newcampaign"
+              className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto no-underline"
               style={{ background: '#FFCE0A', color: '#342e37' }}
             >
               + New campaign
-            </button>
+            </a>
           </div>
 
         {campaigns.length === 0 ? (
@@ -448,10 +448,10 @@ export function V2Dashboard() {
               const isToggling = togglingId === campaign.id;
 
               return (
-                <div
+                <a
                   key={campaign.id}
-                  onClick={() => navigate(`/v2/campaign?id=${campaign.id}`)}
-                  className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-2.5 cursor-pointer transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01]"
+                  href={`/v2/campaign?id=${campaign.id}`}
+                  className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-2.5 transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01] no-underline"
                 >
                   {/* Card top */}
                   <div className="flex items-start justify-between mb-2.5">
@@ -500,7 +500,7 @@ export function V2Dashboard() {
                     </div>
                     <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">View →</span>
                   </div>
-                </div>
+                </a>
               );
             })}
           </>

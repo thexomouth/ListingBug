@@ -354,12 +354,12 @@ export function V2Campaign() {
       <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
         <div className="text-center px-4">
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">Campaign not found.</div>
-          <button
-            onClick={() => { window.location.href = '/v2/dashboard'; }}
+          <a
+            href="/v2/dashboard"
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
           >
             ← Back to dashboard
-          </button>
+          </a>
         </div>
       </div>
     );
@@ -399,12 +399,12 @@ export function V2Campaign() {
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-12">
 
         {/* Back link */}
-        <button
-          onClick={() => { window.location.href = '/v2/dashboard'; }}
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-5 flex items-center gap-1"
+        <a
+          href="/v2/dashboard"
+          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mb-5 flex items-center gap-1 no-underline"
         >
           ← Dashboard
-        </button>
+        </a>
 
         {/* Page header */}
         <div className="flex items-start justify-between mb-6">
