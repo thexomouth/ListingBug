@@ -384,9 +384,9 @@ export function V2Campaign() {
     return bt - at;
   });
 
-  const fromName = senderInfo?.from_name || formatSenderName(userContactName, userBusinessName);
-  const fromEmail = senderInfo?.from_email || FROM_EMAIL_DISPLAY;
-  const senderMailbox = senderInfo?.display_name || 'Shared mailbox';
+  const fromName = senderInfo?.from_name || (senderInfo ? formatSenderName(userContactName, userBusinessName) : null);
+  const fromEmail = senderInfo?.from_email ?? null;
+  const senderMailbox = senderInfo?.display_name ?? null;
 
   const labelClass = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1';
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50';
@@ -454,9 +454,9 @@ export function V2Campaign() {
                   label: 'Price range',
                   value: `$${(criteria.price_min ?? 0).toLocaleString()} – $${(criteria.price_max ?? 0).toLocaleString()}`,
                 },
-                { label: 'From name', value: fromName || '—' },
-                { label: 'From email', value: fromEmail },
-                { label: 'Sender mailbox', value: senderMailbox },
+                fromName != null && { label: 'From name', value: fromName || '—' },
+                fromEmail != null && { label: 'From email', value: fromEmail },
+                senderMailbox != null && { label: 'Sender mailbox', value: senderMailbox },
                 { label: 'Reply-to', value: campaign.forward_to || '—' },
                 { label: 'Created', value: formatDate(campaign.created_at) },
               ].filter(Boolean).map((row: any) => (
@@ -521,7 +521,7 @@ export function V2Campaign() {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-white/10 mb-8">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-white/10">
+              <thead className="bg-white dark:bg-[#2F2F2F] border-b border-gray-200 dark:border-white/10">
                 <tr>
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agent</th>
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listing</th>
@@ -538,7 +538,7 @@ export function V2Campaign() {
                     <tr
                       key={send.id}
                       onClick={() => setSelectedSend(send)}
-                      className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                      className="border-b border-gray-100 dark:border-white/10 hover:bg-amber-50 dark:hover:bg-amber-400/10 transition-colors cursor-pointer"
                     >
                       <td className="py-3 px-3">
                         <div className="font-medium text-gray-900 dark:text-white leading-tight">
