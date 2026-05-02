@@ -50,6 +50,7 @@ interface Campaign {
   body: string;
   forward_to: string | null;
   drip_delay_minutes: number;
+  sender_id: string | null;
   city: string;
   state: string;
   created_at: string;
@@ -166,6 +167,7 @@ export function V2Campaign() {
   const [userContactName, setUserContactName] = useState<string | null>(null);
   const [userBusinessName, setUserBusinessName] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [senderInfo, setSenderInfo] = useState<{ display_name: string; from_email: string; from_name?: string } | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const cursorPos = useRef(0);
@@ -175,7 +177,7 @@ export function V2Campaign() {
       .from('campaigns')
       .select(`
         id, campaign_name, status, channel, subject, body, forward_to,
-        drip_delay_minutes, created_at,
+        drip_delay_minutes, sender_id, created_at,
         campaign_search_criteria (
           city, state, listing_type, property_type, days_old, price_min, price_max
         ),
@@ -213,6 +215,16 @@ export function V2Campaign() {
         });
     });
   }, []);
+
+  useEffect(() => {
+    if (!campaign?.sender_id) { setSenderInfo(null); return; }
+    supabase
+      .from('integration_connections')
+      .select('display_name, from_email, from_name')
+      .eq('id', campaign.sender_id)
+      .single()
+      .then(({ data }) => { if (data) setSenderInfo(data as any); });
+  }, [campaign?.sender_id]);
 
   const handleToggle = async (next: boolean) => {
     if (!campaign || isToggling) return;
@@ -372,6 +384,10 @@ export function V2Campaign() {
     return bt - at;
   });
 
+  const fromName = senderInfo?.from_name || formatSenderName(userContactName, userBusinessName);
+  const fromEmail = senderInfo?.from_email || FROM_EMAIL_DISPLAY;
+  const senderMailbox = senderInfo?.display_name || 'Shared mailbox';
+
   const labelClass = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1';
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50';
 
@@ -431,13 +447,16 @@ export function V2Campaign() {
             <div className="space-y-2">
               {[
                 criteria && { label: 'Location', value: `${criteria.city}, ${criteria.state}` },
-                criteria?.property_type && { label: 'Property type', value: criteria.property_type },
                 criteria?.listing_type && { label: 'Listing type', value: criteria.listing_type },
-                criteria?.days_old != null && { label: 'Days listed', value: String(criteria.days_old) },
+                criteria?.property_type && { label: 'Property type', value: criteria.property_type },
+                criteria?.days_old != null && { label: 'Days listed', value: `${criteria.days_old} days` },
                 (criteria?.price_min || criteria?.price_max) && {
                   label: 'Price range',
                   value: `$${(criteria.price_min ?? 0).toLocaleString()} – $${(criteria.price_max ?? 0).toLocaleString()}`,
                 },
+                { label: 'From name', value: fromName || '—' },
+                { label: 'From email', value: fromEmail },
+                { label: 'Sender mailbox', value: senderMailbox },
                 { label: 'Reply-to', value: campaign.forward_to || '—' },
                 { label: 'Created', value: formatDate(campaign.created_at) },
               ].filter(Boolean).map((row: any) => (
