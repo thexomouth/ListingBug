@@ -569,12 +569,12 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {isEditing && editDraft && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-start sm:pt-6 justify-center"
+          className="fixed inset-0 z-50 flex items-start pt-[104px] justify-center"
           onClick={() => setIsEditing(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden"
+            className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10">
