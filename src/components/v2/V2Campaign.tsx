@@ -426,7 +426,7 @@ export function V2Campaign() {
         <div className="flex flex-col lg:flex-row gap-4 mb-8">
 
           {/* Left: Campaign Overview + action buttons */}
-          <div className="lg:w-[360px] shrink-0 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4">
+          <div className="lg:w-[360px] shrink-0 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
             <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign Overview</div>
             <div className="space-y-2">
               {[
@@ -449,15 +449,15 @@ export function V2Campaign() {
             </div>
             <button
               onClick={openEdit}
-              className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
+              className="mt-auto w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
             >
-              Edit campaign
+              Edit Campaign
             </button>
             <button
               onClick={() => setTemplateModal({ open: true, name: campaign.campaign_name, saving: false, error: null, saved: false })}
               className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
             >
-              Save as template
+              Save As Template
             </button>
           </div>
 
@@ -481,7 +481,7 @@ export function V2Campaign() {
                 onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
                 className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
               >
-                Send test email
+                Send Test Email
               </button>
             )}
           </div>
