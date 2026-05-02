@@ -405,8 +405,11 @@ export function V2Dashboard() {
           )}
         </div>
 
-        {/* Campaign list */}
-        <div className="pt-8 border-t-2 border-gray-200 dark:border-white/10">
+      </div>
+
+      {/* Campaign list */}
+      <div className="bg-gray-100 dark:bg-transparent border-t-2 border-gray-200 dark:border-white/10">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-8">
           <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">My Campaigns</h2>
@@ -456,12 +459,7 @@ export function V2Dashboard() {
                   {/* Card top */}
                   <div className="flex items-start justify-between mb-2.5">
                     <div className="flex-1 min-w-0 mr-3">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{campaign.campaign_name}</div>
-                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        {criteria
-                          ? `${criteria.city}, ${criteria.state}${criteria.property_type ? ` · ${criteria.property_type}` : ''} · ${criteria.listing_type}`
-                          : '—'}
-                      </div>
+                      <div className="text-base font-semibold text-gray-900 dark:text-white">{campaign.campaign_name}</div>
                     </div>
                     {/* On/off toggle */}
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
