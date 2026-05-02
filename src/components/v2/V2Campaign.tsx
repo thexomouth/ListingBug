@@ -1038,12 +1038,12 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {templateModal.open && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-50 flex items-start pt-[104px] justify-center"
           onClick={() => setTemplateModal(m => ({ ...m, open: false }))}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative w-full sm:max-w-sm bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl p-5"
+            className="relative w-full sm:max-w-sm bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-xl p-5"
             onClick={e => e.stopPropagation()}
           >
             <div className="font-semibold text-gray-900 dark:text-white mb-1">Save as template</div>
