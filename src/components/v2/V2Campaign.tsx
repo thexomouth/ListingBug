@@ -494,11 +494,12 @@ export function V2Campaign() {
               </div>
             )}
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Body</div>
-            <textarea
-              readOnly
-              value={campaign.body || ''}
-              className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none flex-1"
-            />
+            <div
+              tabIndex={0}
+              className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1 focus:outline-none focus:border-[#FFCE0A] transition-colors"
+            >
+              {campaign.body || '—'}
+            </div>
             {campaign.channel === 'email' && (
               <button
                 onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
