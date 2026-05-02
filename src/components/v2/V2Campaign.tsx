@@ -438,7 +438,6 @@ export function V2Campaign() {
                   label: 'Price range',
                   value: `$${(criteria.price_min ?? 0).toLocaleString()} – $${(criteria.price_max ?? 0).toLocaleString()}`,
                 },
-                campaign.subject && { label: 'Subject', value: campaign.subject },
                 { label: 'Reply-to', value: campaign.forward_to || '—' },
                 { label: 'Created', value: formatDate(campaign.created_at) },
               ].filter(Boolean).map((row: any) => (
@@ -450,28 +449,37 @@ export function V2Campaign() {
             </div>
             <button
               onClick={openEdit}
-              className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+              className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
             >
               Edit campaign
             </button>
             <button
               onClick={() => setTemplateModal({ open: true, name: campaign.campaign_name, saving: false, error: null, saved: false })}
-              className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+              className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
             >
               Save as template
             </button>
           </div>
 
-          {/* Right: Message body + send test email */}
+          {/* Right: Message details + send test email */}
           <div className="flex-1 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
-            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Message body</div>
+            <div className="font-bold text-[#342e37] dark:text-white mb-3">Message Details</div>
+            {campaign.subject && (
+              <div className="mb-3">
+                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Subject</div>
+                <div className="rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 truncate">
+                  {campaign.subject}
+                </div>
+              </div>
+            )}
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Body</div>
             <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
               {campaign.body || '—'}
             </div>
             {campaign.channel === 'email' && (
               <button
                 onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
-                className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+                className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
               >
                 Send test email
               </button>
@@ -581,7 +589,7 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {isEditing && editDraft && (
         <div
-          className="fixed inset-0 z-50 flex items-start pt-[104px] justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center"
           onClick={() => setIsEditing(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -793,12 +801,12 @@ export function V2Campaign() {
 
         return (
           <div
-            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+            className="fixed inset-0 z-[60] flex items-center justify-center"
             onClick={() => setTestModal(m => ({ ...m, open: false }))}
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div
-              className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col"
+              className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-xl overflow-hidden flex flex-col"
               style={{ maxHeight: '85svh' }}
               onClick={e => e.stopPropagation()}
             >
@@ -1050,7 +1058,7 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {templateModal.open && (
         <div
-          className="fixed inset-0 z-50 flex items-start pt-[104px] justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center"
           onClick={() => setTemplateModal(m => ({ ...m, open: false }))}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
