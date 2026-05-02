@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Send, MessageSquare, Zap, MousePointer } from 'lucide-react';
+import { LayoutDashboard, Send, MessageSquare, Zap, Reply } from 'lucide-react';
 import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
 
 // ---------------------------------------------------------------------------
@@ -108,6 +108,29 @@ export function V2Dashboard() {
   const [stripePeriodEnd, setStripePeriodEnd] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [statPhase, setStatPhase] = useState<'alltime' | 'lastweek'>('alltime');
+  const [statOpacity, setStatOpacity] = useState(0);
+
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    let alive = true;
+
+    const step = (phase: 'alltime' | 'lastweek', showing: boolean) => {
+      if (!alive) return;
+      if (showing) {
+        setStatPhase(phase);
+        setStatOpacity(1);
+        t = setTimeout(() => step(phase, false), 5500);
+      } else {
+        setStatOpacity(0);
+        const next: 'alltime' | 'lastweek' = phase === 'alltime' ? 'lastweek' : 'alltime';
+        t = setTimeout(() => step(next, true), 500);
+      }
+    };
+
+    step('alltime', true);
+    return () => { alive = false; clearTimeout(t); };
+  }, []);
 
   // Claim any pending onboarding campaign created while unauthenticated
   useEffect(() => {
@@ -283,8 +306,18 @@ export function V2Dashboard() {
   const allStats = campaigns.map(c => computeStats(c.campaign_sends ?? []));
   const totalSent = allStats.reduce((acc, s) => acc + s.sent, 0);
   const totalOpens = allStats.reduce((acc, s) => acc + s.opens, 0);
-  const totalClicks = allStats.reduce((acc, s) => acc + s.clicks, 0);
+  const totalReplies = allStats.reduce((acc, s) => acc + s.replies, 0);
   const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const allSends7 = campaigns.flatMap(c =>
+    (c.campaign_sends ?? []).filter(s => s.sent_at && new Date(s.sent_at) >= sevenDaysAgo)
+  );
+  const stats7 = computeStats(allSends7);
+
+  const displaySent = statPhase === 'alltime' ? totalSent : stats7.sent;
+  const displayOpens = statPhase === 'alltime' ? totalOpens : stats7.opens;
+  const displayReplies = statPhase === 'alltime' ? totalReplies : stats7.replies;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
@@ -300,27 +333,27 @@ export function V2Dashboard() {
         </div>
 
         {/* Top stat cards */}
-        <div className="flex gap-2 md:gap-3 mb-4">
+        <div className="flex gap-2 md:gap-3 mb-1">
           <div className="flex-1 border-2 border-blue-200 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center mb-2">
               <Send className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalSent.toLocaleString()}</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{displaySent.toLocaleString()}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Sent</div>
           </div>
           <div className="flex-1 border-2 border-green-200 dark:border-green-900 hover:border-green-300 dark:hover:border-green-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-green-50 dark:bg-green-950 flex items-center justify-center mb-2">
               <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalOpens.toLocaleString()}</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{displayOpens.toLocaleString()}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Opens</div>
           </div>
           <div className="flex-1 border-2 border-purple-200 dark:border-purple-900 hover:border-purple-300 dark:hover:border-purple-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-purple-50 dark:bg-purple-950 flex items-center justify-center mb-2">
-              <MousePointer className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-purple-400" />
+              <Reply className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-purple-400" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{totalClicks.toLocaleString()}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Clicks</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>{displayReplies.toLocaleString()}</div>
+            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Replies</div>
           </div>
           <div className="flex-1 border-2 border-amber-200 dark:border-amber-900 hover:border-amber-300 dark:hover:border-amber-700 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center transition-all">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-amber-950 flex items-center justify-center mb-2">
@@ -329,6 +362,11 @@ export function V2Dashboard() {
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{activeCampaigns}</div>
             <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active</div>
           </div>
+        </div>
+        <div className="flex justify-center mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
+            {statPhase === 'alltime' ? 'All-Time' : 'Last 7 Days'}
+          </span>
         </div>
 
         {/* Usage section */}
