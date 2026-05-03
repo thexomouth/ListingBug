@@ -460,10 +460,10 @@ export function V2Dashboard() {
             </div>
             <a
               href="/v2/newcampaign"
-              className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto no-underline"
+              className="hidden md:flex items-center justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-auto no-underline"
               style={{ background: '#FFCE0A', color: '#342e37' }}
             >
-              + New campaign
+              + New Campaign
             </a>
           </div>
 
@@ -479,7 +479,7 @@ export function V2Dashboard() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all"
                 style={{ background: '#FFCE0A', color: '#342e37' }}
               >
-                + Create your first campaign
+                + Create Your First Campaign
               </button>
             </div>
           ) : (
@@ -542,6 +542,15 @@ export function V2Dashboard() {
               );
             })
           )}
+
+          {/* Mobile-only New Campaign button — below cards */}
+          <a
+            href="/v2/newcampaign"
+            className="md:hidden mt-3 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full no-underline"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
+          >
+            + New Campaign
+          </a>
         </div>
 
         {/* ---------------------------------------------------------------- */}
