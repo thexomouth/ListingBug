@@ -236,6 +236,30 @@ export function NewCampaign() {
       }
     };
     init();
+
+    // Handle OAuth callbacks after Gmail / Outlook redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthSuccess = urlParams.get('success');
+    const oauthError = urlParams.get('error');
+    if (oauthSuccess === 'gmail_connected') {
+      toast.success('Gmail account connected successfully!');
+    } else if (oauthSuccess === 'outlook_connected') {
+      toast.success('Outlook account connected successfully!');
+    } else if (oauthError) {
+      const errorMessages: Record<string, string> = {
+        gmail_canceled: 'Gmail connection was canceled',
+        gmail_invalid: 'Invalid Gmail authorization',
+        gmail_exchange_failed: 'Failed to connect Gmail account',
+        outlook_canceled: 'Outlook connection was canceled',
+        outlook_invalid: 'Invalid Outlook authorization',
+        outlook_exchange_failed: 'Failed to connect Outlook account',
+        state_mismatch: 'Security verification failed',
+      };
+      toast.error(errorMessages[oauthError] || 'Connection failed');
+    }
+    if (oauthSuccess || oauthError) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -484,6 +508,48 @@ export function NewCampaign() {
   }, [templatePicker.open]);
 
   // ---------------------------------------------------------------------------
+  // Sender / OAuth handlers
+  // ---------------------------------------------------------------------------
+  const handleSMTPSuccess = (connectionId: string) => {
+    const loadNewSender = async () => {
+      if (!userId) return;
+      const { data } = await supabase
+        .from('integration_connections')
+        .select('id, display_name, from_email, integration_id')
+        .eq('id', connectionId)
+        .single();
+      if (data) {
+        setSenders(prev => [...prev, data]);
+        setSelectedSender(connectionId);
+      }
+    };
+    loadNewSender();
+    setSMTPModalOpen(false);
+  };
+
+  const handleGmailConnect = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error('Session expired. Please refresh the page.'); return; }
+      const authUrl = await buildGmailAuthUrl(session.user.id);
+      window.location.href = authUrl;
+    } catch {
+      toast.error('Failed to initiate Gmail connection');
+    }
+  };
+
+  const handleOutlookConnect = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error('Session expired. Please refresh the page.'); return; }
+      const authUrl = await buildOutlookAuthUrl(session.user.id);
+      window.location.href = authUrl;
+    } catch {
+      toast.error('Failed to initiate Outlook connection');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Render helpers
   // ---------------------------------------------------------------------------
   const renderProgress = () => (
@@ -519,6 +585,138 @@ export function NewCampaign() {
       ))}
     </div>
   );
+
+  const renderMailboxStep = () => {
+    const gmailSenders = senders.filter(s => s.integration_id === 'gmail');
+    const outlookSenders = senders.filter(s => s.integration_id === 'outlook');
+    const smtpSenders = senders.filter(s => s.integration_id === 'smtp');
+
+    return (
+      <div className="mb-2">
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Connect your email accounts</div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+          {senders.length > 0
+            ? 'You can connect multiple accounts. Select which one to use for this campaign below.'
+            : 'Connect at least one email account to send emails to listing agents. You can connect multiple accounts.'}
+        </div>
+
+        {stepErrors.sender && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+            <p className="text-sm text-red-700 dark:text-red-400">{stepErrors.sender}</p>
+          </div>
+        )}
+
+        {/* Gmail & Outlook — 2 column grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <button
+            type="button"
+            onClick={handleGmailConnect}
+            className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
+            style={gmailSenders.length > 0
+              ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
+              : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">Gmail</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {gmailSenders.length > 0
+                    ? `${gmailSenders.length} account${gmailSenders.length > 1 ? 's' : ''} connected`
+                    : 'Send via Google OAuth'}
+                </div>
+              </div>
+              {gmailSenders.length > 0 && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOutlookConnect}
+            className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
+            style={outlookSenders.length > 0
+              ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
+              : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">Outlook</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {outlookSenders.length > 0
+                    ? `${outlookSenders.length} account${outlookSenders.length > 1 ? 's' : ''} connected`
+                    : 'Send via Microsoft OAuth'}
+                </div>
+              </div>
+              {outlookSenders.length > 0 && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+            </div>
+          </button>
+        </div>
+
+        {/* Custom SMTP — full width */}
+        <div className="mb-5">
+          <button
+            type="button"
+            onClick={() => setSMTPModalOpen(true)}
+            className={`w-full group relative p-4 rounded-lg border-2 transition-all text-left ${
+              smtpSenders.length > 0
+                ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                : 'border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] bg-white dark:bg-[#1a1a1a]'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
+                <Server className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 dark:text-white mb-1">Custom SMTP</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {smtpSenders.length > 0
+                    ? `${smtpSenders.length} account${smtpSenders.length > 1 ? 's' : ''} connected`
+                    : 'Use your own mail server (SendGrid, Mailchimp, or any SMTP provider)'}
+                </div>
+              </div>
+              {smtpSenders.length > 0 && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+            </div>
+          </button>
+        </div>
+
+        {/* Mailbox selector */}
+        {senders.length > 0 && (
+          <div className="mb-5">
+            <label className="text-sm font-medium text-gray-900 dark:text-white mb-2 block">
+              Which mailbox would you like to use for this campaign?
+            </label>
+            <select
+              value={selectedSender || ''}
+              onChange={e => setSelectedSender(e.target.value || null)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFCE0A]"
+            >
+              <option value="">Select a mailbox…</option>
+              {senders.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.display_name} ({s.from_email})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {senders.length > 0 && selectedSender && (
+          <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-700 dark:text-green-300">
+              <strong>✓ Ready:</strong> Emails will be sent from {senders.find(s => s.id === selectedSender)?.from_email}.
+              You can connect additional accounts or change this in Settings.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderStep0Confirm = () => (
     <div className="mb-2">
@@ -627,59 +825,10 @@ export function NewCampaign() {
     </div>
   );
 
-  const renderStep1 = () => {
-    const handleSMTPSuccess = (connectionId: string) => {
-      // Reload senders and select the new one
-      const loadNewSender = async () => {
-        if (!userId) return;
-        const { data } = await supabase
-          .from('integration_connections')
-          .select('id, display_name, from_email, integration_id')
-          .eq('id', connectionId)
-          .single();
-
-        if (data) {
-          setSenders(prev => [...prev, data]);
-          setSelectedSender(connectionId);
-        }
-      };
-      loadNewSender();
-      setSMTPModalOpen(false);
-    };
-
-    return (
+  const renderStep1 = () => (
       <div className="mb-2">
         <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Where do you want listings from?</div>
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">We'll watch for new listings in this area and email the listing agent automatically</div>
-
-        {/* Sender Selection */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Send from</label>
-          <div className="flex gap-2">
-            <select
-              value={selectedSender || ''}
-              onChange={(e) => {
-                if (e.target.value === 'add_new') {
-                  setSMTPModalOpen(true);
-                } else {
-                  setSelectedSender(e.target.value || null);
-                }
-              }}
-              className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground"
-            >
-              <option value="">Shared mailbox (hello@listingping.com)</option>
-              {senders.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.display_name || `${s.integration_id} (${s.from_email})`}
-                </option>
-              ))}
-              <option value="add_new">+ Connect new account</option>
-            </select>
-          </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Emails will be sent from this account. Connect your own for better deliverability.
-          </p>
-        </div>
 
         {/* Location */}
         <div className="mb-4">
@@ -783,20 +932,8 @@ export function NewCampaign() {
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Search tip: each search yields up to 500 listings.</p>
       </div>
 
-      {/* SMTP Setup Modal */}
-      {smtpModalOpen && (
-        <SMTPSetupModal
-          isOpen={smtpModalOpen}
-          onClose={() => setSMTPModalOpen(false)}
-          onSuccess={handleSMTPSuccess}
-          userId={userId || ''}
-          userContactName={businessInfo.contact_name}
-          userBusinessName={businessInfo.business_name}
-        />
-      )}
     </div>
   );
-};
 
   const renderStep2 = () => (
     <div className="mb-2">
@@ -1202,14 +1339,15 @@ export function NewCampaign() {
 
           {/* Step content */}
           <div className="px-6 py-6">
-            {step === 0 && (step0Mode === null ? null : step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
-            {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
+            {step === 0 && renderMailboxStep()}
+            {step === 1 && (step0Mode === null ? null : step0Mode === 'confirm' ? renderStep0Confirm() : renderStep0Edit())}
+            {step === 2 && renderStep1()}
+            {step === 3 && renderStep2()}
+            {step === 4 && renderStep3()}
           </div>
 
           {/* Nav buttons inside card footer */}
-          {!isDone && step0Mode !== null && (
+          {!isDone && (step !== 1 || step0Mode !== null) && (
             <div className="flex justify-between px-6 pb-6">
               <button
                 type="button"
@@ -1380,6 +1518,15 @@ export function NewCampaign() {
           </div>
         );
       })()}
+
+      <SMTPSetupModal
+        isOpen={smtpModalOpen}
+        onClose={() => setSMTPModalOpen(false)}
+        onSuccess={handleSMTPSuccess}
+        userId={userId || ''}
+        userContactName={businessInfo.contact_name}
+        userBusinessName={businessInfo.business_name}
+      />
     </div>
   );
 }
