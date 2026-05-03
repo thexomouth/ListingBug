@@ -4,6 +4,7 @@ import { formatSenderName } from '../../lib/senderName';
 import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer } from 'lucide-react';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { CampaignSendModal } from './CampaignSendModal';
+import { CityAutocomplete } from '../CityAutocomplete';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -630,36 +631,15 @@ export function V2Campaign() {
             <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign Overview</div>
             <div className="space-y-0 flex-1">
 
-              {/* City */}
+              {/* Location (City + State) */}
               {draft && (
-                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">City</span>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <input
-                      value={draft.city}
-                      onChange={e => updateText({ city: e.target.value })}
-                      placeholder="City"
-                      className={`${rowInputClass} w-28`}
-                    />
-                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
-                  </div>
-                </div>
-              )}
-
-              {/* State */}
-              {draft && (
-                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">State</span>
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <input
-                      value={draft.state}
-                      onChange={e => updateText({ state: e.target.value })}
-                      placeholder="ST"
-                      maxLength={2}
-                      className={`${rowInputClass} w-14`}
-                    />
-                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
-                  </div>
+                <div className="py-2 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 block mb-1.5">Location</span>
+                  <CityAutocomplete
+                    value={draft.city}
+                    stateValue={draft.state}
+                    onSelect={(city, state) => updateImmediate({ city, state })}
+                  />
                 </div>
               )}
 
@@ -735,12 +715,10 @@ export function V2Campaign() {
               )}
 
               {/* From name — read-only */}
-              {fromName != null && (
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">From name</span>
-                  <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{fromName || '—'}</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
+                <span className="text-sm text-gray-600 dark:text-gray-400">From name</span>
+                <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{fromName || '—'}</span>
+              </div>
 
               {/* From email — read-only */}
               {fromEmail != null && (
@@ -750,13 +728,11 @@ export function V2Campaign() {
                 </div>
               )}
 
-              {/* Sender mailbox — read-only */}
-              {senderMailbox != null && (
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Sender mailbox</span>
-                  <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{senderMailbox}</span>
-                </div>
-              )}
+              {/* Sending mailbox — read-only */}
+              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Sending mailbox</span>
+                <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{senderMailbox || '—'}</span>
+              </div>
 
               {/* Reply-to */}
               {draft && (
@@ -891,9 +867,9 @@ export function V2Campaign() {
                     <tr
                       key={send.id}
                       onClick={() => setSelectedSend(send)}
-                      className="border-b border-gray-100 dark:border-white/10 hover:bg-amber-50 dark:hover:bg-amber-400/10 transition-colors cursor-pointer"
+                      className="group border-b border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150">
                         <div className="font-medium text-gray-900 dark:text-white leading-tight">
                           {send.agent_name || send.agent_email}
                         </div>
@@ -901,13 +877,13 @@ export function V2Campaign() {
                           <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{send.agent_email}</div>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-gray-700 dark:text-gray-300">
+                      <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150 text-gray-700 dark:text-gray-300">
                         {send.listing_address || '—'}
                       </td>
-                      <td className="py-3 px-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         {send.listing_price != null ? `$${send.listing_price.toLocaleString()}` : '—'}
                       </td>
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150">
                         <span
                           className="text-[10px] px-2 py-0.5 rounded-full font-medium"
                           style={{ background: badge.bg, color: badge.color }}
@@ -915,7 +891,7 @@ export function V2Campaign() {
                           {badge.label}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         {(() => { const d = activityDate(send); return d ? `${formatDate(d)} · ${formatTime(d)}` : '—'; })()}
                       </td>
                     </tr>
