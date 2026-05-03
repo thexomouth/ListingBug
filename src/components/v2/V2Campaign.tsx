@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { formatSenderName } from '../../lib/senderName';
 import { Pencil, Check, AlertCircle } from 'lucide-react';
+import { CampaignSendModal } from './CampaignSendModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -112,6 +113,14 @@ function formatDate(iso: string | null) {
 function formatTime(iso: string | null) {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function activityDate(send: Send): string | null {
+  const reply = send.campaign_replies?.[0];
+  if (reply?.replied_at) return reply.replied_at;
+  if (send.clicked_at) return send.clicked_at;
+  if (send.opened_at) return send.opened_at;
+  return send.sent_at;
 }
 
 // ---------------------------------------------------------------------------
@@ -703,7 +712,7 @@ export function V2Campaign() {
                 onChange={e => updateText({ body: e.target.value })}
                 onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
                 onBlur={e => { cursorPos.current = e.target.selectionStart; }}
-                className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden flex-1"
+                className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden"
                 style={{ minHeight: 140 }}
               />
             ) : (
@@ -744,7 +753,7 @@ export function V2Campaign() {
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listing</th>
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</th>
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
-                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Sent</th>
+                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Activity</th>
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
@@ -780,7 +789,7 @@ export function V2Campaign() {
                         </span>
                       </td>
                       <td className="py-3 px-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                        {send.sent_at ? `${formatDate(send.sent_at)} · ${formatTime(send.sent_at)}` : '—'}
+                        {(() => { const d = activityDate(send); return d ? `${formatDate(d)} · ${formatTime(d)}` : '—'; })()}
                       </td>
                     </tr>
                   );
@@ -972,159 +981,20 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {/* Send detail modal                                                    */}
       {/* ------------------------------------------------------------------ */}
-      {selectedSend && (() => {
-        const send = selectedSend;
-        const hasReply = (send.campaign_replies?.length ?? 0) > 0;
-        const badge = statusBadge(send.status, hasReply);
-        const isFailed = send.status === 'failed';
-        return (
-          <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-            onClick={() => setSelectedSend(null)}
-          >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div
-              className="relative w-full sm:max-w-md bg-white dark:bg-[#1e1e1e] rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-[11px] px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: badge.bg, color: badge.color }}
-                  >
-                    {badge.label}
-                  </span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
-                    {send.channel}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedSend(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
-                {isFailed && send.error_message && (
-                  <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 px-4 py-3">
-                    <div className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">Send failed</div>
-                    <div className="text-sm text-red-700 dark:text-red-300 font-mono break-all">{send.error_message}</div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Agent</div>
-                  <div className="space-y-1.5">
-                    {send.agent_name && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Name</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{send.agent_name}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">Email</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">{send.agent_email}</span>
-                    </div>
-                    {send.agent_phone && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Phone</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{send.agent_phone}</span>
-                      </div>
-                    )}
-                    {send.listing_brokerage && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Brokerage</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white text-right max-w-[60%] truncate">{send.listing_brokerage}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {send.listing_address && (
-                  <div>
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Listing</div>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Address</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white text-right max-w-[60%]">
-                          {send.listing_address}{send.listing_city ? `, ${send.listing_city}` : ''}{send.listing_state ? `, ${send.listing_state}` : ''}
-                        </span>
-                      </div>
-                      {send.listing_price != null && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Price</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">${send.listing_price.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {send.listing_property_type && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Type</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{send.listing_property_type}</span>
-                        </div>
-                      )}
-                      {(send.listing_beds != null || send.listing_baths != null) && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Bed / Bath</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {send.listing_beds ?? '—'} bd · {send.listing_baths ?? '—'} ba
-                          </span>
-                        </div>
-                      )}
-                      {send.listing_sqft != null && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Sq ft</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{send.listing_sqft.toLocaleString()}</span>
-                        </div>
-                      )}
-                      {send.listing_mls_number && (
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">MLS #</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{send.listing_mls_number}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Timeline</div>
-                  <div className="space-y-1.5">
-                    {send.sent_at && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Sent</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(send.sent_at)} at {formatTime(send.sent_at)}</span>
-                      </div>
-                    )}
-                    {send.opened_at && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Opened</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(send.opened_at)} at {formatTime(send.opened_at)}</span>
-                      </div>
-                    )}
-                    {send.clicked_at && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Clicked</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(send.clicked_at)} at {formatTime(send.clicked_at)}</span>
-                      </div>
-                    )}
-                    {hasReply && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Replied</span>
-                        <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                          {formatDate(send.campaign_replies[0].replied_at)} at {formatTime(send.campaign_replies[0].replied_at)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {selectedSend && campaign && (
+        <CampaignSendModal
+          send={selectedSend}
+          campaign={{
+            campaign_name: campaign.campaign_name,
+            channel: campaign.channel,
+            subject: campaign.subject,
+            body: campaign.body,
+            city: criteria?.city ?? '',
+            state: criteria?.state ?? '',
+          }}
+          onClose={() => setSelectedSend(null)}
+        />
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Save as template modal                                               */}
