@@ -29,7 +29,13 @@ interface SMTPConfig {
   password: string;
   from_email: string;
   from_name: string;
-  use_tls: boolean;
+}
+
+interface IMAPConfig {
+  host: string;
+  port: string;
+  username: string;
+  password: string;
 }
 
 export function SMTPSetupModal({
@@ -47,7 +53,14 @@ export function SMTPSetupModal({
     password: '',
     from_email: '',
     from_name: userContactName || userBusinessName || '',
-    use_tls: true,
+  });
+
+  const [replyTracking, setReplyTracking] = useState(false);
+  const [imapConfig, setImapConfig] = useState<IMAPConfig>({
+    host: '',
+    port: '993',
+    username: '',
+    password: '',
   });
 
   const [isTesting, setIsTesting] = useState(false);
@@ -55,9 +68,9 @@ export function SMTPSetupModal({
   const [testResult, setTestResult] = useState<'success' | 'failed' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showImapPassword, setShowImapPassword] = useState(false);
 
   const handleTest = async () => {
-    // Validation
     if (!config.host || !config.port || !config.username || !config.password || !config.from_email) {
       toast.error('Please fill in all required fields');
       return;
@@ -79,7 +92,7 @@ export function SMTPSetupModal({
           password: config.password,
           from_email: config.from_email,
           from_name: config.from_name,
-          use_tls: config.use_tls,
+          use_tls: true,
         },
       });
 
@@ -114,7 +127,6 @@ export function SMTPSetupModal({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      // Store SMTP configuration
       const { data: connection, error: insertError } = await supabase
         .from('integration_connections')
         .insert({
@@ -122,12 +134,21 @@ export function SMTPSetupModal({
           integration_id: 'smtp',
           credentials: {
             username: config.username,
-            password: config.password, // TODO: Encrypt in edge function
+            password: config.password,
+            ...(replyTracking && {
+              imap_username: imapConfig.username || config.username,
+              imap_password: imapConfig.password || config.password,
+            }),
           },
           config: {
             host: config.host,
             port: parseInt(config.port, 10),
-            use_tls: config.use_tls,
+            use_tls: true,
+            ...(replyTracking && {
+              imap_host: imapConfig.host,
+              imap_port: parseInt(imapConfig.port, 10),
+              reply_tracking: true,
+            }),
           },
           display_name: `SMTP (${config.from_email})`,
           from_email: config.from_email,
@@ -140,7 +161,6 @@ export function SMTPSetupModal({
 
       if (insertError) throw insertError;
 
-      // Check if this is the user's first sender - set as default
       const { data: user } = await supabase
         .from('users')
         .select('default_sender_id')
@@ -165,14 +185,12 @@ export function SMTPSetupModal({
   };
 
   const handleClose = () => {
-    if (!isTesting && !isSaving) {
-      onClose();
-    }
+    if (!isTesting && !isSaving) onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" />
@@ -209,7 +227,7 @@ export function SMTPSetupModal({
               onChange={(e) => setConfig({ ...config, port: e.target.value })}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Common ports: 587 (TLS), 465 (SSL), 25 (unencrypted)
+              Common ports: 587 (TLS/STARTTLS), 465 (SSL)
             </p>
           </div>
 
@@ -275,27 +293,95 @@ export function SMTPSetupModal({
             />
           </div>
 
-          {/* TLS Toggle */}
-          <div className="flex items-center justify-between py-2">
-            <Label htmlFor="use-tls" className="flex-1">
-              Use TLS/STARTTLS
-            </Label>
+          {/* Reply Tracking Toggle */}
+          <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-white/10 mt-2">
+            <div>
+              <Label htmlFor="reply-tracking" className="text-sm font-medium">Reply Tracking</Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Connect your inbox to detect replies automatically
+              </p>
+            </div>
             <button
               type="button"
               role="switch"
-              aria-checked={config.use_tls}
-              onClick={() => setConfig({ ...config, use_tls: !config.use_tls })}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                config.use_tls ? 'bg-[#FFCE0A]' : 'bg-gray-300 dark:bg-gray-600'
-              }`}
+              id="reply-tracking"
+              aria-checked={replyTracking}
+              onClick={() => setReplyTracking(v => !v)}
+              className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors"
+              style={{ background: replyTracking ? '#FFCE0A' : undefined }}
+              data-state={replyTracking ? 'checked' : 'unchecked'}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  config.use_tls ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
+                  replyTracking ? 'translate-x-5' : 'translate-x-0.5'
+                } ${!replyTracking ? 'bg-gray-300 dark:bg-gray-600' : ''}`}
               />
             </button>
           </div>
+
+          {/* IMAP Fields — shown only when Reply Tracking is on */}
+          {replyTracking && (
+            <div className="space-y-4 pl-3 border-l-2 border-[#FFCE0A]">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                IMAP is used to read your inbox and detect when agents reply. Username and password default to your SMTP credentials if left blank.
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="imap-host">IMAP Host *</Label>
+                <Input
+                  id="imap-host"
+                  placeholder="imap.gmail.com"
+                  value={imapConfig.host}
+                  onChange={(e) => setImapConfig({ ...imapConfig, host: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="imap-port">IMAP Port</Label>
+                <Input
+                  id="imap-port"
+                  type="number"
+                  placeholder="993"
+                  value={imapConfig.port}
+                  onChange={(e) => setImapConfig({ ...imapConfig, port: e.target.value })}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Common ports: 993 (SSL), 143 (STARTTLS)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="imap-username">IMAP Username</Label>
+                <Input
+                  id="imap-username"
+                  placeholder={config.username || 'you@example.com'}
+                  value={imapConfig.username}
+                  onChange={(e) => setImapConfig({ ...imapConfig, username: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="imap-password">IMAP Password</Label>
+                <div className="relative">
+                  <Input
+                    id="imap-password"
+                    type={showImapPassword ? 'text' : 'password'}
+                    placeholder="Leave blank to use SMTP password"
+                    value={imapConfig.password}
+                    onChange={(e) => setImapConfig({ ...imapConfig, password: e.target.value })}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowImapPassword(!showImapPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showImapPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Test Result */}
           {testResult === 'success' && (
@@ -311,9 +397,7 @@ export function SMTPSetupModal({
             <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg">
               <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-red-700 dark:text-red-300 font-medium">
-                  Connection failed
-                </p>
+                <p className="text-sm text-red-700 dark:text-red-300 font-medium">Connection failed</p>
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errorMessage}</p>
               </div>
             </div>
