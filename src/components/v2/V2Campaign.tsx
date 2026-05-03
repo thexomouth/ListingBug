@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { CityAutocomplete } from '../CityAutocomplete';
 import { formatSenderName } from '../../lib/senderName';
+import { Pencil, Check, AlertCircle } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,7 +58,7 @@ interface Campaign {
   campaign_sends: Send[];
 }
 
-interface EditDraft {
+interface Draft {
   campaign_name: string;
   subject: string;
   body: string;
@@ -91,10 +91,6 @@ function renderBodyPreview(text: string, city: string): string {
     (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline" target="_blank" rel="noopener noreferrer">${t}</a>`);
   s = s.replace(/\n/g, '<br>');
   return s;
-}
-
-function toTitleCase(str: string): string {
-  return str.replace(/\b\w+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
 function statusBadge(status: string, hasReply: boolean) {
@@ -149,11 +145,11 @@ export function V2Campaign() {
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [selectedSend, setSelectedSend] = useState<Send | null>(null);
 
-  // Edit modal
-  const [isEditing, setIsEditing] = useState(false);
-  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  // Autosave
+  const [draft, setDraft] = useState<Draft | null>(null);
+  type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Delete
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -216,6 +212,33 @@ export function V2Campaign() {
     });
   }, []);
 
+  // Initialize draft when campaign first loads
+  useEffect(() => {
+    if (!campaign) return;
+    const c = campaign.campaign_search_criteria?.[0];
+    setDraft({
+      campaign_name: campaign.campaign_name,
+      subject: campaign.subject ?? '',
+      body: campaign.body,
+      forward_to: campaign.forward_to ?? '',
+      drip_delay_minutes: campaign.drip_delay_minutes ?? 2,
+      days_old: c?.days_old != null ? String(c.days_old) : '',
+      price_min: c?.price_min != null ? String(c.price_min) : '',
+      price_max: c?.price_max != null ? String(c.price_max) : '',
+      property_type: c?.property_type ?? 'Single Family',
+      city: c?.city ?? '',
+      state: c?.state ?? '',
+    });
+  }, [campaign?.id]);
+
+  // Auto-resize body textarea
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.style.height = 'auto';
+      bodyRef.current.style.height = bodyRef.current.scrollHeight + 'px';
+    }
+  }, [draft?.body]);
+
   useEffect(() => {
     if (!campaign?.sender_id) { setSenderInfo(null); return; }
     supabase
@@ -226,6 +249,87 @@ export function V2Campaign() {
       .then(({ data }) => { if (data) setSenderInfo(data as any); });
   }, [campaign?.sender_id]);
 
+  // ---------------------------------------------------------------------------
+  // Autosave
+  // ---------------------------------------------------------------------------
+  const persistDraft = async (d: Draft) => {
+    if (!campaignId) return;
+    setSaveStatus('saving');
+    try {
+      const { error: campErr } = await supabase
+        .from('campaigns')
+        .update({
+          campaign_name: d.campaign_name.trim(),
+          subject: d.subject.trim() || null,
+          body: d.body,
+          forward_to: d.forward_to.trim() || null,
+          drip_delay_minutes: Number(d.drip_delay_minutes) || 2,
+        })
+        .eq('id', campaignId);
+      if (campErr) throw new Error(campErr.message);
+
+      const { error: critErr } = await supabase
+        .from('campaign_search_criteria')
+        .update({
+          city: d.city,
+          state: d.state,
+          property_type: d.property_type || null,
+          days_old: d.days_old ? parseInt(d.days_old, 10) : null,
+          price_min: d.price_min ? parseInt(d.price_min, 10) : null,
+          price_max: d.price_max ? parseInt(d.price_max, 10) : null,
+        })
+        .eq('campaign_id', campaignId);
+      if (critErr) throw new Error(critErr.message);
+
+      setCampaign(c => c ? {
+        ...c,
+        campaign_name: d.campaign_name.trim(),
+        subject: d.subject.trim() || null,
+        body: d.body,
+        forward_to: d.forward_to.trim() || null,
+        drip_delay_minutes: Number(d.drip_delay_minutes) || 2,
+      } : c);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+    }
+  };
+
+  // Debounced update — use for text inputs (1 s idle)
+  const updateText = (updates: Partial<Draft>) => {
+    if (!draft) return;
+    const next = { ...draft, ...updates };
+    setDraft(next);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => persistDraft(next), 1000);
+  };
+
+  // Immediate update — use for selects and city autocomplete
+  const updateImmediate = (updates: Partial<Draft>) => {
+    if (!draft) return;
+    const next = { ...draft, ...updates };
+    setDraft(next);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    persistDraft(next);
+  };
+
+  const insertVar = (v: string) => {
+    if (!draft) return;
+    const pos = cursorPos.current;
+    const newBody = draft.body.slice(0, pos) + v + draft.body.slice(pos);
+    const newPos = pos + v.length;
+    cursorPos.current = newPos;
+    updateText({ body: newBody });
+    requestAnimationFrame(() => {
+      const ta = bodyRef.current;
+      if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
+    });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
   const handleToggle = async (next: boolean) => {
     if (!campaign || isToggling) return;
     setIsToggling(true);
@@ -251,87 +355,14 @@ export function V2Campaign() {
       user_id: user.id,
       template_name: templateModal.name.trim(),
       channel: campaign.channel,
-      subject: campaign.subject,
-      body: campaign.body,
+      subject: draft?.subject ?? campaign.subject,
+      body: draft?.body ?? campaign.body,
     });
     if (error) {
       setTemplateModal(m => ({ ...m, saving: false, error: error.message }));
     } else {
       setTemplateModal(m => ({ ...m, saving: false, saved: true }));
       setTimeout(() => setTemplateModal({ open: false, name: '', saving: false, error: null, saved: false }), 1500);
-    }
-  };
-
-  const openEdit = () => {
-    if (!campaign) return;
-    const c = campaign.campaign_search_criteria?.[0];
-    setEditDraft({
-      campaign_name: campaign.campaign_name,
-      subject: campaign.subject ?? '',
-      body: campaign.body,
-      forward_to: campaign.forward_to ?? '',
-      drip_delay_minutes: campaign.drip_delay_minutes ?? 2,
-      days_old: c?.days_old != null ? String(c.days_old) : '',
-      price_min: c?.price_min != null ? String(c.price_min) : '',
-      price_max: c?.price_max != null ? String(c.price_max) : '',
-      property_type: c?.property_type ?? 'Single Family',
-      city: c?.city ?? '',
-      state: c?.state ?? '',
-    });
-    setSaveError(null);
-    setIsEditing(true);
-  };
-
-  const insertVar = (v: string) => {
-    if (!editDraft) return;
-    const pos = cursorPos.current;
-    const newBody = editDraft.body.slice(0, pos) + v + editDraft.body.slice(pos);
-    const newPos = pos + v.length;
-    cursorPos.current = newPos;
-    setEditDraft(d => d ? { ...d, body: newBody } : d);
-    requestAnimationFrame(() => {
-      const ta = bodyRef.current;
-      if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
-    });
-  };
-
-  const handleSave = async () => {
-    if (!campaign || !editDraft || !campaignId) return;
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      const { error: campErr } = await supabase
-        .from('campaigns')
-        .update({
-          campaign_name: editDraft.campaign_name.trim(),
-          subject: editDraft.subject.trim() || null,
-          body: editDraft.body,
-          forward_to: editDraft.forward_to.trim() || null,
-          drip_delay_minutes: Number(editDraft.drip_delay_minutes) || 2,
-        })
-        .eq('id', campaignId);
-      if (campErr) throw new Error(campErr.message);
-
-      const { error: critErr } = await supabase
-        .from('campaign_search_criteria')
-        .update({
-          city: editDraft.city,
-          state: editDraft.state,
-          property_type: editDraft.property_type || null,
-          days_old: editDraft.days_old ? parseInt(editDraft.days_old, 10) : null,
-          price_min: editDraft.price_min ? parseInt(editDraft.price_min, 10) : null,
-          price_max: editDraft.price_max ? parseInt(editDraft.price_max, 10) : null,
-        })
-        .eq('campaign_id', campaignId);
-      if (critErr) throw new Error(critErr.message);
-
-      setIsEditing(false);
-      setIsLoading(true);
-      await loadCampaign(campaignId);
-    } catch (e: any) {
-      setSaveError(e.message ?? 'Save failed');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -391,6 +422,9 @@ export function V2Campaign() {
   const labelClass = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1';
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50';
 
+  // Shared classes for inline editable inputs in the overview rows
+  const rowInputClass = 'text-sm text-gray-900 dark:text-white font-medium text-right bg-transparent border border-transparent hover:border-gray-200 dark:hover:border-white/20 focus:border-[#FFCE0A] dark:focus:border-[#FFCE0A] rounded-md px-2 py-0.5 outline-none transition-colors';
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -408,18 +442,40 @@ export function V2Campaign() {
 
         {/* Page header */}
         <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-              {campaign.campaign_name}
-            </h2>
+          <div className="flex-1 min-w-0 mr-4">
+            {/* Editable campaign name */}
+            <div className="group flex items-center gap-2 mb-1">
+              <input
+                value={draft?.campaign_name ?? campaign.campaign_name}
+                onChange={e => updateText({ campaign_name: e.target.value })}
+                className="text-2xl font-bold text-gray-900 dark:text-white bg-transparent border-b-2 border-transparent focus:border-[#FFCE0A] outline-none transition-colors w-full min-w-0"
+              />
+              <Pencil className="w-4 h-4 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+            </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {criteria ? `${criteria.city}, ${criteria.state}` : '—'}
+              {draft?.city || criteria?.city || '—'}{draft?.state ? `, ${draft.state}` : criteria?.state ? `, ${criteria.state}` : ''}
               {campaign.channel === 'sms' ? ' · SMS' : ' · Email'}
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
-            <StatusToggle active={isActive} onChange={handleToggle} />
+          <div className="flex items-center gap-3 shrink-0 mt-1">
+            {/* Save status indicator */}
+            {saveStatus === 'saving' && (
+              <span className="text-xs text-gray-400 dark:text-gray-500 animate-pulse">Saving…</span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                <Check className="w-3 h-3" /> Saved
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="flex items-center gap-1 text-xs text-red-500">
+                <AlertCircle className="w-3 h-3" /> Save failed
+              </span>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
+              <StatusToggle active={isActive} onChange={handleToggle} />
+            </div>
           </div>
         </div>
 
@@ -441,68 +497,224 @@ export function V2Campaign() {
         {/* Main two-column container */}
         <div className="flex flex-col lg:flex-row gap-4 mb-8">
 
-          {/* Left: Campaign Overview + action buttons */}
+          {/* Left: Campaign Overview */}
           <div className="lg:w-[360px] shrink-0 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
             <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign Overview</div>
-            <div className="space-y-2">
-              {[
-                criteria && { label: 'Location', value: `${criteria.city}, ${criteria.state}` },
-                criteria?.listing_type && { label: 'Listing type', value: criteria.listing_type },
-                criteria?.property_type && { label: 'Property type', value: criteria.property_type },
-                criteria?.days_old != null && { label: 'Days listed', value: `${criteria.days_old} days` },
-                (criteria?.price_min || criteria?.price_max) && {
-                  label: 'Price range',
-                  value: `$${(criteria.price_min ?? 0).toLocaleString()} – $${(criteria.price_max ?? 0).toLocaleString()}`,
-                },
-                fromName != null && { label: 'From name', value: fromName || '—' },
-                fromEmail != null && { label: 'From email', value: fromEmail },
-                senderMailbox != null && { label: 'Sender mailbox', value: senderMailbox },
-                { label: 'Reply-to', value: campaign.forward_to || '—' },
-                { label: 'Created', value: formatDate(campaign.created_at) },
-              ].filter(Boolean).map((row: any) => (
-                <div key={row.label} className="flex justify-between py-1.5 border-b border-gray-100 dark:border-white/10">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{row.label}</span>
-                  <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{row.value}</span>
+            <div className="space-y-0 flex-1">
+
+              {/* City */}
+              {draft && (
+                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">City</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <input
+                      value={draft.city}
+                      onChange={e => updateText({ city: e.target.value })}
+                      placeholder="City"
+                      className={`${rowInputClass} w-28`}
+                    />
+                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                  </div>
                 </div>
-              ))}
+              )}
+
+              {/* State */}
+              {draft && (
+                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">State</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <input
+                      value={draft.state}
+                      onChange={e => updateText({ state: e.target.value })}
+                      placeholder="ST"
+                      maxLength={2}
+                      className={`${rowInputClass} w-14`}
+                    />
+                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                  </div>
+                </div>
+              )}
+
+              {/* Listing type — read-only */}
+              {criteria?.listing_type && (
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Listing type</span>
+                  <span className="text-sm text-gray-900 dark:text-white font-medium">{criteria.listing_type}</span>
+                </div>
+              )}
+
+              {/* Property type */}
+              {draft && (
+                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Property type</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <select
+                      value={draft.property_type}
+                      onChange={e => updateImmediate({ property_type: e.target.value })}
+                      className={`${rowInputClass} cursor-pointer`}
+                    >
+                      {PROPERTY_TYPES.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+                    </select>
+                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                  </div>
+                </div>
+              )}
+
+              {/* Days listed */}
+              {draft && (
+                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Days listed</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <input
+                      type="number"
+                      min="1"
+                      value={draft.days_old}
+                      onChange={e => updateText({ days_old: e.target.value })}
+                      placeholder="e.g. 1"
+                      className={`${rowInputClass} w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                    />
+                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                  </div>
+                </div>
+              )}
+
+              {/* Price range */}
+              {draft && (
+                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Price range</span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-xs text-gray-400">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={draft.price_min}
+                      onChange={e => updateText({ price_min: e.target.value })}
+                      placeholder="Min"
+                      className={`${rowInputClass} w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                    />
+                    <span className="text-xs text-gray-400">–</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={draft.price_max}
+                      onChange={e => updateText({ price_max: e.target.value })}
+                      placeholder="Max"
+                      className={`${rowInputClass} w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                    />
+                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                  </div>
+                </div>
+              )}
+
+              {/* From name — read-only */}
+              {fromName != null && (
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">From name</span>
+                  <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{fromName || '—'}</span>
+                </div>
+              )}
+
+              {/* From email — read-only */}
+              {fromEmail != null && (
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">From email</span>
+                  <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{fromEmail}</span>
+                </div>
+              )}
+
+              {/* Sender mailbox — read-only */}
+              {senderMailbox != null && (
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Sender mailbox</span>
+                  <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{senderMailbox}</span>
+                </div>
+              )}
+
+              {/* Reply-to */}
+              {draft && (
+                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Reply-to</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <input
+                      type="email"
+                      value={draft.forward_to}
+                      onChange={e => updateText({ forward_to: e.target.value })}
+                      placeholder="you@example.com"
+                      className={`${rowInputClass} w-40`}
+                    />
+                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                  </div>
+                </div>
+              )}
+
+              {/* Created — read-only */}
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Created</span>
+                <span className="text-sm text-gray-900 dark:text-white font-medium">{formatDate(campaign.created_at)}</span>
+              </div>
+
             </div>
+
+            {/* Save As Template button pushed to bottom */}
             <button
-              onClick={openEdit}
-              className="mt-auto w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
-            >
-              Edit Campaign
-            </button>
-            <button
-              onClick={() => setTemplateModal({ open: true, name: campaign.campaign_name, saving: false, error: null, saved: false })}
-              className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
+              onClick={() => setTemplateModal({ open: true, name: draft?.campaign_name ?? campaign.campaign_name, saving: false, error: null, saved: false })}
+              className="mt-4 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
             >
               Save As Template
             </button>
           </div>
 
-          {/* Right: Message details + send test email */}
+          {/* Right: Message details */}
           <div className="flex-1 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
             <div className="font-bold text-[#342e37] dark:text-white mb-3">Message Details</div>
-            {campaign.subject && (
+
+            {campaign.channel === 'email' && draft && (
               <div className="mb-3">
                 <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Subject</div>
                 <input
-                  readOnly
-                  value={campaign.subject}
+                  value={draft.subject}
+                  onChange={e => updateText({ subject: e.target.value })}
+                  placeholder="Email subject line"
                   className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
                 />
               </div>
             )}
+
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Body</div>
-            <div
-              tabIndex={0}
-              className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1 focus:outline-none focus:border-[#FFCE0A] transition-colors"
-            >
-              {campaign.body || '—'}
+
+            {/* Variable insertion chips */}
+            <div className="flex flex-wrap gap-1 mb-2">
+              {VARS.map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => insertVar(v)}
+                  className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-400/20 transition-colors font-mono"
+                >
+                  {v}
+                </button>
+              ))}
             </div>
+
+            {draft ? (
+              <textarea
+                ref={bodyRef}
+                value={draft.body}
+                onChange={e => updateText({ body: e.target.value })}
+                onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
+                onBlur={e => { cursorPos.current = e.target.selectionStart; }}
+                className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden flex-1"
+                style={{ minHeight: 140 }}
+              />
+            ) : (
+              <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
+                {campaign.body || '—'}
+              </div>
+            )}
+
             {campaign.channel === 'email' && (
               <button
-                onClick={() => setTestModal({ open: true, address: campaign.forward_to || '', sending: false, sent: false, error: null })}
+                onClick={() => setTestModal({ open: true, address: draft?.forward_to || campaign.forward_to || '', sending: false, sent: false, error: null })}
                 className="mt-2 w-full py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
               >
                 Send Test Email
@@ -609,173 +821,11 @@ export function V2Campaign() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Edit campaign modal                                                  */}
-      {/* ------------------------------------------------------------------ */}
-      {isEditing && editDraft && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={() => setIsEditing(false)}
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="relative w-full sm:max-w-lg bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-xl overflow-hidden"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-white/10">
-              <span className="font-semibold text-gray-900 dark:text-white">Edit campaign</span>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="px-5 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
-              <div>
-                <label className={labelClass}>Campaign name</label>
-                <input
-                  className={inputClass}
-                  value={editDraft.campaign_name}
-                  onChange={e => setEditDraft(d => d ? { ...d, campaign_name: toTitleCase(e.target.value) } : d)}
-                />
-              </div>
-
-              {campaign.channel === 'email' && (
-                <div>
-                  <label className={labelClass}>Subject line</label>
-                  <input
-                    className={inputClass}
-                    value={editDraft.subject}
-                    onChange={e => setEditDraft(d => d ? { ...d, subject: e.target.value } : d)}
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className={labelClass}>Message body</label>
-                <div className="flex flex-wrap gap-1 mb-1.5">
-                  {VARS.map(v => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => insertVar(v)}
-                      className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-400/20 transition-colors font-mono"
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  ref={bodyRef}
-                  className={`${inputClass} min-h-[120px] resize-y`}
-                  value={editDraft.body}
-                  onChange={e => setEditDraft(d => d ? { ...d, body: e.target.value } : d)}
-                  onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
-                  onBlur={e => { cursorPos.current = e.target.selectionStart; }}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Reply-to email</label>
-                <input
-                  className={inputClass}
-                  type="email"
-                  value={editDraft.forward_to}
-                  onChange={e => setEditDraft(d => d ? { ...d, forward_to: e.target.value } : d)}
-                />
-              </div>
-
-              <div>
-                <div className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Search criteria</div>
-                <div className="mb-3">
-                  <label className={labelClass}>City</label>
-                  <CityAutocomplete
-                    value={editDraft.city}
-                    stateValue={editDraft.state}
-                    onSelect={(city, state) => setEditDraft(d => d ? { ...d, city, state } : d)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelClass}>Property type</label>
-                    <select
-                      className={inputClass}
-                      value={editDraft.property_type}
-                      onChange={e => setEditDraft(d => d ? { ...d, property_type: e.target.value } : d)}
-                    >
-                      {PROPERTY_TYPES.map(pt => <option key={pt} value={pt}>{pt}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Days listed</label>
-                    <input
-                      className={inputClass}
-                      type="number"
-                      min="1"
-                      placeholder="e.g. 1"
-                      value={editDraft.days_old}
-                      onChange={e => setEditDraft(d => d ? { ...d, days_old: e.target.value } : d)}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Min price</label>
-                    <input
-                      className={inputClass}
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 200000"
-                      value={editDraft.price_min}
-                      onChange={e => setEditDraft(d => d ? { ...d, price_min: e.target.value } : d)}
-                    />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Max price</label>
-                    <input
-                      className={inputClass}
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 800000"
-                      value={editDraft.price_max}
-                      onChange={e => setEditDraft(d => d ? { ...d, price_max: e.target.value } : d)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {saveError && (
-                <div className="text-sm text-red-600 dark:text-red-400">{saveError}</div>
-              )}
-            </div>
-
-            <div className="px-5 py-4 border-t border-gray-100 dark:border-white/10 flex gap-2">
-              {campaign?.channel === 'email' && (
-                <button
-                  onClick={() => setTestModal({ open: true, address: editDraft?.forward_to || '', sending: false, sent: false, error: null })}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                >
-                  Send test
-                </button>
-              )}
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-[#342e37] transition-colors disabled:opacity-50"
-                style={{ background: '#FFCE0A' }}
-              >
-                {isSaving ? 'Saving…' : 'Save changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
       {/* Send test email modal                                                */}
       {/* ------------------------------------------------------------------ */}
       {testModal.open && (() => {
-        const fromName = formatSenderName(userContactName, userBusinessName);
-        const emailData = editDraft || { subject: campaign?.subject || '', body: campaign?.body || '', city: criteria?.city || '' };
+        const senderDisplayName = formatSenderName(userContactName, userBusinessName);
+        const emailData = draft || { subject: campaign?.subject || '', body: campaign?.body || '', city: criteria?.city || '' };
         const previewSubject = emailData.subject
           ? emailData.subject
               .replace(/\{\{agent_name\}\}/g, 'Sarah')
@@ -801,7 +851,6 @@ export function V2Campaign() {
           if (!testModal.address.trim()) return;
           setTestModal(m => ({ ...m, sending: true, error: null }));
           try {
-            // Ensure we have a valid session before calling the edge function
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
               throw new Error('Not authenticated. Please refresh the page and try again.');
@@ -812,7 +861,7 @@ export function V2Campaign() {
                 to: testModal.address.trim(),
                 subject: emailData.subject,
                 body: emailData.body,
-                from_name: fromName,
+                from_name: senderDisplayName,
                 user_id: userId
               },
             });
@@ -848,7 +897,7 @@ export function V2Campaign() {
                 <div className="space-y-1.5">
                   <div className="flex gap-2 text-xs">
                     <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">From</span>
-                    <span className="text-gray-700 dark:text-gray-300">{fromName} &lt;{FROM_EMAIL_DISPLAY}&gt;</span>
+                    <span className="text-gray-700 dark:text-gray-300">{senderDisplayName} &lt;{FROM_EMAIL_DISPLAY}&gt;</span>
                   </div>
                   <div className="flex gap-2 text-xs">
                     <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">Subject</span>
@@ -860,7 +909,7 @@ export function V2Campaign() {
                 <div className="rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] p-4">
                   <div
                     className="text-sm text-gray-900 dark:text-white leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: renderBodyPreview(emailData.body, emailData.city) }}
+                    dangerouslySetInnerHTML={{ __html: previewHtml }}
                   />
                 </div>
 
