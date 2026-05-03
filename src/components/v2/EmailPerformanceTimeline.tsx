@@ -137,31 +137,6 @@ function fmtLabel(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
-function buildTickerStrings(campaigns: TimelineCampaign[]): string[] {
-  const events: { t: number; text: string }[] = [];
-  for (const c of campaigns) {
-    for (const s of c.campaign_sends ?? []) {
-      if (s.sent_at && s.listing_address) {
-        const days = Math.floor((Date.now() - new Date(s.sent_at).getTime()) / 86_400_000);
-        const label = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days}d ago`;
-        events.push({ t: new Date(s.sent_at).getTime(), text: `Last send: ${label} · ${s.listing_address}` });
-      }
-      for (const r of s.campaign_replies ?? []) {
-        if (r.replied_at) {
-          events.push({ t: new Date(r.replied_at).getTime(), text: `Reply received on "${c.campaign_name}"` });
-        }
-      }
-    }
-  }
-  events.sort((a, b) => b.t - a.t);
-  const strings = events.slice(0, 5).map(e => e.text);
-  return strings.length > 0 ? strings : [
-    'Campaigns will run tonight — check back soon',
-    'Opens and replies tracked in real time',
-    'Create a campaign to start reaching agents',
-  ];
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -179,22 +154,6 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
 
-  // Ticker
-  const tickerStrings = buildTickerStrings(campaigns);
-  const [tickIdx, setTickIdx]     = useState(0);
-  const [tickShowing, setTickShowing] = useState(true);
-
-  useEffect(() => {
-    if (tickerStrings.length <= 1) return;
-    const id = setInterval(() => {
-      setTickShowing(false);
-      setTimeout(() => {
-        setTickIdx(i => (i + 1) % tickerStrings.length);
-        setTickShowing(true);
-      }, 600);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [tickerStrings.length]);
 
   // ---------------------------------------------------------------------------
   // Chart draw
@@ -435,8 +394,8 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
       {/* Card header */}
       <div className="flex items-start justify-between mb-3 gap-3">
         <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">Email performance timeline</p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">Performance</p>
+          <p className="hidden sm:block text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
             {subtitle ?? 'All campaigns'} · {RANGE_META[currentRange]}
           </p>
         </div>
@@ -487,7 +446,7 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
 
       {/* Chart canvas */}
       <div style={{ position: 'relative', width: '100%', height: 190 }}>
-        <canvas ref={canvasRef} role="img" aria-label="Email performance timeline chart" />
+        <canvas ref={canvasRef} role="img" aria-label="Performance chart" />
       </div>
 
       {/* Rates footer */}
@@ -511,28 +470,6 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
         </span>
       </div>
 
-      {/* Live ticker */}
-      <div
-        className="mt-2 pt-2 border-t border-gray-100 dark:border-white/10 overflow-hidden"
-        style={{ height: 20 }}
-      >
-        <div
-          className="flex items-center gap-1.5"
-          style={{
-            opacity: tickShowing ? 1 : 0,
-            transform: tickShowing ? 'translateY(0)' : 'translateY(6px)',
-            transition: 'opacity 0.6s ease, transform 0.6s ease',
-          }}
-        >
-          <span
-            className="flex-shrink-0 rounded-full"
-            style={{ width: 6, height: 6, background: '#FFCE0A' }}
-          />
-          <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
-            {tickerStrings[tickIdx]}
-          </span>
-        </div>
-      </div>
     </div>
   );
 }
