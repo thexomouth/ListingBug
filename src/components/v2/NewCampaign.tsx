@@ -1336,11 +1336,15 @@ export function NewCampaign() {
             </div>
             <div className="space-y-1.5">
               <div>
-                <div className="text-[10px] text-gray-400 dark:text-gray-500">From</div>
-                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">{businessInfo.business_name || '—'}</div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Sender Email</div>
+                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">{senderEmail || '—'}</div>
               </div>
               <div>
-                <div className="text-[10px] text-gray-400 dark:text-gray-500">Reply-to</div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">From Name</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{businessInfo.business_name || '—'}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Reply-To</div>
                 <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{businessInfo.forward_to || '—'}</div>
               </div>
               {businessInfo.mailing_address && (
