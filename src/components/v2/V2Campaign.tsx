@@ -82,6 +82,13 @@ const PROPERTY_TYPES = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', '
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
 const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 
+function senderLabel(s: { integration_id: string; from_email: string }): string {
+  const type = s.integration_id === 'gmail' ? 'Gmail'
+    : s.integration_id === 'outlook' ? 'Outlook'
+    : 'SMTP';
+  return `${type}: ${s.from_email}`;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -189,6 +196,7 @@ export function V2Campaign() {
   const [userBusinessName, setUserBusinessName] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [senderInfo, setSenderInfo] = useState<{ display_name: string; from_email: string; from_name?: string } | null>(null);
+  const [allSenders, setAllSenders] = useState<Array<{ id: string; integration_id: string; from_email: string; display_name: string }>>([]);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const cursorPos = useRef(0);
@@ -234,6 +242,12 @@ export function V2Campaign() {
             setUserBusinessName(data.business_name || null);
           }
         });
+      supabase
+        .from('integration_connections')
+        .select('id, integration_id, from_email, display_name')
+        .eq('user_id', user.id)
+        .eq('is_sender', true)
+        .then(({ data }) => { if (data) setAllSenders(data as any); });
     });
   }, []);
 
@@ -392,6 +406,12 @@ export function V2Campaign() {
     await supabase.from('campaigns').update({ status: newStatus }).eq('id', campaign.id);
     setCampaign(c => c ? { ...c, status: newStatus } : c);
     setIsToggling(false);
+  };
+
+  const handleSenderChange = async (senderId: string) => {
+    if (!campaignId) return;
+    await supabase.from('campaigns').update({ sender_id: senderId }).eq('id', campaignId);
+    setCampaign(c => c ? { ...c, sender_id: senderId } : c);
   };
 
   const handleDelete = async () => {
@@ -728,10 +748,25 @@ export function V2Campaign() {
                 </div>
               )}
 
-              {/* Sending mailbox — read-only */}
-              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-white/10">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Sending mailbox</span>
-                <span className="text-sm text-gray-900 dark:text-white font-medium text-right max-w-[60%] truncate">{senderMailbox || '—'}</span>
+              {/* Sending mailbox — editable dropdown */}
+              <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Sending mailbox</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {allSenders.length === 0 ? (
+                    <span className="text-sm text-gray-900 dark:text-white font-medium text-right truncate">{senderMailbox || '—'}</span>
+                  ) : (
+                    <select
+                      value={campaign.sender_id || ''}
+                      onChange={e => handleSenderChange(e.target.value)}
+                      className={`${rowInputClass} cursor-pointer`}
+                    >
+                      {allSenders.map(s => (
+                        <option key={s.id} value={s.id}>{senderLabel(s)}</option>
+                      ))}
+                    </select>
+                  )}
+                  <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                </div>
               </div>
 
               {/* Reply-to */}

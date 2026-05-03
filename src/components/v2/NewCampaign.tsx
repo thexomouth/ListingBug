@@ -90,6 +90,13 @@ function toTitleCase(str: string): string {
   return str.replace(/\b\w+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
+function senderLabel(s: { integration_id: string; from_email: string }): string {
+  const type = s.integration_id === 'gmail' ? 'Gmail'
+    : s.integration_id === 'outlook' ? 'Outlook'
+    : 'SMTP';
+  return `${type}: ${s.from_email}`;
+}
+
 function renderBodyPreview(text: string, city: string): string {
   let s = interpolatePreview(text, city);
   // HTML-escape
@@ -275,7 +282,7 @@ export function NewCampaign() {
       }
     }
     if (s === 1) {
-      if (!businessInfo.business_name.trim()) errors.business_name = 'Business name is required';
+      if (!businessInfo.business_name.trim()) errors.business_name = 'From Name is required';
       if (!businessInfo.forward_to.trim()) errors.forward_to = 'Reply-to email is required';
       if (!businessInfo.mailing_address.trim()) errors.mailing_address = 'Mailing address is required (CAN-SPAM compliance)';
     }
@@ -520,7 +527,6 @@ export function NewCampaign() {
         .single();
       if (data) {
         setSenders(prev => [...prev, data]);
-        setSelectedSender(connectionId);
       }
     };
     loadNewSender();
@@ -587,17 +593,21 @@ export function NewCampaign() {
   );
 
   const renderMailboxStep = () => {
-    const gmailSenders = senders.filter(s => s.integration_id === 'gmail');
-    const outlookSenders = senders.filter(s => s.integration_id === 'outlook');
-    const smtpSenders = senders.filter(s => s.integration_id === 'smtp');
+    const gmailSender = senders.find(s => s.integration_id === 'gmail') ?? null;
+    const outlookSender = senders.find(s => s.integration_id === 'outlook') ?? null;
+    const smtpSender = senders.find(s => s.integration_id === 'smtp') ?? null;
+
+    const isGmailSelected = !!gmailSender && selectedSender === gmailSender.id;
+    const isOutlookSelected = !!outlookSender && selectedSender === outlookSender.id;
+    const isSmtpSelected = !!smtpSender && selectedSender === smtpSender.id;
 
     return (
       <div className="mb-2">
-        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Connect your email accounts</div>
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Which mailbox would you like to use?</div>
         <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-          {senders.length > 0
-            ? 'You can connect multiple accounts. Select which one to use for this campaign below.'
-            : 'Connect at least one email account to send emails to listing agents. You can connect multiple accounts.'}
+          {senders.length === 0
+            ? 'Connect an email account to send emails to listing agents.'
+            : 'Connected accounts show a checkmark — click one to select it for this campaign.'}
         </div>
 
         {stepErrors.sender && (
@@ -610,49 +620,55 @@ export function NewCampaign() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <button
             type="button"
-            onClick={handleGmailConnect}
+            onClick={gmailSender ? () => setSelectedSender(gmailSender.id) : handleGmailConnect}
             className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
-            style={gmailSenders.length > 0
-              ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-              : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }}
+            style={
+              isGmailSelected
+                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
+                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
+            }
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
                 <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Gmail</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {gmailSenders.length > 0
-                    ? `${gmailSenders.length} account${gmailSenders.length > 1 ? 's' : ''} connected`
-                    : 'Send via Google OAuth'}
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {gmailSender ? gmailSender.from_email : 'Send via Google OAuth'}
                 </div>
+                {gmailSender && !isGmailSelected && (
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Click to select</div>
+                )}
               </div>
-              {gmailSenders.length > 0 && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+              {gmailSender && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />}
             </div>
           </button>
 
           <button
             type="button"
-            onClick={handleOutlookConnect}
+            onClick={outlookSender ? () => setSelectedSender(outlookSender.id) : handleOutlookConnect}
             className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
-            style={outlookSenders.length > 0
-              ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-              : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }}
+            style={
+              isOutlookSelected
+                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
+                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
+            }
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
                 <Mail className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Outlook</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {outlookSenders.length > 0
-                    ? `${outlookSenders.length} account${outlookSenders.length > 1 ? 's' : ''} connected`
-                    : 'Send via Microsoft OAuth'}
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {outlookSender ? outlookSender.from_email : 'Send via Microsoft OAuth'}
                 </div>
+                {outlookSender && !isOutlookSelected && (
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Click to select</div>
+                )}
               </div>
-              {outlookSenders.length > 0 && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+              {outlookSender && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />}
             </div>
           </button>
         </div>
@@ -661,59 +677,33 @@ export function NewCampaign() {
         <div className="mb-5">
           <button
             type="button"
-            onClick={() => setSMTPModalOpen(true)}
-            className={`w-full group relative p-4 rounded-lg border-2 transition-all text-left ${
-              smtpSenders.length > 0
-                ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                : 'border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] bg-white dark:bg-[#1a1a1a]'
+            onClick={smtpSender ? () => setSelectedSender(smtpSender.id) : () => setSMTPModalOpen(true)}
+            className={`w-full group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm ${
+              !isSmtpSelected ? 'bg-white dark:bg-[#1a1a1a]' : ''
             }`}
+            style={
+              isSmtpSelected
+                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
+                : { borderColor: smtpSender ? 'rgb(229 231 235)' : undefined }
+            }
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
                 <Server className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="font-medium text-gray-900 dark:text-white mb-1">Custom SMTP</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {smtpSenders.length > 0
-                    ? `${smtpSenders.length} account${smtpSenders.length > 1 ? 's' : ''} connected`
-                    : 'Use your own mail server (SendGrid, Mailchimp, or any SMTP provider)'}
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {smtpSender ? smtpSender.from_email : 'Use your own mail server (SendGrid, Mailchimp, or any SMTP provider)'}
                 </div>
+                {smtpSender && !isSmtpSelected && (
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Click to select</div>
+                )}
               </div>
-              {smtpSenders.length > 0 && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />}
+              {smtpSender && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />}
             </div>
           </button>
         </div>
-
-        {/* Mailbox selector */}
-        {senders.length > 0 && (
-          <div className="mb-5">
-            <label className="text-sm font-medium text-gray-900 dark:text-white mb-2 block">
-              Which mailbox would you like to use for this campaign?
-            </label>
-            <select
-              value={selectedSender || ''}
-              onChange={e => setSelectedSender(e.target.value || null)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFCE0A]"
-            >
-              <option value="">Select a mailbox…</option>
-              {senders.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.display_name} ({s.from_email})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {senders.length > 0 && selectedSender && (
-          <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-700 dark:text-green-300">
-              <strong>✓ Ready:</strong> Emails will be sent from {senders.find(s => s.id === selectedSender)?.from_email}.
-              You can connect additional accounts or change this in Settings.
-            </p>
-          </div>
-        )}
       </div>
     );
   };
@@ -725,8 +715,7 @@ export function NewCampaign() {
 
       <div className="space-y-2 mb-5">
         {[
-          { label: 'Business', value: businessInfo.business_name },
-          { label: 'Your name', value: businessInfo.contact_name || '—' },
+          { label: 'From Name', value: businessInfo.business_name },
           { label: 'Reply-to', value: businessInfo.forward_to },
           { label: 'Mailing address', value: businessInfo.mailing_address || '—' },
           { label: 'Services', value: businessInfo.service_type.length ? businessInfo.service_type.join(', ') : '—' },
@@ -764,20 +753,13 @@ export function NewCampaign() {
       </div>
       <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">This appears in emails sent on your behalf</div>
 
-      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Business name</label>
+      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">From Name</label>
       <Input
         value={businessInfo.business_name}
         onChange={e => setBusinessInfo(b => ({ ...b, business_name: e.target.value }))}
-        placeholder="e.g. Denver Summit Roofing"
+        placeholder="e.g. Mike Thornton, Sandbox Realty"
       />
       {stepErrors.business_name && <p className="text-xs text-red-500 mt-1">{stepErrors.business_name}</p>}
-
-      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Your name</label>
-      <Input
-        value={businessInfo.contact_name}
-        onChange={e => setBusinessInfo(b => ({ ...b, contact_name: e.target.value }))}
-        placeholder="e.g. Mike Thornton"
-      />
 
       <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Reply-to email</label>
       <Input
@@ -1253,39 +1235,144 @@ export function NewCampaign() {
       );
     }
 
-    // Pre-submission summary
+    const fromName = businessInfo.business_name || 'Your Name';
+    const senderEmail = senders.find(s => s.id === selectedSender)?.from_email;
+    const previewSubject = messageInfo.subject
+      ? messageInfo.subject
+          .replace(/\{\{agent_name\}\}/g, 'Sarah')
+          .replace(/\{\{address\}\}/g, '1842 Maple St')
+          .replace(/\{\{city\}\}/g, searchCriteria.city || 'your city')
+          .replace(/\{\{price\}\}/g, '$485,000')
+          .replace(/\{\{listing_date\}\}/g, 'today')
+      : '(no subject)';
+    const priceRange = (searchCriteria.price_min || searchCriteria.price_max)
+      ? `$${(searchCriteria.price_min ?? 0).toLocaleString()} – $${(searchCriteria.price_max ?? 0).toLocaleString()}`
+      : 'Any';
     const daysNum = typeof searchCriteria.days_old === 'string'
       ? parseInt(searchCriteria.days_old, 10) || 1
       : searchCriteria.days_old;
     const ybSummary = searchCriteria.year_built_min || searchCriteria.year_built_max
       ? `${searchCriteria.year_built_min ?? '?'}–${searchCriteria.year_built_max ?? '?'}`
-      : '—';
+      : null;
+
+    const goToStep = (s: number) => { setStepErrors({}); setStep(s); };
 
     return (
       <div className="mb-2">
         <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Review and go live</div>
-        <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-          ListingBug will start watching {searchCriteria.city}, {searchCriteria.state} and email matching agents daily.
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Here's what agents in {searchCriteria.city || 'your city'} will receive.
         </div>
 
-        <div className="space-y-2 mb-5">
-          {[
-            { label: 'Business', value: businessInfo.business_name },
-            { label: 'Reply-to', value: businessInfo.forward_to },
-            { label: 'Mailing address', value: businessInfo.mailing_address || '—' },
-            { label: 'Location', value: `${searchCriteria.city}, ${searchCriteria.state}` },
-            { label: 'Property type', value: searchCriteria.property_type },
-            { label: 'Days listed', value: String(daysNum) },
-            { label: 'Price range', value: (searchCriteria.price_min || searchCriteria.price_max) ? `$${(searchCriteria.price_min ?? 0).toLocaleString()} – $${(searchCriteria.price_max ?? 0).toLocaleString()}` : 'Any' },
-            { label: 'Year built', value: ybSummary },
-            { label: 'Campaign', value: searchCriteria.city ? `${searchCriteria.city} - ${messageInfo.campaign_name}` : messageInfo.campaign_name },
-            { label: 'Channel', value: messageInfo.channel === 'email' ? 'Email' : 'SMS' },
-          ].map(row => (
-            <div key={row.label} className="flex justify-between py-2 border-b border-gray-100 dark:border-white/10">
-              <span className="text-sm text-gray-600 dark:text-gray-400">{row.label}</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{row.value || '—'}</span>
+        {/* Inbox mockup */}
+        <div className="mb-4 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
+            <span className="ml-2 text-[11px] text-gray-400 dark:text-gray-500">Inbox — listing agent's view</span>
+          </div>
+          <div className="px-4 py-3 bg-blue-50/60 dark:bg-blue-950/20 border-b border-gray-100 dark:border-white/10 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
+              {fromName.charAt(0).toUpperCase()}
             </div>
-          ))}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{fromName}</span>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
+              </div>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{previewSubject}</div>
+              {senderEmail && <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senderEmail}</div>}
+            </div>
+          </div>
+          <div className="px-4 py-3 bg-white dark:bg-[#1a1a1a] max-h-28 overflow-hidden relative">
+            <div
+              className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+            />
+            <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-white dark:from-[#1a1a1a] to-transparent pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Summary cards */}
+        <div className="grid grid-cols-3 gap-2.5 mb-4">
+          {/* Mailbox */}
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Mailbox</span>
+              <button type="button" onClick={() => goToStep(1)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+            </div>
+            <div className="space-y-1.5">
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">From</div>
+                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">{businessInfo.business_name || '—'}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Reply-to</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{businessInfo.forward_to || '—'}</div>
+              </div>
+              {businessInfo.mailing_address && (
+                <div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Address</div>
+                  <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{businessInfo.mailing_address}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Listings */}
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Listings</span>
+              <button type="button" onClick={() => goToStep(2)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+            </div>
+            <div className="space-y-1.5">
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Location</div>
+                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                  {searchCriteria.city || '—'}{searchCriteria.state ? `, ${searchCriteria.state}` : ''}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Type</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{searchCriteria.property_type}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Price</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{priceRange}</div>
+              </div>
+              {ybSummary && (
+                <div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Year built</div>
+                  <div className="text-xs text-gray-700 dark:text-gray-300">{ybSummary}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Message */}
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Message</span>
+              <button type="button" onClick={() => goToStep(3)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+            </div>
+            <div className="space-y-1.5">
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Campaign</div>
+                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">{messageInfo.campaign_name || '—'}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Channel</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 capitalize">{messageInfo.channel}</div>
+              </div>
+              {messageInfo.channel === 'email' && messageInfo.subject && (
+                <div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Subject</div>
+                  <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{messageInfo.subject}</div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {submitError && (
