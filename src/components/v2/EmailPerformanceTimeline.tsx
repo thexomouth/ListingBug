@@ -394,7 +394,7 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
       {/* Card header */}
       <div className="flex items-start justify-between mb-3 gap-3">
         <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">Performance</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">Performance</p>
           <p className="hidden sm:block text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
             {subtitle ?? 'All campaigns'} · {RANGE_META[currentRange]}
           </p>

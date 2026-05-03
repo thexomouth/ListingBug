@@ -439,15 +439,6 @@ export function V2Dashboard() {
         </div>
 
         {/* ---------------------------------------------------------------- */}
-        {/* Email performance timeline                                        */}
-        {/* ---------------------------------------------------------------- */}
-        <EmailPerformanceTimeline
-          campaigns={campaigns}
-          currentRange={currentRange}
-          onRangeChange={handleRangeChange}
-        />
-
-        {/* ---------------------------------------------------------------- */}
         {/* Campaign list                                                      */}
         {/* ---------------------------------------------------------------- */}
         <div className="bg-gray-100 dark:bg-transparent mt-8 p-6">
@@ -552,6 +543,15 @@ export function V2Dashboard() {
             + New Campaign
           </a>
         </div>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Email performance timeline                                        */}
+        {/* ---------------------------------------------------------------- */}
+        <EmailPerformanceTimeline
+          campaigns={campaigns}
+          currentRange={currentRange}
+          onRangeChange={handleRangeChange}
+        />
 
         {/* ---------------------------------------------------------------- */}
         {/* Account Usage — moved below campaigns                             */}
