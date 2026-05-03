@@ -148,9 +148,10 @@ serve(async () => {
       if (sender?.integration_id === 'gmail') {
         try {
           const { data, error } = await supabase.functions.invoke('send-via-gmail', {
-            body: { emailQueueId: row.id, senderId: sender.id },
+            body: { emailQueueId: row.id },
           });
           if (error) throw error;
+          if (data?.ok === false) throw new Error(data?.error || 'Gmail send failed');
           result = { ok: true, messageId: data?.messageId || null };
         } catch (err: any) {
           result = { ok: false, messageId: null, error: err.message };
@@ -158,15 +159,27 @@ serve(async () => {
       } else if (sender?.integration_id === 'outlook') {
         try {
           const { data, error } = await supabase.functions.invoke('send-via-outlook', {
-            body: { emailQueueId: row.id, senderId: sender.id },
+            body: { emailQueueId: row.id },
           });
           if (error) throw error;
+          if (data?.ok === false) throw new Error(data?.error || 'Outlook send failed');
+          result = { ok: true, messageId: data?.messageId || null };
+        } catch (err: any) {
+          result = { ok: false, messageId: null, error: err.message };
+        }
+      } else if (sender?.integration_id === 'smtp') {
+        try {
+          const { data, error } = await supabase.functions.invoke('send-via-smtp', {
+            body: { emailQueueId: row.id },
+          });
+          if (error) throw error;
+          if (data?.ok === false) throw new Error(data?.error || 'SMTP send failed');
           result = { ok: true, messageId: data?.messageId || null };
         } catch (err: any) {
           result = { ok: false, messageId: null, error: err.message };
         }
       } else {
-        // Fallback to Resend (shared mailbox)
+        // No connected sender — fall back to shared Resend mailbox
         result = await sendEmail({
           toEmail:  row.to_email,
           fromName: row.from_name,

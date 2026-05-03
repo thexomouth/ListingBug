@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Gmail API refresh function
 async function refreshGmailToken(refreshToken: string) {
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -18,17 +17,9 @@ async function refreshGmailToken(refreshToken: string) {
       grant_type: 'refresh_token',
     }),
   });
-
-  if (!response.ok) {
-    throw new Error('GMAIL_REFRESH_FAILED');
-  }
-
+  if (!response.ok) throw new Error('GMAIL_REFRESH_FAILED');
   const data = await response.json();
-  return {
-    access_token: data.access_token,
-    expires_in: data.expires_in,
-    // Gmail does NOT return new refresh_token
-  };
+  return { access_token: data.access_token, expires_in: data.expires_in };
 }
 
 Deno.serve(async (req: Request) => {
@@ -40,44 +31,39 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { emailQueueId, senderId } = await req.json();
+    const { emailQueueId } = await req.json();
 
-    // Fetch email queue item and sender
-    const { data: email } = await supabase
+    const { data: email, error: fetchErr } = await supabase
       .from('email_queue')
       .select('*, sender:integration_connections!sender_id(*)')
       .eq('id', emailQueueId)
       .single();
 
-    if (!email?.sender) {
-      throw new Error('Sender not found');
-    }
+    if (fetchErr || !email?.sender) throw new Error('Email queue item or sender not found');
 
-    // Get valid access token (auto-refreshes if needed)
-    const accessToken = await getValidAccessToken(
-      email.sender,
-      supabase,
-      refreshGmailToken
-    );
+    const accessToken = await getValidAccessToken(email.sender, supabase, refreshGmailToken);
 
-    // Build RFC 2822 email message
-    const message = [
+    // Sending email is the OAuth account's address
+    const fromEmail: string = email.sender.sending_email || email.sender.from_email || '';
+    const fromName: string = email.from_name || email.sender.from_name || fromEmail;
+
+    const headers = [
       `To: ${email.to_email}`,
-      `From: ${email.from_name} <${email.from_email}>`,
+      `From: ${fromName} <${fromEmail}>`,
       `Subject: ${email.subject}`,
+      ...(email.reply_to ? [`Reply-To: ${email.reply_to}`] : []),
       'MIME-Version: 1.0',
       'Content-Type: text/html; charset=utf-8',
-      '',
-      email.body,
-    ].join('\r\n');
+    ];
 
-    // Base64url encode
-    const encodedMessage = btoa(message)
+    const message = [...headers, '', email.body_html ?? ''].join('\r\n');
+
+    // btoa with unicode safety
+    const encodedMessage = btoa(unescape(encodeURIComponent(message)))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
 
-    // Send via Gmail API
     const sendResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: {
@@ -92,13 +78,16 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Gmail API error: ${error}`);
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    const result = await sendResponse.json().catch(() => ({}));
+    console.log(`[send-via-gmail] Sent to ${email.to_email} — id: ${result.id}`);
+
+    return new Response(JSON.stringify({ ok: true, messageId: result.id ?? null }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (err: any) {
-    console.error('[send-via-gmail] Error:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('[send-via-gmail] Error:', err.message);
+    return new Response(JSON.stringify({ ok: false, error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
