@@ -51,6 +51,7 @@ interface Campaign {
   status: string;
   channel: string;
   subject: string | null;
+  preview_text: string | null;
   body: string;
   forward_to: string | null;
   drip_delay_minutes: number;
@@ -65,6 +66,7 @@ interface Campaign {
 interface Draft {
   campaign_name: string;
   subject: string;
+  preview_text: string;
   body: string;
   forward_to: string;
   drip_delay_minutes: number;
@@ -206,7 +208,7 @@ export function V2Campaign() {
     supabase
       .from('campaigns')
       .select(`
-        id, campaign_name, status, channel, subject, body, forward_to,
+        id, campaign_name, status, channel, subject, preview_text, body, forward_to,
         drip_delay_minutes, sender_id, created_at,
         campaign_search_criteria (
           city, state, listing_type, property_type, days_old, price_min, price_max
@@ -259,6 +261,7 @@ export function V2Campaign() {
     setDraft({
       campaign_name: campaign.campaign_name,
       subject: campaign.subject ?? '',
+      preview_text: campaign.preview_text ?? '',
       body: campaign.body,
       forward_to: campaign.forward_to ?? '',
       drip_delay_minutes: campaign.drip_delay_minutes ?? 2,
@@ -331,6 +334,7 @@ export function V2Campaign() {
         .update({
           campaign_name: d.campaign_name.trim(),
           subject: d.subject.trim() || null,
+          preview_text: d.preview_text.trim() || null,
           body: d.body,
           forward_to: d.forward_to.trim() || null,
           drip_delay_minutes: Number(d.drip_delay_minutes) || 2,
@@ -355,6 +359,7 @@ export function V2Campaign() {
         ...c,
         campaign_name: d.campaign_name.trim(),
         subject: d.subject.trim() || null,
+        preview_text: d.preview_text.trim() || null,
         body: d.body,
         forward_to: d.forward_to.trim() || null,
         drip_delay_minutes: Number(d.drip_delay_minutes) || 2,
@@ -813,15 +818,26 @@ export function V2Campaign() {
             <div className="font-bold text-[#342e37] dark:text-white mb-3">Message Details</div>
 
             {campaign.channel === 'email' && draft && (
-              <div className="mb-3">
-                <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Subject</div>
-                <input
-                  value={draft.subject}
-                  onChange={e => updateText({ subject: e.target.value })}
-                  placeholder="Email subject line"
-                  className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
-                />
-              </div>
+              <>
+                <div className="mb-3">
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Subject</div>
+                  <input
+                    value={draft.subject}
+                    onChange={e => updateText({ subject: e.target.value })}
+                    placeholder="Email subject line"
+                    className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
+                  />
+                </div>
+                <div className="mb-3">
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Preview text <span className="text-gray-300 dark:text-gray-600">(shown after subject in inbox)</span></div>
+                  <input
+                    value={draft.preview_text}
+                    onChange={e => updateText({ preview_text: e.target.value })}
+                    placeholder="Short teaser shown in inbox..."
+                    className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
+                  />
+                </div>
+              </>
             )}
 
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Body</div>

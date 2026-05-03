@@ -43,6 +43,7 @@ interface MessageInfo {
   channel: string;
   subject: string;
   body: string;
+  preview_text: string;
 }
 
 interface SmsConfig {
@@ -139,6 +140,7 @@ export function NewCampaign() {
     channel: 'email',
     subject: '',
     body: '',
+    preview_text: '',
   });
   const [smsConfig, setSmsConfig] = useState<SmsConfig>({
     twilio_from_number: '',
@@ -422,6 +424,7 @@ export function NewCampaign() {
           sender_id: selectedSender,  // User-selected sending identity
           subject: messageInfo.subject,
           body: messageInfo.body,
+          preview_text: messageInfo.preview_text || null,
           forward_to: businessInfo.forward_to,
           drip_delay_minutes: 2,
         })
@@ -1029,6 +1032,14 @@ export function NewCampaign() {
             placeholder="e.g. Roof certification for {{address}}"
           />
           {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">
+            Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span>
+          </label>
+          <Input
+            value={messageInfo.preview_text}
+            onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))}
+            placeholder="e.g. I'd love to help with the listing at {{address}}..."
+          />
         </>
       )}
 
@@ -1165,17 +1176,34 @@ export function NewCampaign() {
         </div>
       )}
 
-      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">
-        Preview <span className="text-xs text-gray-400 dark:text-gray-500">(how it looks to the agent)</span>
-      </label>
-      {messageInfo.body ? (
-        <div
-          className="rounded-lg p-4 text-sm text-gray-900 dark:text-white leading-relaxed min-h-[80px] bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10"
-          dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
-        />
-      ) : (
-        <div className="rounded-lg p-4 text-sm leading-relaxed min-h-[80px] bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
-          <span className="text-gray-400 dark:text-gray-500">Your message preview will appear here...</span>
+      {messageInfo.channel === 'email' && (
+        <div className="mt-3.5">
+          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Inbox preview</label>
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
+              {(businessInfo.business_name || 'Y').charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{businessInfo.business_name || 'Your Name'}</span>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
+              </div>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                {messageInfo.subject
+                  ? messageInfo.subject
+                      .replace(/\{\{agent_name\}\}/g, 'Sarah')
+                      .replace(/\{\{address\}\}/g, '1842 Maple St')
+                      .replace(/\{\{city\}\}/g, searchCriteria.city || 'your city')
+                      .replace(/\{\{price\}\}/g, '$485,000')
+                      .replace(/\{\{listing_date\}\}/g, 'today')
+                  : <span className="text-gray-400 dark:text-gray-500 font-normal italic">No subject yet...</span>
+                }
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {messageInfo.preview_text || <span className="italic text-gray-300 dark:text-gray-600">Preview text will appear here...</span>}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1281,7 +1309,10 @@ export function NewCampaign() {
                 <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
               </div>
               <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{previewSubject}</div>
-              {senderEmail && <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senderEmail}</div>}
+              {messageInfo.preview_text
+                ? <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{messageInfo.preview_text}</div>
+                : senderEmail && <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senderEmail}</div>
+              }
             </div>
           </div>
           <div className="px-4 py-3 bg-white dark:bg-[#1a1a1a] max-h-28 overflow-hidden relative">
