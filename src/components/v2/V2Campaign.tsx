@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { formatSenderName } from '../../lib/senderName';
 import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer } from 'lucide-react';
@@ -892,8 +893,8 @@ export function V2Campaign() {
               <thead className="bg-white dark:bg-[#2F2F2F] border-b border-gray-200 dark:border-white/10">
                 <tr>
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agent</th>
-                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listing</th>
-                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</th>
+                  <th className="hidden sm:table-cell h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listing</th>
+                  <th className="hidden sm:table-cell h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</th>
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
                   <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Activity</th>
                 </tr>
@@ -916,10 +917,10 @@ export function V2Campaign() {
                           <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{send.agent_email}</div>
                         )}
                       </td>
-                      <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150 text-gray-700 dark:text-gray-300">
+                      <td className="hidden sm:table-cell py-3 px-3 group-hover:py-4 transition-[padding] duration-150 text-gray-700 dark:text-gray-300">
                         {send.listing_address || '—'}
                       </td>
-                      <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      <td className="hidden sm:table-cell py-3 px-3 group-hover:py-4 transition-[padding] duration-150 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                         {send.listing_price != null ? `$${send.listing_price.toLocaleString()}` : '—'}
                       </td>
                       <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150">
@@ -1023,7 +1024,7 @@ export function V2Campaign() {
           }
         };
 
-        return (
+        return createPortal(
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center"
             onClick={() => setTestModal(m => ({ ...m, open: false }))}
@@ -1117,7 +1118,7 @@ export function V2Campaign() {
               </div>
             </div>
           </div>
-        );
+        , document.body);
       })()}
 
       {/* ------------------------------------------------------------------ */}
@@ -1141,7 +1142,7 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {/* Save as template modal                                               */}
       {/* ------------------------------------------------------------------ */}
-      {templateModal.open && (
+      {templateModal.open && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           onClick={() => setTemplateModal(m => ({ ...m, open: false }))}
@@ -1181,7 +1182,7 @@ export function V2Campaign() {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

@@ -55,7 +55,6 @@ interface SmsConfig {
 // ---------------------------------------------------------------------------
 const SERVICE_TAGS = ['Roofing', 'Staging', 'Cleaning', 'Landscaping', 'Contracting', 'Photography', 'Inspection'];
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
-const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 
 const STEPS = [
   { label: 'Which mailbox', short: 'Mailbox' },
@@ -1478,6 +1477,7 @@ export function NewCampaign() {
       {/* Test email modal */}
       {testModal.open && (() => {
         const fromName = formatSenderName(businessInfo.contact_name, businessInfo.business_name);
+        const senderEmail = senders.find(s => s.id === selectedSender)?.from_email ?? '';
         const previewSubject = messageInfo.subject
           ? messageInfo.subject
               .replace(/\{\{agent_name\}\}/g, 'Sarah')
@@ -1504,7 +1504,7 @@ export function NewCampaign() {
           setTestModal(m => ({ ...m, sending: true, error: null }));
           try {
             const { error } = await supabase.functions.invoke('send-test-email', {
-              body: { to: testModal.address.trim(), subject: messageInfo.subject, body: messageInfo.body, from_name: fromName, user_id: userId },
+              body: { to: testModal.address.trim(), subject: messageInfo.subject, body: messageInfo.body, from_name: fromName, user_id: userId, sender_id: selectedSender },
             });
             if (error) throw new Error(error.message);
             setTestModal(m => ({ ...m, sending: false, sent: true }));
@@ -1538,7 +1538,7 @@ export function NewCampaign() {
                 <div className="space-y-1.5">
                   <div className="flex gap-2 text-xs">
                     <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">From</span>
-                    <span className="text-gray-700 dark:text-gray-300">{fromName} &lt;{FROM_EMAIL_DISPLAY}&gt;</span>
+                    <span className="text-gray-700 dark:text-gray-300">{fromName} &lt;{senderEmail}&gt;</span>
                   </div>
                   {messageInfo.channel === 'email' && (
                     <div className="flex gap-2 text-xs">

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Send, MessageSquare, Zap, Reply } from 'lucide-react';
+import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X } from 'lucide-react';
 import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
+import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
+import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,6 +116,13 @@ function StatusToggle({ active, onChange }: { active: boolean; onChange: (next: 
 // ---------------------------------------------------------------------------
 const PENDING_ONBOARDING_KEY = 'lb_pending_onboarding';
 
+interface ConnectionIssue {
+  connection_id: string;
+  provider: string;
+  email: string;
+  issue: 'needs_reauth' | 'token_refresh_failed';
+}
+
 export function V2Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [usageCount, setUsageCount] = useState(0);
@@ -121,6 +130,8 @@ export function V2Dashboard() {
   const [stripePeriodEnd, setStripePeriodEnd] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [connectionIssues, setConnectionIssues] = useState<ConnectionIssue[]>([]);
+  const [dismissedIssues, setDismissedIssues] = useState<Set<string>>(new Set());
 
   // Range state — shared between bubbles and timeline
   const [currentRange, setCurrentRange] = useState<RangeKey>(7);
@@ -307,6 +318,24 @@ export function V2Dashboard() {
     load();
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // OAuth health check — runs in background after data loads
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (isLoading) return;
+    const check = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-oauth-health');
+        if (!error && data && !data.healthy && Array.isArray(data.issues)) {
+          setConnectionIssues(data.issues);
+        }
+      } catch {
+        // Health check is best-effort — never block the dashboard
+      }
+    };
+    check();
+  }, [isLoading]);
+
   const navigate = (path: string) => { window.location.href = path; };
 
   const handleToggle = async (campaign: Campaign, next: boolean) => {
@@ -345,9 +374,66 @@ export function V2Dashboard() {
 
   const bubbleTransition = 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease';
 
+  const handleReconnect = async (provider: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const url = provider === 'gmail'
+        ? await buildGmailAuthUrl(user.id)
+        : await buildOutlookAuthUrl(user.id);
+      window.location.href = url;
+    } catch (err) {
+      console.error('[V2Dashboard] Reconnect failed:', err);
+    }
+  };
+
+  const visibleIssues = connectionIssues.filter(i => !dismissedIssues.has(i.connection_id));
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
+
+        {/* OAuth health banners */}
+        {visibleIssues.map(issue => (
+          <div
+            key={issue.connection_id}
+            className="flex items-start gap-3 mb-3 px-4 py-3 rounded-lg border border-amber-200 dark:border-amber-700/50 bg-amber-50 dark:bg-amber-900/20"
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                {issue.provider === 'smtp' ? 'SMTP connection' : issue.provider === 'gmail' ? 'Gmail' : 'Outlook'} needs to be reconnected
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                {issue.email} · Your campaigns won't send until this is fixed
+              </p>
+            </div>
+            {issue.provider !== 'smtp' && (
+              <button
+                onClick={() => handleReconnect(issue.provider)}
+                className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+                style={{ background: '#FFCE0A', color: '#342e37' }}
+              >
+                Reconnect
+              </button>
+            )}
+            {issue.provider === 'smtp' && (
+              <a
+                href="/v2/setup"
+                className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-md transition-colors no-underline"
+                style={{ background: '#FFCE0A', color: '#342e37' }}
+              >
+                Fix in Setup
+              </a>
+            )}
+            <button
+              onClick={() => setDismissedIssues(s => new Set([...s, issue.connection_id]))}
+              className="shrink-0 text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
 
         {/* Page header */}
         <div className="mb-4">
@@ -547,11 +633,13 @@ export function V2Dashboard() {
         {/* ---------------------------------------------------------------- */}
         {/* Email performance timeline                                        */}
         {/* ---------------------------------------------------------------- */}
-        <EmailPerformanceTimeline
-          campaigns={campaigns}
-          currentRange={currentRange}
-          onRangeChange={handleRangeChange}
-        />
+        <div className="mt-8">
+          <EmailPerformanceTimeline
+            campaigns={campaigns}
+            currentRange={currentRange}
+            onRangeChange={handleRangeChange}
+          />
+        </div>
 
         {/* ---------------------------------------------------------------- */}
         {/* Account Usage — moved below campaigns                             */}

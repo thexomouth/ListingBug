@@ -57,7 +57,6 @@ interface SmsConfig {
 // ---------------------------------------------------------------------------
 const SERVICE_TAGS = ['Roofing', 'Staging', 'Cleaning', 'Landscaping', 'Contracting', 'Photography', 'Inspection'];
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
-const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 
 // 6-step flow: Connect account + business info + search + message + review + create account
 const STEPS = [
@@ -644,10 +643,12 @@ export function V2Onboarding() {
   // ---------------------------------------------------------------------------
   // Render helpers
   // ---------------------------------------------------------------------------
+  const VISIBLE_STEPS = STEPS.slice(0, -1);
+
   const renderProgress = () => (
     <div className="flex gap-0">
-      {STEPS.map((s, i) => (
-        <div key={i} className="flex items-center" style={{ flex: i < STEPS.length - 1 ? '1' : 'none' }}>
+      {VISIBLE_STEPS.map((s, i) => (
+        <div key={i} className="flex items-center" style={{ flex: i < VISIBLE_STEPS.length - 1 ? '1' : 'none' }}>
           <div className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => handleStepClick(i)}>
             <div
               className="w-7 h-7 rounded-full border flex items-center justify-center text-xs font-medium transition-all"
@@ -665,7 +666,7 @@ export function V2Onboarding() {
               {s.short}
             </span>
           </div>
-          {i < STEPS.length - 1 && (
+          {i < VISIBLE_STEPS.length - 1 && (
             <div className="flex-1 h-px mx-2 mt-[-14px] bg-gray-200 dark:bg-white/10" />
           )}
         </div>
@@ -1482,6 +1483,7 @@ export function V2Onboarding() {
       {/* Test email modal (identical to NewCampaign) */}
       {testModal.open && (() => {
         const fromName = formatSenderName(businessInfo.contact_name, businessInfo.business_name);
+        const senderEmail = connectedSenders.find(s => s.id === selectedSenderId)?.email ?? '';
         const previewSubject = messageInfo.subject
           ? messageInfo.subject.replace(/\{\{agent_name\}\}/g, 'Sarah').replace(/\{\{address\}\}/g, '1842 Maple St').replace(/\{\{city\}\}/g, searchCriteria.city || 'your city').replace(/\{\{price\}\}/g, '$485,000').replace(/\{\{listing_date\}\}/g, 'today')
           : '(no subject)';
@@ -1491,7 +1493,7 @@ export function V2Onboarding() {
           setTestModal(m => ({ ...m, sending: true, error: null }));
           try {
             const { error } = await supabase.functions.invoke('send-test-email', {
-              body: { to: testModal.address.trim(), subject: messageInfo.subject, body: messageInfo.body, from_name: fromName },
+              body: { to: testModal.address.trim(), subject: messageInfo.subject, body: messageInfo.body, from_name: fromName, sender_id: selectedSenderId },
             });
             if (error) throw new Error(error.message);
             setTestModal(m => ({ ...m, sending: false, sent: true }));
@@ -1512,7 +1514,7 @@ export function V2Onboarding() {
                 <div className="space-y-1.5">
                   <div className="flex gap-2 text-xs">
                     <span className="text-gray-400 dark:text-gray-500 w-14 shrink-0">From</span>
-                    <span className="text-gray-700 dark:text-gray-300">{fromName} &lt;{FROM_EMAIL_DISPLAY}&gt;</span>
+                    <span className="text-gray-700 dark:text-gray-300">{fromName} &lt;{senderEmail}&gt;</span>
                   </div>
                   {messageInfo.channel === 'email' && (
                     <div className="flex gap-2 text-xs">
