@@ -544,7 +544,7 @@ export function V2Campaign() {
 
           {/* Sent */}
           <div
-            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -562,7 +562,7 @@ export function V2Campaign() {
 
           {/* Opens */}
           <div
-            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -580,7 +580,7 @@ export function V2Campaign() {
 
           {/* Replies */}
           <div
-            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -598,7 +598,7 @@ export function V2Campaign() {
 
           {/* Clicks */}
           <div
-            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
