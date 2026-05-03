@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X } from 'lucide-react';
+import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy } from 'lucide-react';
 import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
 import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
+import { CampaignSendModal } from './CampaignSendModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,7 +17,37 @@ interface CampaignSend {
   clicked_at: string | null;
   sent_at: string | null;
   listing_address: string | null;
+  listing_city: string | null;
+  listing_state: string | null;
+  listing_price: number | null;
+  listing_type: string | null;
+  listing_property_type: string | null;
+  listing_beds: number | null;
+  listing_baths: number | null;
+  listing_sqft: number | null;
+  listing_mls_number: string | null;
+  listing_brokerage: string | null;
+  agent_name: string | null;
+  agent_email: string | null;
+  agent_phone: string | null;
+  error_message: string | null;
   campaign_replies: { id: string; replied_at: string }[];
+}
+
+interface AgentSend {
+  send: CampaignSend & { agent_email: string; channel: string };
+  campaign: { campaign_name: string; channel: string; subject: string | null; body: string; city: string; state: string };
+}
+
+interface AgentRow {
+  key: string;
+  agentName: string;
+  agentEmail: string | null;
+  brokerage: string | null;
+  sent: number;
+  opens: number;
+  replies: number;
+  recentSends: AgentSend[];
 }
 
 interface CampaignSearchCriteria {
@@ -31,6 +62,7 @@ interface Campaign {
   campaign_name: string;
   status: string;
   channel: string;
+  subject: string | null;
   body: string;
   created_at: string;
   campaign_search_criteria: CampaignSearchCriteria[];
@@ -90,6 +122,54 @@ function getWindowSends(campaigns: Campaign[], days: RangeKey): CampaignSend[] {
   );
 }
 
+function buildLeaderboard(campaigns: Campaign[]): AgentRow[] {
+  const map = new Map<string, AgentRow>();
+  for (const campaign of campaigns) {
+    const criteria = campaign.campaign_search_criteria?.[0];
+    const campaignCtx = {
+      campaign_name: campaign.campaign_name,
+      channel: campaign.channel,
+      subject: campaign.subject ?? null,
+      body: campaign.body,
+      city: criteria?.city ?? '',
+      state: criteria?.state ?? '',
+    };
+    for (const s of (campaign.campaign_sends ?? [])) {
+      if (!s.agent_name && !s.agent_email) continue;
+      const key = s.agent_email || s.agent_name!;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          agentName: s.agent_name || s.agent_email!,
+          agentEmail: s.agent_email,
+          brokerage: s.listing_brokerage,
+          sent: 0, opens: 0, replies: 0,
+          recentSends: [],
+        });
+      }
+      const row = map.get(key)!;
+      const wasSent = s.status === 'sent' || s.status === 'opened' || s.status === 'replied';
+      if (wasSent) row.sent++;
+      if (s.opened_at) row.opens++;
+      row.replies += s.campaign_replies?.length ?? 0;
+      if (!row.brokerage && s.listing_brokerage) row.brokerage = s.listing_brokerage;
+      row.recentSends.push({
+        send: { ...s, agent_email: s.agent_email ?? '', channel: campaign.channel },
+        campaign: campaignCtx,
+      });
+    }
+  }
+  for (const row of map.values()) {
+    row.recentSends.sort((a, b) => {
+      const at = a.send.sent_at ? new Date(a.send.sent_at).getTime() : 0;
+      const bt = b.send.sent_at ? new Date(b.send.sent_at).getTime() : 0;
+      return bt - at;
+    });
+    row.recentSends = row.recentSends.slice(0, 6);
+  }
+  return Array.from(map.values()).sort((a, b) => b.sent - a.sent);
+}
+
 // ---------------------------------------------------------------------------
 // Toggle component
 // ---------------------------------------------------------------------------
@@ -132,6 +212,9 @@ export function V2Dashboard() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [connectionIssues, setConnectionIssues] = useState<ConnectionIssue[]>([]);
   const [dismissedIssues, setDismissedIssues] = useState<Set<string>>(new Set());
+  const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
+  const [expandedAgentKey, setExpandedAgentKey] = useState<string | null>(null);
+  const [selectedAgentSend, setSelectedAgentSend] = useState<AgentSend | null>(null);
 
   // Range state — shared between bubbles and timeline
   const [currentRange, setCurrentRange] = useState<RangeKey>(7);
@@ -283,10 +366,14 @@ export function V2Dashboard() {
       const { data: campaignData } = await supabase
         .from('campaigns')
         .select(`
-          id, campaign_name, status, channel, body, created_at,
+          id, campaign_name, status, channel, subject, body, created_at,
           campaign_search_criteria ( city, state, listing_type, property_type ),
           campaign_sends (
-            id, status, opened_at, clicked_at, sent_at, listing_address,
+            id, status, opened_at, clicked_at, sent_at, error_message,
+            listing_address, listing_city, listing_state, listing_price,
+            listing_type, listing_property_type, listing_beds, listing_baths,
+            listing_sqft, listing_mls_number, listing_brokerage,
+            agent_name, agent_email, agent_phone,
             campaign_replies ( id, replied_at )
           )
         `)
@@ -374,6 +461,9 @@ export function V2Dashboard() {
 
   const bubbleTransition = 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease';
 
+  const leaderboard = useMemo(() => buildLeaderboard(campaigns), [campaigns]);
+  const leaderboardVisible = leaderboardExpanded ? leaderboard : leaderboard.slice(0, 10);
+
   const handleReconnect = async (provider: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -390,6 +480,7 @@ export function V2Dashboard() {
   const visibleIssues = connectionIssues.filter(i => !dismissedIssues.has(i.connection_id));
 
   return (
+    <>
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6">
 
@@ -632,6 +723,132 @@ export function V2Dashboard() {
         </div>
 
         {/* ---------------------------------------------------------------- */}
+        {/* Agent Leaderboard                                                  */}
+        {/* ---------------------------------------------------------------- */}
+        {leaderboard.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Trophy className="w-5 h-5 text-[#342e37] dark:text-[#FFCE0A]" />
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Agent Leaderboard</h2>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {leaderboard.length} agent{leaderboard.length !== 1 ? 's' : ''} reached · ordered by messages sent
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden mb-2">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+                  <tr>
+                    <th className="h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide w-8">#</th>
+                    <th className="h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agent</th>
+                    <th className="hidden sm:table-cell h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Brokerage</th>
+                    <th className="h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sent</th>
+                    <th className="hidden sm:table-cell h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Opens</th>
+                    <th className="hidden sm:table-cell h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Replies</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboardVisible.map((agent, idx) => {
+                    const isExpanded = expandedAgentKey === agent.key;
+                    return (
+                      <React.Fragment key={agent.key}>
+                        <tr
+                          onClick={() => setExpandedAgentKey(isExpanded ? null : agent.key)}
+                          className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                        >
+                          <td className="py-2.5 px-3 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-medium text-gray-900 dark:text-white leading-tight truncate max-w-[160px]">
+                              {agent.agentName}
+                            </div>
+                            {agent.agentEmail && (
+                              <div className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[160px]">{agent.agentEmail}</div>
+                            )}
+                          </td>
+                          <td className="hidden sm:table-cell py-2.5 px-3 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
+                            {agent.brokerage || '—'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-semibold text-gray-900 dark:text-white tabular-nums">
+                            {agent.sent}
+                          </td>
+                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                            {agent.opens}
+                          </td>
+                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                            {agent.replies}
+                          </td>
+                        </tr>
+                        {isExpanded && agent.recentSends.length > 0 && (
+                          <tr key={`${agent.key}-expanded`} className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
+                            <td colSpan={6} className="px-3 py-3">
+                              <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-medium mb-2">Recent listings</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                {agent.recentSends.map((as) => {
+                                  const hasReply = (as.send.campaign_replies?.length ?? 0) > 0;
+                                  const statusColor = hasReply
+                                    ? { bg: '#dcfce7', color: '#15803d' }
+                                    : as.send.opened_at
+                                    ? { bg: '#dbeafe', color: '#1d4ed8' }
+                                    : as.send.status === 'sent'
+                                    ? { bg: '#f3f4f6', color: '#374151' }
+                                    : { bg: '#fef9c3', color: '#854d0e' };
+                                  const statusLabel = hasReply ? 'Replied' : as.send.opened_at ? 'Opened' : as.send.status === 'sent' ? 'Sent' : as.send.status;
+                                  return (
+                                    <button
+                                      key={as.send.id}
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setSelectedAgentSend(as); }}
+                                      className="text-left rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2F2F2F] px-3 py-2.5 hover:border-[#FFCE0A]/60 transition-colors"
+                                    >
+                                      <div className="flex items-start justify-between gap-2 mb-1">
+                                        <span className="text-xs font-medium text-gray-900 dark:text-white leading-tight truncate">
+                                          {as.send.listing_address || as.campaign.city || '—'}
+                                        </span>
+                                        <span
+                                          className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                          style={{ background: statusColor.bg, color: statusColor.color }}
+                                        >
+                                          {statusLabel}
+                                        </span>
+                                      </div>
+                                      <div className="text-[10px] text-gray-400 dark:text-gray-500">
+                                        {as.send.listing_price != null ? `$${as.send.listing_price.toLocaleString()}` : ''}
+                                        {as.send.listing_price && as.send.listing_property_type ? ' · ' : ''}
+                                        {as.send.listing_property_type || ''}
+                                        {as.send.sent_at ? ` · ${new Date(as.send.sent_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {leaderboard.length > 10 && (
+              <button
+                onClick={() => setLeaderboardExpanded(e => !e)}
+                className="w-full py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                {leaderboardExpanded ? 'Show less ↑' : `Show all ${leaderboard.length} agents ↓`}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ---------------------------------------------------------------- */}
         {/* Account Usage — moved below campaigns                             */}
         {/* ---------------------------------------------------------------- */}
         <div className="mt-8 mb-8">
@@ -671,5 +888,14 @@ export function V2Dashboard() {
 
       </div>
     </div>
+
+    {selectedAgentSend && (
+      <CampaignSendModal
+        send={selectedAgentSend.send as any}
+        campaign={selectedAgentSend.campaign}
+        onClose={() => setSelectedAgentSend(null)}
+      />
+    )}
+    </>
   );
 }
