@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { LayoutDashboard, Send, MessageSquare, Zap, Reply } from 'lucide-react';
 import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
+import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,7 +14,7 @@ interface CampaignSend {
   clicked_at: string | null;
   sent_at: string | null;
   listing_address: string | null;
-  campaign_replies: { id: string }[];
+  campaign_replies: { id: string; replied_at: string }[];
 }
 
 interface CampaignSearchCriteria {
@@ -45,6 +46,12 @@ interface CampaignStats {
 }
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const RANGE_CYCLE: RangeKey[] = [7, 14, 30, 0];
+const RANGE_PILL: Record<RangeKey, string> = { 7: '7d', 14: '14d', 30: '30d', 0: 'all' };
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 function computeStats(sends: CampaignSend[]): CampaignStats {
@@ -64,8 +71,7 @@ function computeStats(sends: CampaignSend[]): CampaignStats {
   if (sentSends.length > 0) {
     const latest = sentSends[0];
     lastAddress = latest.listing_address;
-    const diffMs = Date.now() - new Date(latest.sent_at!).getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor((Date.now() - new Date(latest.sent_at!).getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays === 0) lastSendLabel = 'Today';
     else if (diffDays === 1) lastSendLabel = 'Yesterday';
     else lastSendLabel = `${diffDays} days ago`;
@@ -74,6 +80,13 @@ function computeStats(sends: CampaignSend[]): CampaignStats {
   return { sent, opens, clicks, openRate, replies, lastSendLabel, lastAddress };
 }
 
+function getWindowSends(campaigns: Campaign[], days: RangeKey): CampaignSend[] {
+  if (days === 0) return campaigns.flatMap(c => c.campaign_sends ?? []);
+  const cutoff = new Date(Date.now() - days * 86_400_000);
+  return campaigns.flatMap(c =>
+    (c.campaign_sends ?? []).filter(s => s.sent_at && new Date(s.sent_at) >= cutoff)
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Toggle component
@@ -108,31 +121,50 @@ export function V2Dashboard() {
   const [stripePeriodEnd, setStripePeriodEnd] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [statPhase, setStatPhase] = useState<'alltime' | 'lastweek'>('alltime');
-  const [statOpacity, setStatOpacity] = useState(0);
 
+  // Range state — shared between bubbles and timeline
+  const [currentRange, setCurrentRange] = useState<RangeKey>(7);
+  const [statOpacity, setStatOpacity] = useState(1);
+  const [userPinned, setUserPinned] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Bubble range cycle: 7d → 14d → 30d → all time, every 6s, with 0.5s fade
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    let t: ReturnType<typeof setTimeout>;
-    let alive = true;
+    if (userPinned) return;
 
-    const step = (phase: 'alltime' | 'lastweek', showing: boolean) => {
+    let idx = 0;
+    let alive = true;
+    let t: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
       if (!alive) return;
-      if (showing) {
-        setStatPhase(phase);
-        setStatOpacity(1);
-        t = setTimeout(() => step(phase, false), 5500);
-      } else {
+      setCurrentRange(RANGE_CYCLE[idx]);
+      setStatOpacity(1);
+      t = setTimeout(() => {
+        if (!alive) return;
         setStatOpacity(0);
-        const next: 'alltime' | 'lastweek' = phase === 'alltime' ? 'lastweek' : 'alltime';
-        t = setTimeout(() => step(next, true), 500);
-      }
+        t = setTimeout(() => {
+          if (!alive) return;
+          idx = (idx + 1) % RANGE_CYCLE.length;
+          tick();
+        }, 500);
+      }, 5500);
     };
 
-    step('alltime', true);
+    tick();
     return () => { alive = false; clearTimeout(t); };
-  }, []);
+  }, [userPinned]);
 
-  // Claim any pending onboarding campaign created while unauthenticated
+  // Called by the timeline range buttons — pins the cycle
+  const handleRangeChange = (range: RangeKey) => {
+    setCurrentRange(range);
+    setUserPinned(true);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Claim pending onboarding campaign
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     const claimPending = async () => {
       const raw = localStorage.getItem(PENDING_ONBOARDING_KEY);
@@ -217,6 +249,9 @@ export function V2Dashboard() {
     claimPending();
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Data load
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -241,7 +276,7 @@ export function V2Dashboard() {
           campaign_search_criteria ( city, state, listing_type, property_type ),
           campaign_sends (
             id, status, opened_at, clicked_at, sent_at, listing_address,
-            campaign_replies ( id )
+            campaign_replies ( id, replied_at )
           )
         `)
         .eq('user_id', user.id)
@@ -302,22 +337,13 @@ export function V2Dashboard() {
     ? new Date(stripePeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null;
 
-  // Aggregate stats across all campaigns
-  const allStats = campaigns.map(c => computeStats(c.campaign_sends ?? []));
-  const totalSent = allStats.reduce((acc, s) => acc + s.sent, 0);
-  const totalOpens = allStats.reduce((acc, s) => acc + s.opens, 0);
-  const totalReplies = allStats.reduce((acc, s) => acc + s.replies, 0);
   const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const allSends7 = campaigns.flatMap(c =>
-    (c.campaign_sends ?? []).filter(s => s.sent_at && new Date(s.sent_at) >= sevenDaysAgo)
-  );
-  const stats7 = computeStats(allSends7);
+  // Aggregate stats for the current time window
+  const ws = computeStats(getWindowSends(campaigns, currentRange));
+  const replyRate = ws.sent > 0 ? Math.round((ws.replies / ws.sent) * 100) : 0;
 
-  const displaySent = statPhase === 'alltime' ? totalSent : stats7.sent;
-  const displayOpens = statPhase === 'alltime' ? totalOpens : stats7.opens;
-  const displayReplies = statPhase === 'alltime' ? totalReplies : stats7.replies;
+  const bubbleTransition = 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease';
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
@@ -332,45 +358,196 @@ export function V2Dashboard() {
           <p className="text-sm text-gray-600 dark:text-gray-400">Track your campaign activity and messaging performance</p>
         </div>
 
-        {/* Top stat cards */}
+        {/* ---------------------------------------------------------------- */}
+        {/* Stat bubbles — cycle through 7d / 14d / 30d / all time           */}
+        {/* ---------------------------------------------------------------- */}
         <div className="flex gap-2 md:gap-3 mb-1">
-          <div className="flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease' }}>
+
+          {/* Sent */}
+          <div
+            className="relative flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
               <Send className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{displaySent.toLocaleString()}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Sent</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.sent.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {ws.sent > 0 ? `${ws.openRate}% open rate` : '—'}
+            </div>
           </div>
-          <div className="flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease' }}>
+
+          {/* Opens */}
+          <div
+            className="relative flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
               <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{displayOpens.toLocaleString()}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Opens</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.opens.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {ws.sent > 0 ? `${ws.openRate}% of sent` : '—'}
+            </div>
           </div>
-          <div className="flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease' }}>
+
+          {/* Replies */}
+          <div
+            className="relative flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
               <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{displayReplies.toLocaleString()}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Replies</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.replies.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {ws.sent > 0 ? `${replyRate}% reply rate` : '—'}
+            </div>
           </div>
-          <div className="flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease' }}>
+
+          {/* Active campaigns — not time-windowed, no pill */}
+          <div
+            className="flex-1 border-2 border-amber-200 hover:border-amber-300 rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
               <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-1">{activeCampaigns}</div>
-            <div className="text-xs leading-tight text-gray-600 dark:text-gray-400 text-center">Active</div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{activeCampaigns}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Active</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">no change</div>
           </div>
         </div>
+
+        {/* Range label — fades with the bubbles */}
         <div className="flex justify-end mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
           <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
-            {statPhase === 'alltime' ? 'All-Time' : 'Last 7 Days'}
+            {currentRange === 0 ? 'All-Time' : `Last ${currentRange} Days`}
           </span>
         </div>
 
-        {/* Usage section */}
-        <div className="mt-4 mb-8">
+        {/* ---------------------------------------------------------------- */}
+        {/* Email performance timeline                                        */}
+        {/* ---------------------------------------------------------------- */}
+        <EmailPerformanceTimeline
+          campaigns={campaigns}
+          currentRange={currentRange}
+          onRangeChange={handleRangeChange}
+        />
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Campaign list                                                      */}
+        {/* ---------------------------------------------------------------- */}
+        <div className="bg-gray-100 dark:bg-transparent mt-8 p-6">
+          <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">My Campaigns</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
+              </p>
+            </div>
+            <a
+              href="/v2/newcampaign"
+              className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto no-underline"
+              style={{ background: '#FFCE0A', color: '#342e37' }}
+            >
+              + New campaign
+            </a>
+          </div>
+
+          {campaigns.length === 0 ? (
+            <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+                <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+              </div>
+              <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No campaigns yet</h3>
+              <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Create your first campaign to start reaching out to listing owners</p>
+              <button
+                onClick={() => navigate('/v2/newcampaign')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all"
+                style={{ background: '#FFCE0A', color: '#342e37' }}
+              >
+                + Create your first campaign
+              </button>
+            </div>
+          ) : (
+            campaigns.map(campaign => {
+              const criteria = campaign.campaign_search_criteria?.[0];
+              const stats = computeStats(campaign.campaign_sends ?? []);
+              const isActive = campaign.status === 'active';
+              const isToggling = togglingId === campaign.id;
+
+              return (
+                <a
+                  key={campaign.id}
+                  href={`/v2/campaign?id=${campaign.id}`}
+                  className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-2.5 transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01] no-underline"
+                >
+                  <div className="flex items-start justify-between mb-2.5">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <div className="text-base font-semibold text-gray-900 dark:text-white">{campaign.campaign_name}</div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
+                      <StatusToggle
+                        active={isActive}
+                        onChange={next => !isToggling && handleToggle(campaign, next)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { label: 'Sent',      value: String(stats.sent),          sub: '' },
+                      { label: 'Opens',     value: String(stats.opens),         sub: '' },
+                      { label: 'Clicks',    value: String(stats.clicks),        sub: '' },
+                      { label: 'Last send', value: stats.lastSendLabel,         sub: stats.lastAddress ?? '' },
+                    ].map(stat => (
+                      <div key={stat.label} className="rounded-lg px-2.5 py-2 bg-gray-50 dark:bg-[#1a1a1a]">
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{stat.label}</div>
+                        <div
+                          className="font-medium text-gray-900 dark:text-white leading-none"
+                          style={{ fontSize: stat.label === 'Last send' ? '13px' : '16px' }}
+                        >
+                          {stat.value}
+                        </div>
+                        {stat.sub && (
+                          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{stat.sub}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-200 dark:border-white/10">
+                    <div className="text-[11px] text-gray-400 dark:text-gray-500 flex-1 mr-3 truncate">
+                      {campaign.body
+                        ? `"${campaign.body.slice(0, 80)}${campaign.body.length > 80 ? '...' : ''}"`
+                        : '—'}
+                    </div>
+                    <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">View →</span>
+                  </div>
+                </a>
+              );
+            })
+          )}
+        </div>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Account Usage — moved below campaigns                             */}
+        {/* ---------------------------------------------------------------- */}
+        <div className="mt-8 mb-8">
           <div className="flex items-start justify-between mb-3">
             <div>
               <h3 className="font-bold text-lg text-[#342e37] dark:text-white mb-1">Account Usage This Period</h3>
@@ -405,107 +582,6 @@ export function V2Dashboard() {
           )}
         </div>
 
-        {/* Campaign list */}
-        <div className="bg-gray-100 dark:bg-transparent mt-8 p-6">
-          <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">My Campaigns</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
-              </p>
-            </div>
-            <a
-              href="/v2/newcampaign"
-              className="flex items-center justify-center md:justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full md:w-auto no-underline"
-              style={{ background: '#FFCE0A', color: '#342e37' }}
-            >
-              + New campaign
-            </a>
-          </div>
-
-        {campaigns.length === 0 ? (
-          <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
-              <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-            </div>
-            <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No campaigns yet</h3>
-            <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Create your first campaign to start reaching out to listing owners</p>
-            <button
-              onClick={() => navigate('/v2/newcampaign')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all"
-              style={{ background: '#FFCE0A', color: '#342e37' }}
-            >
-              + Create your first campaign
-            </button>
-          </div>
-        ) : (
-          <>
-
-            {campaigns.map(campaign => {
-              const criteria = campaign.campaign_search_criteria?.[0];
-              const stats = computeStats(campaign.campaign_sends ?? []);
-              const isActive = campaign.status === 'active';
-              const isToggling = togglingId === campaign.id;
-
-              return (
-                <a
-                  key={campaign.id}
-                  href={`/v2/campaign?id=${campaign.id}`}
-                  className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-2.5 transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01] no-underline"
-                >
-                  {/* Card top */}
-                  <div className="flex items-start justify-between mb-2.5">
-                    <div className="flex-1 min-w-0 mr-3">
-                      <div className="text-base font-semibold text-gray-900 dark:text-white">{campaign.campaign_name}</div>
-                    </div>
-                    {/* On/off toggle */}
-                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      <span className="text-xs text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
-                      <StatusToggle
-                        active={isActive}
-                        onChange={next => !isToggling && handleToggle(campaign, next)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Stats grid */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { label: 'Sent', value: String(stats.sent), sub: '' },
-                      { label: 'Opens', value: String(stats.opens), sub: '' },
-                      { label: 'Clicks', value: String(stats.clicks), sub: '' },
-                      { label: 'Last send', value: stats.lastSendLabel, sub: stats.lastAddress ?? '' },
-                    ].map(stat => (
-                      <div key={stat.label} className="rounded-lg px-2.5 py-2 bg-gray-50 dark:bg-[#1a1a1a]">
-                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{stat.label}</div>
-                        <div
-                          className="font-medium text-gray-900 dark:text-white leading-none"
-                          style={{ fontSize: stat.label === 'Last send' ? '13px' : '16px' }}
-                        >
-                          {stat.value}
-                        </div>
-                        {stat.sub && (
-                          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{stat.sub}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Card footer */}
-                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-200 dark:border-white/10">
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500 flex-1 mr-3 truncate">
-                      {campaign.body
-                        ? `"${campaign.body.slice(0, 80)}${campaign.body.length > 80 ? '...' : ''}"`
-                        : '—'}
-                    </div>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">View →</span>
-                  </div>
-                </a>
-              );
-            })}
-          </>
-        )}
-        </div>
       </div>
     </div>
   );
