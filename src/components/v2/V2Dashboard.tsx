@@ -462,9 +462,6 @@ export function V2Dashboard() {
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.sent.toLocaleString()}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
-              {ws.sent > 0 ? `${ws.openRate}% open rate` : '—'}
-            </div>
           </div>
 
           {/* Opens */}
@@ -480,9 +477,6 @@ export function V2Dashboard() {
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.opens.toLocaleString()}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
-              {ws.sent > 0 ? `${ws.openRate}% of sent` : '—'}
-            </div>
           </div>
 
           {/* Replies */}
@@ -498,9 +492,6 @@ export function V2Dashboard() {
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.replies.toLocaleString()}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
-              {ws.sent > 0 ? `${replyRate}% reply rate` : '—'}
-            </div>
           </div>
 
           {/* Active campaigns — not time-windowed, no pill */}
@@ -513,7 +504,6 @@ export function V2Dashboard() {
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{activeCampaigns}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Active</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">no change</div>
           </div>
         </div>
 
