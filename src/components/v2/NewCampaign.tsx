@@ -9,7 +9,7 @@ import { CityLimitModal } from './CityLimitModal';
 import { normalizePlan, canAddCity, type PlanType } from '../utils/planLimits';
 import { formatSenderName } from '../../lib/senderName';
 import { SMTPSetupModal } from '../SMTPSetupModal';
-import { Mail, Server, CheckCircle2, Plus } from 'lucide-react';
+import { Mail, Server, CheckCircle2, Plus, Pencil } from 'lucide-react';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
 import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
 import { toast } from 'sonner';
@@ -60,7 +60,7 @@ const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 const STEPS = [
   { label: 'Which mailbox', short: 'Mailbox' },
   { label: 'Your business', short: 'Business' },
-  { label: 'Search area', short: 'Search' },
+  { label: 'Search area', short: 'Listings' },
   { label: 'Your message', short: 'Message' },
   { label: 'Review', short: 'Review' },
 ];
@@ -1300,7 +1300,9 @@ export function NewCampaign() {
           <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Mailbox</span>
-              <button type="button" onClick={() => goToStep(1)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+              <button type="button" onClick={() => goToStep(1)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
             </div>
             <div className="space-y-1.5">
               <div>
@@ -1324,7 +1326,9 @@ export function NewCampaign() {
           <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Listings</span>
-              <button type="button" onClick={() => goToStep(2)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+              <button type="button" onClick={() => goToStep(2)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
             </div>
             <div className="space-y-1.5">
               <div>
@@ -1354,7 +1358,9 @@ export function NewCampaign() {
           <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Message</span>
-              <button type="button" onClick={() => goToStep(3)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+              <button type="button" onClick={() => goToStep(3)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
             </div>
             <div className="space-y-1.5">
               <div>

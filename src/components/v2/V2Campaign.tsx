@@ -653,13 +653,17 @@ export function V2Campaign() {
 
               {/* Location (City + State) */}
               {draft && (
-                <div className="py-2 border-b border-gray-100 dark:border-white/10">
-                  <span className="text-sm text-gray-600 dark:text-gray-400 block mb-1.5">Location</span>
-                  <CityAutocomplete
-                    value={draft.city}
-                    stateValue={draft.state}
-                    onSelect={(city, state) => updateImmediate({ city, state })}
-                  />
+                <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Location</span>
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <CityAutocomplete
+                      value={draft.city}
+                      stateValue={draft.state}
+                      onSelect={(city, state) => updateImmediate({ city, state })}
+                      className="flex-1 min-w-0"
+                    />
+                    <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-30 group-hover:opacity-70 shrink-0 transition-opacity" />
+                  </div>
                 </div>
               )}
 
@@ -751,14 +755,14 @@ export function V2Campaign() {
               {/* Sending mailbox — editable dropdown */}
               <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Sending mailbox</span>
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   {allSenders.length === 0 ? (
                     <span className="text-sm text-gray-900 dark:text-white font-medium text-right truncate">{senderMailbox || '—'}</span>
                   ) : (
                     <select
                       value={campaign.sender_id || ''}
                       onChange={e => handleSenderChange(e.target.value)}
-                      className={`${rowInputClass} cursor-pointer`}
+                      className={`${rowInputClass} cursor-pointer min-w-0 max-w-full flex-1`}
                     >
                       {allSenders.map(s => (
                         <option key={s.id} value={s.id}>{senderLabel(s)}</option>

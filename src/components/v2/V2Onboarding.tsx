@@ -8,7 +8,7 @@ import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
 import { formatSenderName } from '../../lib/senderName';
 import { SMTPSetupModal } from '../SMTPSetupModal';
-import { Mail, Server, CheckCircle2 } from 'lucide-react';
+import { Mail, Server, CheckCircle2, Pencil } from 'lucide-react';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -63,7 +63,7 @@ const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 const STEPS = [
   { label: 'Connect account', short: 'Connect' },
   { label: 'Your business', short: 'Business' },
-  { label: 'Search area', short: 'Search' },
+  { label: 'Search area', short: 'Listings' },
   { label: 'Your message', short: 'Message' },
   { label: 'Review', short: 'Review' },
   { label: 'Create account', short: 'Account' },
@@ -1183,7 +1183,9 @@ export function V2Onboarding() {
           <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Mailbox</span>
-              <button type="button" onClick={() => goToStep(1)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+              <button type="button" onClick={() => goToStep(1)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
             </div>
             <div className="space-y-1.5">
               <div>
@@ -1207,7 +1209,9 @@ export function V2Onboarding() {
           <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Listings</span>
-              <button type="button" onClick={() => goToStep(2)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+              <button type="button" onClick={() => goToStep(2)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
             </div>
             <div className="space-y-1.5">
               <div>
@@ -1237,7 +1241,9 @@ export function V2Onboarding() {
           <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Message</span>
-              <button type="button" onClick={() => goToStep(3)} className="text-[10px] text-amber-600 dark:text-[#FFCE0A] hover:underline">Edit</button>
+              <button type="button" onClick={() => goToStep(3)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
             </div>
             <div className="space-y-1.5">
               <div>
@@ -1258,13 +1264,23 @@ export function V2Onboarding() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setTestModal({ open: true, address: businessInfo.forward_to || '', sending: false, sent: false, error: null })}
-          className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-        >
-          Send a test email to yourself first
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTestModal({ open: true, address: businessInfo.forward_to || '', sending: false, sent: false, error: null })}
+            className="flex-none py-2.5 px-4 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+          >
+            Send test email
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity hover:opacity-90"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
+          >
+            Send first emails →
+          </button>
+        </div>
       </div>
     );
   };
@@ -1448,7 +1464,7 @@ export function V2Onboarding() {
               >
                 Back
               </button>
-              {!isLastStep && (
+              {!isLastStep && step !== 4 && (
                 <button
                   type="button"
                   onClick={handleNext}
