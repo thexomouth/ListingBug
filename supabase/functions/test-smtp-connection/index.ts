@@ -1,11 +1,11 @@
 /**
  * test-smtp-connection
- * Tests SMTP server connection and validates credentials
- * Does NOT require user authentication (used during onboarding)
+ * Tests SMTP server connection and validates credentials by sending a test email.
+ * Uses nodemailer which correctly handles both implicit SSL (465) and STARTTLS (587).
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.9";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +26,6 @@ interface SMTPConfig {
   password: string;
   from_email: string;
   from_name: string;
-  use_tls: boolean;
 }
 
 serve(async (req) => {
@@ -40,9 +39,8 @@ serve(async (req) => {
       return json({ success: false, error: "Invalid JSON body" }, 400);
     }
 
-    const { host, port, username, password, from_email, from_name, use_tls } = body as SMTPConfig;
+    const { host, port, username, password, from_email, from_name } = body as SMTPConfig;
 
-    // Validation
     if (!host || !port || !username || !password || !from_email || !from_name) {
       return json(
         { success: false, error: "Missing required fields: host, port, username, password, from_email, from_name" },
@@ -50,32 +48,35 @@ serve(async (req) => {
       );
     }
 
-    // Test SMTP connection
-    console.log(`[test-smtp-connection] Testing ${username}@${host}:${port} (TLS: ${use_tls})`);
+    // Port 465 = implicit SSL; everything else (587, 25, 2525) = STARTTLS
+    const secure = port === 465;
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: host,
-        port,
-        tls: use_tls,
-        auth: {
-          username,
-          password,
-        },
+    console.log(`[test-smtp-connection] Testing ${username}@${host}:${port} secure=${secure}`);
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: {
+        user: username,
+        pass: password,
+      },
+      tls: {
+        // Accept self-signed / mismatched certs so private mail servers still work
+        rejectUnauthorized: false,
       },
     });
 
     try {
-      // Connect to SMTP server
-      await client.connect();
-      console.log("[test-smtp-connection] Connected successfully");
+      // Verify credentials before sending
+      await transporter.verify();
+      console.log("[test-smtp-connection] SMTP verified successfully");
 
-      // Send a test email to verify end-to-end functionality
-      await client.send({
-        from: `${from_name} <${from_email}>`,
-        to: from_email, // Send test email to self
+      await transporter.sendMail({
+        from: `"${from_name}" <${from_email}>`,
+        to: from_email,
         subject: "ListingBug SMTP Test",
-        content: "This is a test email from ListingBug to verify your SMTP configuration. If you received this, your SMTP settings are working correctly!",
+        text: "This is a test email from ListingBug to verify your SMTP configuration. If you received this, your settings are working correctly!",
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #342e37;">SMTP Test Successful!</h2>
@@ -89,42 +90,27 @@ serve(async (req) => {
 
       console.log("[test-smtp-connection] Test email sent successfully");
 
-      // Close connection
-      await client.close();
-
       return json({
         success: true,
         message: `Successfully sent test email to ${from_email}. Check your inbox!`,
       });
     } catch (smtpError: any) {
-      console.error("[test-smtp-connection] SMTP error:", smtpError.message);
+      console.error("[test-smtp-connection] Error:", smtpError.message);
 
-      // Try to close connection gracefully
-      try {
-        await client.close();
-      } catch {}
+      let errorMessage: string = smtpError.message || "Unknown SMTP error";
 
-      // Return user-friendly error messages
-      let errorMessage = smtpError.message || "Unknown SMTP error";
-
-      if (errorMessage.includes("authentication") || errorMessage.includes("login")) {
-        errorMessage = "Authentication failed. Please check your username and password.";
-      } else if (errorMessage.includes("connection") || errorMessage.includes("timeout")) {
-        errorMessage = "Could not connect to SMTP server. Please check host and port.";
-      } else if (errorMessage.includes("certificate") || errorMessage.includes("TLS")) {
-        errorMessage = "TLS/SSL error. Try toggling the TLS setting.";
+      if (/auth|login|credentials|535|534|530/i.test(errorMessage)) {
+        errorMessage = "Authentication failed — check your username and password. For Gmail/Outlook, use an App Password.";
+      } else if (/connect|timeout|ECONNREFUSED|ETIMEDOUT/i.test(errorMessage)) {
+        errorMessage = "Could not connect to SMTP server — check your host and port.";
+      } else if (/certificate|TLS|SSL|SELF_SIGNED/i.test(errorMessage)) {
+        errorMessage = "TLS/SSL error — the server certificate could not be verified.";
       }
 
-      return json({
-        success: false,
-        error: errorMessage,
-      });
+      return json({ success: false, error: errorMessage });
     }
   } catch (err: any) {
     console.error("[test-smtp-connection] Unexpected error:", err.message);
-    return json({
-      success: false,
-      error: err.message || "Failed to test SMTP connection",
-    }, 500);
+    return json({ success: false, error: err.message || "Failed to test SMTP connection" }, 500);
   }
 });
