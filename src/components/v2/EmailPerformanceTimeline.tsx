@@ -52,6 +52,7 @@ interface Props {
   campaigns: TimelineCampaign[];
   currentRange: RangeKey;
   onRangeChange: (range: RangeKey) => void;
+  subtitle?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -164,7 +165,7 @@ function buildTickerStrings(campaigns: TimelineCampaign[]): string[] {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChange }: Props) {
+export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChange, subtitle }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const chartRef    = useRef<Chart | null>(null);
   const pulseRef    = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -436,7 +437,7 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-white">Email performance timeline</p>
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-            All campaigns · {RANGE_META[currentRange]}
+            {subtitle ?? 'All campaigns'} · {RANGE_META[currentRange]}
           </p>
         </div>
 

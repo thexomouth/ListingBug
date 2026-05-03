@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { formatSenderName } from '../../lib/senderName';
-import { Pencil, Check, AlertCircle } from 'lucide-react';
+import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer } from 'lucide-react';
+import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { CampaignSendModal } from './CampaignSendModal';
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,9 @@ interface Draft {
   property_type: string;
 }
 
+const RANGE_CYCLE: RangeKey[] = [7, 14, 30, 0];
+const RANGE_PILL: Record<RangeKey, string> = { 7: '7d', 14: '14d', 30: '30d', 0: 'all' };
+
 const PROPERTY_TYPES = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', 'Multi-Family', 'Apartment', 'Land'];
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
 const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
@@ -80,6 +84,12 @@ const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+function getWindowedSends(sends: Send[], days: RangeKey): Send[] {
+  if (days === 0) return sends;
+  const cutoff = new Date(Date.now() - days * 86_400_000);
+  return sends.filter(s => s.sent_at && new Date(s.sent_at) >= cutoff);
+}
+
 function renderBodyPreview(text: string, city: string): string {
   let s = text
     .replace(/\{\{agent_name\}\}/g, '[AGENT NAME]')
@@ -159,6 +169,11 @@ export function V2Campaign() {
   type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stat bubble cycling
+  const [currentRange, setCurrentRange] = useState<RangeKey>(7);
+  const [statOpacity, setStatOpacity] = useState(1);
+  const [userPinned, setUserPinned] = useState(false);
 
   // Delete
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -257,6 +272,36 @@ export function V2Campaign() {
       .single()
       .then(({ data }) => { if (data) setSenderInfo(data as any); });
   }, [campaign?.sender_id]);
+
+  // ---------------------------------------------------------------------------
+  // Bubble range cycle
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (userPinned) return;
+    let idx = 0, alive = true;
+    let t: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      if (!alive) return;
+      setCurrentRange(RANGE_CYCLE[idx]);
+      setStatOpacity(1);
+      t = setTimeout(() => {
+        if (!alive) return;
+        setStatOpacity(0);
+        t = setTimeout(() => {
+          if (!alive) return;
+          idx = (idx + 1) % RANGE_CYCLE.length;
+          tick();
+        }, 500);
+      }, 5500);
+    };
+    tick();
+    return () => { alive = false; clearTimeout(t); };
+  }, [userPinned]);
+
+  const handleRangeChange = (range: RangeKey) => {
+    setCurrentRange(range);
+    setUserPinned(true);
+  };
 
   // ---------------------------------------------------------------------------
   // Autosave
@@ -413,10 +458,7 @@ export function V2Campaign() {
   const isActive = campaign.status === 'active';
 
   const totalSent = sends.filter(s => s.status === 'sent' || s.status === 'opened' || s.status === 'replied').length;
-  const totalOpened = sends.filter(s => s.opened_at !== null).length;
-  const totalClicks = sends.filter(s => s.clicked_at !== null).length;
   const totalReplies = sends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
-  const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
 
   const sortedSends = [...sends].sort((a, b) => {
     const at = a.sent_at ? new Date(a.sent_at).getTime() : 0;
@@ -427,6 +469,15 @@ export function V2Campaign() {
   const fromName = senderInfo?.from_name || (senderInfo ? formatSenderName(userContactName, userBusinessName) : null);
   const fromEmail = senderInfo?.from_email ?? null;
   const senderMailbox = senderInfo?.display_name ?? null;
+
+  // Windowed stats for animated bubbles
+  const windowedSends = getWindowedSends(sends, currentRange);
+  const wsSent = windowedSends.filter(s => s.status === 'sent' || s.status === 'opened' || s.status === 'replied').length;
+  const wsOpens = windowedSends.filter(s => s.opened_at !== null).length;
+  const wsClicks = windowedSends.filter(s => s.clicked_at !== null).length;
+  const wsReplies = windowedSends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
+  const wsOpenRate = wsSent > 0 ? Math.round((wsOpens / wsSent) * 100) : 0;
+  const bubbleTransition = 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease';
 
   const labelClass = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1';
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50';
@@ -488,19 +539,87 @@ export function V2Campaign() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2.5 mb-6">
-          {[
-            { label: 'Sent', value: String(totalSent) },
-            { label: 'Open rate', value: `${openRate}%` },
-            { label: 'Clicks', value: String(totalClicks) },
-            { label: 'Replies', value: String(totalReplies) },
-          ].map(stat => (
-            <div key={stat.label} className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-3.5">
-              <div className="text-[11px] text-gray-400 dark:text-gray-500 mb-1">{stat.label}</div>
-              <div className="text-xl font-semibold text-gray-900 dark:text-white leading-none">{stat.value}</div>
+        {/* Stat bubbles */}
+        <div className="flex gap-2 md:gap-3 mb-1">
+
+          {/* Sent */}
+          <div
+            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <SendIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
             </div>
-          ))}
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsSent.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${wsOpenRate}% open rate` : '—'}
+            </div>
+          </div>
+
+          {/* Opens */}
+          <div
+            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsOpens.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${wsOpenRate}% of sent` : '—'}
+            </div>
+          </div>
+
+          {/* Replies */}
+          <div
+            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsReplies.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${Math.round((wsReplies / wsSent) * 100)}% reply rate` : '—'}
+            </div>
+          </div>
+
+          {/* Clicks */}
+          <div
+            className="relative flex-1 border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <MousePointer className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsClicks.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Clicks</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${Math.round((wsClicks / wsSent) * 100)}% click rate` : '—'}
+            </div>
+          </div>
+        </div>
+
+        {/* Range label */}
+        <div className="flex justify-end mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
+            {currentRange === 0 ? 'All-Time' : `Last ${currentRange} Days`}
+          </span>
         </div>
 
         {/* Main two-column container */}
@@ -739,6 +858,14 @@ export function V2Campaign() {
             {totalSent} sent · {totalReplies} repl{totalReplies !== 1 ? 'ies' : 'y'}
           </div>
         </div>
+
+        {/* Email performance timeline */}
+        <EmailPerformanceTimeline
+          campaigns={[campaign]}
+          currentRange={currentRange}
+          onRangeChange={handleRangeChange}
+          subtitle="This campaign"
+        />
 
         {sortedSends.length === 0 ? (
           <div className="bg-white dark:bg-[#2F2F2F] text-center py-12 rounded-lg border border-gray-200 dark:border-white/10 mb-8">
