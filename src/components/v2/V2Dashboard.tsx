@@ -436,6 +436,8 @@ export function V2Dashboard() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+  const leaderboard = useMemo(() => buildLeaderboard(campaigns), [campaigns]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0f0f0f] flex items-center justify-center">
@@ -461,7 +463,6 @@ export function V2Dashboard() {
 
   const bubbleTransition = 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease';
 
-  const leaderboard = useMemo(() => buildLeaderboard(campaigns), [campaigns]);
   const leaderboardVisible = leaderboardExpanded ? leaderboard : leaderboard.slice(0, 10);
 
   const handleReconnect = async (provider: string) => {
