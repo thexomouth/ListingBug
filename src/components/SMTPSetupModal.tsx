@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -63,21 +63,20 @@ export function SMTPSetupModal({
     password: '',
   });
 
-  const [isTesting, setIsTesting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [testResult, setTestResult] = useState<'success' | 'failed' | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectResult, setConnectResult] = useState<'success' | 'failed' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showImapPassword, setShowImapPassword] = useState(false);
 
-  const handleTest = async () => {
+  const handleConnect = async () => {
     if (!config.host || !config.port || !config.username || !config.password || !config.from_email) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    setIsTesting(true);
-    setTestResult(null);
+    setIsConnecting(true);
+    setConnectResult(null);
     setErrorMessage(null);
 
     try {
@@ -98,34 +97,11 @@ export function SMTPSetupModal({
 
       if (error) throw error;
 
-      if (data?.success) {
-        setTestResult('success');
-        toast.success('SMTP connection successful!');
-      } else {
-        setTestResult('failed');
+      if (!data?.success) {
+        setConnectResult('failed');
         setErrorMessage(data?.error || 'Connection test failed');
-        toast.error(data?.error || 'Connection test failed');
+        return;
       }
-    } catch (err: any) {
-      setTestResult('failed');
-      setErrorMessage(err.message || 'Failed to test connection');
-      toast.error(err.message || 'Failed to test connection');
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (testResult !== 'success') {
-      toast.error('Please test the connection first');
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
 
       const { data: connection, error: insertError } = await supabase
         .from('integration_connections')
@@ -174,131 +150,123 @@ export function SMTPSetupModal({
           .eq('id', userId);
       }
 
+      setConnectResult('success');
       toast.success('SMTP account connected successfully!');
       onSuccess(connection.id);
       onClose();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to save SMTP configuration');
+      setConnectResult('failed');
+      setErrorMessage(err.message || 'Failed to connect');
     } finally {
-      setIsSaving(false);
+      setIsConnecting(false);
     }
   };
 
   const handleClose = () => {
-    if (!isTesting && !isSaving) onClose();
+    if (!isConnecting) onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Mail className="w-5 h-5" />
+      <DialogContent className="sm:max-w-[640px] max-h-[100dvh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Mail className="w-4 h-4" />
             Connect Custom SMTP
           </DialogTitle>
-          <DialogDescription>
-            Configure your SMTP server to send emails from ListingBug
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* SMTP Host */}
-          <div className="space-y-2">
-            <Label htmlFor="smtp-host">SMTP Host *</Label>
-            <Input
-              id="smtp-host"
-              placeholder="smtp.gmail.com"
-              value={config.host}
-              onChange={(e) => setConfig({ ...config, host: e.target.value })}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Your mail server hostname (e.g., smtp.gmail.com, smtp.office365.com)
-            </p>
-          </div>
-
-          {/* SMTP Port */}
-          <div className="space-y-2">
-            <Label htmlFor="smtp-port">Port *</Label>
-            <Input
-              id="smtp-port"
-              type="number"
-              placeholder="587"
-              value={config.port}
-              onChange={(e) => setConfig({ ...config, port: e.target.value })}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Common ports: 587 (TLS/STARTTLS), 465 (SSL)
-            </p>
-          </div>
-
-          {/* SMTP Username */}
-          <div className="space-y-2">
-            <Label htmlFor="smtp-username">Username *</Label>
-            <Input
-              id="smtp-username"
-              placeholder="you@example.com"
-              value={config.username}
-              onChange={(e) => setConfig({ ...config, username: e.target.value })}
-            />
-          </div>
-
-          {/* SMTP Password */}
-          <div className="space-y-2">
-            <Label htmlFor="smtp-password">Password *</Label>
-            <div className="relative">
+        <div className="space-y-3 py-2">
+          {/* Row 1: Host + Port */}
+          <div className="grid grid-cols-[1fr_100px] gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="smtp-host" className="text-xs">SMTP Host <span className="text-red-500">*</span></Label>
               <Input
-                id="smtp-password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={config.password}
-                onChange={(e) => setConfig({ ...config, password: e.target.value })}
-                className="pr-10"
+                id="smtp-host"
+                placeholder="smtp.gmail.com"
+                value={config.host}
+                onChange={(e) => setConfig({ ...config, host: e.target.value })}
+                className="h-8 text-sm"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Use an app password for Gmail/Outlook
-            </p>
+            <div className="space-y-1">
+              <Label htmlFor="smtp-port" className="text-xs">Port <span className="text-red-500">*</span></Label>
+              <Input
+                id="smtp-port"
+                type="number"
+                placeholder="587"
+                value={config.port}
+                onChange={(e) => setConfig({ ...config, port: e.target.value })}
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
 
-          {/* From Email */}
-          <div className="space-y-2">
-            <Label htmlFor="from-email">From Email *</Label>
-            <Input
-              id="from-email"
-              type="email"
-              placeholder="you@example.com"
-              value={config.from_email}
-              onChange={(e) => setConfig({ ...config, from_email: e.target.value })}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Email address that will appear in the "From" field
-            </p>
+          {/* Row 2: Username + From Email */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="smtp-username" className="text-xs">Username <span className="text-red-500">*</span></Label>
+              <Input
+                id="smtp-username"
+                placeholder="you@example.com"
+                value={config.username}
+                onChange={(e) => setConfig({ ...config, username: e.target.value })}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="from-email" className="text-xs">From Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="from-email"
+                type="email"
+                placeholder="you@example.com"
+                value={config.from_email}
+                onChange={(e) => setConfig({ ...config, from_email: e.target.value })}
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
 
-          {/* From Name */}
-          <div className="space-y-2">
-            <Label htmlFor="from-name">From Name *</Label>
-            <Input
-              id="from-name"
-              placeholder="Your Name"
-              value={config.from_name}
-              onChange={(e) => setConfig({ ...config, from_name: e.target.value })}
-            />
+          {/* Row 3: Password + From Name */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="smtp-password" className="text-xs">Password <span className="text-red-500">*</span></Label>
+              <div className="relative">
+                <Input
+                  id="smtp-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={config.password}
+                  onChange={(e) => setConfig({ ...config, password: e.target.value })}
+                  className="h-8 text-sm pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="from-name" className="text-xs">From Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="from-name"
+                placeholder="Your Name"
+                value={config.from_name}
+                onChange={(e) => setConfig({ ...config, from_name: e.target.value })}
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
 
           {/* Reply Tracking Toggle */}
-          <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-white/10 mt-2">
+          <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/10">
             <div>
-              <Label htmlFor="reply-tracking" className="text-sm font-medium">Reply Tracking</Label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Connect your inbox to detect replies automatically
+              <p className="text-xs font-medium text-gray-900 dark:text-gray-100">Reply Tracking</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                Connect your inbox to detect replies
               </p>
             </div>
             <button
@@ -308,138 +276,115 @@ export function SMTPSetupModal({
               aria-checked={replyTracking}
               onClick={() => setReplyTracking(v => !v)}
               className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors"
-              style={{ background: replyTracking ? '#FFCE0A' : undefined }}
+              style={{ background: replyTracking ? '#FFCE0A' : '#d1d5db' }}
               data-state={replyTracking ? 'checked' : 'unchecked'}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                   replyTracking ? 'translate-x-5' : 'translate-x-0.5'
-                } ${!replyTracking ? 'bg-gray-300 dark:bg-gray-600' : ''}`}
+                }`}
               />
             </button>
           </div>
 
-          {/* IMAP Fields — shown only when Reply Tracking is on */}
+          {/* IMAP Section */}
           {replyTracking && (
-            <div className="space-y-4 pl-3 border-l-2 border-[#FFCE0A]">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                IMAP is used to read your inbox and detect when agents reply. Username and password default to your SMTP credentials if left blank.
+            <div className="space-y-3 pl-3 border-l-2 border-[#FFCE0A]">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                IMAP lets ListingBug detect replies. Credentials default to SMTP if left blank.
               </p>
 
-              <div className="space-y-2">
-                <Label htmlFor="imap-host">IMAP Host *</Label>
-                <Input
-                  id="imap-host"
-                  placeholder="imap.gmail.com"
-                  value={imapConfig.host}
-                  onChange={(e) => setImapConfig({ ...imapConfig, host: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="imap-port">IMAP Port</Label>
-                <Input
-                  id="imap-port"
-                  type="number"
-                  placeholder="993"
-                  value={imapConfig.port}
-                  onChange={(e) => setImapConfig({ ...imapConfig, port: e.target.value })}
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Common ports: 993 (SSL), 143 (STARTTLS)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="imap-username">IMAP Username</Label>
-                <Input
-                  id="imap-username"
-                  placeholder={config.username || 'you@example.com'}
-                  value={imapConfig.username}
-                  onChange={(e) => setImapConfig({ ...imapConfig, username: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="imap-password">IMAP Password</Label>
-                <div className="relative">
+              {/* IMAP Row 1: Host + Port */}
+              <div className="grid grid-cols-[1fr_100px] gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="imap-host" className="text-xs">IMAP Host <span className="text-red-500">*</span></Label>
                   <Input
-                    id="imap-password"
-                    type={showImapPassword ? 'text' : 'password'}
-                    placeholder="Leave blank to use SMTP password"
-                    value={imapConfig.password}
-                    onChange={(e) => setImapConfig({ ...imapConfig, password: e.target.value })}
-                    className="pr-10"
+                    id="imap-host"
+                    placeholder="imap.gmail.com"
+                    value={imapConfig.host}
+                    onChange={(e) => setImapConfig({ ...imapConfig, host: e.target.value })}
+                    className="h-8 text-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowImapPassword(!showImapPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    {showImapPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="imap-port" className="text-xs">Port</Label>
+                  <Input
+                    id="imap-port"
+                    type="number"
+                    placeholder="993"
+                    value={imapConfig.port}
+                    onChange={(e) => setImapConfig({ ...imapConfig, port: e.target.value })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* IMAP Row 2: Username + Password */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="imap-username" className="text-xs">IMAP Username</Label>
+                  <Input
+                    id="imap-username"
+                    placeholder={config.username || 'you@example.com'}
+                    value={imapConfig.username}
+                    onChange={(e) => setImapConfig({ ...imapConfig, username: e.target.value })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="imap-password" className="text-xs">IMAP Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="imap-password"
+                      type={showImapPassword ? 'text' : 'password'}
+                      placeholder="Uses SMTP password"
+                      value={imapConfig.password}
+                      onChange={(e) => setImapConfig({ ...imapConfig, password: e.target.value })}
+                      className="h-8 text-sm pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowImapPassword(!showImapPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      {showImapPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Test Result */}
-          {testResult === 'success' && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
-              <span className="text-sm text-green-700 dark:text-green-300">
-                Connection successful! Ready to save.
-              </span>
-            </div>
-          )}
-
-          {testResult === 'failed' && errorMessage && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm text-red-700 dark:text-red-300 font-medium">Connection failed</p>
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errorMessage}</p>
+          {/* Connection Result */}
+          {connectResult === 'failed' && errorMessage && (
+            <div className="flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg">
+              <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-red-700 dark:text-red-300 font-medium">Connection failed</p>
+                <p className="text-[11px] text-red-600 dark:text-red-400 mt-0.5 break-words">{errorMessage}</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="flex gap-3 justify-end pt-4 border-t">
-          <Button variant="outline" onClick={handleClose} disabled={isTesting || isSaving}>
+        <div className="flex gap-2 justify-end pt-3 border-t">
+          <Button variant="outline" size="sm" onClick={handleClose} disabled={isConnecting}>
             Cancel
           </Button>
           <Button
-            onClick={handleTest}
-            disabled={isTesting || isSaving || testResult === 'success'}
-            variant="outline"
-          >
-            {isTesting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Testing...
-              </>
-            ) : testResult === 'success' ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Tested
-              </>
-            ) : (
-              'Test Connection'
-            )}
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isTesting || isSaving || testResult !== 'success'}
+            size="sm"
+            onClick={handleConnect}
+            disabled={isConnecting}
             style={{ background: '#FFCE0A', color: '#342e37' }}
           >
-            {isSaving ? (
+            {isConnecting ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                Connecting...
               </>
             ) : (
-              'Save & Connect'
+              'Connect'
             )}
           </Button>
         </div>
