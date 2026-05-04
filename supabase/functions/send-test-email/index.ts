@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { formatSenderName } from "../_shared/senderName.ts";
 import { getValidAccessToken } from "../_shared/crypto.ts";
 import nodemailer from "npm:nodemailer@6.9.9";
 
@@ -177,7 +176,7 @@ serve(async (req) => {
       if (userData) {
         stripePeriodEnd = userData.stripe_subscription_end ?? null;
         planType = userData.plan ?? "trial";
-        if (!from_name) fromName = formatSenderName(userData.contact_name, userData.business_name);
+        if (!from_name) fromName = userData.business_name || userData.contact_name || 'ListingBug';
       }
     }
 

@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
-import { formatSenderName } from '../../lib/senderName';
 import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer } from 'lucide-react';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { AgentActivityModal } from './AgentActivityModal';
@@ -493,7 +492,7 @@ export function V2Campaign() {
     return bt - at;
   });
 
-  const fromName = senderInfo?.from_name || (senderInfo ? formatSenderName(userContactName, userBusinessName) : null);
+  const fromName = senderInfo?.from_name || userBusinessName || userContactName || null;
   const fromEmail = senderInfo?.from_email ?? null;
   const senderMailbox = senderInfo?.display_name ?? null;
 
@@ -992,7 +991,7 @@ export function V2Campaign() {
       {/* Send test email modal                                                */}
       {/* ------------------------------------------------------------------ */}
       {testModal.open && (() => {
-        const senderDisplayName = formatSenderName(userContactName, userBusinessName);
+        const senderDisplayName = userBusinessName || userContactName || 'ListingBug';
         const emailData = draft || { subject: campaign?.subject || '', body: campaign?.body || '', city: criteria?.city || '' };
         const previewSubject = emailData.subject
           ? emailData.subject

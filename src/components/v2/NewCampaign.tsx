@@ -7,7 +7,6 @@ import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
 import { CityLimitModal } from './CityLimitModal';
 import { normalizePlan, canAddCity, type PlanType } from '../utils/planLimits';
-import { formatSenderName } from '../../lib/senderName';
 import { SMTPSetupModal } from '../SMTPSetupModal';
 import { Mail, Server, CheckCircle2, Plus, Pencil } from 'lucide-react';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
@@ -1572,7 +1571,7 @@ export function NewCampaign() {
 
       {/* Test email modal */}
       {testModal.open && (() => {
-        const fromName = formatSenderName(businessInfo.contact_name, businessInfo.business_name);
+        const fromName = businessInfo.business_name || businessInfo.contact_name || 'ListingBug';
         const senderEmail = senders.find(s => s.id === selectedSender)?.from_email ?? '';
         const previewSubject = messageInfo.subject
           ? messageInfo.subject

@@ -6,7 +6,6 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
-import { formatSenderName } from '../../lib/senderName';
 import { SMTPSetupModal } from '../SMTPSetupModal';
 import { Mail, Server, CheckCircle2, Pencil } from 'lucide-react';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
@@ -1609,7 +1608,7 @@ export function V2Onboarding() {
 
       {/* Test email modal (identical to NewCampaign) */}
       {testModal.open && (() => {
-        const fromName = formatSenderName(businessInfo.contact_name, businessInfo.business_name);
+        const fromName = businessInfo.business_name || businessInfo.contact_name || 'ListingBug';
         const senderEmail = connectedSenders.find(s => s.id === selectedSenderId)?.email ?? '';
         const previewSubject = messageInfo.subject
           ? messageInfo.subject.replace(/\{\{agent_name\}\}/g, 'Sarah').replace(/\{\{address\}\}/g, '1842 Maple St').replace(/\{\{city\}\}/g, searchCriteria.city || 'your city').replace(/\{\{price\}\}/g, '$485,000').replace(/\{\{listing_date\}\}/g, 'today')
