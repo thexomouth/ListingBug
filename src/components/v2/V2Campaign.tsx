@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { formatSenderName } from '../../lib/senderName';
 import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer } from 'lucide-react';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
-import { CampaignSendModal } from './CampaignSendModal';
+import { AgentActivityModal } from './AgentActivityModal';
 import { CityAutocomplete } from '../CityAutocomplete';
 
 // ---------------------------------------------------------------------------
@@ -1141,7 +1141,7 @@ export function V2Campaign() {
       {/* Send detail modal                                                    */}
       {/* ------------------------------------------------------------------ */}
       {selectedSend && campaign && (
-        <CampaignSendModal
+        <AgentActivityModal
           send={selectedSend}
           campaign={{
             campaign_name: campaign.campaign_name,

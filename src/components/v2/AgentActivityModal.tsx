@@ -1,6 +1,6 @@
 import { X, Mail, Phone, Home, CheckCircle2, Eye, MousePointer, MessageSquare, AlertCircle, User } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,7 +44,7 @@ export interface CampaignSendModalCampaign {
   state: string;
 }
 
-interface CampaignSendModalProps {
+interface AgentActivityModalProps {
   send: CampaignSendData;
   campaign: CampaignSendModalCampaign;
   onClose: () => void;
@@ -81,10 +81,38 @@ function statusBadge(status: string, hasReply: boolean) {
   }
 }
 
+const STREET_VIEW_KEY = 'AIzaSyBx4RH4XvtQWTRfIw4EW-g1VzwEAihe628';
+
+function buildStreetViewUrl(address: string) {
+  return `https://maps.googleapis.com/maps/api/streetview?size=800x300&location=${encodeURIComponent(address)}&fov=90&pitch=10&key=${STREET_VIEW_KEY}`;
+}
+
+// ---------------------------------------------------------------------------
+// Street View photo — renders at the top of the scrollable body
+// ---------------------------------------------------------------------------
+function ListingPhoto({ send }: { send: CampaignSendData }) {
+  const [failed, setFailed] = useState(false);
+
+  const addressParts = [send.listing_address, send.listing_city, send.listing_state].filter(Boolean);
+  if (addressParts.length === 0 || failed) return null;
+
+  return (
+    <div className="relative w-full rounded-xl overflow-hidden h-48 bg-gray-100 dark:bg-white/5 -mt-2">
+      <img
+        src={buildStreetViewUrl(addressParts.join(', '))}
+        alt={`Street view of ${addressParts.join(', ')}`}
+        className="w-full h-full object-cover"
+        onError={() => setFailed(true)}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function CampaignSendModal({ send, campaign, onClose }: CampaignSendModalProps) {
+export function AgentActivityModal({ send, campaign, onClose }: AgentActivityModalProps) {
   const hasReply = (send.campaign_replies?.length ?? 0) > 0;
   const badge = statusBadge(send.status, hasReply);
   const isFailed = send.status === 'failed';
@@ -113,7 +141,6 @@ export function CampaignSendModal({ send, campaign, onClose }: CampaignSendModal
     };
   }, []);
 
-  // Message preview with real data substituted in
   const previewSubject = campaign.subject ? fillVars(campaign.subject, send) : null;
   const previewBodyText = fillVars(campaign.body, send);
   const previewBodyHtml = previewBodyText
@@ -172,6 +199,9 @@ export function CampaignSendModal({ send, campaign, onClose }: CampaignSendModal
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-6">
+
+            {/* Street View photo */}
+            <ListingPhoto send={send} />
 
             {/* Failed error banner */}
             {isFailed && send.error_message && (
@@ -285,7 +315,6 @@ export function CampaignSendModal({ send, campaign, onClose }: CampaignSendModal
 
               {/* Timeline */}
               <div className="relative pl-6 space-y-4 mb-5">
-                {/* Vertical line */}
                 <div className="absolute left-2 top-2 bottom-2 w-px bg-gray-200 dark:bg-white/10" />
 
                 {send.sent_at && (
@@ -378,7 +407,6 @@ function TimelineEvent({
 }) {
   return (
     <div className="relative flex items-start gap-2.5">
-      {/* Dot on the line */}
       <div className={`absolute -left-[18px] w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#0F1115] mt-0.5 ${dotColor}`} />
       <div className={`flex items-center gap-1.5 ${highlight ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
         {icon}

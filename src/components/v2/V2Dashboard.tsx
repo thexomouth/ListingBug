@@ -5,7 +5,7 @@ import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
 import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
-import { CampaignSendModal } from './CampaignSendModal';
+import { AgentActivityModal } from './AgentActivityModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -891,7 +891,7 @@ export function V2Dashboard() {
     </div>
 
     {selectedAgentSend && (
-      <CampaignSendModal
+      <AgentActivityModal
         send={selectedAgentSend.send as any}
         campaign={selectedAgentSend.campaign}
         onClose={() => setSelectedAgentSend(null)}
