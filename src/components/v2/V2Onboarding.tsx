@@ -152,6 +152,10 @@ export function V2Onboarding() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPos = useRef(0);
   const cursorEnd = useRef(0);
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const subjectCursorPos = useRef(0);
+  const subjectCursorEnd = useRef(0);
+  const lastFocusedField = useRef<'body' | 'subject'>('body');
   const [linkForm, setLinkForm] = useState({ open: false, text: '', url: '' });
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
 
@@ -326,14 +330,27 @@ export function V2Onboarding() {
   // Variable chip insertion
   // ---------------------------------------------------------------------------
   const insertVar = (v: string) => {
-    const pos = cursorPos.current;
-    const body = messageInfo.body;
-    const newBody = body.slice(0, pos) + v + body.slice(pos);
-    const newPos = pos + v.length;
-    cursorPos.current = newPos;
-    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
-    const ta = textareaRef.current;
-    if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
+    if (lastFocusedField.current === 'subject') {
+      const pos = subjectCursorPos.current;
+      const end = subjectCursorEnd.current;
+      const subject = messageInfo.subject;
+      const newSubject = subject.slice(0, pos) + v + subject.slice(end);
+      const newPos = pos + v.length;
+      subjectCursorPos.current = newPos;
+      subjectCursorEnd.current = newPos;
+      flushSync(() => { setMessageInfo(m => ({ ...m, subject: newSubject })); });
+      const input = subjectRef.current;
+      if (input) { input.setSelectionRange(newPos, newPos); input.focus(); }
+    } else {
+      const pos = cursorPos.current;
+      const body = messageInfo.body;
+      const newBody = body.slice(0, pos) + v + body.slice(pos);
+      const newPos = pos + v.length;
+      cursorPos.current = newPos;
+      flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
+      const ta = textareaRef.current;
+      if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
+    }
   };
 
   const doInsertLink = (text: string, url: string) => {
@@ -954,198 +971,274 @@ export function V2Onboarding() {
   );
 
   // Step 3 — Message (identical to NewCampaign)
-  const renderStep3 = () => (
-    <div className="mb-2">
-      <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Write your intro message</div>
-      <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-        Sent to every listing agent when a new listing matches your search. Keep it short and personal.
-      </div>
+  const renderStep3 = () => {
+    const previewSubjectText = messageInfo.subject
+      ? messageInfo.subject
+          .replace(/\{\{agent_name\}\}/g, 'Sarah')
+          .replace(/\{\{address\}\}/g, '1842 Maple St')
+          .replace(/\{\{city\}\}/g, searchCriteria.city || 'your city')
+          .replace(/\{\{price\}\}/g, '$485,000')
+          .replace(/\{\{listing_date\}\}/g, 'today')
+      : null;
+    return (
+      <div className="mb-2">
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Write your intro message</div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+          Sent to every listing agent when a new listing matches your search. Keep it short and personal.
+        </div>
 
-      <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Campaign name</label>
-      <Input value={messageInfo.campaign_name} onChange={e => setMessageInfo(m => ({ ...m, campaign_name: toTitleCase(e.target.value) }))} placeholder="e.g. $500 Off; New Client Offer" />
-      {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
-
-      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Channel</label>
-      <div className="flex gap-2">
-        {['email', 'sms'].map(ch => (
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Campaign name</label>
+        {!messageInfo.campaign_name && searchCriteria.city && businessInfo.service_type.length > 0 && (
           <button
-            key={ch}
             type="button"
-            onClick={() => setMessageInfo(m => ({ ...m, channel: ch }))}
-            className="px-4 py-1.5 rounded-full border text-xs font-medium transition-all capitalize"
-            style={
-              messageInfo.channel === ch
-                ? { background: '#FFCE0A', borderColor: '#FFCE0A', color: '#342e37' }
-                : { background: '#f3f4f6', borderColor: '#d1d5db', color: '#6b7280' }
-            }
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => setMessageInfo(m => ({ ...m, campaign_name: `${searchCriteria.city} ${businessInfo.service_type[0]} Outreach` }))}
+            className="block text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 mb-1.5 transition-colors"
           >
-            {ch === 'email' ? 'Email' : 'SMS'}
+            Suggest: "{searchCriteria.city} {businessInfo.service_type[0]} Outreach"
           </button>
-        ))}
-      </div>
+        )}
+        <Input value={messageInfo.campaign_name} onChange={e => setMessageInfo(m => ({ ...m, campaign_name: toTitleCase(e.target.value) }))} placeholder="e.g. $500 Off; New Client Offer" />
+        {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
 
-      {/* Templates dropdown */}
-      <div className="mt-2 relative inline-block" ref={templateDropdownRef}>
-        <button
-          type="button"
-          onClick={loadTemplates}
-          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-        >
-          Templates <span className="text-[10px] opacity-60">▾</span>
-        </button>
-        {templatePicker.open && (
-          <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
-            {templatePicker.loading ? (
-              <div className="py-4 text-center text-xs text-gray-400">Loading…</div>
-            ) : (
-              <div className="max-h-[280px] overflow-y-auto">
-                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
-                  Starter Templates
-                </div>
-                {templatePicker.sharedTemplates.filter(t => t.channel === messageInfo.channel).length === 0 ? (
-                  <div className="px-3 py-2.5 text-xs text-gray-400 italic">No templates yet</div>
+        {/* Channel + Templates in one row */}
+        <div className="flex items-center justify-between gap-2 mt-3.5">
+          <div className="flex items-center gap-2.5">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Channel</span>
+            <div className="flex gap-1.5">
+              {['email', 'sms'].map(ch => (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => setMessageInfo(m => ({ ...m, channel: ch }))}
+                  className="px-4 py-1.5 rounded-full border text-xs font-medium transition-all capitalize"
+                  style={
+                    messageInfo.channel === ch
+                      ? { background: '#FFCE0A', borderColor: '#FFCE0A', color: '#342e37' }
+                      : { background: '#f3f4f6', borderColor: '#d1d5db', color: '#6b7280' }
+                  }
+                >
+                  {ch === 'email' ? 'Email' : 'SMS'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="relative" ref={templateDropdownRef}>
+            <button
+              type="button"
+              onClick={loadTemplates}
+              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+            >
+              Templates <span className="text-[10px] opacity-60">▾</span>
+            </button>
+            {templatePicker.open && (
+              <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
+                {templatePicker.loading ? (
+                  <div className="py-4 text-center text-xs text-gray-400">Loading…</div>
                 ) : (
-                  <div className="divide-y divide-gray-100 dark:divide-white/5">
-                    {templatePicker.sharedTemplates.filter(t => t.channel === messageInfo.channel).map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => applyTemplate(t)}
-                        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                      >
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{t.template_name}</div>
-                        <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">
-                          {t.channel} · {t.body.slice(0, 45)}{t.body.length > 45 ? '…' : ''}
-                        </div>
-                      </button>
-                    ))}
+                  <div className="max-h-[280px] overflow-y-auto">
+                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
+                      Starter Templates
+                    </div>
+                    {templatePicker.sharedTemplates.filter(t => t.channel === messageInfo.channel).length === 0 ? (
+                      <div className="px-3 py-2.5 text-xs text-gray-400 italic">No templates yet</div>
+                    ) : (
+                      <div className="divide-y divide-gray-100 dark:divide-white/5">
+                        {templatePicker.sharedTemplates.filter(t => t.channel === messageInfo.channel).map(t => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => applyTemplate(t)}
+                            className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                          >
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{t.template_name}</div>
+                            <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">
+                              {t.channel} · {t.body.slice(0, 45)}{t.body.length > 45 ? '…' : ''}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      {messageInfo.channel === 'email' && (
-        <>
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Subject line</label>
-          <Input value={messageInfo.subject} onChange={e => setMessageInfo(m => ({ ...m, subject: e.target.value }))} placeholder="e.g. Roof certification for {{address}}" />
-          {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">
-            Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span>
-          </label>
-          <Input value={messageInfo.preview_text} onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))} placeholder="e.g. I'd love to help with the listing at {{address}}..." />
-        </>
-      )}
-
-      {messageInfo.channel === 'sms' && (
-        <div className="mt-3.5 rounded-lg border border-gray-200 dark:border-white/10 p-4 space-y-3 bg-gray-50 dark:bg-[#1a1a1a]">
-          <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">SMS Delivery</div>
-          <div>
-            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Sending number</label>
-            <Input type="tel" value={smsConfig.twilio_from_number} onChange={e => setSmsConfig(s => ({ ...s, twilio_from_number: e.target.value }))} placeholder="+18885550100" />
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Your Twilio number — must be SMS-capable</p>
-            {stepErrors.twilio_from_number && <p className="text-xs text-red-500 mt-1">{stepErrors.twilio_from_number}</p>}
-          </div>
-          <div>
-            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Forward replies to</label>
-            <Input type="tel" value={smsConfig.forward_to_phone} onChange={e => setSmsConfig(s => ({ ...s, forward_to_phone: e.target.value }))} placeholder="+13035550100" />
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Your phone — agent replies will be forwarded here</p>
-            {stepErrors.forward_to_phone && <p className="text-xs text-red-500 mt-1">{stepErrors.forward_to_phone}</p>}
-          </div>
         </div>
-      )}
 
-      <label className="block text-sm text-gray-600 dark:text-gray-400 mt-3.5 mb-1.5">Message body</label>
-      <Textarea
-        ref={textareaRef}
-        value={messageInfo.body}
-        onChange={e => { cursorPos.current = e.target.selectionStart ?? 0; cursorEnd.current = e.target.selectionEnd ?? 0; setMessageInfo(m => ({ ...m, body: e.target.value })); }}
-        onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
-        onClick={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
-        onKeyUp={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
-        rows={5}
-        placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
-        className="resize-y"
-      />
-      {stepErrors.body && <p className="text-xs text-red-500 mt-1">{stepErrors.body}</p>}
+        {/* Split layout: compose left, preview right */}
+        <div className="flex flex-col md:flex-row gap-5 mt-4">
 
-      <div className="mt-2.5 mb-1">
-        <span className="text-xs text-gray-400 dark:text-gray-500">Insert variable: </span>
-        {VARS.map(v => (
-          <button
-            key={v}
-            type="button"
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => insertVar(v)}
-            className="inline-block px-2 py-0.5 rounded-md text-xs mx-0.5 cursor-pointer transition-opacity hover:opacity-80"
-            style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
-          >
-            {v}
-          </button>
-        ))}
-        {!linkForm.open && (
-          <button
-            type="button"
-            onMouseDown={e => {
-              e.preventDefault();
-              const ta = textareaRef.current;
-              const start = ta?.selectionStart ?? cursorPos.current;
-              const end = ta?.selectionEnd ?? cursorEnd.current;
-              cursorPos.current = start; cursorEnd.current = end;
-              const selectedText = messageInfo.body.slice(start, end);
-              setLinkForm({ open: true, text: selectedText, url: '' });
-            }}
-            className="inline-block px-2 py-0.5 rounded-md text-xs mx-0.5 cursor-pointer transition-opacity hover:opacity-80"
-            style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
-          >
-            + link
-          </button>
-        )}
-      </div>
+          {/* Left column — compose */}
+          <div className="flex-1 min-w-0">
 
-      {linkForm.open && (
-        <div className="mt-2 mb-1 flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
-          <input autoFocus={!linkForm.text} type="text" placeholder="Display text" value={linkForm.text} onChange={e => setLinkForm(f => ({ ...f, text: e.target.value }))} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-32 outline-none focus:border-[#FFCE0A]" />
-          <input autoFocus={!!linkForm.text} type="url" placeholder="https://..." value={linkForm.url} onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter' && linkForm.text.trim() && linkForm.url.trim()) doInsertLink(linkForm.text.trim(), linkForm.url.trim()); }} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-48 outline-none focus:border-[#FFCE0A]" />
-          <button type="button" disabled={!linkForm.text.trim() || !linkForm.url.trim()} onClick={() => doInsertLink(linkForm.text.trim(), linkForm.url.trim())} className="text-xs px-2.5 py-1 rounded font-medium transition-colors disabled:opacity-40" style={{ background: '#FFCE0A', color: '#342e37' }}>Insert</button>
-          <button type="button" onClick={() => setLinkForm({ open: false, text: '', url: '' })} className="text-xs px-2 py-1 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</button>
-        </div>
-      )}
+            {messageInfo.channel === 'sms' && (
+              <div className="rounded-lg border border-gray-200 dark:border-white/10 p-4 space-y-3 bg-gray-50 dark:bg-[#1a1a1a] mb-3">
+                <div className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">SMS Delivery</div>
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Sending number</label>
+                  <Input type="tel" value={smsConfig.twilio_from_number} onChange={e => setSmsConfig(s => ({ ...s, twilio_from_number: e.target.value }))} placeholder="+18885550100" />
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Your Twilio number — must be SMS-capable</p>
+                  {stepErrors.twilio_from_number && <p className="text-xs text-red-500 mt-1">{stepErrors.twilio_from_number}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Forward replies to</label>
+                  <Input type="tel" value={smsConfig.forward_to_phone} onChange={e => setSmsConfig(s => ({ ...s, forward_to_phone: e.target.value }))} placeholder="+13035550100" />
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Your phone — agent replies will be forwarded here</p>
+                  {stepErrors.forward_to_phone && <p className="text-xs text-red-500 mt-1">{stepErrors.forward_to_phone}</p>}
+                </div>
+              </div>
+            )}
 
-      {messageInfo.channel === 'email' && (
-        <div className="mt-3.5">
-          <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Inbox preview</label>
-          <div className="rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] px-4 py-3 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
-              {(businessInfo.business_name || 'Y').charAt(0).toUpperCase()}
+            {messageInfo.channel === 'email' && (
+              <div className="rounded-lg bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/10 p-3.5 mb-3 space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Subject line</label>
+                  <Input
+                    ref={subjectRef}
+                    value={messageInfo.subject}
+                    onFocus={() => { lastFocusedField.current = 'subject'; }}
+                    onChange={e => {
+                      subjectCursorPos.current = e.target.selectionStart ?? 0;
+                      subjectCursorEnd.current = e.target.selectionEnd ?? 0;
+                      setMessageInfo(m => ({ ...m, subject: e.target.value }));
+                    }}
+                    onSelect={e => {
+                      subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
+                      subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
+                    }}
+                    onClick={e => {
+                      subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
+                      subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
+                    }}
+                    onKeyUp={e => {
+                      subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
+                      subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
+                    }}
+                    placeholder="e.g. Roof certification for {{address}}"
+                  />
+                  {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">
+                    Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span>
+                  </label>
+                  <Input
+                    value={messageInfo.preview_text}
+                    onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))}
+                    placeholder="e.g. I'd love to help with the listing at {{address}}..."
+                  />
+                </div>
+              </div>
+            )}
+
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Message body</label>
+            <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 rounded-t-md bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 border-b-0">
+              {VARS.map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => insertVar(v)}
+                  className="px-2 py-0.5 rounded-md text-xs cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
+                >
+                  {v}
+                </button>
+              ))}
+              {!linkForm.open && (
+                <button
+                  type="button"
+                  onMouseDown={e => {
+                    e.preventDefault();
+                    const ta = textareaRef.current;
+                    const start = ta?.selectionStart ?? cursorPos.current;
+                    const end = ta?.selectionEnd ?? cursorEnd.current;
+                    cursorPos.current = start; cursorEnd.current = end;
+                    const selectedText = messageInfo.body.slice(start, end);
+                    setLinkForm({ open: true, text: selectedText, url: '' });
+                  }}
+                  className="px-2 py-0.5 rounded-md text-xs cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
+                >
+                  + link
+                </button>
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-0.5">
-                <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{businessInfo.business_name || 'Your Name'}</span>
-                <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
+            <Textarea
+              ref={textareaRef}
+              value={messageInfo.body}
+              onFocus={() => { lastFocusedField.current = 'body'; }}
+              onChange={e => { cursorPos.current = e.target.selectionStart ?? 0; cursorEnd.current = e.target.selectionEnd ?? 0; setMessageInfo(m => ({ ...m, body: e.target.value })); }}
+              onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
+              onClick={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
+              onKeyUp={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
+              rows={5}
+              placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
+              className="resize-y rounded-t-none"
+            />
+            <div className="flex items-center justify-between mt-1 min-h-[1.25rem]">
+              {stepErrors.body ? <p className="text-xs text-red-500">{stepErrors.body}</p> : <span />}
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {messageInfo.body.length} chars{messageInfo.body.length >= 100 && messageInfo.body.length <= 300 ? ' · ideal ✓' : ''}
+              </span>
+            </div>
+
+            {linkForm.open && (
+              <div className="mt-2 mb-1 flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
+                <input autoFocus={!linkForm.text} type="text" placeholder="Display text" value={linkForm.text} onChange={e => setLinkForm(f => ({ ...f, text: e.target.value }))} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-32 outline-none focus:border-[#FFCE0A]" />
+                <input autoFocus={!!linkForm.text} type="url" placeholder="https://..." value={linkForm.url} onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter' && linkForm.text.trim() && linkForm.url.trim()) doInsertLink(linkForm.text.trim(), linkForm.url.trim()); }} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-48 outline-none focus:border-[#FFCE0A]" />
+                <button type="button" disabled={!linkForm.text.trim() || !linkForm.url.trim()} onClick={() => doInsertLink(linkForm.text.trim(), linkForm.url.trim())} className="text-xs px-2.5 py-1 rounded font-medium transition-colors disabled:opacity-40" style={{ background: '#FFCE0A', color: '#342e37' }}>Insert</button>
+                <button type="button" onClick={() => setLinkForm({ open: false, text: '', url: '' })} className="text-xs px-2 py-1 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</button>
               </div>
-              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                {messageInfo.subject
-                  ? messageInfo.subject
-                      .replace(/\{\{agent_name\}\}/g, 'Sarah')
-                      .replace(/\{\{address\}\}/g, '1842 Maple St')
-                      .replace(/\{\{city\}\}/g, searchCriteria.city || 'your city')
-                      .replace(/\{\{price\}\}/g, '$485,000')
-                      .replace(/\{\{listing_date\}\}/g, 'today')
-                  : <span className="text-gray-400 dark:text-gray-500 font-normal italic">No subject yet...</span>
-                }
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {messageInfo.preview_text || <span className="italic text-gray-300 dark:text-gray-600">Preview text will appear here...</span>}
+            )}
+          </div>
+
+          {/* Right column — inbox + desktop preview */}
+          {messageInfo.channel === 'email' && (
+            <div className="w-full md:w-[272px] shrink-0">
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
+                <div className="px-3 py-2 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Inbox Preview</span>
+                </div>
+                <div className="px-4 py-3 flex items-start gap-3 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-white/10">
+                  <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
+                    {(businessInfo.business_name || 'Y').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{businessInfo.business_name || 'Your Name'}</span>
+                      <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
+                    </div>
+                    <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {previewSubjectText ?? <span className="text-gray-400 dark:text-gray-500 font-normal italic">No subject yet...</span>}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {messageInfo.preview_text || <span className="italic text-gray-300 dark:text-gray-600">Preview text will appear here...</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="px-3 py-2 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/10">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Desktop Preview</span>
+                </div>
+                <div className="p-3 bg-white dark:bg-[#1a1a1a] max-h-36 overflow-hidden relative">
+                  {messageInfo.body ? (
+                    <div
+                      className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+                    />
+                  ) : (
+                    <p className="text-xs text-gray-300 dark:text-gray-600 italic">Your message will appear here...</p>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white dark:from-[#1a1a1a] to-transparent pointer-events-none" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   // Step 4 — Review summary (no submit button here; user clicks Next → to proceed to step 5)
   const renderStep4 = () => {
