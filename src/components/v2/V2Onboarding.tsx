@@ -1389,12 +1389,11 @@ export function V2Onboarding() {
               }
             </div>
           </div>
-          <div className="px-4 py-3 bg-white dark:bg-[#1a1a1a] max-h-28 overflow-hidden relative">
+          <div className="px-4 py-5 bg-white dark:bg-[#1a1a1a]">
             <div
               className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
             />
-            <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-white dark:from-[#1a1a1a] to-transparent pointer-events-none" />
           </div>
         </div>
 
