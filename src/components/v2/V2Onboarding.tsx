@@ -7,7 +7,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
 import { SMTPSetupModal } from '../SMTPSetupModal';
-import { Mail, Server, CheckCircle2, Pencil } from 'lucide-react';
+import { Mail, Server, CheckCircle2, Pencil, Bold, Italic, Heading1, Heading2, AlignCenter } from 'lucide-react';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -95,9 +95,21 @@ function toTitleCase(str: string): string {
 function renderBodyPreview(text: string, city: string): string {
   let s = interpolatePreview(text, city);
   s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Links [text](url)
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
     (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline" target="_blank" rel="noopener noreferrer">${t}</a>`);
+  // Inline formatting
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
+  // Centered block — supports multi-line
+  s = s.replace(/\[center\]([\s\S]*?)\[\/center\]/g, '<div style="text-align:center">$1</div>');
+  // Headings (line-level, before \n→<br>)
+  s = s.replace(/^## (.+)$/gm, '<div style="font-size:18px;font-weight:600;line-height:1.3;margin:8px 0 4px">$1</div>');
+  s = s.replace(/^# (.+)$/gm, '<div style="font-size:22px;font-weight:700;line-height:1.25;margin:10px 0 6px">$1</div>');
+  // Newlines
   s = s.replace(/\n/g, '<br>');
+  // Strip trailing <br> that follow our block elements
+  s = s.replace(/(<\/div>)<br>/g, '$1');
   return s;
 }
 
@@ -365,6 +377,70 @@ export function V2Onboarding() {
     const ta = textareaRef.current;
     if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
     setLinkForm({ open: false, text: '', url: '' });
+  };
+
+  // Wrap current selection in body with marker (for **bold**, _italic_)
+  const wrapBodySelection = (marker: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? cursorPos.current;
+    const end = ta.selectionEnd ?? cursorEnd.current;
+    const body = messageInfo.body;
+    const selected = body.slice(start, end) || 'text';
+    const newBody = body.slice(0, start) + marker + selected + marker + body.slice(end);
+    const newStart = start + marker.length;
+    const newEnd = newStart + selected.length;
+    cursorPos.current = newEnd;
+    cursorEnd.current = newEnd;
+    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
+    ta.focus();
+    ta.setSelectionRange(newStart, newEnd);
+  };
+
+  // Toggle a heading marker (# or ## ) at the start of the current line
+  const toggleBodyHeading = (marker: '# ' | '## ') => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const caret = ta.selectionStart ?? cursorPos.current;
+    const body = messageInfo.body;
+    const lineStart = body.lastIndexOf('\n', caret - 1) + 1;
+    const lineRest = body.slice(lineStart);
+    const existing = lineRest.match(/^(#{1,2}) /);
+    let newBody: string;
+    let newCaret: number;
+    if (existing && existing[0] === marker) {
+      newBody = body.slice(0, lineStart) + body.slice(lineStart + marker.length);
+      newCaret = Math.max(lineStart, caret - marker.length);
+    } else if (existing) {
+      newBody = body.slice(0, lineStart) + marker + body.slice(lineStart + existing[0].length);
+      newCaret = lineStart + marker.length + (caret - lineStart - existing[0].length);
+    } else {
+      newBody = body.slice(0, lineStart) + marker + body.slice(lineStart);
+      newCaret = caret + marker.length;
+    }
+    cursorPos.current = newCaret;
+    cursorEnd.current = newCaret;
+    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
+    ta.focus();
+    ta.setSelectionRange(newCaret, newCaret);
+  };
+
+  // Wrap selection in [center]…[/center]
+  const wrapBodyCenter = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? cursorPos.current;
+    const end = ta.selectionEnd ?? cursorEnd.current;
+    const body = messageInfo.body;
+    const selected = body.slice(start, end) || 'centered text';
+    const newBody = body.slice(0, start) + '[center]' + selected + '[/center]' + body.slice(end);
+    const newStart = start + 8;
+    const newEnd = newStart + selected.length;
+    cursorPos.current = newEnd;
+    cursorEnd.current = newEnd;
+    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
+    ta.focus();
+    ta.setSelectionRange(newStart, newEnd);
   };
 
   // ---------------------------------------------------------------------------
@@ -981,18 +1057,37 @@ export function V2Onboarding() {
       : null;
     return (
       <div>
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Write your intro message</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Sent to every listing agent when a new listing matches your search. Keep it short and personal.
-          </p>
+        {/* Header row — title left, channel toggle right */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Write your intro message</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Sent to every listing agent when a new listing matches your search. Keep it short and personal.
+            </p>
+          </div>
+          <div className="shrink-0 inline-flex rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-0.5">
+            {['email', 'sms'].map(ch => (
+              <button
+                key={ch}
+                type="button"
+                onClick={() => setMessageInfo(m => ({ ...m, channel: ch }))}
+                className="px-4 py-1.5 rounded-md text-sm font-medium transition-all capitalize"
+                style={
+                  messageInfo.channel === ch
+                    ? { background: '#FFCE0A', color: '#342e37' }
+                    : { background: 'transparent', color: 'rgb(107 114 128)' }
+                }
+              >
+                {ch === 'email' ? 'Email' : 'SMS'}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Settings bar: Campaign name + Channel + Templates */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto] gap-4 lg:items-end mb-6">
-          <div className="min-w-0">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Campaign name</label>
+        {/* Campaign name + Templates row */}
+        <div className="flex items-end gap-4 mb-6">
+          <div className="flex-1 min-w-0">
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Campaign name</label>
             {!messageInfo.campaign_name && searchCriteria.city && businessInfo.service_type.length > 0 && (
               <button
                 type="button"
@@ -1011,29 +1106,7 @@ export function V2Onboarding() {
             {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Channel</label>
-            <div className="inline-flex rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-0.5">
-              {['email', 'sms'].map(ch => (
-                <button
-                  key={ch}
-                  type="button"
-                  onClick={() => setMessageInfo(m => ({ ...m, channel: ch }))}
-                  className="px-4 py-1.5 rounded-md text-sm font-medium transition-all capitalize"
-                  style={
-                    messageInfo.channel === ch
-                      ? { background: '#FFCE0A', color: '#342e37' }
-                      : { background: 'transparent', color: 'rgb(107 114 128)' }
-                  }
-                >
-                  {ch === 'email' ? 'Email' : 'SMS'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative" ref={templateDropdownRef}>
-            <label className="hidden lg:block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wider opacity-0">Templates</label>
+          <div className="relative shrink-0" ref={templateDropdownRef}>
             <button
               type="button"
               onClick={loadTemplates}
@@ -1083,8 +1156,7 @@ export function V2Onboarding() {
           <div className="min-w-0 space-y-4">
 
             {messageInfo.channel === 'sms' && (
-              <div className="rounded-xl border border-gray-200 dark:border-white/10 p-4 space-y-3 bg-gray-50 dark:bg-white/[0.03]">
-                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">SMS Delivery</div>
+              <div className="space-y-3">
                 <div>
                   <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Sending number</label>
                   <Input type="tel" value={smsConfig.twilio_from_number} onChange={e => setSmsConfig(s => ({ ...s, twilio_from_number: e.target.value }))} placeholder="+18885550100" />
@@ -1101,9 +1173,9 @@ export function V2Onboarding() {
             )}
 
             {messageInfo.channel === 'email' && (
-              <div className="rounded-xl bg-gray-50 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 p-4 space-y-3.5">
+              <>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Subject line</label>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Subject line</label>
                   <Input
                     ref={subjectRef}
                     value={messageInfo.subject}
@@ -1130,8 +1202,8 @@ export function V2Onboarding() {
                   {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wider">
-                    Preview text <span className="ml-1 text-gray-400 dark:text-gray-500 normal-case font-normal tracking-normal">(shown after subject in inbox)</span>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">
+                    Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span>
                   </label>
                   <Input
                     value={messageInfo.preview_text}
@@ -1139,55 +1211,66 @@ export function V2Onboarding() {
                     placeholder="e.g. I'd love to help with the listing at {{address}}..."
                   />
                 </div>
-              </div>
+              </>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Message body</label>
-              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-t-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 border-b-0">
-                {VARS.map(v => (
-                  <button
-                    key={v}
-                    type="button"
-                    onMouseDown={e => e.preventDefault()}
-                    onClick={() => insertVar(v)}
-                    className="px-2.5 py-1 rounded-md text-xs font-mono cursor-pointer transition-opacity hover:opacity-80"
-                    style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
-                  >
-                    {v}
-                  </button>
-                ))}
-                {!linkForm.open && (
-                  <button
-                    type="button"
-                    onMouseDown={e => {
-                      e.preventDefault();
-                      const ta = textareaRef.current;
-                      const start = ta?.selectionStart ?? cursorPos.current;
-                      const end = ta?.selectionEnd ?? cursorEnd.current;
-                      cursorPos.current = start; cursorEnd.current = end;
-                      const selectedText = messageInfo.body.slice(start, end);
-                      setLinkForm({ open: true, text: selectedText, url: '' });
-                    }}
-                    className="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-opacity hover:opacity-80"
-                    style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
-                  >
-                    + link
-                  </button>
-                )}
+              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Message body</label>
+              {/* Body editor — single bordered container wrapping toolbar + textarea */}
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-[#1a1a1a] focus-within:border-[#FFCE0A] transition-colors">
+                {/* Format toolbar */}
+                <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('# ')} title="Heading 1" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Heading1 className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('## ')} title="Heading 2" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Heading2 className="w-4 h-4" /></button>
+                  <span className="w-px h-5 bg-gray-200 dark:bg-white/10 mx-1" />
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('**')} title="Bold" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Bold className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('_')} title="Italic" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Italic className="w-4 h-4" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={wrapBodyCenter} title="Center" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><AlignCenter className="w-4 h-4" /></button>
+                  <span className="w-px h-5 bg-gray-200 dark:bg-white/10 mx-1" />
+                  {VARS.map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => insertVar(v)}
+                      className="px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-opacity hover:opacity-80"
+                      style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                  {!linkForm.open && (
+                    <button
+                      type="button"
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        const ta = textareaRef.current;
+                        const start = ta?.selectionStart ?? cursorPos.current;
+                        const end = ta?.selectionEnd ?? cursorEnd.current;
+                        cursorPos.current = start; cursorEnd.current = end;
+                        const selectedText = messageInfo.body.slice(start, end);
+                        setLinkForm({ open: true, text: selectedText, url: '' });
+                      }}
+                      className="px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-opacity hover:opacity-80"
+                      style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
+                    >
+                      + link
+                    </button>
+                  )}
+                </div>
+                <Textarea
+                  ref={textareaRef}
+                  value={messageInfo.body}
+                  onFocus={() => { lastFocusedField.current = 'body'; }}
+                  onChange={e => { cursorPos.current = e.target.selectionStart ?? 0; cursorEnd.current = e.target.selectionEnd ?? 0; setMessageInfo(m => ({ ...m, body: e.target.value })); }}
+                  onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
+                  onClick={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
+                  onKeyUp={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
+                  rows={9}
+                  placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
+                  className="resize-y border-0 px-3.5 py-2.5 hover:border-0 focus:border-0"
+                />
               </div>
-              <Textarea
-                ref={textareaRef}
-                value={messageInfo.body}
-                onFocus={() => { lastFocusedField.current = 'body'; }}
-                onChange={e => { cursorPos.current = e.target.selectionStart ?? 0; cursorEnd.current = e.target.selectionEnd ?? 0; setMessageInfo(m => ({ ...m, body: e.target.value })); }}
-                onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
-                onClick={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
-                onKeyUp={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0; cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0; }}
-                rows={9}
-                placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
-                className="resize-y rounded-t-none rounded-b-xl"
-              />
               <div className="flex items-center justify-between mt-1.5 min-h-[1.25rem]">
                 {stepErrors.body ? <p className="text-xs text-red-500">{stepErrors.body}</p> : <span />}
                 <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -1276,178 +1359,152 @@ export function V2Onboarding() {
     const goToStep = (s: number) => { setStepErrors({}); setStep(s); };
 
     return (
-      <div>
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Review your campaign</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Here's what agents in {searchCriteria.city || 'your city'} will receive.
-          </p>
+      <div className="mb-2">
+        <div className="text-base font-medium text-gray-900 dark:text-white mb-1">Review your campaign</div>
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Here's what agents in {searchCriteria.city || 'your city'} will receive.
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-6">
-
-          {/* LEFT — Email preview + Send test */}
-          <div className="min-w-0 space-y-4">
-            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] overflow-hidden shadow-sm">
-              {/* Mac window chrome */}
-              <div className="flex items-center gap-1.5 px-4 py-3 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
-                <div className="w-3 h-3 rounded-full bg-red-400/70" />
-                <div className="w-3 h-3 rounded-full bg-yellow-400/70" />
-                <div className="w-3 h-3 rounded-full bg-green-400/70" />
-                <span className="ml-3 text-xs text-gray-500 dark:text-gray-400">Inbox — listing agent's view</span>
-              </div>
-              {/* Sender row */}
-              <div className="px-5 py-4 bg-blue-50/40 dark:bg-blue-950/20 border-b border-gray-100 dark:border-white/10 flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-[#FFCE0A] flex items-center justify-center text-base font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
-                  {fromName.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-base font-semibold text-gray-900 dark:text-white truncate">{fromName}</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">just now</span>
-                  </div>
-                  <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-0.5">{previewSubject}</div>
-                  {messageInfo.preview_text
-                    ? <div className="text-xs text-gray-500 dark:text-gray-400">{messageInfo.preview_text}</div>
-                    : senderEmail && <div className="text-xs text-gray-400 dark:text-gray-500">{senderEmail}</div>
-                  }
-                </div>
-              </div>
-              {/* Body — full, no clip */}
-              <div className="px-5 py-5 max-h-[560px] overflow-y-auto">
-                <div
-                  className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
-                />
-              </div>
+        {/* Inbox mockup */}
+        <div className="mb-4 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
+            <span className="ml-2 text-[11px] text-gray-400 dark:text-gray-500">Inbox — listing agent's view</span>
+          </div>
+          <div className="px-4 py-3 bg-blue-50/60 dark:bg-blue-950/20 border-b border-gray-100 dark:border-white/10 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
+              {fromName.charAt(0).toUpperCase()}
             </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{fromName}</span>
+                <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
+              </div>
+              <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{previewSubject}</div>
+              {messageInfo.preview_text
+                ? <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{messageInfo.preview_text}</div>
+                : senderEmail && <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senderEmail}</div>
+              }
+            </div>
+          </div>
+          <div className="px-4 py-3 bg-white dark:bg-[#1a1a1a] max-h-28 overflow-hidden relative">
+            <div
+              className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+            />
+            <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-white dark:from-[#1a1a1a] to-transparent pointer-events-none" />
+          </div>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => setTestModal({ open: true, address: businessInfo.forward_to || '', sending: false, sent: false, error: null })}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
-            >
-              <Mail className="w-4 h-4" /> Send test email
-            </button>
+        {/* Summary cards */}
+        <div className="grid grid-cols-3 gap-2.5 mb-4">
+          {/* Mailbox */}
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Mailbox</span>
+              <button type="button" onClick={() => goToStep(1)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Sender Email</div>
+                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">{senderEmail || '—'}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">From Name</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{businessInfo.business_name || '—'}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Reply-To</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{businessInfo.forward_to || '—'}</div>
+              </div>
+              {businessInfo.mailing_address && (
+                <div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Address</div>
+                  <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{businessInfo.mailing_address}</div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* RIGHT — Summary cards + primary CTA */}
-          <div className="space-y-3">
-
-            {/* Mailbox */}
-            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Mailbox</span>
-                <button
-                  type="button"
-                  onClick={() => goToStep(0)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md text-[#342e37] hover:opacity-80 transition-opacity"
-                  style={{ background: '#FFCE0A' }}
-                >
-                  <Pencil className="w-3 h-3" /> Edit
-                </button>
-              </div>
-              <dl className="space-y-2.5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Sender</dt>
-                  <dd className="text-sm font-medium text-gray-900 dark:text-white text-right truncate">{senderEmail || '—'}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">From name</dt>
-                  <dd className="text-sm text-gray-700 dark:text-gray-300 text-right truncate">{businessInfo.business_name || '—'}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Reply-to</dt>
-                  <dd className="text-sm text-gray-700 dark:text-gray-300 text-right truncate">{businessInfo.forward_to || '—'}</dd>
-                </div>
-                {businessInfo.mailing_address && (
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Address</dt>
-                    <dd className="text-sm text-gray-700 dark:text-gray-300 text-right truncate">{businessInfo.mailing_address}</dd>
-                  </div>
-                )}
-              </dl>
+          {/* Listings */}
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Listings</span>
+              <button type="button" onClick={() => goToStep(2)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
             </div>
-
-            {/* Listings */}
-            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Listings</span>
-                <button
-                  type="button"
-                  onClick={() => goToStep(2)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md text-[#342e37] hover:opacity-80 transition-opacity"
-                  style={{ background: '#FFCE0A' }}
-                >
-                  <Pencil className="w-3 h-3" /> Edit
-                </button>
+            <div className="space-y-1.5">
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Location</div>
+                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                  {searchCriteria.city || '—'}{searchCriteria.state ? `, ${searchCriteria.state}` : ''}
+                </div>
               </div>
-              <dl className="space-y-2.5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Location</dt>
-                  <dd className="text-sm font-medium text-gray-900 dark:text-white text-right truncate">
-                    {searchCriteria.city || '—'}{searchCriteria.state ? `, ${searchCriteria.state}` : ''}
-                  </dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Type</dt>
-                  <dd className="text-sm text-gray-700 dark:text-gray-300 text-right truncate">{searchCriteria.property_type}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Price</dt>
-                  <dd className="text-sm text-gray-700 dark:text-gray-300 text-right truncate">{priceRange}</dd>
-                </div>
-                {ybSummary && (
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Year built</dt>
-                    <dd className="text-sm text-gray-700 dark:text-gray-300 text-right">{ybSummary}</dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-
-            {/* Message */}
-            <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Message</span>
-                <button
-                  type="button"
-                  onClick={() => goToStep(3)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md text-[#342e37] hover:opacity-80 transition-opacity"
-                  style={{ background: '#FFCE0A' }}
-                >
-                  <Pencil className="w-3 h-3" /> Edit
-                </button>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Type</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{searchCriteria.property_type}</div>
               </div>
-              <dl className="space-y-2.5">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Campaign</dt>
-                  <dd className="text-sm font-medium text-gray-900 dark:text-white text-right truncate">{messageInfo.campaign_name || '—'}</dd>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Price</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{priceRange}</div>
+              </div>
+              {ybSummary && (
+                <div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Year built</div>
+                  <div className="text-xs text-gray-700 dark:text-gray-300">{ybSummary}</div>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Channel</dt>
-                  <dd className="text-sm text-gray-700 dark:text-gray-300 text-right capitalize">{messageInfo.channel}</dd>
-                </div>
-                {messageInfo.channel === 'email' && messageInfo.subject && (
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Subject</dt>
-                    <dd className="text-sm text-gray-700 dark:text-gray-300 text-right truncate">{messageInfo.subject}</dd>
-                  </div>
-                )}
-              </dl>
+              )}
             </div>
-
-            {/* Primary CTA */}
-            <button
-              type="button"
-              onClick={handleNext}
-              className="w-full py-3 rounded-lg text-sm font-bold transition-opacity hover:opacity-90 shadow-sm"
-              style={{ background: '#FFCE0A', color: '#342e37' }}
-            >
-              Send first emails →
-            </button>
           </div>
+
+          {/* Message */}
+          <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Message</span>
+              <button type="button" onClick={() => goToStep(3)} className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: '#FFCE0A' }}>
+                <Pencil className="w-3 h-3 text-[#342e37]" />
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Campaign</div>
+                <div className="text-xs font-medium text-gray-900 dark:text-white truncate">{messageInfo.campaign_name || '—'}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">Channel</div>
+                <div className="text-xs text-gray-700 dark:text-gray-300 capitalize">{messageInfo.channel}</div>
+              </div>
+              {messageInfo.channel === 'email' && messageInfo.subject && (
+                <div>
+                  <div className="text-[10px] text-gray-400 dark:text-gray-500">Subject</div>
+                  <div className="text-xs text-gray-700 dark:text-gray-300 truncate">{messageInfo.subject}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTestModal({ open: true, address: businessInfo.forward_to || '', sending: false, sent: false, error: null })}
+            className="flex-none py-2.5 px-4 rounded-lg text-sm font-medium border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors"
+          >
+            Send test email
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity hover:opacity-90"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
+          >
+            Send first emails →
+          </button>
         </div>
       </div>
     );
@@ -1586,7 +1643,7 @@ export function V2Onboarding() {
   const isLastStep = step === STEPS.length - 1;
   const isFirstStep = step === 0;
   const isDone = emailsSent !== null || isVerificationStep;
-  const stepMaxWidth = step === 3 ? '1100px' : step === 4 ? '1200px' : '680px';
+  const stepMaxWidth = step === 3 ? '1100px' : '680px';
 
   return (
     <div className="min-h-screen relative">
