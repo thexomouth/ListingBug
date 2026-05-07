@@ -151,7 +151,7 @@ export function V2Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number } | null>(null);
+  const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number; listings: any[] } | null>(null);
   const [listingPreviewLoading, setListingPreviewLoading] = useState(false);
 
   // Signup state (step 4)
@@ -333,7 +333,7 @@ export function V2Onboarding() {
       setListingPreview(null);
       supabase.functions.invoke('fetch-listings-preview', { body: { criteria: searchCriteria } })
         .then(({ data }) => {
-          if (data && !data.error) setListingPreview({ count: data.count, agentCount: data.agent_count });
+          if (data && !data.error) setListingPreview({ count: data.count, agentCount: data.agent_count, listings: data.listings ?? [] });
         })
         .catch(() => {})
         .finally(() => setListingPreviewLoading(false));
@@ -604,10 +604,12 @@ export function V2Onboarding() {
   // ---------------------------------------------------------------------------
   // Send campaign emails (separate from creation for email verification gate)
   // ---------------------------------------------------------------------------
-  const sendCampaignEmails = async (userId: string, campaignId: string): Promise<number> => {
-    const { data: result, error: fnErr } = await supabase.functions.invoke('send-campaign-emails', {
-      body: { campaign_id: campaignId },
-    });
+  const sendCampaignEmails = async (userId: string, campaignId: string, listings?: any[]): Promise<number> => {
+    const hasListings = listings && listings.length > 0;
+    const { data: result, error: fnErr } = await supabase.functions.invoke(
+      hasListings ? 'send-new-campaign-emails' : 'send-campaign-emails',
+      { body: hasListings ? { campaign_id: campaignId, listings } : { campaign_id: campaignId } }
+    );
 
     if (fnErr) {
       const detail = (result as any)?.error || (result as any)?.details || fnErr.message;
@@ -657,9 +659,9 @@ export function V2Onboarding() {
       // Create campaign (always allowed)
       const campaignId = await createCampaignRecord(userId);
 
-      // Case 1: Email verified - send immediately
+      // Case 1: Email verified - send immediately using pre-fetched listings
       if (user?.email_confirmed_at) {
-        const sent = await sendCampaignEmails(userId, campaignId);
+        const sent = await sendCampaignEmails(userId, campaignId, listingPreview?.listings);
         setEmailsSent(sent);
         setIsSubmitting(false);
         return;

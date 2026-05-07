@@ -103,7 +103,7 @@ serve(async (req) => {
       if (email && email.includes("@")) seenEmails.add(email);
     }
 
-    return json({ count: listings.length, agent_count: seenEmails.size });
+    return json({ count: listings.length, agent_count: seenEmails.size, listings });
   } catch (err: any) {
     console.error("[fetch-listings-preview] Error:", err.message);
     return json({ error: err.message }, 500);

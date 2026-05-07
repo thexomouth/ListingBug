@@ -160,7 +160,7 @@ export function NewCampaign() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number } | null>(null);
+  const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number; listings: any[] } | null>(null);
   const [listingPreviewLoading, setListingPreviewLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPos = useRef(0);
@@ -361,7 +361,7 @@ export function NewCampaign() {
       setListingPreview(null);
       supabase.functions.invoke('fetch-listings-preview', { body: { criteria: searchCriteria } })
         .then(({ data }) => {
-          if (data && !data.error) setListingPreview({ count: data.count, agentCount: data.agent_count });
+          if (data && !data.error) setListingPreview({ count: data.count, agentCount: data.agent_count, listings: data.listings ?? [] });
         })
         .catch(() => {})
         .finally(() => setListingPreviewLoading(false));
@@ -553,9 +553,11 @@ export function NewCampaign() {
         });
       }
 
-      const { data: result, error: fnErr } = await supabase.functions.invoke('send-campaign-emails', {
-        body: { campaign_id: campaign.id },
-      });
+      const hasListings = listingPreview?.listings && listingPreview.listings.length > 0;
+      const { data: result, error: fnErr } = await supabase.functions.invoke(
+        hasListings ? 'send-new-campaign-emails' : 'send-campaign-emails',
+        { body: hasListings ? { campaign_id: campaign.id, listings: listingPreview!.listings } : { campaign_id: campaign.id } }
+      );
 
       if (fnErr) {
         // Extract actual error message from the function response body when available
