@@ -112,6 +112,83 @@ function buildUnsubUrl(userId: string, campaignId: string, agentEmail: string, c
 }
 
 // ---------------------------------------------------------------------------
+// Markdown → email HTML conversion
+// ---------------------------------------------------------------------------
+function applyInline(text: string): string {
+  return text
+    .replace(/__([^_]+)__/g, "<u>$1</u>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/_([^_]+)_/g, "<em>$1</em>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>")
+    .replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`
+    );
+}
+
+function convertMarkdown(text: string): string {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const lines = escaped.split("\n");
+  const out: string[] = [];
+  let inUl = false;
+  let inOl = false;
+
+  for (const raw of lines) {
+    const isBullet = raw.startsWith("- ");
+    const isOrdered = /^\d+\.\s/.test(raw);
+
+    if (!isBullet && inUl) { out.push("</ul>"); inUl = false; }
+    if (!isOrdered && inOl) { out.push("</ol>"); inOl = false; }
+
+    if (raw === "---") {
+      out.push('<hr style="border:none;border-top:1px solid #e5e7eb;margin:1em 0">');
+      continue;
+    }
+    if (raw.startsWith("# ")) {
+      out.push(`<h1 style="font-size:1.5em;font-weight:700;margin:0.5em 0;line-height:1.2">${applyInline(raw.slice(2))}</h1>`);
+      continue;
+    }
+    if (raw.startsWith("## ")) {
+      out.push(`<h2 style="font-size:1.2em;font-weight:700;margin:0.5em 0;line-height:1.2">${applyInline(raw.slice(3))}</h2>`);
+      continue;
+    }
+    if (raw.startsWith("&gt; ")) {
+      out.push(`<blockquote style="border-left:3px solid #d1d5db;margin:0.5em 0;padding:0.25em 0.75em;color:#6b7280">${applyInline(raw.slice(5))}</blockquote>`);
+      continue;
+    }
+    if (raw.startsWith("[center]") && raw.includes("[/center]")) {
+      const inner = raw.slice(8, raw.indexOf("[/center]"));
+      out.push(`<div style="text-align:center">${applyInline(inner)}</div>`);
+      continue;
+    }
+    if (isBullet) {
+      if (!inUl) { out.push('<ul style="margin:0.5em 0;padding-left:1.5em">'); inUl = true; }
+      out.push(`<li>${applyInline(raw.slice(2))}</li>`);
+      continue;
+    }
+    if (isOrdered) {
+      if (!inOl) { out.push('<ol style="margin:0.5em 0;padding-left:1.5em">'); inOl = true; }
+      out.push(`<li>${applyInline(raw.replace(/^\d+\.\s/, ""))}</li>`);
+      continue;
+    }
+    if (raw === "") {
+      out.push("<br>");
+      continue;
+    }
+    out.push(applyInline(raw) + "<br>");
+  }
+
+  if (inUl) out.push("</ul>");
+  if (inOl) out.push("</ol>");
+
+  return out.join("");
+}
+
+// ---------------------------------------------------------------------------
 // Render email body for a single agent
 // ---------------------------------------------------------------------------
 function renderEmail(
@@ -119,14 +196,7 @@ function renderEmail(
   unsubUrl: string,
   mailingAddress: string
 ): { bodyHtml: string; bodyTextWithUnsub: string } {
-  const bodyHtmlContent = bodyText
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(
-      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-      (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`
-    )
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br>");
+  const bodyHtmlContent = convertMarkdown(bodyText);
 
   const footerAddress = mailingAddress
     ? `<br>${mailingAddress.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}`

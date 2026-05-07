@@ -7,7 +7,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { CityAutocomplete } from '../CityAutocomplete';
 import { SMTPSetupModal } from '../SMTPSetupModal';
-import { Mail, Server, CheckCircle2, Pencil, Bold, Italic, Heading1, Heading2, AlignCenter } from 'lucide-react';
+import { Mail, Server, CheckCircle2, Pencil, Bold, Italic, Underline, Strikethrough, Heading1, Heading2, AlignCenter, List, ListOrdered, Quote, Minus } from 'lucide-react';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -95,21 +95,39 @@ function toTitleCase(str: string): string {
 function renderBodyPreview(text: string, city: string): string {
   let s = interpolatePreview(text, city);
   s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  // Links [text](url)
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
     (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline" target="_blank" rel="noopener noreferrer">${t}</a>`);
-  // Inline formatting
   s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/__([^_\n]+)__/g, '<u>$1</u>');
   s = s.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
-  // Centered block — supports multi-line
+  s = s.replace(/~~([^~\n]+)~~/g, '<s>$1</s>');
+  const lines = s.split('\n');
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const ln = lines[i];
+    if (ln === '---') {
+      out.push('<hr style="border:0;border-top:1px solid #e5e7eb;margin:10px 0">');
+      i++;
+    } else if (ln.startsWith('&gt; ')) {
+      out.push(`<div style="border-left:3px solid #d1d5db;padding:2px 0 2px 12px;color:#6b7280">${ln.slice(5)}</div>`);
+      i++;
+    } else if (ln.startsWith('- ')) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].startsWith('- ')) { items.push(`<li>${lines[i].slice(2)}</li>`); i++; }
+      out.push(`<ul style="margin:4px 0;padding-left:20px;list-style-type:disc">${items.join('')}</ul>`);
+    } else if (/^\d+\. /.test(ln)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) { items.push(`<li>${lines[i].replace(/^\d+\. /, '')}</li>`); i++; }
+      out.push(`<ol style="margin:4px 0;padding-left:20px">${items.join('')}</ol>`);
+    } else { out.push(ln); i++; }
+  }
+  s = out.join('\n');
   s = s.replace(/\[center\]([\s\S]*?)\[\/center\]/g, '<div style="text-align:center">$1</div>');
-  // Headings (line-level, before \n→<br>)
   s = s.replace(/^## (.+)$/gm, '<div style="font-size:18px;font-weight:600;line-height:1.3;margin:8px 0 4px">$1</div>');
   s = s.replace(/^# (.+)$/gm, '<div style="font-size:22px;font-weight:700;line-height:1.25;margin:10px 0 6px">$1</div>');
-  // Newlines
   s = s.replace(/\n/g, '<br>');
-  // Strip trailing <br> that follow our block elements
-  s = s.replace(/(<\/div>)<br>/g, '$1');
+  s = s.replace(/(<\/(?:div|ul|ol)>)<br>/g, '$1');
   return s;
 }
 
@@ -455,6 +473,42 @@ export function V2Onboarding() {
     flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
     ta.focus();
     ta.setSelectionRange(newStart, newEnd);
+  };
+
+  const toggleLinePrefix = (prefix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const caret = ta.selectionStart ?? cursorPos.current;
+    const body = messageInfo.body;
+    const lineStart = body.lastIndexOf('\n', caret - 1) + 1;
+    let newBody: string;
+    let newCaret: number;
+    if (body.slice(lineStart).startsWith(prefix)) {
+      newBody = body.slice(0, lineStart) + body.slice(lineStart + prefix.length);
+      newCaret = Math.max(lineStart, caret - prefix.length);
+    } else {
+      newBody = body.slice(0, lineStart) + prefix + body.slice(lineStart);
+      newCaret = caret + prefix.length;
+    }
+    cursorPos.current = newCaret;
+    cursorEnd.current = newCaret;
+    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
+    ta.focus();
+    ta.setSelectionRange(newCaret, newCaret);
+  };
+
+  const insertAtCursor = (text: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const pos = cursorPos.current;
+    const body = messageInfo.body;
+    const newBody = body.slice(0, pos) + text + body.slice(pos);
+    const newPos = pos + text.length;
+    cursorPos.current = newPos;
+    cursorEnd.current = newPos;
+    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
+    ta.focus();
+    ta.setSelectionRange(newPos, newPos);
   };
 
   // ---------------------------------------------------------------------------
@@ -1272,22 +1326,34 @@ export function V2Onboarding() {
               <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Message body</label>
               {/* Body editor — single bordered container wrapping toolbar + textarea */}
               <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-[#1a1a1a] focus-within:border-[#FFCE0A] transition-colors">
-                {/* Format toolbar */}
+                {/* Format toolbar — row 1: formatting */}
+                <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10 flex-wrap">
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('# ')} title="Heading 1" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Heading1 className="w-3.5 h-3.5" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('## ')} title="Heading 2" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Heading2 className="w-3.5 h-3.5" /></button>
+                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('**')} title="Bold" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Bold className="w-3.5 h-3.5" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('_')} title="Italic" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Italic className="w-3.5 h-3.5" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('__')} title="Underline" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Underline className="w-3.5 h-3.5" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('~~')} title="Strikethrough" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Strikethrough className="w-3.5 h-3.5" /></button>
+                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={wrapBodyCenter} title="Center align" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><AlignCenter className="w-3.5 h-3.5" /></button>
+                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleLinePrefix('- ')} title="Bullet list" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><List className="w-3.5 h-3.5" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleLinePrefix('1. ')} title="Numbered list" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><ListOrdered className="w-3.5 h-3.5" /></button>
+                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleLinePrefix('> ')} title="Blockquote" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Quote className="w-3.5 h-3.5" /></button>
+                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => insertAtCursor('\n---\n')} title="Divider" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Minus className="w-3.5 h-3.5" /></button>
+                </div>
+                {/* Format toolbar — row 2: variables + link */}
                 <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('# ')} title="Heading 1" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Heading1 className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('## ')} title="Heading 2" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Heading2 className="w-4 h-4" /></button>
-                  <span className="w-px h-5 bg-gray-200 dark:bg-white/10 mx-1" />
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('**')} title="Bold" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Bold className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('_')} title="Italic" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><Italic className="w-4 h-4" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={wrapBodyCenter} title="Center" className="w-7 h-7 inline-flex items-center justify-center rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-white/10 transition-colors"><AlignCenter className="w-4 h-4" /></button>
-                  <span className="w-px h-5 bg-gray-200 dark:bg-white/10 mx-1" />
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 mr-0.5 font-medium uppercase tracking-wide">Insert</span>
                   {VARS.map(v => (
                     <button
                       key={v}
                       type="button"
                       onMouseDown={e => e.preventDefault()}
                       onClick={() => insertVar(v)}
-                      className="px-2 py-0.5 rounded text-xs font-mono cursor-pointer transition-opacity hover:opacity-80"
+                      className="px-2 py-0.5 rounded-md text-xs font-mono cursor-pointer transition-colors hover:opacity-90"
                       style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
                     >
                       {v}
@@ -1301,11 +1367,12 @@ export function V2Onboarding() {
                         const ta = textareaRef.current;
                         const start = ta?.selectionStart ?? cursorPos.current;
                         const end = ta?.selectionEnd ?? cursorEnd.current;
-                        cursorPos.current = start; cursorEnd.current = end;
+                        cursorPos.current = start;
+                        cursorEnd.current = end;
                         const selectedText = messageInfo.body.slice(start, end);
                         setLinkForm({ open: true, text: selectedText, url: '' });
                       }}
-                      className="px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-opacity hover:opacity-80"
+                      className="px-2 py-0.5 rounded-md text-xs font-medium cursor-pointer transition-colors hover:opacity-90"
                       style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
                     >
                       + link
