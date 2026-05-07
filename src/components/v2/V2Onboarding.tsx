@@ -151,6 +151,8 @@ export function V2Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number } | null>(null);
+  const [listingPreviewLoading, setListingPreviewLoading] = useState(false);
 
   // Signup state (step 4)
   const [signupEmail, setSignupEmail] = useState('');
@@ -325,6 +327,17 @@ export function V2Onboarding() {
 
   const handleNext = async () => {
     if (!validateStep(step)) return;
+    if (step === 2) {
+      // Fire preview fetch in background — result populates the Review step button
+      setListingPreviewLoading(true);
+      setListingPreview(null);
+      supabase.functions.invoke('fetch-listings-preview', { body: { criteria: searchCriteria } })
+        .then(({ data }) => {
+          if (data && !data.error) setListingPreview({ count: data.count, agentCount: data.agent_count });
+        })
+        .catch(() => {})
+        .finally(() => setListingPreviewLoading(false));
+    }
     setStep(s => s + 1);
   };
 
@@ -1508,7 +1521,7 @@ export function V2Onboarding() {
             className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity hover:opacity-90"
             style={{ background: '#FFCE0A', color: '#342e37' }}
           >
-            Send first emails →
+            Continue →
           </button>
         </div>
       </div>
@@ -1626,7 +1639,7 @@ export function V2Onboarding() {
             className="w-full py-2.5 rounded-lg text-sm font-bold transition-opacity disabled:opacity-60 hover:opacity-90"
             style={{ background: '#FFCE0A', color: '#342e37' }}
           >
-            Send first emails →
+            {isSubmitting ? 'Sending...' : listingPreviewLoading ? 'Finding listings...' : listingPreview ? `Email ${listingPreview.agentCount} Listing Agents →` : 'Send first emails →'}
           </button>
         </div>
 

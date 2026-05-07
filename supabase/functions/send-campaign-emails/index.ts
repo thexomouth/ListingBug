@@ -64,22 +64,18 @@ async function fetchListings(criteria: Record<string, unknown>): Promise<unknown
   if (city) params.set("city", String(city));
   if (state) params.set("state", String(state));
   if (property_type) params.set("propertyType", String(property_type));
-  if (price_min != null && price_max != null) params.set("price", `${price_min}-${price_max}`);
-  else if (price_min != null) params.set("price", `${price_min}+`);
-  else if (price_max != null) params.set("price", `0-${price_max}`);
-  if (beds_min != null && beds_min !== "") params.set("bedrooms", String(beds_min));
-  if (baths_min != null && baths_min !== "") params.set("bathrooms", String(baths_min));
+  if (price_min != null) params.set("priceMin", String(price_min));
+  if (price_max != null) params.set("priceMax", String(price_max));
+  if (beds_min != null && beds_min !== "") params.set("bedroomsMin", String(beds_min));
+  if (baths_min != null && baths_min !== "") params.set("bathroomsMin", String(baths_min));
 
   if (days_old != null && days_old !== "") {
     const n = parseInt(String(days_old), 10);
     if (n > 0) params.set("daysOld", `${Math.max(0.1, n - 0.1)}-${n + 0.9}`);
   }
 
-  if (year_built_min != null || year_built_max != null) {
-    const ybMin = year_built_min ?? year_built_max;
-    const ybMax = year_built_max ?? year_built_min;
-    params.set("yearBuilt", `${ybMin}-${ybMax}`);
-  }
+  if (year_built_min != null) params.set("yearBuiltMin", String(year_built_min));
+  if (year_built_max != null) params.set("yearBuiltMax", String(year_built_max));
 
   params.set("status", String(active_status));
   params.set("limit", "500");
