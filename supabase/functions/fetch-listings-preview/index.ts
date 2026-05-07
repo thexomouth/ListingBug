@@ -95,6 +95,11 @@ serve(async (req) => {
     const { criteria } = body;
     if (!criteria) return json({ error: "criteria is required" }, 400);
 
+    // Test mode — skip RentCast entirely
+    if (criteria.city?.toString().toLowerCase() === "test") {
+      return json({ count: 1, agent_count: 1, listings: [], isTestMode: true });
+    }
+
     const listings = await fetchListings(criteria) as any[];
 
     const seenEmails = new Set<string>();

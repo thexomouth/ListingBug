@@ -151,8 +151,9 @@ export function V2Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number; listings: any[] } | null>(null);
+  const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number; listings: any[]; isTestMode?: boolean } | null>(null);
   const [listingPreviewLoading, setListingPreviewLoading] = useState(false);
+  const [testSendModal, setTestSendModal] = useState({ open: false, email: '' });
 
   // Signup state (step 4)
   const [signupEmail, setSignupEmail] = useState('');
@@ -333,7 +334,7 @@ export function V2Onboarding() {
       setListingPreview(null);
       supabase.functions.invoke('fetch-listings-preview', { body: { criteria: searchCriteria } })
         .then(({ data }) => {
-          if (data && !data.error) setListingPreview({ count: data.count, agentCount: data.agent_count, listings: data.listings ?? [] });
+          if (data && !data.error) setListingPreview({ count: data.count, agentCount: data.agent_count, listings: data.listings ?? [], isTestMode: data.isTestMode ?? false });
         })
         .catch(() => {})
         .finally(() => setListingPreviewLoading(false));
@@ -622,7 +623,38 @@ export function V2Onboarding() {
   // ---------------------------------------------------------------------------
   // Signup + go live (called from step 4)
   // ---------------------------------------------------------------------------
-  const handleSignupAndGoLive = async () => {
+  const buildTestListing = (email: string) => ({
+    listingAgent: {
+      email,
+      name: businessInfo.contact_name || businessInfo.business_name || 'Test Agent',
+      phone: '',
+      office: businessInfo.business_name || '',
+    },
+    addressLine1: (businessInfo.mailing_address || '').split(',')[0].trim() || '100 Main Street',
+    city: 'Austin',
+    state: 'TX',
+    zipCode: '78701',
+    formattedAddress: businessInfo.mailing_address || '100 Main Street, Austin, TX 78701',
+    price: Math.floor(Math.random() * 500000) + 300000,
+    listingType: searchCriteria.listing_type || 'sale',
+    propertyType: 'Single Family',
+    listedDate: new Date().toISOString(),
+    id: `test-${Date.now()}`,
+    bedrooms: 3,
+    bathrooms: 2,
+    squareFootage: 1800,
+    yearBuilt: 2005,
+    photos: [],
+  });
+
+  const handleTestModeSend = () => {
+    const email = testSendModal.email.trim();
+    if (!email.includes('@')) return;
+    setTestSendModal({ open: false, email: '' });
+    handleSignupAndGoLive([buildTestListing(email)]);
+  };
+
+  const handleSignupAndGoLive = async (testListings?: any[]) => {
     if (!validateStep(4)) return;
     setIsSubmitting(true);
     setSubmitError(null);
@@ -659,9 +691,9 @@ export function V2Onboarding() {
       // Create campaign (always allowed)
       const campaignId = await createCampaignRecord(userId);
 
-      // Case 1: Email verified - send immediately using pre-fetched listings
+      // Case 1: Email verified - send immediately using pre-fetched or test listings
       if (user?.email_confirmed_at) {
-        const sent = await sendCampaignEmails(userId, campaignId, listingPreview?.listings);
+        const sent = await sendCampaignEmails(userId, campaignId, testListings ?? listingPreview?.listings);
         setEmailsSent(sent);
         setIsSubmitting(false);
         return;
@@ -676,6 +708,7 @@ export function V2Onboarding() {
         searchCriteria,
         messageInfo,
         smsConfig,
+        testListings: testListings ?? null,
       }));
 
       setIsVerificationStep(true);
@@ -694,7 +727,7 @@ export function V2Onboarding() {
           if (pending) {
             try {
               const pendingData = JSON.parse(pending);
-              const sent = await sendCampaignEmails(pendingData.userId, pendingData.campaignId);
+              const sent = await sendCampaignEmails(pendingData.userId, pendingData.campaignId, pendingData.testListings ?? undefined);
               localStorage.removeItem(PENDING_KEY);
               setEmailsSent(sent);
             } catch (err: any) {
@@ -1636,12 +1669,12 @@ export function V2Onboarding() {
 
         <div className="mt-5">
           <button
-            onClick={handleSignupAndGoLive}
+            onClick={() => listingPreview?.isTestMode ? setTestSendModal({ open: true, email: '' }) : handleSignupAndGoLive()}
             disabled={isSubmitting}
             className="w-full py-2.5 rounded-lg text-sm font-bold transition-opacity disabled:opacity-60 hover:opacity-90"
             style={{ background: '#FFCE0A', color: '#342e37' }}
           >
-            {isSubmitting ? 'Sending...' : listingPreviewLoading ? 'Finding listings...' : listingPreview ? `Email ${listingPreview.agentCount} Listing Agents →` : 'Send first emails →'}
+            {isSubmitting ? 'Sending...' : listingPreviewLoading ? 'Finding listings...' : listingPreview?.isTestMode ? 'Send test email →' : listingPreview ? `Email ${listingPreview.agentCount} Listing Agents →` : 'Send first emails →'}
           </button>
         </div>
 
@@ -1727,6 +1760,43 @@ export function V2Onboarding() {
           )}
         </div>
       </div>
+
+      {/* Test mode send modal */}
+      {testSendModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Send test campaign</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Enter an email to receive the campaign. Your business info and a random listing price will be used.
+            </p>
+            <input
+              type="email"
+              value={testSendModal.email}
+              onChange={e => setTestSendModal(m => ({ ...m, email: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && handleTestModeSend()}
+              placeholder="you@example.com"
+              className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#222] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTestSendModal({ open: false, email: '' })}
+                className="flex-1 py-2 rounded-lg text-sm border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#222] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTestModeSend}
+                disabled={!testSendModal.email.includes('@')}
+                className="flex-1 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:opacity-90 transition-opacity"
+                style={{ background: '#FFCE0A', color: '#342e37' }}
+              >
+                Send test →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Test email modal (identical to NewCampaign) */}
       {testModal.open && (() => {
