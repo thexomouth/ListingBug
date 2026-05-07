@@ -819,18 +819,26 @@ export function V2Campaign() {
             {campaign.channel === 'email' && draft && (
               <>
                 <div className="mb-3">
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Subject</div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-xs text-gray-400 dark:text-gray-500">Subject</div>
+                    <span className={`text-xs tabular-nums ${draft.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.subject.length}/60</span>
+                  </div>
                   <input
                     value={draft.subject}
+                    maxLength={60}
                     onChange={e => updateText({ subject: e.target.value })}
                     placeholder="Email subject line"
                     className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
                   />
                 </div>
                 <div className="mb-3">
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Preview text <span className="text-gray-300 dark:text-gray-600">(shown after subject in inbox)</span></div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="text-xs text-gray-400 dark:text-gray-500">Preview text <span className="text-gray-300 dark:text-gray-600">(shown after subject in inbox)</span></div>
+                    <span className={`text-xs tabular-nums ${draft.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.preview_text.length}/90</span>
+                  </div>
                   <input
                     value={draft.preview_text}
+                    maxLength={90}
                     onChange={e => updateText({ preview_text: e.target.value })}
                     placeholder="Short teaser shown in inbox..."
                     className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"

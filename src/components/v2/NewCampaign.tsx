@@ -1151,10 +1151,14 @@ export function NewCampaign() {
             {messageInfo.channel === 'email' && (
               <>
                 <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Subject line</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm text-gray-600 dark:text-gray-400">Subject line</label>
+                    <span className={`text-xs tabular-nums ${messageInfo.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.subject.length}/60</span>
+                  </div>
                   <Input
                     ref={subjectRef}
                     value={messageInfo.subject}
+                    maxLength={60}
                     onFocus={() => { lastFocusedField.current = 'subject'; }}
                     onChange={e => {
                       subjectCursorPos.current = e.target.selectionStart ?? 0;
@@ -1178,11 +1182,13 @@ export function NewCampaign() {
                   {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">
-                    Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm text-gray-600 dark:text-gray-400">Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span></label>
+                    <span className={`text-xs tabular-nums ${messageInfo.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.preview_text.length}/90</span>
+                  </div>
                   <Input
                     value={messageInfo.preview_text}
+                    maxLength={90}
                     onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))}
                     placeholder="e.g. I'd love to help with the listing at {{address}}..."
                   />
