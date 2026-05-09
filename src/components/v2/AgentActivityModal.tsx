@@ -303,6 +303,28 @@ export function AgentActivityModal({ send, campaign, onClose }: AgentActivityMod
                     </div>
                   )}
                 </div>
+                {(() => {
+                  const street = (send.listing_address || '').replace(/,.*$/, '').trim();
+                  const city = send.listing_city || '';
+                  const state = send.listing_state || '';
+                  const zip = (send as any).listing_zip || '';
+                  const zillowSlug = `${street} ${city} ${state} ${zip}`.trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+                  const redfinQuery = encodeURIComponent(`${street} ${city} ${state}`.trim());
+                  return (
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                      <a href={`https://www.zillow.com/homes/${zillowSlug}_rb/`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 9.5l1.5 1L12 4.5l8.5 6 1.5-1L12 2zm0 3.5L4 11v11h5v-7h6v7h5V11L12 5.5z"/></svg>
+                        View on Zillow
+                      </a>
+                      <a href={`https://www.redfin.com/search#location=${redfinQuery}`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[13px] text-[#342e37] dark:text-[#FFCE0A] font-medium hover:underline">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                        View on Redfin
+                      </a>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
