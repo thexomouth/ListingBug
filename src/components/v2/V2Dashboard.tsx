@@ -759,7 +759,7 @@ export function V2Dashboard() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden mb-2">
+            <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-x-auto mb-2">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
                   <tr>
@@ -769,8 +769,8 @@ export function V2Dashboard() {
                       { key: 'brokerage', label: 'Brokerage', cls: 'hidden sm:table-cell', align: 'left'  },
                       { key: 'sent',      label: 'Sent',      cls: '',                     align: 'right' },
                       { key: 'replies',   label: 'Replies',   cls: 'hidden sm:table-cell', align: 'right' },
-                      { key: 'clicks',    label: 'Clicks',    cls: 'hidden sm:table-cell', align: 'right' },
-                      { key: 'opens',     label: 'Opens',     cls: 'hidden sm:table-cell', align: 'right' },
+                      { key: 'clicks',    label: 'Clicks',    cls: '',                     align: 'right' },
+                      { key: 'opens',     label: 'Opens',     cls: '',                     align: 'right' },
                     ] as const).map(({ key, label, cls, align }) => (
                       <th
                         key={key}
@@ -817,10 +817,10 @@ export function V2Dashboard() {
                           <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
                             {agent.replies}
                           </td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                          <td className="py-2.5 px-2 sm:px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
                             {agent.clicks}
                           </td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                          <td className="py-2.5 px-2 sm:px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
                             {agent.opens}
                           </td>
                         </tr>
