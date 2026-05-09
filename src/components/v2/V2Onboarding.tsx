@@ -679,9 +679,7 @@ export function V2Onboarding() {
               style={
                 i === step
                   ? { background: '#FFCE0A', borderColor: '#FFCE0A', color: '#342e37' }
-                  : i < step
-                  ? { background: 'rgb(240 253 244)', borderColor: 'rgb(187 247 208)', color: 'rgb(21 128 61)' }
-                  : { background: '#f3f4f6', borderColor: '#d1d5db', color: '#6b7280' }
+                  : { background: '#2F2F2F', borderColor: '#2F2F2F', color: '#FFCE0A' }
               }
             >
               {i < step ? '✓' : i + 1}
