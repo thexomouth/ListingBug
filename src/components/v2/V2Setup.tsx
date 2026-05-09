@@ -428,7 +428,7 @@ export function V2Setup() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0F1115]">
-      <div className="max-w-2xl mx-auto px-4 py-10">
+      <div className="max-w-5xl mx-auto px-4 py-10">
         {/* Page header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sender Identities</h1>
@@ -438,7 +438,7 @@ export function V2Setup() {
         </div>
 
         {/* Sender cards */}
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
 
           {/* Gmail */}
           <SenderCard
