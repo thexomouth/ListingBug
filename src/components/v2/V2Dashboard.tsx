@@ -630,14 +630,6 @@ export function V2Dashboard() {
                         ))}
                       </div>
 
-                      <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-200 dark:border-white/10">
-                        <div className="text-[11px] text-gray-400 dark:text-gray-500 flex-1 mr-3 truncate">
-                          {campaign.body
-                            ? `"${campaign.body.replace(/<[^>]*>/g, '').slice(0, 80)}${campaign.body.length > 80 ? '...' : ''}"`
-                            : '—'}
-                        </div>
-                        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">View →</span>
-                      </div>
                     </a>
                   );
                 })}
