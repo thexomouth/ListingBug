@@ -675,12 +675,13 @@ export function V2Onboarding() {
         <div key={i} className="flex items-center" style={{ flex: i < VISIBLE_STEPS.length - 1 ? '1' : 'none' }}>
           <div className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => handleStepClick(i)}>
             <div
-              className="w-7 h-7 rounded-full border flex items-center justify-center text-xs font-medium transition-all"
-              style={
+              className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-medium transition-all ${
                 i === step
-                  ? { background: '#FFCE0A', borderColor: '#FFCE0A', color: '#342e37' }
-                  : { background: '#2F2F2F', borderColor: '#2F2F2F', color: '#FFCE0A' }
-              }
+                  ? 'bg-[#FFCE0A] border-[#FFCE0A] text-[#342e37]'
+                  : i < step
+                  ? 'bg-green-50 border-green-200 text-green-700 dark:bg-[#2F2F2F] dark:border-[#2F2F2F] dark:text-[#FFCE0A]'
+                  : 'bg-gray-100 border-gray-300 text-gray-500 dark:bg-[#2F2F2F] dark:border-[#2F2F2F] dark:text-[#FFCE0A]'
+              }`}
             >
               {i < step ? '✓' : i + 1}
             </div>
