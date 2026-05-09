@@ -1516,7 +1516,7 @@ export function V2Onboarding() {
 
       {/* Minimal header */}
       <div className="border-b border-[#342e37]/10 bg-[#ffce0a] px-4 py-3 flex items-center justify-center relative z-10">
-        <a href="/v2" className="flex items-center" aria-label="ListingBug home">
+        <a href="/v2/dashboard" className="flex items-center" aria-label="ListingBug dashboard">
           <ImageWithFallback
             src={headerLogoSimplified}
             alt="ListingBug"

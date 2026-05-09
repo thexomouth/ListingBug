@@ -281,7 +281,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             {/* Left side */}
             <div className="flex items-center gap-4">
               {/* Hamburger Menu Button */}
-              {!isV2Page && (
+              {!isV2Page && !isLoggedIn && (
                 <button
                   onClick={() => {
                     setIsMenuOpen(true);
@@ -297,10 +297,10 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
 
               <button
                 onClick={() => {
-                  if (isLoggedIn && isV2Page) {
+                  if (isLoggedIn) {
                     window.location.href = '/v2/dashboard';
                   } else {
-                    handleNavigate(isLoggedIn ? 'dashboard' : 'home');
+                    handleNavigate('home');
                   }
                 }}
                 className={`flex items-center group absolute left-1/2 -translate-x-1/2 ${!isLoggedIn ? 'md:relative md:left-auto md:translate-x-0' : ''}`}
@@ -455,7 +455,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
       </header>
 
       {/* Sidebar Menu */}
-      {!isV2Page && isMenuOpen && (
+      {!isV2Page && !isLoggedIn && isMenuOpen && (
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setIsMenuOpen(false)} />
@@ -570,7 +570,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             {/* ------------------------------------------------------------------ */}
             {/* V2 account menu                                                     */}
             {/* ------------------------------------------------------------------ */}
-            {isV2Page ? (
+            {(isV2Page || isLoggedIn) ? (
               <>
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
