@@ -142,7 +142,7 @@ function ConnectedDetails({
 
         {/* From name — inline editable */}
         <div className="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-white/10">
-          <span className="text-sm text-gray-500 dark:text-gray-400">From name</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">First name</span>
           {editingFromName ? (
             <div className="flex items-center gap-2">
               <Input
@@ -181,7 +181,7 @@ function ConnectedDetails({
                 type="button"
                 onClick={onStartEdit}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                title="Edit from name"
+                title="Edit first name"
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
