@@ -909,6 +909,14 @@ export function V2Campaign() {
           hideHeader
         />
 
+        {/* Activity section header */}
+        <div className="mb-3 mt-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Activity</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            {totalSent} sent · {totalReplies} repl{totalReplies !== 1 ? 'ies' : 'y'}
+          </p>
+        </div>
+
         {sortedSends.length === 0 ? (
           <div className="bg-white dark:bg-[#2F2F2F] text-center py-12 rounded-lg border border-gray-200 dark:border-white/10 mb-8">
             <div className="text-sm text-gray-600 dark:text-gray-400">No sends yet — the campaign will run tonight.</div>
