@@ -461,7 +461,7 @@ export function V2Dashboard() {
   const ws = computeStats(getWindowSends(campaigns, currentRange));
   const replyRate = ws.sent > 0 ? Math.round((ws.replies / ws.sent) * 100) : 0;
 
-  const bubbleTransition = 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease';
+  const bubbleTransition = 'opacity 0.5s ease, transform 0.3s ease, box-shadow 0.3s ease';
 
   const leaderboardVisible = leaderboardExpanded ? leaderboard : leaderboard.slice(0, 10);
 
@@ -588,7 +588,7 @@ export function V2Dashboard() {
                     <a
                       key={campaign.id}
                       href={`/v2/campaign?id=${campaign.id}`}
-                      className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01] no-underline"
+                      className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 no-underline"
                     >
                       <div className="flex items-start justify-between mb-2.5">
                         <div className="flex-1 min-w-0 mr-3">
@@ -644,7 +644,7 @@ export function V2Dashboard() {
             <div className="flex gap-2">
               {/* Sent */}
               <div
-                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -659,7 +659,7 @@ export function V2Dashboard() {
 
               {/* Opens */}
               <div
-                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -674,7 +674,7 @@ export function V2Dashboard() {
 
               {/* Replies */}
               <div
-                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -689,7 +689,7 @@ export function V2Dashboard() {
 
               {/* Active campaigns */}
               <div
-                className="flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
@@ -746,7 +746,7 @@ export function V2Dashboard() {
                       <React.Fragment key={agent.key}>
                         <tr
                           onClick={() => setExpandedAgentKey(isExpanded ? null : agent.key)}
-                          className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                          className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 hover:outline hover:outline-2 hover:outline-[#FFCE0A] hover:drop-shadow-lg transition-all duration-300 cursor-pointer"
                         >
                           <td className="py-2.5 px-3 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
