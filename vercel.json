@@ -67,6 +67,11 @@
   ],
   "rewrites": [
     {
+      "source": "/r",
+      "has": [{ "type": "host", "value": "click.thelistingbug.com" }],
+      "destination": "https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/handle-click"
+    },
+    {
       "source": "/assets/(.*)",
       "destination": "/assets/$1"
     },
