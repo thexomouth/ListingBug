@@ -378,3 +378,71 @@ select:invalid,
 select option[value=""] {
   color: #9ca3af;
 }
+
+/* ── TipTap / ProseMirror rich text editor ─────────────────────────────── */
+.lb-editor .ProseMirror {
+  outline: none;
+  min-height: 200px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #111827;
+}
+.dark .lb-editor .ProseMirror { color: #ffffff; }
+
+.lb-editor .ProseMirror p { margin: 0 0 0.4em; }
+.lb-editor .ProseMirror p:last-child { margin-bottom: 0; }
+.lb-editor .ProseMirror h1 { font-size: 1.375rem; font-weight: 700; margin: 0.6em 0 0.3em; line-height: 1.25; }
+.lb-editor .ProseMirror h2 { font-size: 1.125rem; font-weight: 600; margin: 0.5em 0 0.25em; line-height: 1.3; }
+.lb-editor .ProseMirror ul,
+.lb-editor .ProseMirror ol { padding-left: 1.25rem; margin: 0.25rem 0; }
+.lb-editor .ProseMirror li { margin: 0.1rem 0; }
+.lb-editor .ProseMirror blockquote {
+  border-left: 3px solid #d1d5db;
+  padding: 0.125rem 0 0.125rem 0.75rem;
+  color: #6b7280;
+  margin: 0.5em 0;
+}
+.dark .lb-editor .ProseMirror blockquote {
+  border-left-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5);
+}
+.lb-editor .ProseMirror hr {
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  margin: 0.75rem 0;
+}
+.dark .lb-editor .ProseMirror hr { border-top-color: rgba(255,255,255,0.1); }
+.lb-editor .ProseMirror a { color: #1d4ed8; text-decoration: underline; }
+.dark .lb-editor .ProseMirror a { color: #93c5fd; }
+
+/* Merge tag chips */
+.merge-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+  font-weight: 500;
+  background: rgb(239 246 255);
+  color: rgb(29 78 216);
+  cursor: default;
+  user-select: none;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.dark .merge-tag-chip {
+  background: rgba(29, 78, 216, 0.25);
+  color: #93c5fd;
+}
+
+/* Placeholder */
+.lb-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+.dark .lb-editor .ProseMirror p.is-editor-empty:first-child::before { color: #4b5563; }

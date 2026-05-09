@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { flushSync } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -8,7 +7,9 @@ import { CityAutocomplete } from '../CityAutocomplete';
 import { CityLimitModal } from './CityLimitModal';
 import { normalizePlan, canAddCity, type PlanType } from '../utils/planLimits';
 import { SMTPSetupModal } from '../SMTPSetupModal';
-import { Mail, Server, CheckCircle2, Plus, Pencil, Bold, Italic, Underline, Strikethrough, Heading1, Heading2, AlignCenter, List, ListOrdered, Quote, Minus } from 'lucide-react';
+import { RichTextEditor } from './editor/RichTextEditor';
+import { buildPreviewHtml } from './editor/previewUtils';
+import { Mail, Server, CheckCircle2, Plus, Pencil } from 'lucide-react';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
 import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
 import { toast } from 'sonner';
@@ -54,7 +55,13 @@ interface SmsConfig {
 // Constants
 // ---------------------------------------------------------------------------
 const SERVICE_TAGS = ['Roofing', 'Staging', 'Cleaning', 'Landscaping', 'Contracting', 'Photography', 'Inspection'];
-const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
+const MERGE_TAGS = [
+  { label: 'Agent Name', variable: '{{agent_name}}' },
+  { label: 'Address', variable: '{{address}}' },
+  { label: 'Price', variable: '{{price}}' },
+  { label: 'City', variable: '{{city}}' },
+  { label: 'Listing Date', variable: '{{listing_date}}' },
+];
 
 const STEPS = [
   { label: 'Which mailbox', short: 'Mailbox' },
@@ -76,65 +83,10 @@ const PROPERTY_TYPES = [
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function interpolatePreview(text: string, city: string): string {
-  return text
-    .replace(/\{\{agent_name\}\}/g, '[AGENT NAME]')
-    .replace(/\{\{address\}\}/g, '[LISTING ADDRESS]')
-    .replace(/\{\{city\}\}/g, city || '[CITY]')
-    .replace(/\{\{price\}\}/g, '[LISTING PRICE]')
-    .replace(/\{\{listing_date\}\}/g, '[LISTING DATE]');
-}
-
 function toTitleCase(str: string): string {
   return str.replace(/\b\w+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
-function senderLabel(s: { integration_id: string; from_email: string }): string {
-  const type = s.integration_id === 'gmail' ? 'Gmail'
-    : s.integration_id === 'outlook' ? 'Outlook'
-    : 'SMTP';
-  return `${type}: ${s.from_email}`;
-}
-
-function renderBodyPreview(text: string, city: string): string {
-  let s = interpolatePreview(text, city);
-  s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline" target="_blank" rel="noopener noreferrer">${t}</a>`);
-  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  s = s.replace(/__([^_\n]+)__/g, '<u>$1</u>');
-  s = s.replace(/(?<!\w)_([^_\n]+)_(?!\w)/g, '<em>$1</em>');
-  s = s.replace(/~~([^~\n]+)~~/g, '<s>$1</s>');
-  // Block elements — process line by line before newline conversion
-  const lines = s.split('\n');
-  const out: string[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const ln = lines[i];
-    if (ln === '---') {
-      out.push('<hr style="border:0;border-top:1px solid #e5e7eb;margin:10px 0">');
-      i++;
-    } else if (ln.startsWith('&gt; ')) {
-      out.push(`<div style="border-left:3px solid #d1d5db;padding:2px 0 2px 12px;color:#6b7280">${ln.slice(5)}</div>`);
-      i++;
-    } else if (ln.startsWith('- ')) {
-      const items: string[] = [];
-      while (i < lines.length && lines[i].startsWith('- ')) { items.push(`<li>${lines[i].slice(2)}</li>`); i++; }
-      out.push(`<ul style="margin:4px 0;padding-left:20px;list-style-type:disc">${items.join('')}</ul>`);
-    } else if (/^\d+\. /.test(ln)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\d+\. /.test(lines[i])) { items.push(`<li>${lines[i].replace(/^\d+\. /, '')}</li>`); i++; }
-      out.push(`<ol style="margin:4px 0;padding-left:20px">${items.join('')}</ol>`);
-    } else { out.push(ln); i++; }
-  }
-  s = out.join('\n');
-  s = s.replace(/\[center\]([\s\S]*?)\[\/center\]/g, '<div style="text-align:center">$1</div>');
-  s = s.replace(/^## (.+)$/gm, '<div style="font-size:18px;font-weight:600;line-height:1.3;margin:8px 0 4px">$1</div>');
-  s = s.replace(/^# (.+)$/gm, '<div style="font-size:22px;font-weight:700;line-height:1.25;margin:10px 0 6px">$1</div>');
-  s = s.replace(/\n/g, '<br>');
-  s = s.replace(/(<\/(?:div|ul|ol)>)<br>/g, '$1');
-  return s;
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -181,14 +133,9 @@ export function NewCampaign() {
   const [listingPreview, setListingPreview] = useState<{ count: number; agentCount: number; listings: any[]; isTestMode?: boolean } | null>(null);
   const [listingPreviewLoading, setListingPreviewLoading] = useState(false);
   const [testSendModal, setTestSendModal] = useState({ open: false, email: '' });
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const cursorPos = useRef(0);
-  const cursorEnd = useRef(0);
   const subjectRef = useRef<HTMLInputElement>(null);
   const subjectCursorPos = useRef(0);
   const subjectCursorEnd = useRef(0);
-  const lastFocusedField = useRef<'body' | 'subject'>('body');
-  const [linkForm, setLinkForm] = useState({ open: false, text: '', url: '' });
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
   type Template = { id: string; template_name: string; channel: string; subject: string | null; body: string; is_shared: boolean };
   const [templatePicker, setTemplatePicker] = useState<{ open: boolean; loading: boolean; myTemplates: Template[]; sharedTemplates: Template[] }>({ open: false, loading: false, myTemplates: [], sharedTemplates: [] });
@@ -326,7 +273,7 @@ export function NewCampaign() {
     if (s === 3) {
       if (!messageInfo.campaign_name.trim()) errors.campaign_name = 'Campaign name is required';
       if (messageInfo.channel === 'email' && !messageInfo.subject.trim()) errors.subject = 'Subject line is required';
-      if (!messageInfo.body.trim()) errors.body = 'Message body is required';
+      if (!messageInfo.body.replace(/<[^>]*>/g, '').trim()) errors.body = 'Message body is required';
       if (messageInfo.channel === 'sms' && !smsConfig.twilio_from_number.trim()) errors.twilio_from_number = 'Sending number is required for SMS campaigns';
       if (messageInfo.channel === 'sms' && !smsConfig.forward_to_phone.trim()) errors.forward_to_phone = 'Forward-to phone is required for SMS campaigns';
     }
@@ -398,151 +345,21 @@ export function NewCampaign() {
   };
 
   // ---------------------------------------------------------------------------
-  // Variable chip insertion
+  // Subject variable insertion
   // ---------------------------------------------------------------------------
-  const insertVar = (v: string) => {
-    if (lastFocusedField.current === 'subject') {
-      const pos = subjectCursorPos.current;
-      const end = subjectCursorEnd.current;
-      const subject = messageInfo.subject;
-      const newSubject = subject.slice(0, pos) + v + subject.slice(end);
-      const newPos = pos + v.length;
-      subjectCursorPos.current = newPos;
-      subjectCursorEnd.current = newPos;
-      flushSync(() => { setMessageInfo(m => ({ ...m, subject: newSubject })); });
-      const input = subjectRef.current;
-      if (input) { input.setSelectionRange(newPos, newPos); input.focus(); }
-    } else {
-      const pos = cursorPos.current;
-      const body = messageInfo.body;
-      const newBody = body.slice(0, pos) + v + body.slice(pos);
-      const newPos = pos + v.length;
-      cursorPos.current = newPos;
-      flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
-      const ta = textareaRef.current;
-      if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
+  const insertVarIntoSubject = (variable: string) => {
+    const pos = subjectCursorPos.current;
+    const end = subjectCursorEnd.current;
+    const subject = messageInfo.subject;
+    const newSubject = subject.slice(0, pos) + variable + subject.slice(end);
+    const newPos = pos + variable.length;
+    subjectCursorPos.current = newPos;
+    subjectCursorEnd.current = newPos;
+    setMessageInfo(m => ({ ...m, subject: newSubject }));
+    const input = subjectRef.current;
+    if (input) {
+      requestAnimationFrame(() => { input.setSelectionRange(newPos, newPos); input.focus(); });
     }
-  };
-
-  // Replaces the current selection (or inserts at cursor) with [text](url)
-  const doInsertLink = (text: string, url: string) => {
-    const token = `[${text}](${url})`;
-    const start = cursorPos.current;
-    const end = cursorEnd.current;
-    const body = messageInfo.body;
-    const newBody = body.slice(0, start) + token + body.slice(end);
-    const newPos = start + token.length;
-    cursorPos.current = newPos;
-    cursorEnd.current = newPos;
-    flushSync(() => {
-      setMessageInfo(m => ({ ...m, body: newBody }));
-    });
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.setSelectionRange(newPos, newPos);
-      ta.focus();
-    }
-    setLinkForm({ open: false, text: '', url: '' });
-  };
-
-  // Wrap current selection in body with marker (for **bold**, _italic_)
-  const wrapBodySelection = (marker: string) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart ?? cursorPos.current;
-    const end = ta.selectionEnd ?? cursorEnd.current;
-    const body = messageInfo.body;
-    const selected = body.slice(start, end) || 'text';
-    const newBody = body.slice(0, start) + marker + selected + marker + body.slice(end);
-    const newStart = start + marker.length;
-    const newEnd = newStart + selected.length;
-    cursorPos.current = newEnd;
-    cursorEnd.current = newEnd;
-    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
-    ta.focus();
-    ta.setSelectionRange(newStart, newEnd);
-  };
-
-  // Toggle a heading marker (# or ## ) at the start of the current line
-  const toggleBodyHeading = (marker: '# ' | '## ') => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const caret = ta.selectionStart ?? cursorPos.current;
-    const body = messageInfo.body;
-    const lineStart = body.lastIndexOf('\n', caret - 1) + 1;
-    const lineRest = body.slice(lineStart);
-    const existing = lineRest.match(/^(#{1,2}) /);
-    let newBody: string;
-    let newCaret: number;
-    if (existing && existing[0] === marker) {
-      newBody = body.slice(0, lineStart) + body.slice(lineStart + marker.length);
-      newCaret = Math.max(lineStart, caret - marker.length);
-    } else if (existing) {
-      newBody = body.slice(0, lineStart) + marker + body.slice(lineStart + existing[0].length);
-      newCaret = lineStart + marker.length + (caret - lineStart - existing[0].length);
-    } else {
-      newBody = body.slice(0, lineStart) + marker + body.slice(lineStart);
-      newCaret = caret + marker.length;
-    }
-    cursorPos.current = newCaret;
-    cursorEnd.current = newCaret;
-    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
-    ta.focus();
-    ta.setSelectionRange(newCaret, newCaret);
-  };
-
-  // Wrap selection in [center]…[/center]
-  const wrapBodyCenter = () => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart ?? cursorPos.current;
-    const end = ta.selectionEnd ?? cursorEnd.current;
-    const body = messageInfo.body;
-    const selected = body.slice(start, end) || 'centered text';
-    const newBody = body.slice(0, start) + '[center]' + selected + '[/center]' + body.slice(end);
-    const newStart = start + 8;
-    const newEnd = newStart + selected.length;
-    cursorPos.current = newEnd;
-    cursorEnd.current = newEnd;
-    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
-    ta.focus();
-    ta.setSelectionRange(newStart, newEnd);
-  };
-
-  const toggleLinePrefix = (prefix: string) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const caret = ta.selectionStart ?? cursorPos.current;
-    const body = messageInfo.body;
-    const lineStart = body.lastIndexOf('\n', caret - 1) + 1;
-    let newBody: string;
-    let newCaret: number;
-    if (body.slice(lineStart).startsWith(prefix)) {
-      newBody = body.slice(0, lineStart) + body.slice(lineStart + prefix.length);
-      newCaret = Math.max(lineStart, caret - prefix.length);
-    } else {
-      newBody = body.slice(0, lineStart) + prefix + body.slice(lineStart);
-      newCaret = caret + prefix.length;
-    }
-    cursorPos.current = newCaret;
-    cursorEnd.current = newCaret;
-    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
-    ta.focus();
-    ta.setSelectionRange(newCaret, newCaret);
-  };
-
-  const insertAtCursor = (text: string) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const pos = cursorPos.current;
-    const body = messageInfo.body;
-    const newBody = body.slice(0, pos) + text + body.slice(pos);
-    const newPos = pos + text.length;
-    cursorPos.current = newPos;
-    cursorEnd.current = newPos;
-    flushSync(() => { setMessageInfo(m => ({ ...m, body: newBody })); });
-    ta.focus();
-    ta.setSelectionRange(newPos, newPos);
   };
 
   // ---------------------------------------------------------------------------
@@ -1259,7 +1076,6 @@ export function NewCampaign() {
                     ref={subjectRef}
                     value={messageInfo.subject}
                     maxLength={60}
-                    onFocus={() => { lastFocusedField.current = 'subject'; }}
                     onChange={e => {
                       subjectCursorPos.current = e.target.selectionStart ?? 0;
                       subjectCursorEnd.current = e.target.selectionEnd ?? 0;
@@ -1280,6 +1096,21 @@ export function NewCampaign() {
                     placeholder="e.g. Roof certification for {{address}}"
                   />
                   {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
+                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mr-0.5">Insert</span>
+                    {MERGE_TAGS.map(opt => (
+                      <button
+                        key={opt.variable}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => insertVarIntoSubject(opt.variable)}
+                        className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80"
+                        style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
+                      >
+                        {opt.variable}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -1298,136 +1129,29 @@ export function NewCampaign() {
 
             <div>
               <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Message body</label>
-              {/* Body editor — single bordered container wrapping toolbar + textarea */}
-              <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-[#1a1a1a] focus-within:border-[#FFCE0A] transition-colors">
-                {/* Format toolbar — row 1: formatting */}
-                <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10 flex-wrap">
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('# ')} title="Heading 1" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Heading1 className="w-3.5 h-3.5" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleBodyHeading('## ')} title="Heading 2" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Heading2 className="w-3.5 h-3.5" /></button>
-                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('**')} title="Bold" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Bold className="w-3.5 h-3.5" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('_')} title="Italic" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Italic className="w-3.5 h-3.5" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('__')} title="Underline" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Underline className="w-3.5 h-3.5" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => wrapBodySelection('~~')} title="Strikethrough" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Strikethrough className="w-3.5 h-3.5" /></button>
-                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={wrapBodyCenter} title="Center align" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><AlignCenter className="w-3.5 h-3.5" /></button>
-                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleLinePrefix('- ')} title="Bullet list" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><List className="w-3.5 h-3.5" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleLinePrefix('1. ')} title="Numbered list" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><ListOrdered className="w-3.5 h-3.5" /></button>
-                  <span className="w-px h-4 bg-gray-200 dark:bg-white/15 mx-1" />
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => toggleLinePrefix('> ')} title="Blockquote" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Quote className="w-3.5 h-3.5" /></button>
-                  <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => insertAtCursor('\n---\n')} title="Divider" className="w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors"><Minus className="w-3.5 h-3.5" /></button>
-                </div>
-                {/* Format toolbar — row 2: variables + link */}
-                <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 mr-0.5 font-medium uppercase tracking-wide">Insert</span>
-                  {VARS.map(v => (
-                    <button
-                      key={v}
-                      type="button"
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={() => insertVar(v)}
-                      className="px-2 py-0.5 rounded-md text-xs font-mono cursor-pointer transition-colors hover:opacity-90"
-                      style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                  {!linkForm.open && (
-                    <button
-                      type="button"
-                      onMouseDown={e => {
-                        e.preventDefault();
-                        const ta = textareaRef.current;
-                        const start = ta?.selectionStart ?? cursorPos.current;
-                        const end = ta?.selectionEnd ?? cursorEnd.current;
-                        cursorPos.current = start;
-                        cursorEnd.current = end;
-                        const selectedText = messageInfo.body.slice(start, end);
-                        setLinkForm({ open: true, text: selectedText, url: '' });
-                      }}
-                      className="px-2 py-0.5 rounded-md text-xs font-medium cursor-pointer transition-colors hover:opacity-90"
-                      style={{ background: 'rgb(240 253 244)', color: 'rgb(21 128 61)' }}
-                    >
-                      + link
-                    </button>
-                  )}
-                </div>
+              {messageInfo.channel === 'email' ? (
+                <RichTextEditor
+                  content={messageInfo.body}
+                  onChange={html => setMessageInfo(m => ({ ...m, body: html }))}
+                  mergeTagOptions={MERGE_TAGS}
+                  placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
+                />
+              ) : (
                 <Textarea
-                  ref={textareaRef}
                   value={messageInfo.body}
-                  onFocus={() => { lastFocusedField.current = 'body'; }}
-                  onChange={e => {
-                    cursorPos.current = e.target.selectionStart ?? 0;
-                    cursorEnd.current = e.target.selectionEnd ?? 0;
-                    setMessageInfo(m => ({ ...m, body: e.target.value }));
-                  }}
-                  onSelect={e => {
-                    cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
-                    cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0;
-                  }}
-                  onClick={e => {
-                    cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
-                    cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0;
-                  }}
-                  onKeyUp={e => {
-                    cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart ?? 0;
-                    cursorEnd.current = (e.target as HTMLTextAreaElement).selectionEnd ?? 0;
-                  }}
+                  onChange={e => setMessageInfo(m => ({ ...m, body: e.target.value }))}
                   rows={9}
                   placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
-                  className="resize-y border-0 px-3.5 py-2.5 hover:border-0 focus:border-0"
+                  className="resize-y"
                 />
-              </div>
+              )}
               <div className="flex items-center justify-between mt-1.5 min-h-[1.25rem]">
                 {stepErrors.body ? <p className="text-xs text-red-500">{stepErrors.body}</p> : <span />}
                 <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {messageInfo.body.length} chars{messageInfo.body.length >= 100 && messageInfo.body.length <= 300 ? ' · ideal ✓' : ''}
+                  {messageInfo.body.replace(/<[^>]*>/g, '').length} chars
                 </span>
               </div>
             </div>
-
-            {linkForm.open && (
-              <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10">
-                <input
-                  autoFocus={!linkForm.text}
-                  type="text"
-                  placeholder="Display text"
-                  value={linkForm.text}
-                  onChange={e => setLinkForm(f => ({ ...f, text: e.target.value }))}
-                  className="text-sm px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white w-40 outline-none focus:border-[#FFCE0A]"
-                />
-                <input
-                  autoFocus={!!linkForm.text}
-                  type="url"
-                  placeholder="https://..."
-                  value={linkForm.url}
-                  onChange={e => setLinkForm(f => ({ ...f, url: e.target.value }))}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && linkForm.text.trim() && linkForm.url.trim()) {
-                      doInsertLink(linkForm.text.trim(), linkForm.url.trim());
-                    }
-                  }}
-                  className="text-sm px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white flex-1 min-w-[12rem] outline-none focus:border-[#FFCE0A]"
-                />
-                <button
-                  type="button"
-                  disabled={!linkForm.text.trim() || !linkForm.url.trim()}
-                  onClick={() => doInsertLink(linkForm.text.trim(), linkForm.url.trim())}
-                  className="text-sm px-3 py-1.5 rounded-md font-semibold transition-colors disabled:opacity-40"
-                  style={{ background: '#FFCE0A', color: '#342e37' }}
-                >
-                  Insert
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLinkForm({ open: false, text: '', url: '' })}
-                  className="text-sm px-2.5 py-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Preview column - sticky on desktop */}
@@ -1464,7 +1188,7 @@ export function NewCampaign() {
                   {messageInfo.body ? (
                     <div
                       className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+                      dangerouslySetInnerHTML={{ __html: buildPreviewHtml(messageInfo.body, searchCriteria.city) }}
                     />
                   ) : (
                     <p className="text-sm text-gray-300 dark:text-gray-600 italic">Your message will appear here…</p>
@@ -1587,7 +1311,7 @@ export function NewCampaign() {
           <div className="px-4 py-5 bg-white dark:bg-[#1a1a1a]">
             <div
               className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+              dangerouslySetInnerHTML={{ __html: buildPreviewHtml(messageInfo.body, searchCriteria.city) }}
             />
           </div>
         </div>
@@ -1896,7 +1620,7 @@ export function NewCampaign() {
                 <div className="rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1a1a1a] p-4">
                   <div
                     className="text-sm text-gray-900 dark:text-white leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: renderBodyPreview(messageInfo.body, searchCriteria.city) }}
+                    dangerouslySetInnerHTML={{ __html: buildPreviewHtml(messageInfo.body, searchCriteria.city) }}
                   />
                 </div>
 

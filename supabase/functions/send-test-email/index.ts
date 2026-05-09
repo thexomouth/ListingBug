@@ -20,12 +20,26 @@ function json(data: unknown, status = 200) {
   });
 }
 
-function interpolate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+function isHtmlBody(body: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(body);
 }
 
-function buildHtml(text: string): string {
-  const body = text
+function interpolate(template: string, vars: Record<string, string>): string {
+  // Replace merge tag chip spans first: <span data-merge-tag="{{var}}" ...>Label</span>
+  let result = template.replace(
+    /<span[^>]*data-merge-tag="?\{\{(\w+)\}\}"?[^>]*>[^<]*<\/span>/g,
+    (_, key) => vars[key] ?? ""
+  );
+  // Then replace any raw {{}} tokens (legacy or subject line)
+  result = result.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+  return result;
+}
+
+function buildHtml(content: string): string {
+  if (isHtmlBody(content)) {
+    return `<div style="font-size:15px;line-height:1.6;max-width:580px;color:#222">${content}</div>`;
+  }
+  const body = content
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
       (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`)

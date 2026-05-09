@@ -36,8 +36,19 @@ function json(data: unknown, status = 200) {
   });
 }
 
+function isHtmlBody(body: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(body);
+}
+
 function interpolate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+  // Replace merge tag chip spans first: <span data-merge-tag="{{var}}" ...>Label</span>
+  let result = template.replace(
+    /<span[^>]*data-merge-tag="?\{\{(\w+)\}\}"?[^>]*>[^<]*<\/span>/g,
+    (_, key) => vars[key] ?? ""
+  );
+  // Then replace any raw {{}} tokens (legacy or subject line)
+  result = result.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? "");
+  return result;
 }
 
 function buildUnsubUrl(userId: string, campaignId: string, agentEmail: string, customUrl?: string): string {
@@ -121,11 +132,13 @@ function convertMarkdown(text: string): string {
 }
 
 function renderEmail(
-  bodyText: string,
+  bodyContent: string,
   unsubUrl: string,
   mailingAddress: string
 ): { bodyHtml: string; bodyTextWithUnsub: string } {
-  const bodyHtmlContent = convertMarkdown(bodyText);
+  const bodyHtmlContent = isHtmlBody(bodyContent)
+    ? bodyContent
+    : convertMarkdown(bodyContent);
 
   const footerAddress = mailingAddress
     ? `<br>${mailingAddress.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}`
@@ -133,10 +146,7 @@ function renderEmail(
 
   const bodyHtml = `<div style="font-size:15px;line-height:1.6;max-width:580px;color:#222">${bodyHtmlContent}<p style="margin-top:2em;font-size:12px;color:#999"><a href="${unsubUrl}" style="color:#999">Unsubscribe</a>${footerAddress}</p></div>`;
 
-  const bodyTextPlain = bodyText.replace(
-    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    (_, t, u) => `${t} (${u})`
-  );
+  const bodyTextPlain = bodyContent.replace(/<[^>]*>/g, "").trim();
   const bodyTextWithUnsub = mailingAddress
     ? `${bodyTextPlain}\n\nUnsubscribe: ${unsubUrl}\n${mailingAddress}`
     : `${bodyTextPlain}\n\nUnsubscribe: ${unsubUrl}`;
