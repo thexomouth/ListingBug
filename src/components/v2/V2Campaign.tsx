@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
-import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer } from 'lucide-react';
+import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer, ChevronUp, ChevronDown } from 'lucide-react';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { AgentActivityModal } from './AgentActivityModal';
 import { CityAutocomplete } from '../CityAutocomplete';
@@ -188,6 +188,8 @@ export function V2Campaign() {
   // Delete
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sortCol, setSortCol] = useState<'agent' | 'listing' | 'price' | 'status' | 'activity'>('activity');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Save as template
   const [templateModal, setTemplateModal] = useState({ open: false, name: '', saving: false, error: null as string | null, saved: false });
@@ -499,9 +501,26 @@ export function V2Campaign() {
   const totalReplies = sends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
 
   const sortedSends = [...sends].sort((a, b) => {
-    const at = a.sent_at ? new Date(a.sent_at).getTime() : 0;
-    const bt = b.sent_at ? new Date(b.sent_at).getTime() : 0;
-    return bt - at;
+    let av: string | number = 0;
+    let bv: string | number = 0;
+    if (sortCol === 'agent') {
+      av = (a.agent_name || a.agent_email || '').toLowerCase();
+      bv = (b.agent_name || b.agent_email || '').toLowerCase();
+    } else if (sortCol === 'listing') {
+      av = (a.listing_address || '').toLowerCase();
+      bv = (b.listing_address || '').toLowerCase();
+    } else if (sortCol === 'price') {
+      av = a.listing_price ?? -1;
+      bv = b.listing_price ?? -1;
+    } else if (sortCol === 'status') {
+      av = a.status || '';
+      bv = b.status || '';
+    } else {
+      av = activityDate(a) ?? a.sent_at ?? '';
+      bv = activityDate(b) ?? b.sent_at ?? '';
+    }
+    const cmp = typeof av === 'number' ? av - bv : (av < bv ? -1 : av > bv ? 1 : 0);
+    return sortDir === 'asc' ? cmp : -cmp;
   });
 
   const fromName = senderInfo?.from_name || userBusinessName || userContactName || null;
@@ -926,11 +945,27 @@ export function V2Campaign() {
             <table className="w-full text-sm">
               <thead className="bg-white dark:bg-[#2F2F2F] border-b border-gray-200 dark:border-white/10">
                 <tr>
-                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agent</th>
-                  <th className="hidden sm:table-cell h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Listing</th>
-                  <th className="hidden sm:table-cell h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Price</th>
-                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</th>
-                  <th className="h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Activity</th>
+                  {([
+                    { key: 'agent', label: 'Agent', cls: '' },
+                    { key: 'listing', label: 'Listing', cls: 'hidden sm:table-cell' },
+                    { key: 'price', label: 'Price', cls: 'hidden sm:table-cell' },
+                    { key: 'status', label: 'Status', cls: '' },
+                    { key: 'activity', label: 'Activity', cls: 'whitespace-nowrap' },
+                  ] as const).map(({ key, label, cls }) => (
+                    <th
+                      key={key}
+                      onClick={() => { if (sortCol === key) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); } else { setSortCol(key); setSortDir('asc'); } }}
+                      className={`h-10 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 ${cls}`}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {label}
+                        <span className="inline-flex flex-col leading-none">
+                          <ChevronUp className={`w-2.5 h-2.5 -mb-0.5 ${sortCol === key && sortDir === 'asc' ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`} />
+                          <ChevronDown className={`w-2.5 h-2.5 ${sortCol === key && sortDir === 'desc' ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`} />
+                        </span>
+                      </span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">

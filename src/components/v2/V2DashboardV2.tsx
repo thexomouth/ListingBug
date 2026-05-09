@@ -46,6 +46,7 @@ interface AgentRow {
   brokerage: string | null;
   sent: number;
   opens: number;
+  clicks: number;
   replies: number;
   recentSends: AgentSend[];
 }
@@ -143,7 +144,7 @@ function buildLeaderboard(campaigns: Campaign[]): AgentRow[] {
           agentName: s.agent_name || s.agent_email!,
           agentEmail: s.agent_email,
           brokerage: s.listing_brokerage,
-          sent: 0, opens: 0, replies: 0,
+          sent: 0, opens: 0, clicks: 0, replies: 0,
           recentSends: [],
         });
       }
@@ -151,6 +152,7 @@ function buildLeaderboard(campaigns: Campaign[]): AgentRow[] {
       const wasSent = s.status === 'sent' || s.status === 'opened' || s.status === 'replied';
       if (wasSent) row.sent++;
       if (s.opened_at) row.opens++;
+      if (s.clicked_at) row.clicks++;
       row.replies += s.campaign_replies?.length ?? 0;
       if (!row.brokerage && s.listing_brokerage) row.brokerage = s.listing_brokerage;
       row.recentSends.push({
@@ -167,7 +169,9 @@ function buildLeaderboard(campaigns: Campaign[]): AgentRow[] {
     });
     row.recentSends = row.recentSends.slice(0, 6);
   }
-  return Array.from(map.values()).sort((a, b) => b.sent - a.sent);
+  return Array.from(map.values()).sort((a, b) =>
+    b.replies - a.replies || b.clicks - a.clicks || b.opens - a.opens
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -697,7 +701,7 @@ export function V2DashboardV2() {
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Agent Leaderboard</h2>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {leaderboard.length} agent{leaderboard.length !== 1 ? 's' : ''} reached · ordered by messages sent
+                  {leaderboard.length} agent{leaderboard.length !== 1 ? 's' : ''} reached · ordered by replies · clicks · opens
                 </p>
               </div>
             </div>
@@ -721,7 +725,7 @@ export function V2DashboardV2() {
                       <React.Fragment key={agent.key}>
                         <tr
                           onClick={() => setExpandedAgentKey(isExpanded ? null : agent.key)}
-                          className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                          className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 hover:outline hover:outline-2 hover:outline-[#FFCE0A] hover:drop-shadow-lg transition-all duration-300 cursor-pointer"
                         >
                           <td className="py-2.5 px-3 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
