@@ -626,14 +626,6 @@ export function V2DashboardV2() {
           {/* RIGHT — Performance heading + Stat bubbles + Timeline */}
           <div className="lg:w-[420px] xl:w-[480px] shrink-0 flex flex-col gap-4">
 
-            {/* Performance section heading */}
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">Performance</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                All campaigns · {currentRange === 0 ? 'All time' : `Last ${currentRange} days`}
-              </p>
-            </div>
-
             {/* Stat bubbles */}
             <div className="flex gap-2">
               {/* Sent */}
