@@ -14,6 +14,7 @@ export function V2AccountProfile() {
   const [email, setEmail] = useState('');
   const [emailPlaceholder, setEmailPlaceholder] = useState('');
   const [company, setCompany] = useState('');
+  const [fromName, setFromName] = useState('');
   const [phone, setPhone] = useState('');
   const [mailingAddress, setMailingAddress] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -37,7 +38,7 @@ export function V2AccountProfile() {
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('name, company, phone, mailing_address, created_at')
+            .select('name, company, from_name, phone, mailing_address, created_at')
             .eq('id', user.id)
             .single();
           if (profileData) {
@@ -48,6 +49,7 @@ export function V2AccountProfile() {
               setName(profileData.name);
             }
             if (profileData.company) setCompany(profileData.company);
+            if (profileData.from_name) setFromName(profileData.from_name);
             if (profileData.phone) setPhone(profileData.phone);
             if (profileData.mailing_address) setMailingAddress(profileData.mailing_address);
           } else if (googleName) {
@@ -66,6 +68,7 @@ export function V2AccountProfile() {
     const updates: Record<string, string> = { updated_at: new Date().toISOString() };
     if (name.trim()) updates.name = name.trim();
     if (company.trim()) updates.company = company.trim();
+    if (fromName.trim()) updates.from_name = fromName.trim();
     if (phone.trim()) updates.phone = phone.trim();
     if (mailingAddress.trim()) updates.mailing_address = mailingAddress.trim();
     if (Object.keys(updates).length === 1) {
@@ -153,7 +156,7 @@ export function V2AccountProfile() {
   };
 
   const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
-  const isProfileFormValid = name.trim() || company.trim() || phone.trim() || mailingAddress.trim();
+  const isProfileFormValid = name.trim() || company.trim() || fromName.trim() || phone.trim() || mailingAddress.trim();
   const passwordMismatch = newPassword && confirmPassword && newPassword !== confirmPassword;
 
   return (
@@ -182,33 +185,46 @@ export function V2AccountProfile() {
                 Manage your personal details
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" placeholder="Enter your full name" value={name} onChange={(e) => setName(e.target.value)} className="placeholder:text-gray-400" />
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                {/* Left column: Name, Phone, Email */}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" placeholder="Enter your full name" value={name} onChange={(e) => setName(e.target.value)} className="placeholder:text-gray-400" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input id="phone" type="tel" placeholder="Enter your phone number" value={phone} onChange={(e) => setPhone(e.target.value)} className="placeholder:text-gray-400" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" placeholder={emailPlaceholder || 'Loading email...'} value="" disabled className="placeholder:text-gray-600 bg-gray-50 dark:bg-gray-900 cursor-not-allowed" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Email cannot be changed.</p>
+                  </div>
+                </div>
+                {/* Right column: Company, From Name, Mailing Address */}
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="company">Company</Label>
+                    <Input id="company" placeholder="Enter your company" value={company} onChange={(e) => setCompany(e.target.value)} className="placeholder:text-gray-400" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="from-name">From Name</Label>
+                    <Input id="from-name" placeholder="e.g. Jake @ Acme Realty" value={fromName} onChange={(e) => setFromName(e.target.value)} className="placeholder:text-gray-400" />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Displayed as the sender name in outgoing emails.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="mailing-address">
+                      Mailing Address
+                      <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">(CAN-SPAM)</span>
+                    </Label>
+                    <Input id="mailing-address" placeholder="123 Main St, Denver, CO 80202" value={mailingAddress} onChange={(e) => setMailingAddress(e.target.value)} className="placeholder:text-gray-400" />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder={emailPlaceholder || 'Loading email...'} value="" disabled className="placeholder:text-gray-600 bg-gray-50 dark:bg-gray-900 cursor-not-allowed" />
-                <p className="text-xs text-gray-500 dark:text-gray-400">Email cannot be changed. It is the identity linked to your account.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="company">Company</Label>
-                <Input id="company" placeholder="Enter your company" value={company} onChange={(e) => setCompany(e.target.value)} className="placeholder:text-gray-400" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" type="tel" placeholder="Enter your phone number" value={phone} onChange={(e) => setPhone(e.target.value)} className="placeholder:text-gray-400" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="mailing-address">
-                  Mailing Address
-                  <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">(CAN-SPAM — appears in email footers)</span>
-                </Label>
-                <Input id="mailing-address" placeholder="123 Main St, Denver, CO 80202" value={mailingAddress} onChange={(e) => setMailingAddress(e.target.value)} className="placeholder:text-gray-400" />
-              </div>
-              <Separator className="dark:bg-white/10" />
-              <Button onClick={handleSave} disabled={!isProfileFormValid} className="mt-1 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Save Changes</Button>
+              <Separator className="dark:bg-white/10 mt-4" />
+              <Button onClick={handleSave} disabled={!isProfileFormValid} className="mt-3 bg-[#FFCE0A] hover:bg-[#FFCE0A]/90 text-[#0F1115]">Save Changes</Button>
             </CardContent>
           </Card>
 
