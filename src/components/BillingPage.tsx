@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import { CreditCard, Download, Receipt, TrendingUp, Calendar, AlertCircle, CheckCircle, Crown, BarChart3 } from 'lucide-react';
+import { normalizePlan, PLAN_CONFIG } from './utils/planLimits';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -115,17 +116,22 @@ export function BillingPage({ onNavigate, embeddedInTabs = false }: BillingPageP
         .select('plan, plan_status, trial_ends_at, stripe_subscription_end')
         .eq('id', user.id).single();
       if (data) {
-        const isTrialing = data.plan_status === 'trialing' || !!data.trial_ends_at;
-        // If user is in trial, show "Trial" as current plan; otherwise show actual plan
-        const planName = isTrialing ? 'Trial' : (data.plan === 'professional' ? 'Professional' : data.plan === 'enterprise' ? 'Enterprise' : 'Starter');
-        const price = isTrialing ? 0 : data.plan === 'professional' ? 49 : data.plan === 'enterprise' ? 0 : 19;
-        const limit = data.plan === 'professional' ? 10000 : data.plan === 'enterprise' ? 999999 : data.plan === 'trial' ? 1000 : 4000;
+        const normalizedPlan = normalizePlan(data.plan);
+        const config = PLAN_CONFIG[normalizedPlan];
+        const isTrial = normalizedPlan === 'trial';
+        const status = isTrial
+          ? 'Trial'
+          : data.plan_status === 'active' ? 'Active'
+          : data.plan_status || 'Active';
         setSubscription(prev => ({
           ...prev,
-          plan: planName, price, reportsLimit: limit,
-          status: isTrialing ? 'Trial' : data.plan_status === 'active' ? 'Active' : data.plan_status || 'Active',
-          trialEndsAt: data.trial_ends_at ?? null,
-          nextBillingDate: data.stripe_subscription_end ? new Date(data.stripe_subscription_end).toLocaleDateString() : '—',
+          plan: config.name,
+          price: config.price ?? 0,
+          status,
+          trialEndsAt: isTrial ? (data.trial_ends_at ?? null) : null,
+          nextBillingDate: !isTrial && data.stripe_subscription_end
+            ? new Date(data.stripe_subscription_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+            : '—',
         }));
       }
     };
