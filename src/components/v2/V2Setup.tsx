@@ -32,7 +32,8 @@ function SenderCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-[#1a1a1a]">
+    <div className="group transition-all duration-200 hover:scale-[1.02] hover:shadow-2xl">
+    <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-[#2F2F2F] group-hover:border-[#FFCE0A] transition-colors duration-200">
       <div className="flex items-center gap-3 px-5 py-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
           connected
@@ -66,6 +67,7 @@ function SenderCard({
       <div className="border-t border-gray-100 dark:border-white/10 px-5 py-5">
         {children}
       </div>
+    </div>
     </div>
   );
 }
