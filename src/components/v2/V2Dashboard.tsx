@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
 import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy, MousePointer2 } from 'lucide-react';
-import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
+import { normalizePlan, PLAN_CONFIG, canActivateCampaign, type PlanType } from '../utils/planLimits';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
 import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
@@ -207,6 +208,7 @@ export function V2Dashboard() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [usageCount, setUsageCount] = useState(0);
   const [planLimit, setPlanLimit] = useState(100);
+  const [userPlan, setUserPlan] = useState<PlanType>('trial');
   const [stripePeriodEnd, setStripePeriodEnd] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -359,6 +361,7 @@ export function V2Dashboard() {
 
       if (userData) {
         const plan = normalizePlan(userData.plan);
+        setUserPlan(plan);
         setPlanLimit(PLAN_CONFIG[plan].messagesPerMonth);
         setStripePeriodEnd(userData.stripe_subscription_end || null);
       }
@@ -426,6 +429,14 @@ export function V2Dashboard() {
   const navigate = (path: string) => { window.location.href = path; };
 
   const handleToggle = async (campaign: Campaign, next: boolean) => {
+    if (next) {
+      const currentActive = campaigns.filter(c => c.status === 'active' && c.id !== campaign.id).length;
+      const { allowed, reason } = canActivateCampaign(userPlan, currentActive);
+      if (!allowed) {
+        toast.error(reason ?? 'Campaign limit reached', { description: 'Pause an active campaign or upgrade your plan.' });
+        return;
+      }
+    }
     setTogglingId(campaign.id);
     const newStatus = next ? 'active' : 'paused';
     await supabase.from('campaigns').update({ status: newStatus }).eq('id', campaign.id);

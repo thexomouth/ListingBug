@@ -13,8 +13,13 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 
 const PRICE_IDS: Record<string, string> = {
-  starter: "price_1TDod6A3dmARSc7xs4IGkHwB",
-  professional: "price_1TDog0A3dmARSc7xuoR2gRUh",
+  // Current plan names
+  city:   Deno.env.get("STRIPE_PRICE_CITY")   ?? "price_1TDod6A3dmARSc7xs4IGkHwB",
+  market: Deno.env.get("STRIPE_PRICE_MARKET") ?? "price_1TDog0A3dmARSc7xuoR2gRUh",
+  region: Deno.env.get("STRIPE_PRICE_REGION") ?? "",
+  // Legacy aliases — keep so old sessions still resolve
+  starter:      Deno.env.get("STRIPE_PRICE_CITY")   ?? "price_1TDod6A3dmARSc7xs4IGkHwB",
+  professional: Deno.env.get("STRIPE_PRICE_MARKET") ?? "price_1TDog0A3dmARSc7xuoR2gRUh",
 };
 
 serve(async (req) => {

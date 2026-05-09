@@ -16,8 +16,28 @@ const RESEND_API_KEY       = Deno.env.get("SHARED_MAILBOX_RESEND_API_KEY") ?? ""
 const FROM_EMAIL           = "hello@listingping.com";
 
 // Cap per invocation — prevents runaway sends if queue backs up.
-// Resend has no per-minute hard cap but 50/invocation keeps each cron tick snappy.
 const BATCH_LIMIT = 50;
+
+// Message limits per plan — mirrors planLimits.ts (kept in sync manually)
+const PLAN_MESSAGE_LIMITS: Record<string, number> = {
+  trial:        100,
+  city:         2500,
+  market:       5000,
+  region:       10000,
+  // legacy aliases
+  starter:      2500,
+  professional: 5000,
+  enterprise:   10000,
+};
+
+function normalizePlanType(raw: string | null | undefined): string {
+  if (!raw) return "trial";
+  const lower = raw.toLowerCase();
+  if (lower === "city" || lower === "home" || lower === "starter") return "city";
+  if (lower === "market" || lower === "pro" || lower === "professional") return "market";
+  if (lower === "region" || lower === "enterprise") return "region";
+  return "trial";
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -93,9 +113,50 @@ serve(async () => {
     if (!due || due.length === 0) return json({ sent: 0 });
 
     console.log(`[run-email-queue] ${due.length} emails due`);
+
+    // --- Per-user message limit enforcement ---
+    // Build set of user_ids that are already at/over their monthly cap.
+    const uniqueUserIds = [...new Set(due.map((r: any) => r.user_id))];
+    const blockedUsers = new Set<string>();
+
+    for (const uid of uniqueUserIds) {
+      // Get the plan_type and stripe_period_end from the first queued row for this user
+      const sample = due.find((r: any) => r.user_id === uid) as any;
+      const planType = normalizePlanType(sample?.plan_type);
+      const limit = PLAN_MESSAGE_LIMITS[planType] ?? 100;
+
+      // Count usage_logs for this user in the current billing period
+      let usageQuery = supabase
+        .from("usage_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", uid);
+
+      if (sample?.stripe_period_end) {
+        const periodStart = new Date(sample.stripe_period_end);
+        periodStart.setMonth(periodStart.getMonth() - 1);
+        usageQuery = usageQuery.gte("logged_at", periodStart.toISOString());
+      }
+
+      const { count } = await usageQuery;
+      const used = count ?? 0;
+
+      if (used >= limit) {
+        console.log(`[run-email-queue] User ${uid} at limit (${used}/${limit} ${planType}) — deferring their batch`);
+        blockedUsers.add(uid);
+      }
+    }
+    // ------------------------------------------
+
     let sent = 0;
 
     for (const row of due) {
+      // Skip users at their monthly message limit
+      if (blockedUsers.has((row as any).user_id)) {
+        await supabase.from("email_queue")
+          .update({ status: "deferred", scheduled_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() })
+          .eq("id", (row as any).id);
+        continue;
+      }
       // Check sender daily limit if using OAuth sender
       const sender = (row as any).sender;
       if (sender) {

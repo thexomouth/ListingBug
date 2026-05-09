@@ -3,7 +3,7 @@ export type PlanType = 'trial' | 'city' | 'market' | 'region';
 export interface PlanLimits {
   name: string;
   messagesPerMonth: number;
-  citiesAllowed: number;
+  campaignsAllowed: number;
   price: number | null;
 }
 
@@ -11,25 +11,25 @@ export const PLAN_CONFIG: Record<PlanType, PlanLimits> = {
   trial: {
     name: 'Trial',
     messagesPerMonth: 100,
-    citiesAllowed: 1,
+    campaignsAllowed: 1,
     price: 0,
   },
   city: {
     name: 'City',
     messagesPerMonth: 2500,
-    citiesAllowed: 1,
+    campaignsAllowed: 1,
     price: 19,
   },
   market: {
     name: 'Market',
     messagesPerMonth: 5000,
-    citiesAllowed: 3,
+    campaignsAllowed: 3,
     price: 49,
   },
   region: {
     name: 'Region',
     messagesPerMonth: 10000,
-    citiesAllowed: 10,
+    campaignsAllowed: 10,
     price: 99,
   },
 };
@@ -41,11 +41,9 @@ export function getPlanLimits(plan: PlanType): PlanLimits {
 export function normalizePlan(raw: string | null | undefined): PlanType {
   if (!raw) return 'trial';
   const lower = raw.toLowerCase();
-  // Accept legacy plan names from old product
-  if (lower === 'city' || lower === 'home') return 'city';
+  if (lower === 'city' || lower === 'home' || lower === 'starter') return 'city';
   if (lower === 'market' || lower === 'pro' || lower === 'professional') return 'market';
   if (lower === 'region' || lower === 'enterprise') return 'region';
-  if (lower === 'starter') return 'city';
   return 'trial';
 }
 
@@ -55,18 +53,17 @@ export function getNextPlan(plan: PlanType): { plan: PlanType | null; name: stri
   return { plan: null, name: null, price: null };
 }
 
-export function canAddCity(plan: PlanType, activeCityCount: number): { allowed: boolean; reason?: string } {
-  const { citiesAllowed, name } = PLAN_CONFIG[plan];
-  if (activeCityCount < citiesAllowed) return { allowed: true };
+export function canActivateCampaign(plan: PlanType, activeCampaignCount: number): { allowed: boolean; reason?: string } {
+  const { campaignsAllowed, name } = PLAN_CONFIG[plan];
+  if (activeCampaignCount < campaignsAllowed) return { allowed: true };
   return {
     allowed: false,
-    reason: `Your ${name} plan includes ${citiesAllowed} ${citiesAllowed === 1 ? 'city' : 'cities'}. Upgrade to add more.`,
+    reason: `Your ${name} plan allows ${campaignsAllowed} active ${campaignsAllowed === 1 ? 'campaign' : 'campaigns'}. Pause another campaign or upgrade to activate more.`,
   };
 }
 
 // ---------------------------------------------------------------------------
 // V1 compat shims — used by AutomationsManagementPage (legacy)
-// These map old automation-slot concepts to no-ops so V1 keeps building.
 // ---------------------------------------------------------------------------
 export function getCurrentPlan(): PlanType {
   return normalizePlan(localStorage.getItem('listingbug_user_plan'));
@@ -75,6 +72,10 @@ export function getCurrentPlan(): PlanType {
 export function setUserPlan(plan: PlanType): void {
   localStorage.setItem('listingbug_user_plan', plan);
   window.dispatchEvent(new CustomEvent('userPlanChanged', { detail: { plan } }));
+}
+
+export function canAddCity(_plan?: PlanType, _count?: number): { allowed: boolean; reason?: string } {
+  return { allowed: true };
 }
 
 export function canCreateAutomation(_plan?: PlanType, _count?: number): {
