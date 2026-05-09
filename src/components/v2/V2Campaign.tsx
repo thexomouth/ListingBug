@@ -565,89 +565,6 @@ export function V2Campaign() {
           </div>
         </div>
 
-        {/* Stat bubbles */}
-        <div className="flex gap-2 md:gap-3 mb-1">
-
-          {/* Sent */}
-          <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
-              {RANGE_PILL[currentRange]}
-            </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <SendIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-            </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsSent.toLocaleString()}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
-              {wsSent > 0 ? `${wsOpenRate}% open rate` : '—'}
-            </div>
-          </div>
-
-          {/* Opens */}
-          <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
-              {RANGE_PILL[currentRange]}
-            </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-            </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsOpens.toLocaleString()}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
-              {wsSent > 0 ? `${wsOpenRate}% of sent` : '—'}
-            </div>
-          </div>
-
-          {/* Replies */}
-          <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
-              {RANGE_PILL[currentRange]}
-            </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-            </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsReplies.toLocaleString()}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
-              {wsSent > 0 ? `${Math.round((wsReplies / wsSent) * 100)}% reply rate` : '—'}
-            </div>
-          </div>
-
-          {/* Clicks */}
-          <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
-              {RANGE_PILL[currentRange]}
-            </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <MousePointer className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-            </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsClicks.toLocaleString()}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Clicks</div>
-            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
-              {wsSent > 0 ? `${Math.round((wsClicks / wsSent) * 100)}% click rate` : '—'}
-            </div>
-          </div>
-        </div>
-
-        {/* Range label */}
-        <div className="flex justify-end mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
-            {currentRange === 0 ? 'All-Time' : `Last ${currentRange} Days`}
-          </span>
-        </div>
-
         {/* Main two-column container */}
         <div className="flex flex-col lg:flex-row gap-4 mb-8">
 
@@ -888,6 +805,89 @@ export function V2Campaign() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Stat bubbles */}
+        <div className="flex gap-2 md:gap-3 mb-1 mt-4">
+
+          {/* Sent */}
+          <div
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <SendIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsSent.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${wsOpenRate}% open rate` : '—'}
+            </div>
+          </div>
+
+          {/* Opens */}
+          <div
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsOpens.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${wsOpenRate}% of sent` : '—'}
+            </div>
+          </div>
+
+          {/* Replies */}
+          <div
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsReplies.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${Math.round((wsReplies / wsSent) * 100)}% reply rate` : '—'}
+            </div>
+          </div>
+
+          {/* Clicks */}
+          <div
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            style={{ opacity: statOpacity, transition: bubbleTransition }}
+          >
+            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+              {RANGE_PILL[currentRange]}
+            </span>
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+              <MousePointer className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            </div>
+            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsClicks.toLocaleString()}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Clicks</div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-0.5 min-h-[14px]">
+              {wsSent > 0 ? `${Math.round((wsClicks / wsSent) * 100)}% click rate` : '—'}
+            </div>
+          </div>
+        </div>
+
+        {/* Range label */}
+        <div className="flex justify-end mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
+            {currentRange === 0 ? 'All-Time' : `Last ${currentRange} Days`}
+          </span>
         </div>
 
         {/* Send activity */}
