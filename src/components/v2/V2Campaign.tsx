@@ -830,14 +830,14 @@ export function V2Campaign() {
 
           {/* Sent */}
           <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
               {RANGE_PILL[currentRange]}
             </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <SendIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-[#1a1a1a] flex items-center justify-center mb-2">
+              <SendIcon className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-[#FFCE0A]" />
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsSent.toLocaleString()}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
@@ -848,14 +848,14 @@ export function V2Campaign() {
 
           {/* Opens */}
           <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
               {RANGE_PILL[currentRange]}
             </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-[#1a1a1a] flex items-center justify-center mb-2">
+              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-[#FFCE0A]" />
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsOpens.toLocaleString()}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
@@ -866,14 +866,14 @@ export function V2Campaign() {
 
           {/* Replies */}
           <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
               {RANGE_PILL[currentRange]}
             </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-[#1a1a1a] flex items-center justify-center mb-2">
+              <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-[#FFCE0A]" />
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsReplies.toLocaleString()}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
@@ -884,14 +884,14 @@ export function V2Campaign() {
 
           {/* Clicks */}
           <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
+            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-[#2F2F2F] p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
             style={{ opacity: statOpacity, transition: bubbleTransition }}
           >
             <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
               {RANGE_PILL[currentRange]}
             </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <MousePointer className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 dark:bg-[#1a1a1a] flex items-center justify-center mb-2">
+              <MousePointer className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-[#FFCE0A]" />
             </div>
             <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{wsClicks.toLocaleString()}</div>
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Clicks</div>
