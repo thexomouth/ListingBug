@@ -38,7 +38,7 @@ export function V2AccountProfile() {
         if (user?.id) {
           const { data: profileData } = await supabase
             .from('users')
-            .select('name, company, from_name, phone, mailing_address, created_at')
+            .select('*')
             .eq('id', user.id)
             .single();
           if (profileData) {
