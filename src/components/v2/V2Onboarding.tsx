@@ -752,12 +752,8 @@ export function V2Onboarding() {
             type="button"
             onClick={gmailSender ? () => setSelectedSenderId(gmailSender.id) : handleGmailConnect}
             disabled={checkingSender}
-            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed ${isGmailSelected ? '' : 'bg-white dark:bg-[#1a1a1a]'}`}
-            style={
-              isGmailSelected
-                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-                : { borderColor: 'rgb(229 231 235)' }
-            }
+            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed ${isGmailSelected ? '' : 'bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-white/10'}`}
+            style={isGmailSelected ? { borderColor: '#10b981', backgroundColor: '#10b98110' } : undefined}
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
@@ -780,12 +776,8 @@ export function V2Onboarding() {
             type="button"
             onClick={outlookSender ? () => setSelectedSenderId(outlookSender.id) : handleOutlookConnect}
             disabled={checkingSender}
-            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed ${isOutlookSelected ? '' : 'bg-white dark:bg-[#1a1a1a]'}`}
-            style={
-              isOutlookSelected
-                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-                : { borderColor: 'rgb(229 231 235)' }
-            }
+            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed ${isOutlookSelected ? '' : 'bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-white/10'}`}
+            style={isOutlookSelected ? { borderColor: '#10b981', backgroundColor: '#10b98110' } : undefined}
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
@@ -811,13 +803,9 @@ export function V2Onboarding() {
             type="button"
             onClick={smtpSender ? () => setSelectedSenderId(smtpSender.id) : () => setSMTPModalOpen(true)}
             className={`w-full group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm ${
-              !isSmtpSelected ? 'bg-white dark:bg-[#1a1a1a]' : ''
+              !isSmtpSelected ? 'bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-white/10' : ''
             }`}
-            style={
-              isSmtpSelected
-                ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-                : { borderColor: smtpSender ? 'rgb(229 231 235)' : undefined }
-            }
+            style={isSmtpSelected ? { borderColor: '#10b981', backgroundColor: '#10b98110' } : undefined}
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center shrink-0">
