@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy } from 'lucide-react';
+import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy, MousePointer2 } from 'lucide-react';
 import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
@@ -672,6 +672,21 @@ export function V2Dashboard() {
                 <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
               </div>
 
+              {/* Clicks */}
+              <div
+                className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 flex flex-col items-center hover:shadow-xl hover:-translate-y-1"
+                style={{ opacity: statOpacity, transition: bubbleTransition }}
+              >
+                <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+                  {RANGE_PILL[currentRange]}
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-[#1a1a1a] flex items-center justify-center mb-2">
+                  <MousePointer2 className="w-4 h-4 text-amber-600 dark:text-[#FFCE0A]" />
+                </div>
+                <div className="text-xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.clicks.toLocaleString()}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Clicks</div>
+              </div>
+
               {/* Replies */}
               <div
                 className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 flex flex-col items-center hover:shadow-xl hover:-translate-y-1"
@@ -685,18 +700,6 @@ export function V2Dashboard() {
                 </div>
                 <div className="text-xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.replies.toLocaleString()}</div>
                 <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
-              </div>
-
-              {/* Active campaigns */}
-              <div
-                className="flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-[#2F2F2F] p-3 flex flex-col items-center hover:shadow-xl hover:-translate-y-1"
-                style={{ opacity: statOpacity, transition: bubbleTransition }}
-              >
-                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-[#1a1a1a] flex items-center justify-center mb-2">
-                  <Zap className="w-4 h-4 text-amber-600 dark:text-[#FFCE0A]" />
-                </div>
-                <div className="text-xl font-bold text-[#342e37] dark:text-white mb-0.5">{activeCampaigns}</div>
-                <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Active</div>
               </div>
             </div>
 
