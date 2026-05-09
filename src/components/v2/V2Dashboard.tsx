@@ -219,7 +219,7 @@ export function V2Dashboard() {
   const [connectionIssues, setConnectionIssues] = useState<ConnectionIssue[]>([]);
   const [dismissedIssues, setDismissedIssues] = useState<Set<string>>(new Set());
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
-  const [lbSortCol, setLbSortCol] = useState<'agent' | 'brokerage' | 'sent' | 'opens' | 'replies'>('replies');
+  const [lbSortCol, setLbSortCol] = useState<'agent' | 'brokerage' | 'sent' | 'replies' | 'clicks' | 'opens'>('replies');
   const [lbSortDir, setLbSortDir] = useState<'asc' | 'desc'>('desc');
   const [expandedAgentKey, setExpandedAgentKey] = useState<string | null>(null);
   const [selectedAgentSend, setSelectedAgentSend] = useState<AgentSend | null>(null);
@@ -486,6 +486,7 @@ export function V2Dashboard() {
     if (lbSortCol === 'agent') { av = a.agentName.toLowerCase(); bv = b.agentName.toLowerCase(); }
     else if (lbSortCol === 'brokerage') { av = (a.brokerage || '').toLowerCase(); bv = (b.brokerage || '').toLowerCase(); }
     else if (lbSortCol === 'sent') { av = a.sent; bv = b.sent; }
+    else if (lbSortCol === 'clicks') { av = a.clicks; bv = b.clicks; }
     else if (lbSortCol === 'opens') { av = a.opens; bv = b.opens; }
     else { av = a.replies; bv = b.replies; }
     const cmp = typeof av === 'number' ? av - bv : (av < bv ? -1 : av > bv ? 1 : 0);
@@ -767,8 +768,9 @@ export function V2Dashboard() {
                       { key: 'agent',     label: 'Agent',     cls: '',                     align: 'left'  },
                       { key: 'brokerage', label: 'Brokerage', cls: 'hidden sm:table-cell', align: 'left'  },
                       { key: 'sent',      label: 'Sent',      cls: '',                     align: 'right' },
-                      { key: 'opens',     label: 'Opens',     cls: 'hidden sm:table-cell', align: 'right' },
                       { key: 'replies',   label: 'Replies',   cls: 'hidden sm:table-cell', align: 'right' },
+                      { key: 'clicks',    label: 'Clicks',    cls: 'hidden sm:table-cell', align: 'right' },
+                      { key: 'opens',     label: 'Opens',     cls: 'hidden sm:table-cell', align: 'right' },
                     ] as const).map(({ key, label, cls, align }) => (
                       <th
                         key={key}
@@ -813,15 +815,18 @@ export function V2Dashboard() {
                             {agent.sent}
                           </td>
                           <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
-                            {agent.opens}
+                            {agent.replies}
                           </td>
                           <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
-                            {agent.replies}
+                            {agent.clicks}
+                          </td>
+                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                            {agent.opens}
                           </td>
                         </tr>
                         {isExpanded && agent.recentSends.length > 0 && (
                           <tr key={`${agent.key}-expanded`} className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
-                            <td colSpan={6} className="px-3 py-3">
+                            <td colSpan={7} className="px-3 py-3">
                               <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-medium mb-2">Recent listings</p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                 {agent.recentSends.map((as) => {
