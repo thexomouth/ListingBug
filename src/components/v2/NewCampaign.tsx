@@ -11,6 +11,8 @@ import { RichTextEditor } from './editor/RichTextEditor';
 import { buildPreviewHtml } from './editor/previewUtils';
 import { Mail, Server, CheckCircle2, Plus, Pencil } from 'lucide-react';
 import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal';
+import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
+import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
 import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
 import { toast } from 'sonner';
@@ -1441,9 +1443,11 @@ export function NewCampaign() {
   const stepMaxWidth = step === 3 ? '1100px' : '680px';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] relative">
+      <div className="absolute inset-0 opacity-[0.33] dark:opacity-0 pointer-events-none" style={{ backgroundImage: `url(${patternBgLight})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
+      <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
       <div
-        className="mx-auto px-4 py-8 transition-[max-width] duration-300"
+        className="mx-auto px-4 py-8 transition-[max-width] duration-300 relative z-10"
         style={{ maxWidth: stepMaxWidth }}
       >
 
