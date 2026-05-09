@@ -57,8 +57,23 @@ function buildUnsubUrl(userId: string, campaignId: string, agentEmail: string, c
   return `https://thelistingbug.com/unsubscribe/${userId}/${campaignId}?email=${encoded}`;
 }
 
+function autoLinkBareUrls(line: string): string {
+  const re = /(https?:\/\/[^\s<>"]+|www\.[a-z0-9][^\s<>"]*|(?<![@.\w])[a-z0-9][a-z0-9-]*\.(?:com|org|net|io|co|gov|edu|app|dev|info|biz|me|us)(?:\/[^\s<>"]*)?)/gi;
+  const parts = line.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/i);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) return part;
+    return part.replace(re, (match) => {
+      const trail = match.match(/[.,!?:;]+$/)?.[0] ?? "";
+      const url = trail ? match.slice(0, -trail.length) : match;
+      if (!url) return match;
+      const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      return `<a href="${href}" style="color:#1d4ed8;text-decoration:underline">${url}</a>${trail}`;
+    });
+  }).join("");
+}
+
 function applyInline(text: string): string {
-  return text
+  const s = text
     .replace(/__([^_]+)__/g, "<u>$1</u>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/_([^_]+)_/g, "<em>$1</em>")
@@ -67,6 +82,7 @@ function applyInline(text: string): string {
       /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
       (_, t, u) => `<a href="${u}" style="color:#1d4ed8;text-decoration:underline">${t}</a>`
     );
+  return autoLinkBareUrls(s);
 }
 
 function convertMarkdown(text: string): string {
