@@ -227,6 +227,30 @@ function renderEmail(
 }
 
 // ---------------------------------------------------------------------------
+// Click-tracking link wrapping
+// ---------------------------------------------------------------------------
+const CLICK_TRACKING_BASE = Deno.env.get("CLICK_TRACKING_BASE") ?? "https://click.thelistingbug.com/r";
+
+function b64urlEncode(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function wrapLinksForTracking(html: string, sendId: string): string {
+  return html.replace(
+    /href="(https?:\/\/[^"]+)"/gi,
+    (match, url) => {
+      if (
+        url.includes("thelistingbug.com/unsubscribe") ||
+        url.includes("click.thelistingbug.com")
+      ) {
+        return match;
+      }
+      return `href="${CLICK_TRACKING_BASE}?s=${sendId}&u=${b64urlEncode(url)}"`;
+    }
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 // NOTE: This function uses SERVICE_ROLE_KEY and does NOT require JWT verification.
@@ -514,7 +538,7 @@ serve(async (req) => {
         from_name: fromName,
         reply_to: replyTo,
         subject,
-        body_html: bodyHtml,
+        body_html: wrapLinksForTracking(bodyHtml, sendRecord.id),
         body_text: bodyTextWithUnsub,
         scheduled_at: scheduledAt,
         stripe_period_end: stripePeriodEnd,
