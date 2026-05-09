@@ -243,27 +243,31 @@ export function UsagePage({ embeddedInTabs = false }: UsagePageProps) {
           <CardHeader className="pb-2">
             <CardTitle className="font-bold text-[16px] text-[#342e37] dark:text-white">Overage Billing</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-0">
-            <div className="flex justify-between items-center py-2.5 border-b border-gray-100 dark:border-white/10">
-              <span className="text-[13px] text-gray-600 dark:text-gray-400">Overage rate</span>
-              <span className="text-[13px] font-bold text-gray-900 dark:text-white">$0.02 per message</span>
-            </div>
-            <div className="flex justify-between items-center py-2.5 border-b border-gray-100 dark:border-white/10">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${overageMessages > 0 ? 'bg-red-500' : 'bg-green-500'}`} />
-                <span className="text-[13px] text-gray-600 dark:text-gray-400">Current overage</span>
+          <CardContent>
+            <div className="grid grid-cols-3 divide-x divide-gray-200 dark:divide-white/10 mb-3">
+              <div className="pr-3">
+                <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Overage Rate</div>
+                <div className="font-bold text-[20px] text-[#342e37] dark:text-white">$0.02</div>
+                <div className="text-[11px] text-gray-500 dark:text-gray-400">per message</div>
               </div>
-              <span className={`text-[13px] font-bold ${overageMessages > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {overageMessages > 0 ? `${overageMessages.toLocaleString()} messages` : 'None'}
-              </span>
+              <div className="px-3">
+                <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Current Overage</div>
+                <div className={`font-bold text-[20px] ${overageMessages > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {overageMessages > 0 ? overageMessages.toLocaleString() : 'None'}
+                </div>
+                <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                  {overageMessages > 0 ? 'messages over' : 'no overage'}
+                </div>
+              </div>
+              <div className="pl-3">
+                <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">Current Overage Fee</div>
+                <div className={`font-bold text-[20px] ${overageFee > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  ${overageFee.toFixed(2)}
+                </div>
+                <div className="text-[11px] text-gray-500 dark:text-gray-400">this period</div>
+              </div>
             </div>
-            <div className="flex justify-between items-center py-2.5">
-              <span className="text-[14px] font-bold text-gray-900 dark:text-white">Current overage fee</span>
-              <span className={`text-[18px] font-bold ${overageFee > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                ${overageFee.toFixed(2)}
-              </span>
-            </div>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 pt-2">
+            <p className="text-[12px] text-gray-500 dark:text-gray-400">
               Overage fees are added to your next invoice at the end of the billing period. Campaigns never stop mid-send.
             </p>
           </CardContent>
