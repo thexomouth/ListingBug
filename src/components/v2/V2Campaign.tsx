@@ -807,8 +807,14 @@ export function V2Campaign() {
           </div>
         </div>
 
+        {/* Performance section header */}
+        <div className="mb-3 mt-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Performance</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">This campaign</p>
+        </div>
+
         {/* Stat bubbles */}
-        <div className="flex gap-2 md:gap-3 mb-1 mt-4">
+        <div className="flex gap-2 md:gap-3 mb-3">
 
           {/* Sent */}
           <div
@@ -883,27 +889,12 @@ export function V2Campaign() {
           </div>
         </div>
 
-        {/* Range label */}
-        <div className="flex justify-end mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
-            {currentRange === 0 ? 'All-Time' : `Last ${currentRange} Days`}
-          </span>
-        </div>
-
-        {/* Send activity */}
-        <div className="mb-3">
-          <div className="font-bold text-lg text-[#342e37] dark:text-white">Activity</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-            {totalSent} sent · {totalReplies} repl{totalReplies !== 1 ? 'ies' : 'y'}
-          </div>
-        </div>
-
         {/* Email performance timeline */}
         <EmailPerformanceTimeline
           campaigns={[campaign]}
           currentRange={currentRange}
           onRangeChange={handleRangeChange}
-          subtitle="This campaign"
+          hideHeader
         />
 
         {sortedSends.length === 0 ? (
