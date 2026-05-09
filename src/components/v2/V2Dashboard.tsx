@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy, MousePointer2 } from 'lucide-react';
+import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy, MousePointer2, ChevronUp, ChevronDown } from 'lucide-react';
 import { normalizePlan, PLAN_CONFIG, canActivateCampaign, type PlanType } from '../utils/planLimits';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
@@ -47,6 +47,7 @@ interface AgentRow {
   brokerage: string | null;
   sent: number;
   opens: number;
+  clicks: number;
   replies: number;
   recentSends: AgentSend[];
 }
@@ -144,7 +145,7 @@ function buildLeaderboard(campaigns: Campaign[]): AgentRow[] {
           agentName: s.agent_name || s.agent_email!,
           agentEmail: s.agent_email,
           brokerage: s.listing_brokerage,
-          sent: 0, opens: 0, replies: 0,
+          sent: 0, opens: 0, clicks: 0, replies: 0,
           recentSends: [],
         });
       }
@@ -152,6 +153,7 @@ function buildLeaderboard(campaigns: Campaign[]): AgentRow[] {
       const wasSent = s.status === 'sent' || s.status === 'opened' || s.status === 'replied';
       if (wasSent) row.sent++;
       if (s.opened_at) row.opens++;
+      if (s.clicked_at) row.clicks++;
       row.replies += s.campaign_replies?.length ?? 0;
       if (!row.brokerage && s.listing_brokerage) row.brokerage = s.listing_brokerage;
       row.recentSends.push({
@@ -168,7 +170,9 @@ function buildLeaderboard(campaigns: Campaign[]): AgentRow[] {
     });
     row.recentSends = row.recentSends.slice(0, 6);
   }
-  return Array.from(map.values()).sort((a, b) => b.sent - a.sent);
+  return Array.from(map.values()).sort((a, b) =>
+    b.replies - a.replies || b.clicks - a.clicks || b.opens - a.opens
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +219,8 @@ export function V2Dashboard() {
   const [connectionIssues, setConnectionIssues] = useState<ConnectionIssue[]>([]);
   const [dismissedIssues, setDismissedIssues] = useState<Set<string>>(new Set());
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
+  const [lbSortCol, setLbSortCol] = useState<'agent' | 'brokerage' | 'sent' | 'opens' | 'replies'>('replies');
+  const [lbSortDir, setLbSortDir] = useState<'asc' | 'desc'>('desc');
   const [expandedAgentKey, setExpandedAgentKey] = useState<string | null>(null);
   const [selectedAgentSend, setSelectedAgentSend] = useState<AgentSend | null>(null);
 
@@ -474,7 +480,18 @@ export function V2Dashboard() {
 
   const bubbleTransition = 'opacity 0.5s ease, transform 0.3s ease, box-shadow 0.3s ease';
 
-  const leaderboardVisible = leaderboardExpanded ? leaderboard : leaderboard.slice(0, 10);
+  const leaderboardSorted = [...leaderboard].sort((a, b) => {
+    let av: string | number = 0;
+    let bv: string | number = 0;
+    if (lbSortCol === 'agent') { av = a.agentName.toLowerCase(); bv = b.agentName.toLowerCase(); }
+    else if (lbSortCol === 'brokerage') { av = (a.brokerage || '').toLowerCase(); bv = (b.brokerage || '').toLowerCase(); }
+    else if (lbSortCol === 'sent') { av = a.sent; bv = b.sent; }
+    else if (lbSortCol === 'opens') { av = a.opens; bv = b.opens; }
+    else { av = a.replies; bv = b.replies; }
+    const cmp = typeof av === 'number' ? av - bv : (av < bv ? -1 : av > bv ? 1 : 0);
+    return lbSortDir === 'asc' ? cmp : -cmp;
+  });
+  const leaderboardVisible = leaderboardSorted.slice(0, leaderboardExpanded ? undefined : 10);
 
   const handleReconnect = async (provider: string) => {
     try {
@@ -736,7 +753,7 @@ export function V2Dashboard() {
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Agent Leaderboard</h2>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {leaderboard.length} agent{leaderboard.length !== 1 ? 's' : ''} reached · ordered by messages sent
+                  {leaderboard.length} agent{leaderboard.length !== 1 ? 's' : ''} reached · ordered by replies · clicks · opens
                 </p>
               </div>
             </div>
@@ -746,11 +763,27 @@ export function V2Dashboard() {
                 <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
                   <tr>
                     <th className="h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide w-8">#</th>
-                    <th className="h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agent</th>
-                    <th className="hidden sm:table-cell h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Brokerage</th>
-                    <th className="h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sent</th>
-                    <th className="hidden sm:table-cell h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Opens</th>
-                    <th className="hidden sm:table-cell h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Replies</th>
+                    {([
+                      { key: 'agent',     label: 'Agent',     cls: '',                     align: 'left'  },
+                      { key: 'brokerage', label: 'Brokerage', cls: 'hidden sm:table-cell', align: 'left'  },
+                      { key: 'sent',      label: 'Sent',      cls: '',                     align: 'right' },
+                      { key: 'opens',     label: 'Opens',     cls: 'hidden sm:table-cell', align: 'right' },
+                      { key: 'replies',   label: 'Replies',   cls: 'hidden sm:table-cell', align: 'right' },
+                    ] as const).map(({ key, label, cls, align }) => (
+                      <th
+                        key={key}
+                        onClick={() => { if (lbSortCol === key) { setLbSortDir(d => d === 'asc' ? 'desc' : 'asc'); } else { setLbSortCol(key); setLbSortDir('desc'); } }}
+                        className={`h-9 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 ${cls} text-${align}`}
+                      >
+                        <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'justify-end w-full' : ''}`}>
+                          {label}
+                          <span className="inline-flex flex-col leading-none">
+                            <ChevronUp className={`w-2.5 h-2.5 -mb-0.5 ${lbSortCol === key && lbSortDir === 'asc' ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`} />
+                            <ChevronDown className={`w-2.5 h-2.5 ${lbSortCol === key && lbSortDir === 'desc' ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`} />
+                          </span>
+                        </span>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
