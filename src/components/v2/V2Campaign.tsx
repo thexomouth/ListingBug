@@ -194,6 +194,11 @@ export function V2Campaign() {
   // Save as template
   const [templateModal, setTemplateModal] = useState({ open: false, name: '', saving: false, error: null as string | null, saved: false });
 
+  // Load template dropdown
+  const [templates, setTemplates] = useState<{ id: string; template_name: string; channel: string; subject: string | null; body: string }[]>([]);
+  const [loadTemplateOpen, setLoadTemplateOpen] = useState(false);
+  const loadTemplateBtnRef = useRef<HTMLButtonElement>(null);
+
   // Test email modal
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
   const [userContactName, setUserContactName] = useState<string | null>(null);
@@ -252,6 +257,12 @@ export function V2Campaign() {
         .eq('user_id', user.id)
         .eq('is_sender', true)
         .then(({ data }) => { if (data) setAllSenders(data as any); });
+      supabase
+        .from('marketing_templates')
+        .select('id, template_name, channel, subject, body')
+        .eq('user_id', user.id)
+        .order('template_name')
+        .then(({ data }) => { if (data) setTemplates(data as any); });
     });
   }, []);
 
@@ -762,7 +773,40 @@ export function V2Campaign() {
 
           {/* Right: Message details */}
           <div className="flex-1 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
-            <div className="font-bold text-[#342e37] dark:text-white mb-3">Message Details</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-bold text-[#342e37] dark:text-white">Message Details</div>
+              {templates.filter(t => t.channel === campaign.channel).length > 0 && (
+                <div className="relative">
+                  <button
+                    ref={loadTemplateBtnRef}
+                    onClick={() => setLoadTemplateOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-[#FFCE0A] hover:text-[#342e37] hover:border-[#FFCE0A] transition-colors"
+                  >
+                    Load template
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {loadTemplateOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setLoadTemplateOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-20 min-w-[180px] bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg overflow-hidden">
+                        {templates.filter(t => t.channel === campaign.channel).map(t => (
+                          <button
+                            key={t.id}
+                            onClick={() => {
+                              if (draft) updateText({ subject: t.subject ?? draft.subject, body: t.body });
+                              setLoadTemplateOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors truncate"
+                          >
+                            {t.template_name}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {campaign.channel === 'email' && draft && (
               <>
