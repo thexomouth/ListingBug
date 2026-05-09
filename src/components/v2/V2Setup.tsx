@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Mail, Server, CheckCircle2, ChevronDown, ChevronRight, Star, Unlink, Loader2, RefreshCw, Pencil } from 'lucide-react';
+import { Mail, Server, CheckCircle2, Star, Unlink, Loader2, RefreshCw, Pencil } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { SMTPSetupModal } from '../SMTPSetupModal';
 import { Input } from '../ui/input';
@@ -22,25 +22,19 @@ interface Sender {
 // ---------------------------------------------------------------------------
 
 function SenderCard({
-  title, subtitle, icon, connected, isDefault, open, onToggle, children,
+  title, subtitle, icon, connected, isDefault, children,
 }: {
   title: string;
   subtitle: string;
   icon: React.ReactNode;
   connected: boolean;
   isDefault: boolean;
-  open: boolean;
-  onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-[#1a1a1a]">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left"
-      >
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+      <div className="flex items-center gap-3 px-5 py-4">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
           connected
             ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
             : 'bg-gray-100 dark:bg-white/10 text-gray-400 dark:text-gray-500'
@@ -58,26 +52,20 @@ function SenderCard({
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{subtitle}</div>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="shrink-0">
           {connected ? (
-            <span className="hidden sm:flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5" /> Connected
             </span>
           ) : (
-            <span className="hidden sm:block text-xs text-gray-400 dark:text-gray-500">Not connected</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">Not connected</span>
           )}
-          {open
-            ? <ChevronDown className="w-4 h-4 text-gray-400" />
-            : <ChevronRight className="w-4 h-4 text-gray-400" />
-          }
         </div>
-      </button>
+      </div>
 
-      {open && (
-        <div className="border-t border-gray-100 dark:border-white/10 px-5 py-5">
-          {children}
-        </div>
-      )}
+      <div className="border-t border-gray-100 dark:border-white/10 px-5 py-5">
+        {children}
+      </div>
     </div>
   );
 }
@@ -256,7 +244,6 @@ export function V2Setup() {
   const [defaultSenderId, setDefaultSenderId] = useState<string | null>(null);
   const [senders, setSenders] = useState<Sender[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedCard, setExpandedCard] = useState<'gmail' | 'outlook' | 'smtp' | null>(null);
   const [smtpModalOpen, setSmtpModalOpen] = useState(false);
 
   // Inline from-name editing state
@@ -313,11 +300,9 @@ export function V2Setup() {
     if (success === 'gmail_connected') {
       toast.success('Gmail connected!');
       window.history.replaceState({}, '', window.location.pathname);
-      setExpandedCard('gmail');
     } else if (success === 'outlook_connected') {
       toast.success('Outlook connected!');
       window.history.replaceState({}, '', window.location.pathname);
-      setExpandedCard('outlook');
     } else if (error) {
       const msgs: Record<string, string> = {
         gmail_canceled: 'Gmail connection was canceled',
@@ -447,8 +432,6 @@ export function V2Setup() {
             icon={<Mail className="w-5 h-5" />}
             connected={!!gmailSender}
             isDefault={defaultSenderId === gmailSender?.id}
-            open={expandedCard === 'gmail'}
-            onToggle={() => setExpandedCard(prev => prev === 'gmail' ? null : 'gmail')}
           >
             {gmailSender ? (
               <ConnectedDetails
@@ -482,8 +465,6 @@ export function V2Setup() {
             icon={<Mail className="w-5 h-5" />}
             connected={!!outlookSender}
             isDefault={defaultSenderId === outlookSender?.id}
-            open={expandedCard === 'outlook'}
-            onToggle={() => setExpandedCard(prev => prev === 'outlook' ? null : 'outlook')}
           >
             {outlookSender ? (
               <ConnectedDetails
@@ -517,8 +498,6 @@ export function V2Setup() {
             icon={<Server className="w-5 h-5" />}
             connected={!!smtpSender}
             isDefault={defaultSenderId === smtpSender?.id}
-            open={expandedCard === 'smtp'}
-            onToggle={() => setExpandedCard(prev => prev === 'smtp' ? null : 'smtp')}
           >
             {smtpSender ? (
               <ConnectedDetails
@@ -559,7 +538,6 @@ export function V2Setup() {
           onSuccess={() => {
             setSmtpModalOpen(false);
             loadData();
-            setExpandedCard('smtp');
           }}
           userId={userId}
           userContactName={contactName}
