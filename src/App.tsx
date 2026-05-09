@@ -73,6 +73,7 @@ const V2AccountProfile = lazy(() => import("./components/v2/V2AccountProfile").t
 const V2AccountUsage = lazy(() => import("./components/v2/V2AccountUsage").then(m => ({ default: m.V2AccountUsage })));
 const V2AccountBilling = lazy(() => import("./components/v2/V2AccountBilling").then(m => ({ default: m.V2AccountBilling })));
 const V2Setup = lazy(() => import("./components/v2/V2Setup").then(m => ({ default: m.V2Setup })));
+const V2DashboardV2 = lazy(() => import("./components/v2/V2DashboardV2").then(m => ({ default: m.V2DashboardV2 })));
 const V2HomePage = lazy(() => import("./components/v2/V2HomePage").then(m => ({ default: m.V2HomePage })));
 const V2Onboarding = lazy(() => import("./components/v2/V2Onboarding").then(m => ({ default: m.V2Onboarding })));
 const GmailCallbackPage = lazy(() => import("./components/v2/integrations/GmailCallbackPage").then(m => ({ default: m.GmailCallbackPage })));
@@ -105,7 +106,8 @@ type Page =
   | "v2-home"
   | "v2-onboarding"
   | "v2-gmail-callback"
-  | "v2-outlook-callback";
+  | "v2-outlook-callback"
+  | "v2-dashboard-v2";
 
 const PAGE_TO_PATH: Record<Page, string> = {
   "home": "/", "pricing": "/pricing", "how-it-works": "/how-it-works",
@@ -145,6 +147,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   "v2-onboarding": "/v2/onboarding",
   "v2-gmail-callback": "/v2/integrations/gmail/callback",
   "v2-outlook-callback": "/v2/integrations/outlook/callback",
+  "v2-dashboard-v2": "/v2/dashboard/v2",
 };
 
 const PATH_TO_PAGE: Record<string, Page> = Object.fromEntries(
@@ -558,6 +561,7 @@ export default function App() {
       case "clean": return <CleanPage />;
       case "drip": return <DripPage />;
       case "v2-dashboard": return isLoggedIn ? <V2Dashboard /> : <LoginPage onLogin={handleLogin} />;
+      case "v2-dashboard-v2": return isLoggedIn ? <V2DashboardV2 /> : <LoginPage onLogin={handleLogin} />;
       case "v2-new-campaign": return isLoggedIn ? <NewCampaign /> : <LoginPage onLogin={handleLogin} />;
       case "v2-campaign": return isLoggedIn ? <V2Campaign /> : <LoginPage onLogin={handleLogin} />;
       case "v2-account-profile": return isLoggedIn ? <V2AccountProfile /> : <LoginPage onLogin={handleLogin} />;
