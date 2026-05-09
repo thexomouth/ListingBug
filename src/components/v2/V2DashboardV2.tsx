@@ -524,10 +524,7 @@ export function V2DashboardV2() {
 
         {/* My Campaigns section heading — outside two-column flex so both columns start at the same height */}
         <div className="mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">My Campaigns</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
-          </p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">My Campaigns</h2>
         </div>
 
         {/* ---------------------------------------------------------------- */}
