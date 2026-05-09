@@ -528,206 +528,201 @@ export function V2Dashboard() {
         ))}
 
         {/* Page header */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Track your campaign activity and messaging performance</p>
-        </div>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Stat bubbles — cycle through 7d / 14d / 30d / all time           */}
-        {/* ---------------------------------------------------------------- */}
-        <div className="flex gap-2 md:gap-3 mb-1">
-
-          {/* Sent */}
-          <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
-              {RANGE_PILL[currentRange]}
-            </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <Send className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
             </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.sent.toLocaleString()}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Track your campaign activity and messaging performance</p>
           </div>
-
-          {/* Opens */}
-          <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
-              {RANGE_PILL[currentRange]}
-            </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-            </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.opens.toLocaleString()}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
-          </div>
-
-          {/* Replies */}
-          <div
-            className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
-              {RANGE_PILL[currentRange]}
-            </span>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <Reply className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-            </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.replies.toLocaleString()}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
-          </div>
-
-          {/* Active campaigns — not time-windowed, no pill */}
-          <div
-            className="flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 md:p-4 flex flex-col items-center hover:scale-[1.04]"
-            style={{ opacity: statOpacity, transition: bubbleTransition }}
-          >
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
-              <Zap className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-            </div>
-            <div className="text-xl md:text-2xl font-bold text-[#342e37] dark:text-white mb-0.5">{activeCampaigns}</div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Active</div>
-          </div>
-        </div>
-
-        {/* Range label — fades with the bubbles */}
-        <div className="flex justify-end mb-4" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
-            {currentRange === 0 ? 'All-Time' : `Last ${currentRange} Days`}
-          </span>
-        </div>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Campaign list                                                      */}
-        {/* ---------------------------------------------------------------- */}
-        <div className="bg-gray-100 dark:bg-transparent mt-8 p-6">
-          <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">My Campaigns</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
-              </p>
-            </div>
-            <a
-              href="/v2/newcampaign"
-              className="hidden md:flex items-center justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-auto no-underline"
-              style={{ background: '#FFCE0A', color: '#342e37' }}
-            >
-              + New Campaign
-            </a>
-          </div>
-
-          {campaigns.length === 0 ? (
-            <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
-                <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-              </div>
-              <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No campaigns yet</h3>
-              <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Create your first campaign to start reaching out to listing owners</p>
-              <button
-                onClick={() => navigate('/v2/newcampaign')}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all"
-                style={{ background: '#FFCE0A', color: '#342e37' }}
-              >
-                + Create Your First Campaign
-              </button>
-            </div>
-          ) : (
-            campaigns.map(campaign => {
-              const criteria = campaign.campaign_search_criteria?.[0];
-              const stats = computeStats(campaign.campaign_sends ?? []);
-              const isActive = campaign.status === 'active';
-              const isToggling = togglingId === campaign.id;
-
-              return (
-                <a
-                  key={campaign.id}
-                  href={`/v2/campaign?id=${campaign.id}`}
-                  className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-2.5 transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01] no-underline"
-                >
-                  <div className="flex items-start justify-between mb-2.5">
-                    <div className="flex-1 min-w-0 mr-3">
-                      <div className="text-base font-semibold text-gray-900 dark:text-white">{campaign.campaign_name}</div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                      <span className="text-xs text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
-                      <StatusToggle
-                        active={isActive}
-                        onChange={next => !isToggling && handleToggle(campaign, next)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { label: 'Sent',      value: String(stats.sent),          sub: '' },
-                      { label: 'Opens',     value: String(stats.opens),         sub: '' },
-                      { label: 'Clicks',    value: String(stats.clicks),        sub: '' },
-                      { label: 'Last send', value: stats.lastSendLabel,         sub: stats.lastAddress ?? '' },
-                    ].map(stat => (
-                      <div key={stat.label} className="rounded-lg px-2.5 py-2 bg-gray-50 dark:bg-[#1a1a1a]">
-                        <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{stat.label}</div>
-                        <div
-                          className="font-medium text-gray-900 dark:text-white leading-none"
-                          style={{ fontSize: stat.label === 'Last send' ? '13px' : '16px' }}
-                        >
-                          {stat.value}
-                        </div>
-                        {stat.sub && (
-                          <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{stat.sub}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-200 dark:border-white/10">
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500 flex-1 mr-3 truncate">
-                      {campaign.body
-                        ? `"${campaign.body.slice(0, 80)}${campaign.body.length > 80 ? '...' : ''}"`
-                        : '—'}
-                    </div>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">View →</span>
-                  </div>
-                </a>
-              );
-            })
-          )}
-
-          {/* Mobile-only New Campaign button — below cards */}
           <a
             href="/v2/newcampaign"
-            className="md:hidden mt-3 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full no-underline"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all shrink-0 no-underline"
             style={{ background: '#FFCE0A', color: '#342e37' }}
           >
             + New Campaign
           </a>
         </div>
 
+        {/* My Campaigns section heading — outside two-column flex */}
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">My Campaigns</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
+          </p>
+        </div>
+
         {/* ---------------------------------------------------------------- */}
-        {/* Email performance timeline                                        */}
+        {/* Two-column main section                                           */}
+        {/* Left: campaigns list | Right: Stat bubbles + Timeline            */}
         {/* ---------------------------------------------------------------- */}
-        <div className="mt-8">
-          <EmailPerformanceTimeline
-            campaigns={campaigns}
-            currentRange={currentRange}
-            onRangeChange={handleRangeChange}
-          />
+        <div className="flex flex-col lg:flex-row gap-6 mb-8">
+
+          {/* LEFT — campaigns list */}
+          <div className="flex-1 min-w-0">
+            {campaigns.length === 0 ? (
+              <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
+                  <Zap className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+                </div>
+                <h3 className="font-bold text-lg text-gray-600 dark:text-white mb-2">No campaigns yet</h3>
+                <p className="text-sm text-gray-500 dark:text-[#EBF2FA] mb-6">Create your first campaign to start reaching out to listing owners</p>
+                <button
+                  onClick={() => navigate('/v2/newcampaign')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all"
+                  style={{ background: '#FFCE0A', color: '#342e37' }}
+                >
+                  + Create Your First Campaign
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {campaigns.map(campaign => {
+                  const criteria = campaign.campaign_search_criteria?.[0];
+                  const stats = computeStats(campaign.campaign_sends ?? []);
+                  const isActive = campaign.status === 'active';
+                  const isToggling = togglingId === campaign.id;
+
+                  return (
+                    <a
+                      key={campaign.id}
+                      href={`/v2/campaign?id=${campaign.id}`}
+                      className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01] no-underline"
+                    >
+                      <div className="flex items-start justify-between mb-2.5">
+                        <div className="flex-1 min-w-0 mr-3">
+                          <div className="text-base font-semibold text-gray-900 dark:text-white">{campaign.campaign_name}</div>
+                          {criteria?.city && (
+                            <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                              {criteria.city}{criteria.state ? `, ${criteria.state}` : ''}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">{isActive ? 'On' : 'Off'}</span>
+                          <StatusToggle
+                            active={isActive}
+                            onChange={next => !isToggling && handleToggle(campaign, next)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { label: 'Sent',      value: String(stats.sent),      sub: '' },
+                          { label: 'Opens',     value: String(stats.opens),     sub: '' },
+                          { label: 'Clicks',    value: String(stats.clicks),    sub: '' },
+                          { label: 'Last send', value: stats.lastSendLabel,     sub: stats.lastAddress ?? '' },
+                        ].map(stat => (
+                          <div key={stat.label} className="rounded-lg px-2.5 py-2 bg-gray-50 dark:bg-[#1a1a1a]">
+                            <div className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">{stat.label}</div>
+                            <div
+                              className="font-medium text-gray-900 dark:text-white leading-none"
+                              style={{ fontSize: stat.label === 'Last send' ? '13px' : '16px' }}
+                            >
+                              {stat.value}
+                            </div>
+                            {stat.sub && (
+                              <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{stat.sub}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-200 dark:border-white/10">
+                        <div className="text-[11px] text-gray-400 dark:text-gray-500 flex-1 mr-3 truncate">
+                          {campaign.body
+                            ? `"${campaign.body.replace(/<[^>]*>/g, '').slice(0, 80)}${campaign.body.length > 80 ? '...' : ''}"`
+                            : '—'}
+                        </div>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">View →</span>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT — Stat bubbles + Timeline */}
+          <div className="lg:w-[420px] xl:w-[480px] shrink-0 flex flex-col gap-4">
+
+            {/* Stat bubbles */}
+            <div className="flex gap-2">
+              {/* Sent */}
+              <div
+                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                style={{ opacity: statOpacity, transition: bubbleTransition }}
+              >
+                <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+                  {RANGE_PILL[currentRange]}
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                  <Send className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="text-xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.sent.toLocaleString()}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Sent</div>
+              </div>
+
+              {/* Opens */}
+              <div
+                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                style={{ opacity: statOpacity, transition: bubbleTransition }}
+              >
+                <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+                  {RANGE_PILL[currentRange]}
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                  <MessageSquare className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="text-xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.opens.toLocaleString()}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Opens</div>
+              </div>
+
+              {/* Replies */}
+              <div
+                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                style={{ opacity: statOpacity, transition: bubbleTransition }}
+              >
+                <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
+                  {RANGE_PILL[currentRange]}
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                  <Reply className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="text-xl font-bold text-[#342e37] dark:text-white mb-0.5">{ws.replies.toLocaleString()}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Replies</div>
+              </div>
+
+              {/* Active campaigns */}
+              <div
+                className="flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                style={{ opacity: statOpacity, transition: bubbleTransition }}
+              >
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
+                  <Zap className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="text-xl font-bold text-[#342e37] dark:text-white mb-0.5">{activeCampaigns}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">Active</div>
+              </div>
+            </div>
+
+            {/* Email performance timeline */}
+            <EmailPerformanceTimeline
+              campaigns={campaigns}
+              currentRange={currentRange}
+              onRangeChange={handleRangeChange}
+              hideHeader
+            />
+          </div>
         </div>
 
         {/* ---------------------------------------------------------------- */}
         {/* Agent Leaderboard                                                  */}
         {/* ---------------------------------------------------------------- */}
         {leaderboard.length > 0 && (
-          <div className="mt-8">
+          <div className="mt-2 mb-8">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -850,9 +845,9 @@ export function V2Dashboard() {
         )}
 
         {/* ---------------------------------------------------------------- */}
-        {/* Account Usage — moved below campaigns                             */}
+        {/* Account Usage                                                      */}
         {/* ---------------------------------------------------------------- */}
-        <div className="mt-8 mb-8">
+        <div className="mb-8">
           <div className="flex items-start justify-between mb-3">
             <div>
               <h3 className="font-bold text-lg text-[#342e37] dark:text-white mb-1">Account Usage This Period</h3>
