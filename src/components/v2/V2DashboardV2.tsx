@@ -505,38 +505,39 @@ export function V2DashboardV2() {
         ))}
 
         {/* Page header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <LayoutDashboard className="w-6 h-6 text-[#342e37] dark:text-[#FFCE0A]" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Track your campaign activity and messaging performance</p>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Track your campaign activity and messaging performance</p>
+          <a
+            href="/v2/newcampaign"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all shrink-0 no-underline"
+            style={{ background: '#FFCE0A', color: '#342e37' }}
+          >
+            + New Campaign
+          </a>
+        </div>
+
+        {/* My Campaigns section heading — outside two-column flex so both columns start at the same height */}
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">My Campaigns</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
+          </p>
         </div>
 
         {/* ---------------------------------------------------------------- */}
         {/* Two-column main section                                           */}
-        {/* Left: My Campaigns | Right: Stat bubbles + Timeline              */}
+        {/* Left: campaigns list | Right: Performance heading + bubbles + timeline */}
         {/* ---------------------------------------------------------------- */}
         <div className="flex flex-col lg:flex-row gap-6 mb-8">
 
-          {/* LEFT — My Campaigns */}
+          {/* LEFT — campaigns list */}
           <div className="flex-1 min-w-0">
-            <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">My Campaigns</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} · {activeCampaigns} active
-                </p>
-              </div>
-              <a
-                href="/v2/newcampaign"
-                className="hidden sm:flex items-center justify-start gap-2 px-4 py-2 rounded-lg font-bold transition-all w-auto no-underline shrink-0"
-                style={{ background: '#FFCE0A', color: '#342e37' }}
-              >
-                + New Campaign
-              </a>
-            </div>
-
             {campaigns.length === 0 ? (
               <div className="bg-white dark:bg-[#2F2F2F] border border-gray-200 dark:border-white/10 rounded-lg p-8 text-center">
                 <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4 bg-white dark:bg-[#0F1115]">
@@ -620,18 +621,18 @@ export function V2DashboardV2() {
               </div>
             )}
 
-            {/* Mobile-only New Campaign button */}
-            <a
-              href="/v2/newcampaign"
-              className="sm:hidden mt-3 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-bold transition-all w-full no-underline"
-              style={{ background: '#FFCE0A', color: '#342e37' }}
-            >
-              + New Campaign
-            </a>
           </div>
 
-          {/* RIGHT — Stat bubbles + Timeline */}
+          {/* RIGHT — Performance heading + Stat bubbles + Timeline */}
           <div className="lg:w-[420px] xl:w-[480px] shrink-0 flex flex-col gap-4">
+
+            {/* Performance section heading */}
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-0.5">Performance</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                All campaigns · {currentRange === 0 ? 'All time' : `Last ${currentRange} days`}
+              </p>
+            </div>
 
             {/* Stat bubbles */}
             <div className="flex gap-2">
@@ -693,18 +694,12 @@ export function V2DashboardV2() {
               </div>
             </div>
 
-            {/* Range label */}
-            <div className="flex justify-end -mt-2" style={{ opacity: statOpacity, transition: 'opacity 0.5s ease' }}>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500 tracking-wide uppercase">
-                {currentRange === 0 ? 'All-Time' : `Last ${currentRange} Days`}
-              </span>
-            </div>
-
             {/* Email performance timeline */}
             <EmailPerformanceTimeline
               campaigns={campaigns}
               currentRange={currentRange}
               onRangeChange={handleRangeChange}
+              hideHeader
             />
           </div>
         </div>

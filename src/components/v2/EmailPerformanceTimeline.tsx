@@ -53,6 +53,7 @@ interface Props {
   currentRange: RangeKey;
   onRangeChange: (range: RangeKey) => void;
   subtitle?: string;
+  hideHeader?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +141,7 @@ function fmtLabel(dateStr: string): string {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChange, subtitle }: Props) {
+export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChange, subtitle, hideHeader }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const chartRef    = useRef<Chart | null>(null);
   const pulseRef    = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -391,17 +392,39 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
   return (
     <div className="bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 mb-6">
 
-      {/* Card header */}
-      <div className="flex items-start justify-between mb-3 gap-3">
-        <div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">Performance</p>
-          <p className="hidden sm:block text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-            {subtitle ?? 'All campaigns'} · {RANGE_META[currentRange]}
-          </p>
-        </div>
+      {/* Card header — hidden when parent supplies its own section heading */}
+      {!hideHeader && (
+        <div className="flex items-start justify-between mb-3 gap-3">
+          <div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">Performance</p>
+            <p className="hidden sm:block text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+              {subtitle ?? 'All campaigns'} · {RANGE_META[currentRange]}
+            </p>
+          </div>
 
-        {/* Range buttons */}
-        <div className="flex gap-1 flex-shrink-0">
+          {/* Range buttons */}
+          <div className="flex gap-1 flex-shrink-0">
+            {RANGE_KEYS.map(r => (
+              <button
+                key={r}
+                onClick={() => onRangeChange(r)}
+                className={`text-[11px] px-2.5 py-1 rounded-md border transition-all ${
+                  currentRange === r
+                    ? 'border-[#FFCE0A] text-[#342e37] font-medium'
+                    : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 bg-transparent hover:border-gray-300 dark:hover:border-white/20'
+                }`}
+                style={currentRange === r ? { background: '#FFCE0A' } : undefined}
+              >
+                {RANGE_LABELS[r]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Range buttons row — shown only when card header is hidden */}
+      {hideHeader && (
+        <div className="flex justify-end mb-3 gap-1">
           {RANGE_KEYS.map(r => (
             <button
               key={r}
@@ -417,7 +440,7 @@ export function EmailPerformanceTimeline({ campaigns, currentRange, onRangeChang
             </button>
           ))}
         </div>
-      </div>
+      )}
 
       {/* Custom HTML legend */}
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-2">
