@@ -554,7 +554,7 @@ export function V2DashboardV2() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden divide-y divide-gray-200 dark:divide-white/10">
                 {campaigns.map(campaign => {
                   const criteria = campaign.campaign_search_criteria?.[0];
                   const stats = computeStats(campaign.campaign_sends ?? []);
@@ -565,7 +565,7 @@ export function V2DashboardV2() {
                     <a
                       key={campaign.id}
                       href={`/v2/campaign?id=${campaign.id}`}
-                      className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 transition-all duration-150 hover:border-[#FFCE0A]/60 hover:scale-[1.01] no-underline"
+                      className="block bg-white dark:bg-[#2F2F2F] p-4 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-[#363636] no-underline"
                     >
                       <div className="flex items-start justify-between mb-2.5">
                         <div className="flex-1 min-w-0 mr-3">
