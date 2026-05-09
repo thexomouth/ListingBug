@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ListingBug — Pitch Deck</title>
+<meta name="description" content="ListingBug: Automated email + SMS outreach for real estate service providers. Set it up once, land jobs every week." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --y:#FFCE0A;
+  --yd:#342e37;
+  --bg:#0F1115;
+  --s1:#181b22;
+  --s2:#1f2330;
+  --s3:#252a36;
+  --txt:#ffffff;
+  --txt2:rgba(255,255,255,.58);
+  --txt3:rgba(255,255,255,.32);
+  --bdr:rgba(255,255,255,.07);
+  --bdr2:rgba(255,255,255,.12);
+  --r:16px;
+}
+
+html,body{
+  width:100%;height:100%;
+  background:var(--bg);
+  color:var(--txt);
+  font-family:'Work Sans',-apple-system,sans-serif;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ─── chrome ─── */
+#progress-bar{
+  position:fixed;top:0;left:0;height:2px;
+  background:var(--y);
+  transition:width .45s cubic-bezier(.4,0,.2,1);
+  z-index:200;
+  box-shadow:0 0 12px rgba(255,206,10,.5);
+}
+
+#logo-wrap{
+  position:fixed;top:18px;left:22px;
+  display:flex;align-items:center;gap:9px;
+  z-index:200;
+}
+.logo-icon{
+  width:30px;height:30px;
+  background:var(--y);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;
+  box-shadow:0 0 20px rgba(255,206,10,.25);
+}
+.logo-name{
+  font-size:14px;font-weight:700;color:var(--txt);
+  letter-spacing:-.3px;
+}
+
+#slide-count{
+  position:fixed;top:20px;right:22px;
+  font-size:12px;font-weight:500;color:var(--txt3);
+  z-index:200;letter-spacing:.03em;
+}
+
+#kb-hint{
+  position:fixed;bottom:64px;right:22px;
+  font-size:11px;color:var(--txt3);
+  z-index:200;letter-spacing:.03em;
+}
+
+/* ─── nav arrows ─── */
+.nav-btn{
+  position:fixed;top:50%;
+  transform:translateY(-50%);
+  width:40px;height:40px;
+  border-radius:50%;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--bdr2);
+  color:var(--txt3);
+  font-size:20px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  z-index:200;
+  transition:all .2s;
+  user-select:none;
+}
+.nav-btn:hover{background:rgba(255,255,255,.09);color:var(--txt);}
+#btn-prev{left:16px;}
+#btn-next{right:16px;}
+
+/* ─── dot nav ─── */
+#dots{
+  position:fixed;bottom:26px;left:50%;
+  transform:translateX(-50%);
+  display:flex;align-items:center;gap:7px;
+  z-index:200;
+}
+.dot{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(255,255,255,.18);
+  cursor:pointer;
+  transition:all .3s cubic-bezier(.4,0,.2,1);
+}
+.dot.on{
+  background:var(--y);
+  width:22px;border-radius:4px;
+}
+
+/* ─── slides ─── */
+#deck{width:100vw;height:100vh;position:relative;overflow:hidden;}
+
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:72px 80px 72px;
+  opacity:0;
+  pointer-events:none;
+  will-change:transform,opacity;
+}
+.slide.enter-right{transform:translateX(56px);}
+.slide.enter-left{transform:translateX(-56px);}
+
+.slide.visible{
+  opacity:1;
+  transform:translateX(0);
+  pointer-events:all;
+  transition:opacity .48s cubic-bezier(.4,0,.2,1),transform .48s cubic-bezier(.4,0,.2,1);
+}
+.slide.exit-left{
+  opacity:0;transform:translateX(-56px);
+  transition:opacity .35s ease,transform .35s ease;
+}
+.slide.exit-right{
+  opacity:0;transform:translateX(56px);
+  transition:opacity .35s ease,transform .35s ease;
+}
+
+/* ─── typography helpers ─── */
+.eyebrow{
+  font-size:11px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;
+  color:var(--y);margin-bottom:14px;
+}
+
+.slide-h{
+  font-size:clamp(32px,4.5vw,58px);
+  font-weight:900;
+  letter-spacing:-2px;
+  line-height:1.06;
+  color:var(--txt);
+  text-align:center;
+  margin-bottom:14px;
+}
+.slide-h em{color:var(--y);font-style:normal;}
+
+.slide-p{
+  font-size:clamp(14px,1.4vw,17px);
+  color:var(--txt2);
+  max-width:660px;
+  text-align:center;
+  line-height:1.65;
+  margin-bottom:40px;
+}
+
+/* ─── cards ─── */
+.card{
+  background:var(--s1);
+  border:1px solid var(--bdr);
+  border-radius:var(--r);
+  padding:24px 26px;
+}
+
+.ci{
+  width:40px;height:40px;
+  background:rgba(255,206,10,.1);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;margin-bottom:14px;
+}
+.card h3{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:7px;}
+.card p{font-size:13px;color:var(--txt2);line-height:1.65;}
+
+/* ─── grid helpers ─── */
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:960px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:900px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:100%;max-width:960px;}
+
+/* ─── pill ─── */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--s2);border:1px solid var(--bdr2);
+  border-radius:999px;padding:7px 15px;
+  font-size:13px;color:var(--txt2);
+}
+.chip-dot{width:6px;height:6px;border-radius:50%;background:var(--y);flex-shrink:0;}
+
+/* ─── S1 cover ─── */
+.cover-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(255,206,10,.1);
+  border:1px solid rgba(255,206,10,.25);
+  border-radius:999px;padding:6px 16px;
+  font-size:11px;font-weight:700;
+  color:var(--y);letter-spacing:.1em;text-transform:uppercase;
+  margin-bottom:28px;
+}
+.cover-logo{
+  width:88px;height:88px;background:var(--y);
+  border-radius:24px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:46px;margin-bottom:24px;
+  box-shadow:0 0 80px rgba(255,206,10,.25);
+}
+.cover-h{
+  font-size:clamp(60px,10vw,110px);
+  font-weight:900;letter-spacing:-5px;line-height:1;
+  color:var(--txt);margin-bottom:18px;
+}
+.cover-h span{color:var(--y);}
+.cover-sub{
+  font-size:clamp(15px,1.6vw,20px);
+  color:var(--txt2);max-width:620px;
+  text-align:center;line-height:1.55;
+  margin-bottom:36px;
+}
+.cover-pills{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+
+/* ─── S2 problem ─── */
+.prob-list{display:flex;flex-direction:column;gap:12px;width:100%;max-width:780px;}
+.prob-item{
+  display:flex;align-items:flex-start;gap:16px;
+  background:var(--s1);border:1px solid var(--bdr);
+  border-radius:14px;padding:18px 22px;
+  transition:border-color .2s;
+}
+.prob-item:hover{border-color:rgba(239,68,68,.25);}
+.prob-x{
+  width:26px;height:26px;border-radius:50%;
+  background:rgba(239,68,68,.12);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:#f87171;
+  flex-shrink:0;margin-top:1px;
+}
+.prob-t{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:4px;}
+.prob-d{font-size:13px;color:var(--txt2);line-height:1.6;}
+
+/* ─── S4 steps ─── */
+.steps-row{
+  display:flex;gap:0;width:100%;max-width:1000px;
+  align-items:flex-start;
+}
+.step{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;text-align:center;
+  position:relative;padding:0 16px;
+}
+.step::after{
+  content:'→';position:absolute;
+  right:-10px;top:19px;
+  color:var(--y);font-size:18px;opacity:.5;
+}
+.step:last-child::after{display:none;}
+.step-n{
+  width:44px;height:44px;background:var(--y);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:900;color:#0F1115;
+  margin-bottom:14px;
+  box-shadow:0 0 28px rgba(255,206,10,.3);
+}
+.step-card{
+  background:var(--s1);border:1px solid var(--bdr);
+  border-radius:14px;padding:20px 18px;width:100%;
+}
+.step-card h3{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:8px;}
+.step-card p{font-size:13px;color:var(--txt2);line-height:1.6;}
+.step-ex{
+  margin-top:12px;background:rgba(255,255,255,.04);
+  border:1px solid var(--bdr);border-radius:8px;
+  padding:9px 12px;font-size:12px;color:var(--txt2);line-height:1.6;
+}
+.step-ex .yy{color:var(--y);}
+
+/* ─── S5 use cases ─── */
+.use-g{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:10px;width:100%;max-width:920px;
+}
+.use-t{
+  background:var(--s1);border:1px solid var(--bdr);
+  border-radius:12px;padding:16px 10px;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  transition:border-color .2s,background .2s;
+  cursor:default;
+}
+.use-t:hover{border-color:rgba(255,206,10,.3);background:var(--s2);}
+.use-t .ico{font-size:26px;}
+.use-t .nm{font-size:12px;font-weight:600;color:var(--txt2);}
+
+/* ─── S6 market ─── */
+.mkt-g{
+  display:grid;grid-template-columns:1.1fr 1fr;
+  gap:14px;width:100%;max-width:900px;
+}
+.mkt-big{
+  background:linear-gradient(140deg,rgba(255,206,10,.1),rgba(255,206,10,.03));
+  border:1.5px solid rgba(255,206,10,.22);
+  border-radius:20px;padding:36px 32px;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.mkt-num{
+  font-size:clamp(52px,7vw,76px);
+  font-weight:900;color:var(--y);
+  letter-spacing:-4px;line-height:1;margin-bottom:8px;
+}
+.mkt-lbl{font-size:14px;color:var(--txt2);line-height:1.55;}
+.mkt-sm{display:flex;flex-direction:column;gap:14px;}
+.mkt-sm .card{flex:1;display:flex;flex-direction:column;justify-content:center;}
+.mkt-sm .n{
+  font-size:38px;font-weight:900;color:var(--y);
+  letter-spacing:-2px;line-height:1;margin-bottom:6px;
+}
+.mkt-sm .l{font-size:13px;color:var(--txt2);line-height:1.55;}
+
+/* ─── S7 dashboard mockup ─── */
+.mockup{
+  width:100%;max-width:920px;
+  background:var(--s1);border:1px solid var(--bdr2);
+  border-radius:14px;overflow:hidden;
+  margin-top:12px;
+}
+.m-bar{
+  background:var(--s2);border-bottom:1px solid var(--bdr);
+  padding:10px 18px;display:flex;align-items:center;gap:7px;
+}
+.m-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.1);}
+.m-url{
+  flex:1;background:rgba(255,255,255,.05);border-radius:5px;
+  padding:3px 12px;font-size:11px;color:var(--txt3);text-align:center;
+}
+.m-body{padding:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.m-stat{
+  background:var(--s2);border:1px solid var(--bdr);
+  border-radius:10px;padding:14px 10px;text-align:center;
+}
+.m-stat .mn{font-size:22px;font-weight:800;color:var(--y);letter-spacing:-1px;margin-bottom:3px;}
+.m-stat .ml{font-size:11px;color:var(--txt3);}
+.m-camp{
+  grid-column:1/-1;
+  background:var(--s2);border:1px solid var(--bdr);
+  border-radius:10px;padding:14px 16px;
+}
+.m-chead{font-size:12px;font-weight:600;color:var(--txt);margin-bottom:10px;}
+.m-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--bdr);
+}
+.m-row:last-child{border-bottom:none;}
+.m-rdot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;}
+.m-rname{flex:1;font-size:12px;color:var(--txt);font-weight:500;}
+.m-rstat{font-size:11px;color:var(--txt3);}
+.m-rbadge{
+  font-size:10px;font-weight:700;padding:3px 7px;
+  border-radius:999px;background:rgba(255,206,10,.12);color:var(--y);
+}
+
+/* ─── S8 traction ─── */
+.stat-g{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:16px;width:100%;max-width:860px;
+  margin-bottom:20px;
+}
+.stat-c{
+  background:var(--s1);border:1px solid var(--bdr);
+  border-radius:16px;padding:26px 20px;text-align:center;
+}
+.stat-c .n{
+  font-size:clamp(36px,5vw,52px);
+  font-weight:900;color:var(--y);
+  letter-spacing:-2px;line-height:1;margin-bottom:8px;
+}
+.stat-c .l{font-size:13px;color:var(--txt2);line-height:1.5;}
+.quote-card{
+  background:var(--s1);border:1px solid var(--bdr);
+  border-radius:12px;padding:16px 22px;
+}
+.q-text{font-size:13px;color:var(--txt2);font-style:italic;line-height:1.65;margin-bottom:8px;}
+.q-name{font-size:12px;font-weight:700;color:var(--y);}
+
+/* ─── S9 pricing ─── */
+.price-g{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:14px;width:100%;max-width:860px;
+}
+.price-c{
+  background:var(--s1);border:1.5px solid var(--bdr2);
+  border-radius:18px;padding:26px 22px;
+  position:relative;
+}
+.price-c.feat{
+  border-color:var(--y);
+  background:linear-gradient(155deg,rgba(255,206,10,.09) 0%,var(--s1) 100%);
+}
+.feat-badge{
+  position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+  background:var(--y);color:#0F1115;
+  font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 12px;border-radius:999px;white-space:nowrap;
+}
+.p-name{
+  font-size:12px;font-weight:700;color:var(--txt3);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;
+}
+.p-amt{
+  font-size:52px;font-weight:900;color:var(--txt);
+  letter-spacing:-3px;line-height:1;
+}
+.p-amt sup{font-size:22px;font-weight:700;vertical-align:top;margin-top:9px;letter-spacing:0;}
+.p-per{font-size:12px;color:var(--txt3);margin-bottom:18px;}
+.p-feat{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--txt2);margin-bottom:8px;
+}
+.p-chk{
+  width:17px;height:17px;border-radius:50%;
+  background:rgba(255,206,10,.12);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--y);flex-shrink:0;
+}
+
+/* ─── S10 integrations ─── */
+.integ-g{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:14px;width:100%;max-width:780px;
+}
+.integ-t{
+  background:var(--s1);border:1px solid var(--bdr);
+  border-radius:14px;padding:22px 14px;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  transition:border-color .2s;
+}
+.integ-t:hover{border-color:rgba(255,206,10,.3);}
+.integ-ico{
+  width:50px;height:50px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+}
+.integ-nm{font-size:13px;font-weight:600;color:var(--txt);}
+.integ-tag{font-size:11px;color:var(--txt3);}
+
+/* ─── S11 CTA ─── */
+.cta-wrap{
+  background:var(--y);border-radius:24px;
+  padding:52px 64px;text-align:center;
+  max-width:780px;width:100%;
+}
+.cta-wrap h2{
+  font-size:clamp(26px,4vw,46px);font-weight:900;
+  color:#0F1115;letter-spacing:-1.8px;line-height:1.1;margin-bottom:14px;
+}
+.cta-wrap p{
+  font-size:16px;color:rgba(0,0,0,.6);
+  line-height:1.55;margin-bottom:30px;
+}
+.cta-btn{
+  display:inline-block;background:#0F1115;color:#fff;
+  font-family:'Work Sans',sans-serif;font-size:15px;
+  font-weight:700;padding:15px 38px;
+  border-radius:12px;text-decoration:none;
+  letter-spacing:-.3px;
+  transition:opacity .2s;
+}
+.cta-btn:hover{opacity:.85;}
+.cta-checks{
+  display:flex;justify-content:center;gap:18px;
+  margin-top:18px;font-size:12px;color:rgba(0,0,0,.48);
+}
+
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<div id="logo-wrap">
+  <div class="logo-icon">🐛</div>
+  <span class="logo-name">ListingBug</span>
+</div>
+
+<div id="slide-count"><span id="cur">1</span> / <span id="tot">11</span></div>
+
+<button class="nav-btn" id="btn-prev">&#8249;</button>
+<button class="nav-btn" id="btn-next">&#8250;</button>
+
+<div id="dots"></div>
+<div id="kb-hint">← → to navigate</div>
+
+<div id="deck">
+
+  <!-- ── SLIDE 1: COVER ── -->
+  <section class="slide visible enter-right" data-idx="0">
+    <div class="cover-badge"><span>⚡</span>Automated Real Estate Outreach</div>
+    <div class="cover-logo">🐛</div>
+    <h1 class="cover-h">Listing<span>Bug</span></h1>
+    <p class="cover-sub">The automated outreach engine that sends email and SMS to every new listing in your market — so you land jobs while you sleep.</p>
+    <div class="cover-pills">
+      <div class="chip"><span class="chip-dot"></span>Email campaigns</div>
+      <div class="chip"><span class="chip-dot"></span>SMS outreach</div>
+      <div class="chip"><span class="chip-dot"></span>7-day free trial</div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 2: PROBLEM ── -->
+  <section class="slide enter-right" data-idx="1">
+    <p class="eyebrow">The Problem</p>
+    <h2 class="slide-h">Service Pros Miss Jobs<br/><em>Every Single Day</em></h2>
+    <p class="slide-p">Millions of listings hit the market weekly. The professionals who need those jobs find out too late — if at all.</p>
+    <div class="prob-list">
+      <div class="prob-item">
+        <div class="prob-x">✕</div>
+        <div>
+          <div class="prob-t">Listings are invisible until they're already filled</div>
+          <div class="prob-d">Cleaners, stagers, and contractors don't know a property just hit the market — until someone else already got the call.</div>
+        </div>
+      </div>
+      <div class="prob-item">
+        <div class="prob-x">✕</div>
+        <div>
+          <div class="prob-t">Cold outreach is manual, slow, and inconsistent</div>
+          <div class="prob-d">Searching portals, finding agent contact info, writing emails one-by-one — it's a part-time job most small operators just don't do.</div>
+        </div>
+      </div>
+      <div class="prob-item">
+        <div class="prob-x">✕</div>
+        <div>
+          <div class="prob-t">Timing is everything — and you're always late</div>
+          <div class="prob-d">The agent who books the stager or cleaner first wins. Being second means the job is already gone.</div>
+        </div>
+      </div>
+      <div class="prob-item">
+        <div class="prob-x">✕</div>
+        <div>
+          <div class="prob-t">Word of mouth doesn't scale</div>
+          <div class="prob-d">Referrals are unpredictable. Growing a service business requires a repeatable, always-on system for finding new clients.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 3: SOLUTION ── -->
+  <section class="slide enter-right" data-idx="2">
+    <p class="eyebrow">The Solution</p>
+    <h2 class="slide-h">ListingBug Watches the Market.<br/><em>You Just Answer Replies.</em></h2>
+    <p class="slide-p">Set it up once in 5 minutes. ListingBug monitors new listings in your city and sends your personalized outreach message to every agent — automatically.</p>
+    <div class="g3">
+      <div class="card">
+        <div class="ci">📍</div>
+        <h3>24/7 Market Monitor</h3>
+        <p>Set your target city, property type, and price range. ListingBug watches for every matching new listing around the clock.</p>
+      </div>
+      <div class="card">
+        <div class="ci">✉️</div>
+        <h3>Personalized at Scale</h3>
+        <p>Write once, send to thousands. Agent name, address, price, and listing date fill in automatically on every outreach — email and SMS.</p>
+      </div>
+      <div class="card">
+        <div class="ci">📥</div>
+        <h3>Shared Team Inbox</h3>
+        <p>Replies land in a shared inbox organized by campaign. Your whole team can see and respond to interested agents in real time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 4: HOW IT WORKS ── -->
+  <section class="slide enter-right" data-idx="3">
+    <p class="eyebrow">How It Works</p>
+    <h2 class="slide-h">Three Steps to<br/><em>Recurring Jobs</em></h2>
+    <div class="steps-row" style="margin-top:10px;">
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-card">
+          <h3>Set Your Market</h3>
+          <p>Choose your city, property type, price range, and listing criteria — new listings, price drops, or days on market.</p>
+          <div class="step-ex">📍 Austin, TX · single-family · under $600K · new in 24h</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-card">
+          <h3>Write Your Message</h3>
+          <p>Compose once. Personalization fields fill in automatically — agent name, property address, city, price, listing date.</p>
+          <div class="step-ex">"Hi <span class="yy">{{agent_name}}</span>, I saw you just listed <span class="yy">{{address}}</span>…"</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-card">
+          <h3>Land the Job</h3>
+          <p>Every matching listing triggers a send. Replies go to your shared inbox. You only talk to interested agents.</p>
+          <div class="step-ex" style="color:#4ade80;border-color:rgba(74,222,128,.15);">✓ Agent replied within 4 hours — booked a staging job</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 5: WHO IT'S FOR ── -->
+  <section class="slide enter-right" data-idx="4">
+    <p class="eyebrow">Target Market</p>
+    <h2 class="slide-h">Built for <em>Real Estate<br/>Service Providers</em></h2>
+    <p class="slide-p">Any business that works with listings, agents, or new homeowners is a natural fit.</p>
+    <div class="use-g">
+      <div class="use-t"><div class="ico">🧹</div><div class="nm">Cleaners</div></div>
+      <div class="use-t"><div class="ico">🔍</div><div class="nm">Home Inspectors</div></div>
+      <div class="use-t"><div class="ico">🎨</div><div class="nm">Stagers</div></div>
+      <div class="use-t"><div class="ico">🌿</div><div class="nm">Landscapers</div></div>
+      <div class="use-t"><div class="ico">🏠</div><div class="nm">Roofers</div></div>
+      <div class="use-t"><div class="ico">🛡️</div><div class="nm">Insurance Agents</div></div>
+      <div class="use-t"><div class="ico">🔨</div><div class="nm">Contractors</div></div>
+      <div class="use-t"><div class="ico">🛋️</div><div class="nm">Interior Designers</div></div>
+      <div class="use-t"><div class="ico">📦</div><div class="nm">Movers</div></div>
+      <div class="use-t"><div class="ico">⚡</div><div class="nm">Electricians</div></div>
+      <div class="use-t"><div class="ico">🔧</div><div class="nm">Plumbers & HVAC</div></div>
+      <div class="use-t"><div class="ico">🏡</div><div class="nm">Real Estate Agents</div></div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 6: MARKET SIZE ── -->
+  <section class="slide enter-right" data-idx="5">
+    <p class="eyebrow">Market Opportunity</p>
+    <h2 class="slide-h">A Massive,<br/><em>Underserved</em> Market</h2>
+    <p class="slide-p" style="margin-bottom:28px;">U.S. home services is a $250B+ industry. Service pros have no reliable, automated way to reach the agents who need them at the right moment.</p>
+    <div class="mkt-g">
+      <div class="mkt-big">
+        <div class="mkt-num">5M+</div>
+        <div class="mkt-lbl">U.S. homes sold annually — each one triggers a wave of demand for cleaning, inspection, staging, and more.</div>
+      </div>
+      <div class="mkt-sm">
+        <div class="card mkt-sm" style="background:var(--s1);">
+          <div class="n">2M+</div>
+          <div class="l">Licensed agents in the U.S. — all potential outreach targets for any service professional.</div>
+        </div>
+        <div class="card mkt-sm" style="background:var(--s1);">
+          <div class="n">$250B</div>
+          <div class="l">Annual U.S. home services market — an industry that runs on real estate activity.</div>
+        </div>
+        <div class="card mkt-sm" style="background:var(--s1);">
+          <div class="n">$0</div>
+          <div class="l">What most service pros spend on automated lead gen today. That's the gap we fill.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 7: PRODUCT ── -->
+  <section class="slide enter-right" data-idx="6">
+    <p class="eyebrow">The Product</p>
+    <h2 class="slide-h">One Dashboard.<br/><em>Every Campaign.</em></h2>
+    <div class="mockup">
+      <div class="m-bar">
+        <div class="m-dot"></div>
+        <div class="m-dot"></div>
+        <div class="m-dot"></div>
+        <div class="m-url">app.thelistingbug.com</div>
+      </div>
+      <div class="m-body">
+        <div class="m-stat"><div class="mn">4,821</div><div class="ml">Sent this month</div></div>
+        <div class="m-stat"><div class="mn">34%</div><div class="ml">Open rate</div></div>
+        <div class="m-stat"><div class="mn">186</div><div class="ml">Replies</div></div>
+        <div class="m-stat"><div class="mn">3</div><div class="ml">Active campaigns</div></div>
+        <div class="m-camp">
+          <div class="m-chead">My Campaigns</div>
+          <div class="m-row">
+            <div class="m-rdot"></div>
+            <div class="m-rname">Austin Cleaners — New Listings</div>
+            <div class="m-rstat">1,240 sent · 42 replies</div>
+            <div class="m-rbadge">Active</div>
+          </div>
+          <div class="m-row">
+            <div class="m-rdot"></div>
+            <div class="m-rname">Denver Staging Campaign</div>
+            <div class="m-rstat">890 sent · 31 replies</div>
+            <div class="m-rbadge">Active</div>
+          </div>
+          <div class="m-row">
+            <div class="m-rdot" style="background:rgba(255,255,255,.15);"></div>
+            <div class="m-rname">Seattle Inspection Outreach</div>
+            <div class="m-rstat">2,691 sent · 113 replies</div>
+            <div class="m-rbadge" style="background:rgba(255,255,255,.05);color:var(--txt3);">Paused</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 8: TRACTION ── -->
+  <section class="slide enter-right" data-idx="7">
+    <p class="eyebrow">Traction</p>
+    <h2 class="slide-h">Real Results from<br/><em>Real Professionals</em></h2>
+    <div class="stat-g">
+      <div class="stat-c"><div class="n">1,000+</div><div class="l">Service pros using ListingBug to find new clients</div></div>
+      <div class="stat-c"><div class="n">+40%</div><div class="l">Average increase in booking rate reported by users</div></div>
+      <div class="stat-c"><div class="n">&lt;5min</div><div class="l">Average time to launch your first campaign</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:860px;width:100%;">
+      <div class="quote-card">
+        <div class="q-text">"ListingBug has transformed how we find new clients. We're connecting with agents before homes even hit the market."</div>
+        <div class="q-name">Sarah Mitchell — Home Cleaning Services, Austin TX</div>
+      </div>
+      <div class="quote-card">
+        <div class="q-text">"The daily updates mean I'm always first to reach out. My booking rate has increased by 40% since using ListingBug."</div>
+        <div class="q-name">James Rodriguez — Property Inspector, Phoenix AZ</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 9: PRICING ── -->
+  <section class="slide enter-right" data-idx="8">
+    <p class="eyebrow">Business Model</p>
+    <h2 class="slide-h">Simple, <em>Scalable</em> Pricing</h2>
+    <p class="slide-p" style="margin-bottom:28px;">Pay for messages, not seats. Every plan includes email & SMS outreach, a shared inbox, and campaign templates.</p>
+    <div class="price-g">
+      <div class="price-c">
+        <div class="p-name">City</div>
+        <div class="p-amt"><sup>$</sup>19</div>
+        <div class="p-per">/month</div>
+        <div class="p-feat"><div class="p-chk">✓</div>2,500 messages/mo</div>
+        <div class="p-feat"><div class="p-chk">✓</div>1 city</div>
+        <div class="p-feat"><div class="p-chk">✓</div>1 active campaign</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Email & SMS</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Shared inbox</div>
+      </div>
+      <div class="price-c feat">
+        <div class="feat-badge">Most Popular</div>
+        <div class="p-name">Market</div>
+        <div class="p-amt"><sup>$</sup>49</div>
+        <div class="p-per">/month</div>
+        <div class="p-feat"><div class="p-chk">✓</div>5,000 messages/mo</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Multiple cities</div>
+        <div class="p-feat"><div class="p-chk">✓</div>3 active campaigns</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Email & SMS</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Shared inbox</div>
+      </div>
+      <div class="price-c">
+        <div class="p-name">Region</div>
+        <div class="p-amt"><sup>$</sup>99</div>
+        <div class="p-per">/month</div>
+        <div class="p-feat"><div class="p-chk">✓</div>10,000 messages/mo</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Up to 10 cities</div>
+        <div class="p-feat"><div class="p-chk">✓</div>10 active campaigns</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Email & SMS</div>
+        <div class="p-feat"><div class="p-chk">✓</div>Shared inbox</div>
+      </div>
+    </div>
+    <p style="margin-top:14px;font-size:12px;color:var(--txt3);">7-day free trial · No credit card required · $0.02/message overage · Cancel anytime</p>
+  </section>
+
+  <!-- ── SLIDE 10: INTEGRATIONS ── -->
+  <section class="slide enter-right" data-idx="9">
+    <p class="eyebrow">Integrations</p>
+    <h2 class="slide-h">Works with the Tools<br/><em>You Already Use</em></h2>
+    <p class="slide-p">Send listings and leads to the platforms your business runs on — no technical skills required.</p>
+    <div class="integ-g">
+      <div class="integ-t">
+        <div class="integ-ico" style="background:rgba(234,179,8,.15);">📧</div>
+        <div class="integ-nm">Mailchimp</div>
+        <div class="integ-tag">Email campaigns</div>
+      </div>
+      <div class="integ-t">
+        <div class="integ-ico" style="background:rgba(34,197,94,.12);">📊</div>
+        <div class="integ-nm">Google Sheets</div>
+        <div class="integ-tag">Data & reporting</div>
+      </div>
+      <div class="integ-t">
+        <div class="integ-ico" style="background:rgba(249,115,22,.12);">⚡</div>
+        <div class="integ-nm">Zapier</div>
+        <div class="integ-tag">Workflow automation</div>
+      </div>
+      <div class="integ-t">
+        <div class="integ-ico" style="background:rgba(59,130,246,.12);">🗄️</div>
+        <div class="integ-nm">Airtable</div>
+        <div class="integ-tag">Team databases</div>
+      </div>
+    </div>
+    <div style="margin-top:24px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;">
+      <div class="chip"><span class="chip-dot"></span>More integrations coming</div>
+      <div class="chip"><span class="chip-dot"></span>HubSpot (planned)</div>
+      <div class="chip"><span class="chip-dot"></span>Salesforce (planned)</div>
+    </div>
+  </section>
+
+  <!-- ── SLIDE 11: CTA ── -->
+  <section class="slide enter-right" data-idx="10">
+    <div class="cta-wrap">
+      <div style="font-size:52px;margin-bottom:14px;">🐛</div>
+      <h2>Get a Real Estate<br/>Listing Radar.</h2>
+      <p>One new client could pay for months of ListingBug. Set it up in 5 minutes and let it run — 24/7, automatically.</p>
+      <a href="https://thelistingbug.com" class="cta-btn">Start Your Free Trial →</a>
+      <div class="cta-checks">
+        <span>✓ 7-day free trial</span>
+        <span>✓ No credit card required</span>
+        <span>✓ Cancel anytime</span>
+      </div>
+    </div>
+    <p style="margin-top:24px;font-size:13px;color:var(--txt3);">thelistingbug.com</p>
+  </section>
+
+</div><!-- /deck -->
+
+<script>
+(function(){
+  var slides = [].slice.call(document.querySelectorAll('.slide'));
+  var total  = slides.length;
+  var cur    = 0;
+  var locked = false;
+
+  document.getElementById('tot').textContent = total;
+
+  // build dots
+  var dotsEl = document.getElementById('dots');
+  slides.forEach(function(_, i){
+    var d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' on' : '');
+    d.addEventListener('click', function(){ goTo(i); });
+    dotsEl.appendChild(d);
+  });
+
+  function allDots(){ return [].slice.call(dotsEl.querySelectorAll('.dot')); }
+
+  function syncChrome(){
+    var pct = ((cur + 1) / total) * 100;
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('cur').textContent = cur + 1;
+    allDots().forEach(function(d, i){ d.classList.toggle('on', i === cur); });
+  }
+
+  function goTo(next){
+    if(locked || next === cur || next < 0 || next >= total) return;
+    locked = true;
+
+    var dir = next > cur ? 1 : -1;
+    var prev = cur;
+
+    // exit current
+    slides[prev].classList.remove('visible');
+    slides[prev].classList.add(dir > 0 ? 'exit-left' : 'exit-right');
+
+    // position incoming slide (no transition yet)
+    slides[next].style.transition = 'none';
+    slides[next].classList.remove('exit-left','exit-right');
+    slides[next].classList.add(dir > 0 ? 'enter-right' : 'enter-left');
+
+    // force reflow
+    slides[next].offsetHeight;
+
+    // animate in
+    slides[next].style.transition = '';
+    slides[next].classList.remove('enter-right','enter-left');
+    slides[next].classList.add('visible');
+
+    cur = next;
+    syncChrome();
+
+    setTimeout(function(){
+      slides[prev].classList.remove('exit-left','exit-right');
+      slides[prev].style.transition = 'none';
+      slides[prev].offsetHeight;
+      slides[prev].style.transition = '';
+      locked = false;
+    }, 480);
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', function(){ goTo(cur - 1); });
+  document.getElementById('btn-next').addEventListener('click', function(){ goTo(cur + 1); });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight' || e.key === 'ArrowDown') goTo(cur + 1);
+    else if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') goTo(cur - 1);
+  });
+
+  // swipe
+  var tx = 0;
+  document.addEventListener('touchstart', function(e){ tx = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    var dx = tx - e.changedTouches[0].clientX;
+    if(Math.abs(dx) > 44){ if(dx > 0) goTo(cur + 1); else goTo(cur - 1); }
+  }, {passive:true});
+
+  syncChrome();
+})();
+</script>
+</body>
+</html>

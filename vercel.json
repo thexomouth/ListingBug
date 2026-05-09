@@ -72,6 +72,11 @@
       "destination": "https://ynqmisrlahjberhmlviz.supabase.co/functions/v1/handle-click"
     },
     {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "deck.thelistingbug.com" }],
+      "destination": "/deck/index.html"
+    },
+    {
       "source": "/assets/(.*)",
       "destination": "/assets/$1"
     },
