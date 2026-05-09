@@ -260,6 +260,13 @@ export default function App() {
 
   const currentPage = pathToPage(location.pathname);
 
+  const LEGACY_PAGES: Page[] = ['dashboard', 'search-listings', 'agents', 'automations', 'messaging', 'integrations', 'account'];
+  useEffect(() => {
+    if (LEGACY_PAGES.includes(currentPage)) {
+      navigate('/v2/dashboard', { replace: true });
+    }
+  }, [currentPage]);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem('listingbug_theme');
     if (savedTheme === 'dark' || savedTheme === 'light') {
