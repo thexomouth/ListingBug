@@ -14,7 +14,7 @@ export function V2AccountProfile() {
   const [email, setEmail] = useState('');
   const [emailPlaceholder, setEmailPlaceholder] = useState('');
   const [company, setCompany] = useState('');
-  const [fromName, setFromName] = useState('');
+  const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
   const [mailingAddress, setMailingAddress] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -49,7 +49,7 @@ export function V2AccountProfile() {
               setName(profileData.name);
             }
             if (profileData.company) setCompany(profileData.company);
-            if (profileData.from_name) setFromName(profileData.from_name);
+            if (profileData.business_name) setBusinessName(profileData.business_name);
             if (profileData.phone) setPhone(profileData.phone);
             if (profileData.mailing_address) setMailingAddress(profileData.mailing_address);
           } else if (googleName) {
@@ -68,7 +68,7 @@ export function V2AccountProfile() {
     const updates: Record<string, string> = { updated_at: new Date().toISOString() };
     if (name.trim()) updates.name = name.trim();
     if (company.trim()) updates.company = company.trim();
-    if (fromName.trim()) updates.from_name = fromName.trim();
+    if (businessName.trim()) updates.business_name = businessName.trim();
     if (phone.trim()) updates.phone = phone.trim();
     if (mailingAddress.trim()) updates.mailing_address = mailingAddress.trim();
     if (Object.keys(updates).length === 1) {
@@ -156,7 +156,7 @@ export function V2AccountProfile() {
   };
 
   const isPasswordFormValid = currentPassword && newPassword && confirmPassword && newPassword === confirmPassword && newPassword.length >= 8;
-  const isProfileFormValid = name.trim() || company.trim() || fromName.trim() || phone.trim() || mailingAddress.trim();
+  const isProfileFormValid = name.trim() || company.trim() || businessName.trim() || phone.trim() || mailingAddress.trim();
   const passwordMismatch = newPassword && confirmPassword && newPassword !== confirmPassword;
 
   return (
@@ -211,7 +211,7 @@ export function V2AccountProfile() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="from-name">From Name</Label>
-                    <Input id="from-name" placeholder="e.g. Jake @ Acme Realty" value={fromName} onChange={(e) => setFromName(e.target.value)} className="placeholder:text-gray-400" />
+                    <Input id="from-name" placeholder="e.g. Jake @ Acme Realty" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="placeholder:text-gray-400" />
                     <p className="text-xs text-gray-500 dark:text-gray-400">Displayed as the sender name in outgoing emails.</p>
                   </div>
                   <div className="space-y-1.5">
