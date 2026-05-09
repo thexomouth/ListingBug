@@ -1,0 +1,378 @@
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { supabase } from '../lib/supabase';
+import { X, Send } from 'lucide-react';
+
+// ─── Star icon ────────────────────────────────────────────────────────────────
+export function StarIcon({ size = 14, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+export interface GenerateContext {
+  city: string;
+  state: string;
+  listing_type?: string;
+  property_type?: string;
+  channel: string;
+  business_name?: string;
+  contact_name?: string;
+  service_type?: string[];
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface ParsedFields {
+  subject?: string;
+  preview?: string;
+  body?: string;
+  plain?: string;
+}
+
+interface GenerateModalProps {
+  open: boolean;
+  onClose: () => void;
+  context: GenerateContext;
+  current: { subject?: string; preview_text?: string; body?: string };
+  channel: string;
+  onApply: (fields: { subject?: string; preview_text?: string; body?: string }) => void;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+}
+
+function textToHtml(text: string): string {
+  return text.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+function parseResponse(text: string): ParsedFields {
+  const result: ParsedFields = {};
+  const lines = text.split('\n');
+  let mode: 'subject' | 'preview' | 'body' | null = null;
+  const bodyLines: string[] = [];
+
+  for (const line of lines) {
+    const s = line.match(/^SUBJECT:\s*(.*)/i);
+    const p = line.match(/^PREVIEW:\s*(.*)/i);
+    const b = line.match(/^BODY:\s*(.*)/i);
+    if (s) { mode = 'subject'; result.subject = s[1].trim(); }
+    else if (p) { mode = 'preview'; result.preview = p[1].trim(); }
+    else if (b) { mode = 'body'; if (b[1].trim()) bodyLines.push(b[1]); }
+    else if (mode === 'body') bodyLines.push(line);
+  }
+
+  if (bodyLines.length) result.body = bodyLines.join('\n').trim();
+  if (!result.subject && !result.preview && !result.body) result.plain = text;
+  return result;
+}
+
+// ─── Preset pills ─────────────────────────────────────────────────────────────
+function getPills(channel: string, current: GenerateModalProps['current']) {
+  const hasContent = !!(current.subject || current.preview_text || stripHtml(current.body ?? ''));
+  const email = channel === 'email';
+  const pills: { label: string; prompt: string }[] = [];
+
+  if (email) {
+    pills.push({ label: 'Write everything', prompt: 'Write a subject line, preview text, and full email body for my campaign.' });
+    pills.push({ label: 'Subject + preview', prompt: 'Write just a subject line and preview text for my campaign.' });
+    pills.push({ label: 'Message body', prompt: 'Write just the full message body for my campaign.' });
+  } else {
+    pills.push({ label: 'Write message', prompt: 'Write an SMS message for my campaign.' });
+  }
+
+  if (hasContent) {
+    pills.push({ label: 'Make it shorter', prompt: 'Make the current copy shorter and more concise. Keep the same fields.' });
+    pills.push({ label: 'More casual', prompt: 'Rewrite the current copy in a more casual, friendly tone.' });
+    pills.push({ label: 'More professional', prompt: 'Rewrite the current copy in a more professional tone.' });
+    pills.push({ label: 'Different angle', prompt: 'Try a completely different creative angle.' });
+  }
+
+  return pills;
+}
+
+// ─── AssistantMessage: renders parsed AI output ───────────────────────────────
+function AssistantMessage({
+  content,
+  channel,
+  onApply,
+}: {
+  content: string;
+  channel: string;
+  onApply: (fields: { subject?: string; preview_text?: string; body?: string }) => void;
+}) {
+  const parsed = parseResponse(content);
+
+  if (parsed.plain) {
+    return <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{parsed.plain}</p>;
+  }
+
+  const canApplyAll = (parsed.subject ? 1 : 0) + (parsed.preview ? 1 : 0) + (parsed.body ? 1 : 0) > 1;
+
+  return (
+    <div className="space-y-3">
+      {parsed.subject && (
+        <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden">
+          <div className="px-3 py-1.5 bg-gray-50 dark:bg-white/5 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Subject line</span>
+            <button
+              onClick={() => onApply({ subject: parsed.subject })}
+              className="text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors"
+              style={{ background: '#FFCE0A', color: '#342e37' }}
+            >
+              Apply
+            </button>
+          </div>
+          <p className="px-3 py-2 text-sm text-gray-900 dark:text-white font-medium">{parsed.subject}</p>
+        </div>
+      )}
+
+      {parsed.preview && (
+        <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden">
+          <div className="px-3 py-1.5 bg-gray-50 dark:bg-white/5 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Preview text</span>
+            <button
+              onClick={() => onApply({ preview_text: parsed.preview })}
+              className="text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors"
+              style={{ background: '#FFCE0A', color: '#342e37' }}
+            >
+              Apply
+            </button>
+          </div>
+          <p className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">{parsed.preview}</p>
+        </div>
+      )}
+
+      {parsed.body && (
+        <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden">
+          <div className="px-3 py-1.5 bg-gray-50 dark:bg-white/5 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Message body</span>
+            <button
+              onClick={() => onApply({ body: channel === 'email' ? textToHtml(parsed.body!) : parsed.body })}
+              className="text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors"
+              style={{ background: '#FFCE0A', color: '#342e37' }}
+            >
+              Apply
+            </button>
+          </div>
+          <p className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{parsed.body}</p>
+        </div>
+      )}
+
+      {canApplyAll && (
+        <button
+          onClick={() => onApply({
+            ...(parsed.subject ? { subject: parsed.subject } : {}),
+            ...(parsed.preview ? { preview_text: parsed.preview } : {}),
+            ...(parsed.body ? { body: channel === 'email' ? textToHtml(parsed.body) : parsed.body } : {}),
+          })}
+          className="w-full py-1.5 rounded-lg text-[12px] font-semibold transition-colors"
+          style={{ background: '#342e37', color: '#FFCE0A' }}
+        >
+          Apply all
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+export function GenerateModal({ open, onClose, context, current, channel, onApply }: GenerateModalProps) {
+  const [history, setHistory] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Reset chat when modal opens
+  useEffect(() => {
+    if (open) {
+      setHistory([]);
+      setInput('');
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [history, loading]);
+
+  const send = async (text: string) => {
+    if (!text.trim() || loading) return;
+
+    // For pills that reference current content, append it to the API prompt
+    const refersToCurrentContent = /shorter|casual|professional|different angle|rewrite/i.test(text);
+    let apiPrompt = text;
+    if (refersToCurrentContent) {
+      const parts: string[] = [];
+      if (current.subject) parts.push(`Current subject: "${current.subject}"`);
+      if (current.preview_text) parts.push(`Current preview: "${current.preview_text}"`);
+      const body = stripHtml(current.body ?? '');
+      if (body) parts.push(`Current body:\n${body}`);
+      if (parts.length) apiPrompt = `${text}\n\n${parts.join('\n')}`;
+    }
+
+    // API history uses the full prompt; chat display uses the clean pill label
+    const apiHistory: ChatMessage[] = [...history, { role: 'user', content: apiPrompt }];
+
+    setHistory(h => [...h, { role: 'user', content: text }]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-message', {
+        body: { messages: apiHistory, context: { ...context, channel } },
+      });
+
+      if (error || !data?.reply) throw new Error(error?.message ?? 'No response');
+
+      setHistory(h => [...h, { role: 'assistant', content: data.reply }]);
+    } catch {
+      setHistory(h => [...h, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApply = (fields: { subject?: string; preview_text?: string; body?: string }) => {
+    onApply(fields);
+  };
+
+  if (!open) return null;
+
+  const pills = getPills(channel, current);
+  const contextLabel = [context.city, context.state].filter(Boolean).join(', ');
+
+  const modal = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative flex flex-col bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl overflow-hidden"
+        style={{ width: '100%', maxWidth: 600, height: '80vh', maxHeight: 700 }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/10 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <StarIcon size={16} className="text-[#FFCE0A]" />
+            <span className="font-semibold text-[15px] text-gray-900 dark:text-white">Generate with AI</span>
+            {contextLabel && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400">
+                {contextLabel} · {channel}
+              </span>
+            )}
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+            <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          </button>
+        </div>
+
+        {/* Chat area */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {history.length === 0 && (
+            <div className="flex gap-3">
+              <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
+                <StarIcon size={10} className="text-[#FFCE0A]" />
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                Ready to write your{contextLabel ? ` ${contextLabel}` : ''} {channel} campaign. I know your merge tags (
+                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{agent_name}}'}</code>,{' '}
+                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{address}}'}</code>,{' '}
+                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{city}}'}</code>,{' '}
+                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{price}}'}</code>
+                ) and will use them automatically. What would you like to generate?
+              </p>
+            </div>
+          )}
+
+          {history.map((msg, i) => (
+            <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+              {msg.role === 'assistant' && (
+                <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
+                  <StarIcon size={10} className="text-[#FFCE0A]" />
+                </div>
+              )}
+              <div className={`max-w-[85%] ${msg.role === 'user' ? 'ml-auto' : ''}`}>
+                {msg.role === 'user' ? (
+                  <div className="px-3 py-2 rounded-2xl rounded-tr-sm text-sm text-white" style={{ background: '#342e37' }}>
+                    {msg.content}
+                  </div>
+                ) : (
+                  <AssistantMessage content={msg.content} channel={channel} onApply={handleApply} />
+                )}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="flex gap-3">
+              <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
+                <StarIcon size={10} className="text-[#FFCE0A]" />
+              </div>
+              <div className="flex items-center gap-1 py-2">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Pills */}
+        <div className="px-5 py-2.5 border-t border-gray-100 dark:border-white/5 shrink-0">
+          <div className="flex flex-wrap gap-1.5">
+            {pills.map(pill => (
+              <button
+                key={pill.label}
+                onClick={() => send(pill.prompt)}
+                disabled={loading}
+                className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-[#FFCE0A] hover:text-[#342e37] dark:hover:text-white transition-colors disabled:opacity-40"
+              >
+                <StarIcon size={9} className="text-[#FFCE0A]" />
+                {pill.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="px-5 py-3 border-t border-gray-200 dark:border-white/10 shrink-0">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
+              }}
+              placeholder="Ask anything — 'shorter', 'add urgency', 'more casual'…"
+              rows={1}
+              className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors placeholder-gray-400 dark:placeholder-gray-500"
+              style={{ minHeight: 40, maxHeight: 120 }}
+            />
+            <button
+              onClick={() => send(input)}
+              disabled={!input.trim() || loading}
+              className="p-2.5 rounded-xl transition-colors disabled:opacity-40"
+              style={{ background: '#342e37' }}
+            >
+              <Send className="w-4 h-4 text-[#FFCE0A]" />
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(modal, document.body);
+}

@@ -10,6 +10,7 @@ import { SMTPSetupModal } from '../SMTPSetupModal';
 import { RichTextEditor } from './editor/RichTextEditor';
 import { buildPreviewHtml } from './editor/previewUtils';
 import { Mail, Server, CheckCircle2, Plus, Pencil } from 'lucide-react';
+import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
 import { buildOutlookAuthUrl } from '../../utils/outlookOAuth';
 import { toast } from 'sonner';
@@ -127,6 +128,7 @@ export function NewCampaign() {
   });
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -964,6 +966,15 @@ export function NewCampaign() {
             {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
           </div>
 
+          <button
+            type="button"
+            onClick={() => setGenerateOpen(true)}
+            className="shrink-0 flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-lg border border-[#FFCE0A]/60 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors font-medium"
+          >
+            <StarIcon size={13} className="text-[#FFCE0A]" />
+            Generate
+          </button>
+
           <div className="relative shrink-0" ref={templateDropdownRef}>
             <button
               type="button"
@@ -1483,6 +1494,34 @@ export function NewCampaign() {
 
         </div>
       </div>
+
+      {/* Generate modal */}
+      <GenerateModal
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        context={{
+          city: searchCriteria.city,
+          state: searchCriteria.state,
+          listing_type: searchCriteria.listing_type,
+          property_type: searchCriteria.property_type ?? undefined,
+          channel: messageInfo.channel,
+          business_name: businessInfo.business_name,
+          contact_name: businessInfo.contact_name,
+          service_type: businessInfo.service_type,
+        } as GenerateContext}
+        current={{
+          subject: messageInfo.subject,
+          preview_text: messageInfo.preview_text,
+          body: messageInfo.body,
+        }}
+        channel={messageInfo.channel}
+        onApply={fields => setMessageInfo(m => ({
+          ...m,
+          ...(fields.subject !== undefined ? { subject: fields.subject } : {}),
+          ...(fields.preview_text !== undefined ? { preview_text: fields.preview_text } : {}),
+          ...(fields.body !== undefined ? { body: fields.body } : {}),
+        }))}
+      />
 
       <CityLimitModal
         isOpen={cityLimitOpen}

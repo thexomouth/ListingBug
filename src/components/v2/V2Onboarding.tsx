@@ -9,6 +9,7 @@ import { SMTPSetupModal } from '../SMTPSetupModal';
 import { RichTextEditor } from './editor/RichTextEditor';
 import { buildPreviewHtml } from './editor/previewUtils';
 import { Mail, Server, CheckCircle2, Pencil } from 'lucide-react';
+import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -116,6 +117,7 @@ export function V2Onboarding() {
 
   // Step-level errors
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+  const [generateOpen, setGenerateOpen] = useState(false);
 
   // Sender selection state
   const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
@@ -1022,6 +1024,15 @@ export function V2Onboarding() {
             {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
           </div>
 
+          <button
+            type="button"
+            onClick={() => setGenerateOpen(true)}
+            className="shrink-0 flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-lg border border-[#FFCE0A]/60 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors font-medium"
+          >
+            <StarIcon size={13} className="text-[#FFCE0A]" />
+            Generate
+          </button>
+
           <div className="relative shrink-0" ref={templateDropdownRef}>
             <button
               type="button"
@@ -1678,6 +1689,34 @@ export function V2Onboarding() {
           </div>
         );
       })()}
+
+      {/* Generate modal */}
+      <GenerateModal
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        context={{
+          city: searchCriteria.city,
+          state: searchCriteria.state,
+          listing_type: searchCriteria.listing_type,
+          property_type: searchCriteria.property_type ?? undefined,
+          channel: messageInfo.channel,
+          business_name: businessInfo.business_name,
+          contact_name: businessInfo.contact_name,
+          service_type: businessInfo.service_type,
+        } as GenerateContext}
+        current={{
+          subject: messageInfo.subject,
+          preview_text: messageInfo.preview_text,
+          body: messageInfo.body,
+        }}
+        channel={messageInfo.channel}
+        onApply={fields => setMessageInfo(m => ({
+          ...m,
+          ...(fields.subject !== undefined ? { subject: fields.subject } : {}),
+          ...(fields.preview_text !== undefined ? { preview_text: fields.preview_text } : {}),
+          ...(fields.body !== undefined ? { body: fields.body } : {}),
+        }))}
+      />
 
       {/* SMTP Setup Modal */}
       <SMTPSetupModal
