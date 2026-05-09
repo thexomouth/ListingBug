@@ -551,7 +551,7 @@ export function V2DashboardV2() {
                 </button>
               </div>
             ) : (
-              <div className="rounded-lg border border-gray-200 dark:border-white/10 overflow-hidden divide-y divide-gray-200 dark:divide-white/10">
+              <div className="space-y-2.5">
                 {campaigns.map(campaign => {
                   const criteria = campaign.campaign_search_criteria?.[0];
                   const stats = computeStats(campaign.campaign_sends ?? []);
@@ -562,7 +562,7 @@ export function V2DashboardV2() {
                     <a
                       key={campaign.id}
                       href={`/v2/campaign?id=${campaign.id}`}
-                      className="block bg-white dark:bg-[#2F2F2F] p-4 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-[#363636] no-underline"
+                      className="block bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 no-underline"
                     >
                       <div className="flex items-start justify-between mb-2.5">
                         <div className="flex-1 min-w-0 mr-3">
@@ -619,7 +619,7 @@ export function V2DashboardV2() {
             <div className="flex gap-2">
               {/* Sent */}
               <div
-                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -634,7 +634,7 @@ export function V2DashboardV2() {
 
               {/* Opens */}
               <div
-                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -649,7 +649,7 @@ export function V2DashboardV2() {
 
               {/* Replies */}
               <div
-                className="relative flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="relative flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <span className="absolute top-1.5 right-2 text-[9px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-400">
@@ -664,7 +664,7 @@ export function V2DashboardV2() {
 
               {/* Active campaigns */}
               <div
-                className="flex-1 border hover:border-[3px] border-gray-200 dark:border-white/10 hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center hover:scale-[1.04]"
+                className="flex-1 border border-gray-200 dark:border-white/10 rounded-lg bg-white dark:bg-transparent p-3 flex flex-col items-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 style={{ opacity: statOpacity, transition: bubbleTransition }}
               >
                 <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-2">
