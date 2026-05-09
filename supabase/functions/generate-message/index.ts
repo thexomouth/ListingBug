@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -210,27 +210,29 @@ serve(async (req) => {
   try {
     const { messages, context } = await req.json();
 
-    if (!ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY not configured" }, 500);
+    if (!GROQ_API_KEY) return json({ error: "GROQ_API_KEY not configured" }, 500);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const systemPrompt = buildSystemPrompt(context ?? {});
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 1024,
-        system: buildSystemPrompt(context ?? {}),
-        messages,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
       }),
     });
 
     const data = await response.json();
-    if (!response.ok) return json({ error: data.error?.message ?? "Anthropic API error" }, 500);
+    if (!response.ok) return json({ error: data.error?.message ?? "Groq API error" }, 500);
 
-    return json({ reply: data.content[0].text });
+    return json({ reply: data.choices[0].message.content });
   } catch (err) {
     return json({ error: String(err) }, 500);
   }
