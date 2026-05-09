@@ -804,11 +804,11 @@ export function NewCampaign() {
           <button
             type="button"
             onClick={gmailSender ? () => setSelectedSender(gmailSender.id) : handleGmailConnect}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
+            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm ${isGmailSelected ? '' : 'bg-white dark:bg-[#1a1a1a]'}`}
             style={
               isGmailSelected
                 ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
+                : { borderColor: 'rgb(229 231 235)' }
             }
           >
             <div className="flex items-start gap-3">
@@ -831,11 +831,11 @@ export function NewCampaign() {
           <button
             type="button"
             onClick={outlookSender ? () => setSelectedSender(outlookSender.id) : handleOutlookConnect}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm"
+            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm ${isOutlookSelected ? '' : 'bg-white dark:bg-[#1a1a1a]'}`}
             style={
               isOutlookSelected
                 ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
+                : { borderColor: 'rgb(229 231 235)' }
             }
           >
             <div className="flex items-start gap-3">

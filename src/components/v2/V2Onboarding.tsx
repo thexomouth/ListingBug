@@ -926,11 +926,11 @@ export function V2Onboarding() {
             type="button"
             onClick={gmailSender ? () => setSelectedSenderId(gmailSender.id) : handleGmailConnect}
             disabled={checkingSender}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed ${isGmailSelected ? '' : 'bg-white dark:bg-[#1a1a1a]'}`}
             style={
               isGmailSelected
                 ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
+                : { borderColor: 'rgb(229 231 235)' }
             }
           >
             <div className="flex items-start gap-3">
@@ -954,11 +954,11 @@ export function V2Onboarding() {
             type="button"
             onClick={outlookSender ? () => setSelectedSenderId(outlookSender.id) : handleOutlookConnect}
             disabled={checkingSender}
-            className="group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            className={`group relative p-4 rounded-lg border-2 transition-all text-left hover:border-[#FFCE0A] dark:hover:border-[#FFCE0A] hover:shadow-sm disabled:opacity-60 disabled:cursor-not-allowed ${isOutlookSelected ? '' : 'bg-white dark:bg-[#1a1a1a]'}`}
             style={
               isOutlookSelected
                 ? { borderColor: '#10b981', backgroundColor: '#10b98110' }
-                : { borderColor: 'rgb(229 231 235)', backgroundColor: 'white' }
+                : { borderColor: 'rgb(229 231 235)' }
             }
           >
             <div className="flex items-start gap-3">
