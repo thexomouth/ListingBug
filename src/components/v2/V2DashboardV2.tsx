@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy } from 'lucide-react';
+import { LayoutDashboard, Send, MessageSquare, Zap, Reply, AlertTriangle, X, Trophy, ChevronUp, ChevronDown } from 'lucide-react';
 import { normalizePlan, PLAN_CONFIG } from '../utils/planLimits';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
@@ -217,6 +217,8 @@ export function V2DashboardV2() {
   const [connectionIssues, setConnectionIssues] = useState<ConnectionIssue[]>([]);
   const [dismissedIssues, setDismissedIssues] = useState<Set<string>>(new Set());
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
+  const [lbSortCol, setLbSortCol] = useState<'agent' | 'brokerage' | 'sent' | 'opens' | 'replies'>('replies');
+  const [lbSortDir, setLbSortDir] = useState<'asc' | 'desc'>('desc');
   const [expandedAgentKey, setExpandedAgentKey] = useState<string | null>(null);
   const [selectedAgentSend, setSelectedAgentSend] = useState<AgentSend | null>(null);
 
@@ -444,7 +446,18 @@ export function V2DashboardV2() {
 
   const bubbleTransition = 'opacity 0.5s ease, border-color 0.15s ease, transform 0.15s ease';
 
-  const leaderboardVisible = leaderboardExpanded ? leaderboard : leaderboard.slice(0, 10);
+  const leaderboardSorted = [...leaderboard].sort((a, b) => {
+    let av: string | number = 0;
+    let bv: string | number = 0;
+    if (lbSortCol === 'agent') { av = a.agentName.toLowerCase(); bv = b.agentName.toLowerCase(); }
+    else if (lbSortCol === 'brokerage') { av = (a.brokerage || '').toLowerCase(); bv = (b.brokerage || '').toLowerCase(); }
+    else if (lbSortCol === 'sent') { av = a.sent; bv = b.sent; }
+    else if (lbSortCol === 'opens') { av = a.opens; bv = b.opens; }
+    else { av = a.replies; bv = b.replies; }
+    const cmp = typeof av === 'number' ? av - bv : (av < bv ? -1 : av > bv ? 1 : 0);
+    return lbSortDir === 'asc' ? cmp : -cmp;
+  });
+  const leaderboardVisible = leaderboardSorted.slice(0, leaderboardExpanded ? undefined : 10);
 
   const handleReconnect = async (provider: string) => {
     try {
@@ -711,11 +724,27 @@ export function V2DashboardV2() {
                 <thead className="bg-gray-50 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
                   <tr>
                     <th className="h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide w-8">#</th>
-                    <th className="h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Agent</th>
-                    <th className="hidden sm:table-cell h-9 px-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Brokerage</th>
-                    <th className="h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sent</th>
-                    <th className="hidden sm:table-cell h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Opens</th>
-                    <th className="hidden sm:table-cell h-9 px-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Replies</th>
+                    {([
+                      { key: 'agent',    label: 'Agent',     cls: '',                        align: 'left'  },
+                      { key: 'brokerage',label: 'Brokerage', cls: 'hidden sm:table-cell',    align: 'left'  },
+                      { key: 'sent',     label: 'Sent',      cls: '',                        align: 'right' },
+                      { key: 'opens',    label: 'Opens',     cls: 'hidden sm:table-cell',    align: 'right' },
+                      { key: 'replies',  label: 'Replies',   cls: 'hidden sm:table-cell',    align: 'right' },
+                    ] as const).map(({ key, label, cls, align }) => (
+                      <th
+                        key={key}
+                        onClick={() => { if (lbSortCol === key) { setLbSortDir(d => d === 'asc' ? 'desc' : 'asc'); } else { setLbSortCol(key); setLbSortDir('desc'); } }}
+                        className={`h-9 px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 ${cls} text-${align}`}
+                      >
+                        <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'justify-end w-full' : ''}`}>
+                          {label}
+                          <span className="inline-flex flex-col leading-none">
+                            <ChevronUp className={`w-2.5 h-2.5 -mb-0.5 ${lbSortCol === key && lbSortDir === 'asc' ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`} />
+                            <ChevronDown className={`w-2.5 h-2.5 ${lbSortCol === key && lbSortDir === 'desc' ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`} />
+                          </span>
+                        </span>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
