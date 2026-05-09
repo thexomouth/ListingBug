@@ -422,8 +422,20 @@ export function V2Campaign() {
   const handleDelete = async () => {
     if (!campaign || isDeleting) return;
     setIsDeleting(true);
-    await supabase.from('campaigns').delete().eq('id', campaign.id);
-    window.location.href = '/v2/dashboard';
+    try {
+      // Remove child rows first to satisfy FK constraints
+      await supabase.from('email_queue').delete().eq('campaign_id', campaign.id);
+      await supabase.from('campaign_sends').delete().eq('campaign_id', campaign.id);
+      await supabase.from('campaign_search_criteria').delete().eq('campaign_id', campaign.id);
+      await supabase.from('campaign_sms_config').delete().eq('campaign_id', campaign.id);
+      const { error } = await supabase.from('campaigns').delete().eq('id', campaign.id);
+      if (error) throw error;
+      window.location.href = '/v2/dashboard';
+    } catch (err: any) {
+      console.error('[V2Campaign] Delete failed:', err.message);
+      setIsDeleting(false);
+      setDeleteConfirm(false);
+    }
   };
 
   const handleSaveTemplate = async () => {

@@ -179,7 +179,7 @@ function StatusToggle({ active, onChange }: { active: boolean; onChange: (next: 
       type="button"
       role="switch"
       aria-checked={active}
-      onClick={e => { e.stopPropagation(); onChange(!active); }}
+      onClick={e => { e.stopPropagation(); e.preventDefault(); onChange(!active); }}
       className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none"
       style={{ background: active ? '#FFCE0A' : '#d1d5db' }}
     >
