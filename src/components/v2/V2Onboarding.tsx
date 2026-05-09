@@ -1703,6 +1703,9 @@ export function V2Onboarding() {
           business_name: businessInfo.business_name,
           contact_name: businessInfo.contact_name,
           service_type: businessInfo.service_type,
+          days_old: searchCriteria.days_old ?? undefined,
+          price_min: searchCriteria.price_min ?? undefined,
+          price_max: searchCriteria.price_max ?? undefined,
         } as GenerateContext}
         current={{
           subject: messageInfo.subject,

@@ -22,6 +22,9 @@ export interface GenerateContext {
   business_name?: string;
   contact_name?: string;
   service_type?: string[];
+  days_old?: number | string;
+  price_min?: number | null;
+  price_max?: number | null;
 }
 
 interface ChatMessage {

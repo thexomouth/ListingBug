@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer, ChevronUp, ChevronDown } from 'lucide-react';
+import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { AgentActivityModal } from './AgentActivityModal';
 import { CityAutocomplete } from '../CityAutocomplete';
@@ -198,6 +199,7 @@ export function V2Campaign() {
   const [templates, setTemplates] = useState<{ id: string; template_name: string; channel: string; subject: string | null; body: string }[]>([]);
   const [loadTemplateOpen, setLoadTemplateOpen] = useState(false);
   const loadTemplateBtnRef = useRef<HTMLButtonElement>(null);
+  const [generateOpen, setGenerateOpen] = useState(false);
 
   // Test email modal
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
@@ -775,6 +777,14 @@ export function V2Campaign() {
           <div className="flex-1 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <div className="font-bold text-[#342e37] dark:text-white">Message Details</div>
+              <div className="flex items-center gap-2">
+              <button
+                onClick={() => setGenerateOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#FFCE0A]/60 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+              >
+                <StarIcon size={11} className="text-[#FFCE0A]" />
+                Generate
+              </button>
               {templates.filter(t => t.channel === campaign.channel).length > 0 && (
                 <div className="relative">
                   <button
@@ -806,6 +816,7 @@ export function V2Campaign() {
                   )}
                 </div>
               )}
+              </div>
             </div>
 
             {campaign.channel === 'email' && draft && (
@@ -1251,6 +1262,38 @@ export function V2Campaign() {
           onClose={() => setSelectedSend(null)}
         />
       )}
+
+      {/* Generate modal */}
+      <GenerateModal
+        open={generateOpen}
+        onClose={() => setGenerateOpen(false)}
+        context={{
+          city: criteria?.city ?? '',
+          state: criteria?.state ?? '',
+          listing_type: criteria?.listing_type ?? undefined,
+          property_type: criteria?.property_type ?? undefined,
+          channel: campaign.channel,
+          business_name: userBusinessName ?? undefined,
+          contact_name: userContactName ?? undefined,
+          days_old: criteria?.days_old ?? undefined,
+          price_min: criteria?.price_min ?? undefined,
+          price_max: criteria?.price_max ?? undefined,
+        } as GenerateContext}
+        current={{
+          subject: draft?.subject ?? campaign.subject ?? '',
+          preview_text: draft?.preview_text ?? campaign.preview_text ?? '',
+          body: draft?.body ?? campaign.body ?? '',
+        }}
+        channel={campaign.channel}
+        onApply={fields => {
+          if (!draft) return;
+          updateText({
+            ...(fields.subject !== undefined ? { subject: fields.subject } : {}),
+            ...(fields.preview_text !== undefined ? { preview_text: fields.preview_text } : {}),
+            ...(fields.body !== undefined ? { body: fields.body } : {}),
+          });
+        }}
+      />
 
       {/* ------------------------------------------------------------------ */}
       {/* Save as template modal                                               */}
