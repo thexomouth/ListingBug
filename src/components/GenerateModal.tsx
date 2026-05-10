@@ -230,6 +230,11 @@ function AssistantMessage({
   );
 }
 
+// ─── Setup screen constants ───────────────────────────────────────────────────
+const SETUP_GOALS = ['Make Sales', 'Get Engagement', 'Repeat Business', 'Spread Awareness'];
+const SETUP_TONES = ['Friendly', 'Professional', 'Funny', 'Optimistic', 'Formal', 'Informal', 'Entertaining'];
+const SETUP_HOOKS = ['Fast turnaround', 'Best price', 'Premium quality', 'Local market', 'Free consult'];
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function GenerateModal({ open, onClose, context, current, channel, onApply, targetField }: GenerateModalProps) {
   const [history, setHistory] = useState<ChatMessage[]>([]);
@@ -237,15 +242,22 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const sentInitialRef = useRef(false);
 
-  // Reset chat when modal opens
+  // Setup screen state
+  const [setupDone, setSetupDone] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const [selectedTone, setSelectedTone] = useState<string | null>(null);
+  const [selectedHook, setSelectedHook] = useState<string | null>(null);
+
+  // Reset everything when modal opens
   useEffect(() => {
     if (open) {
       setHistory([]);
       setInput('');
-      sentInitialRef.current = false;
-      if (!targetField) setTimeout(() => inputRef.current?.focus(), 50);
+      setSetupDone(false);
+      setSelectedGoal(null);
+      setSelectedTone(null);
+      setSelectedHook(null);
     }
   }, [open]);
 
@@ -253,7 +265,7 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history, loading]);
 
-  const send = async (text: string) => {
+  const send = async (text: string, goal = selectedGoal, tone = selectedTone, hook = selectedHook) => {
     if (!text.trim() || loading) return;
 
     const refersToCurrentContent = /shorter|casual|professional|different angle|rewrite|try again|urgency|intriguing|question/i.test(text);
@@ -283,20 +295,23 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
       apiPrompt = `${apiPrompt}\n\n${FIELD_FORMAT_HINT[targetField]}`;
     }
 
-    // API history uses the full prompt; chat display uses the clean pill label
     const apiHistory: ChatMessage[] = [...history, { role: 'user', content: apiPrompt }];
-
     setHistory(h => [...h, { role: 'user', content: text }]);
     setInput('');
     setLoading(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-message', {
-        body: { messages: apiHistory, context: { ...context, channel } },
+        body: {
+          messages: apiHistory,
+          context: { ...context, channel },
+          ...(goal ? { goal } : {}),
+          ...(tone ? { tone } : {}),
+          ...(hook ? { hook } : {}),
+        },
       });
 
       if (error || !data?.reply) throw new Error(error?.message ?? 'No response');
-
       setHistory(h => [...h, { role: 'assistant', content: data.reply }]);
     } catch {
       setHistory(h => [...h, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
@@ -305,21 +320,33 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
     }
   };
 
-  // Auto-send the initial field-specific prompt when targeting a field
-  useEffect(() => {
-    if (!open || !targetField || loading || sentInitialRef.current || history.length > 0) return;
-    sentInitialRef.current = true;
-    send(getInitialFieldPrompt(targetField, channel));
-  }, [open, targetField, history.length, loading]);
+  const handleSetupGenerate = () => {
+    setSetupDone(true);
+    const base = targetField
+      ? getInitialFieldPrompt(targetField, channel)
+      : channel === 'email'
+        ? 'Write everything — subject line, preview text, and full email body.'
+        : 'Write an SMS message for my campaign.';
+    send(base, selectedGoal, selectedTone, selectedHook);
+  };
 
-  const handleApply = (fields: { subject?: string; preview_text?: string; body?: string }) => {
-    onApply(fields);
+  const handleSetupSkip = () => {
+    setSetupDone(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   if (!open) return null;
 
   const pills = getPills(channel, current, targetField);
   const contextLabel = [context.city, context.state].filter(Boolean).join(', ');
+  const inSetup = !setupDone && history.length === 0;
+
+  const setupPillClass = (selected: boolean) =>
+    `px-3 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer select-none ${
+      selected
+        ? 'border-[#FFCE0A] text-[#342e37] dark:text-[#342e37]'
+        : 'border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-[#FFCE0A]/60 hover:text-gray-900 dark:hover:text-white'
+    }`;
 
   const modal = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -347,106 +374,173 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
           </button>
         </div>
 
-        {/* Chat area */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {history.length === 0 && (
-            <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
-                <StarIcon size={10} className="text-[#FFCE0A]" />
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                {targetField
-                  ? `Crafting your ${FIELD_LABEL[targetField]}…`
-                  : <>
-                      Ready to write your{contextLabel ? ` ${contextLabel}` : ''} {channel} campaign. I know your merge tags (
-                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{agent_name}}'}</code>,{' '}
-                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{address}}'}</code>,{' '}
-                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{city}}'}</code>,{' '}
-                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{price}}'}</code>
-                      ) and will use them automatically. What would you like to generate?
-                    </>
-                }
-              </p>
-            </div>
-          )}
+        {/* Setup screen */}
+        {inSetup && (
+          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+            <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Quick setup — dial in the right angle</p>
 
-          {history.map((msg, i) => (
-            <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-              {msg.role === 'assistant' && (
-                <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
-                  <StarIcon size={10} className="text-[#FFCE0A]" />
-                </div>
-              )}
-              <div className={`max-w-[85%] ${msg.role === 'user' ? 'ml-auto' : ''}`}>
-                {msg.role === 'user' ? (
-                  <div className="px-3 py-2 rounded-2xl rounded-tr-sm text-sm text-white" style={{ background: '#342e37' }}>
-                    {msg.content}
-                  </div>
-                ) : (
-                  <AssistantMessage content={msg.content} channel={channel} onApply={handleApply} />
-                )}
-              </div>
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
-                <StarIcon size={10} className="text-[#FFCE0A]" />
-              </div>
-              <div className="flex items-center gap-1 py-2">
-                {[0, 1, 2].map(i => (
-                  <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            {/* Goal */}
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">What's the goal?</p>
+              <div className="flex flex-wrap gap-2">
+                {SETUP_GOALS.map(g => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setSelectedGoal(v => v === g ? null : g)}
+                    className={setupPillClass(selectedGoal === g)}
+                    style={selectedGoal === g ? { background: '#FFCE0A' } : {}}
+                  >
+                    {g}
+                  </button>
                 ))}
               </div>
             </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
 
-        {/* Pills */}
-        <div className="px-5 py-2.5 border-t border-gray-100 dark:border-white/5 shrink-0">
-          <div className="flex flex-wrap gap-1.5">
-            {pills.map(pill => (
-              <button
-                key={pill.label}
-                onClick={() => send(pill.prompt)}
-                disabled={loading}
-                className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-[#FFCE0A] hover:text-[#342e37] dark:hover:text-white transition-colors disabled:opacity-40"
-              >
-                <StarIcon size={9} className="text-[#FFCE0A]" />
-                {pill.label}
-              </button>
-            ))}
+            {/* Tone */}
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">What tone?</p>
+              <div className="flex flex-wrap gap-2">
+                {SETUP_TONES.map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setSelectedTone(v => v === t ? null : t)}
+                    className={setupPillClass(selectedTone === t)}
+                    style={selectedTone === t ? { background: '#FFCE0A' } : {}}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Hook */}
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">What's your main edge? <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">(optional)</span></p>
+              <div className="flex flex-wrap gap-2">
+                {SETUP_HOOKS.map(h => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() => setSelectedHook(v => v === h ? null : h)}
+                    className={setupPillClass(selectedHook === h)}
+                    style={selectedHook === h ? { background: '#FFCE0A' } : {}}
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Input */}
-        <div className="px-5 py-3 border-t border-gray-200 dark:border-white/10 shrink-0">
-          <div className="flex items-end gap-2">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
-              }}
-              placeholder="Ask anything — 'shorter', 'add urgency', 'more casual'…"
-              rows={1}
-              className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors placeholder-gray-400 dark:placeholder-gray-500"
-              style={{ minHeight: 40, maxHeight: 120 }}
-            />
+        {/* Chat area */}
+        {!inSetup && (
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {history.map((msg, i) => (
+              <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                {msg.role === 'assistant' && (
+                  <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
+                    <StarIcon size={10} className="text-[#FFCE0A]" />
+                  </div>
+                )}
+                <div className={`max-w-[85%] ${msg.role === 'user' ? 'ml-auto' : ''}`}>
+                  {msg.role === 'user' ? (
+                    <div className="px-3 py-2 rounded-2xl rounded-tr-sm text-sm text-white" style={{ background: '#342e37' }}>
+                      {msg.content}
+                    </div>
+                  ) : (
+                    <AssistantMessage content={msg.content} channel={channel} onApply={onApply} />
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {loading && (
+              <div className="flex gap-3">
+                <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5" style={{ background: '#342e37' }}>
+                  <StarIcon size={10} className="text-[#FFCE0A]" />
+                </div>
+                <div className="flex items-center gap-1 py-2">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+        )}
+
+        {/* Setup footer */}
+        {inSetup && (
+          <div className="px-5 py-4 border-t border-gray-200 dark:border-white/10 shrink-0 flex items-center justify-between gap-3">
             <button
-              onClick={() => send(input)}
-              disabled={!input.trim() || loading}
-              className="p-2.5 rounded-xl transition-colors disabled:opacity-40"
-              style={{ background: '#342e37' }}
+              onClick={handleSetupSkip}
+              className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
-              <Send className="w-4 h-4 text-[#FFCE0A]" />
+              Skip setup →
+            </button>
+            <button
+              onClick={handleSetupGenerate}
+              disabled={!selectedGoal || !selectedTone}
+              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg transition-opacity disabled:opacity-40"
+              style={{ background: '#342e37', color: '#FFCE0A' }}
+            >
+              <StarIcon size={11} className="text-[#FFCE0A]" />
+              Generate
             </button>
           </div>
-          <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
-        </div>
+        )}
+
+        {/* Chat pills */}
+        {!inSetup && (
+          <div className="px-5 py-2.5 border-t border-gray-100 dark:border-white/5 shrink-0">
+            <div className="flex flex-wrap gap-1.5">
+              {pills.map(pill => (
+                <button
+                  key={pill.label}
+                  onClick={() => send(pill.prompt)}
+                  disabled={loading}
+                  className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-[#FFCE0A] hover:text-[#342e37] dark:hover:text-white transition-colors disabled:opacity-40"
+                >
+                  <StarIcon size={9} className="text-[#FFCE0A]" />
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Chat input */}
+        {!inSetup && (
+          <div className="px-5 py-3 border-t border-gray-200 dark:border-white/10 shrink-0">
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
+                }}
+                placeholder="Ask anything — 'shorter', 'add urgency', 'more casual'…"
+                rows={1}
+                className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors placeholder-gray-400 dark:placeholder-gray-500"
+                style={{ minHeight: 40, maxHeight: 120 }}
+              />
+              <button
+                onClick={() => send(input)}
+                disabled={!input.trim() || loading}
+                className="p-2.5 rounded-xl transition-colors disabled:opacity-40"
+                style={{ background: '#342e37' }}
+              >
+                <Send className="w-4 h-4 text-[#FFCE0A]" />
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-1.5 text-center">Enter to send · Shift+Enter for new line</p>
+          </div>
+        )}
       </div>
     </div>
   );

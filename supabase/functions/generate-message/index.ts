@@ -239,7 +239,33 @@ function formatPriceRange(min: number | null | undefined, max: number | null | u
   return "";
 }
 
-function buildSystemPrompt(ctx: Record<string, unknown>): string {
+// ─── Goal / Tone / Hook context maps ─────────────────────────────────────────
+const GOAL_MAP: Record<string, string> = {
+  'Make Sales': 'Drive action — move the agent toward booking or hiring you. Create desire. CTA should push for a concrete next step: schedule a call, get a quote, confirm availability. Every sentence should earn its place.',
+  'Get Engagement': 'Spark a conversation — a reply is the only win. Keep the ask tiny. Ask a question or offer something with zero friction. Do not pitch hard. An open loop ("curious what you\'re doing for photos on this one?") beats a sales paragraph.',
+  'Repeat Business': 'Re-activate a relationship — this agent may already know you. Skip the intro, get to the point. Reference their market or a past interaction if relevant. The tone should feel like a follow-up from a trusted vendor, not a cold pitch.',
+  'Spread Awareness': 'Plant a flag — even if they don\'t reply now, they should remember you next time they need this service. Prioritize a memorable, specific statement of what you do and who you serve in this market. No pressure, no hard sell.',
+};
+
+const TONE_MAP: Record<string, string> = {
+  'Funny': 'Use light, dry humor where it fits naturally. One well-placed line beats forced cheerfulness. Do not be cringe — aim for a knowing smile, not a dad joke.',
+  'Optimistic': 'Upbeat and forward-looking. Frame everything as an opportunity. Energy and enthusiasm, but not over the top.',
+  'Formal': 'Professional and structured. Complete sentences. No contractions. Measured, credible tone throughout.',
+  'Informal': 'Casual and direct. Contractions are fine. Short sentences. Write like you\'re texting a colleague.',
+  'Friendly': 'Warm and approachable. Feels like a peer reaching out, not a salesperson. Genuine, not performative.',
+  'Entertaining': 'Make it worth reading. Something unexpected — a vivid image, a sharp observation, an unusual angle. Being boring is the biggest failure.',
+  'Professional': 'Competent and credible. Confident without being pushy. Focused on results and reliability. No fluff.',
+};
+
+const HOOK_MAP: Record<string, string> = {
+  'Fast turnaround': 'Speed is the differentiator. The agent is under timeline pressure — you can help them move fast. Turnaround time or same-week availability should appear early.',
+  'Best price': 'Value and affordability are the angle. Be concrete — "free quote" or a specific offer beats vague promises about saving money.',
+  'Premium quality': 'Quality and results are the differentiator. Reference outcomes, craftsmanship, or what great work does for the listing.',
+  'Local market': 'Local expertise is the credibility. You know this neighborhood, this market, these listings. Specificity is the hook — mention the city or area.',
+  'Free consult': 'Zero friction is the angle. The first step costs nothing. Make it trivially easy to say yes to a conversation.',
+};
+
+function buildSystemPrompt(ctx: Record<string, unknown>, goal?: string, tone?: string, hook?: string): string {
   const city          = (ctx.city as string) || "";
   const state         = (ctx.state as string) || "";
   const listingType   = (ctx.listing_type as string) || "For Sale";
@@ -279,6 +305,11 @@ ${daysOld && daysOld <= 7 ? "- These are NEW listings — the agent is in active
 Lead with the benefit to the AGENT (or their seller), not a feature list:
 
 ${serviceCtx.pitch}
+${goal || tone || hook ? `
+━━━ CAMPAIGN BRIEF ━━━
+${goal && GOAL_MAP[goal] ? `Goal — ${goal}: ${GOAL_MAP[goal]}` : ''}
+${tone && TONE_MAP[tone] ? `\nTone — ${tone}: ${TONE_MAP[tone]}` : ''}
+${hook && HOOK_MAP[hook] ? `\nMain angle — ${hook}: ${HOOK_MAP[hook]}` : ''}` : ''}
 
 ━━━ SUBJECT LINE STRATEGY ━━━
 ${isSMS ? "N/A — SMS has no subject line. Get to the point in line 1." : `${serviceCtx.subjectBlock}
@@ -339,11 +370,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { messages, context } = await req.json();
+    const { messages, context, goal, tone, hook } = await req.json();
 
     if (!GROQ_API_KEY) return json({ error: "GROQ_API_KEY not configured" }, 500);
 
-    const systemPrompt = buildSystemPrompt(context ?? {});
+    const systemPrompt = buildSystemPrompt(context ?? {}, goal, tone, hook);
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
