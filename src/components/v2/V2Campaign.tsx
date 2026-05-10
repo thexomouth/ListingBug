@@ -1031,7 +1031,7 @@ export function V2Campaign() {
             <div className="text-sm text-gray-600 dark:text-gray-400">No sends yet — the campaign will run tonight.</div>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-white/10 mb-8">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-white/10 mb-8 bg-white dark:bg-[#2F2F2F]">
             <table className="w-full text-sm">
               <thead className="bg-white dark:bg-[#2F2F2F] border-b border-gray-200 dark:border-white/10">
                 <tr>
@@ -1066,7 +1066,7 @@ export function V2Campaign() {
                     <tr
                       key={send.id}
                       onClick={() => setSelectedSend(send)}
-                      className={`group border-b border-gray-100 dark:border-white/10 hover:bg-yellow-50 dark:hover:bg-white/10 transition-colors cursor-pointer ${idx % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-gray-50 dark:bg-white/[0.03]'}`}
+                      className={`group border-b border-gray-100 dark:border-white/10 hover:bg-yellow-50 dark:hover:bg-white/10 transition-colors cursor-pointer ${idx % 2 === 0 ? 'bg-white dark:bg-[#2F2F2F]' : 'bg-gray-50 dark:bg-[#272727]'}`}
                     >
                       <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150">
                         <div className="font-medium text-gray-900 dark:text-white leading-tight">
