@@ -786,9 +786,7 @@ export function NewCampaign() {
             type="button"
             onClick={() => setBusinessInfo(b => ({
               ...b,
-              service_type: b.service_type.includes(tag)
-                ? b.service_type.filter(t => t !== tag)
-                : [...b.service_type, tag],
+              service_type: b.service_type.includes(tag) ? [] : [tag],
             }))}
             className="px-3 py-1 rounded-full border text-xs transition-all"
             style={
