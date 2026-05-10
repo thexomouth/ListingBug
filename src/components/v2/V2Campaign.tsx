@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Pencil, Check, AlertCircle, Send as SendIcon, MessageSquare, Reply, MousePointer, ChevronUp, ChevronDown } from 'lucide-react';
-import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal';
+import { GenerateModal, StarIcon, type GenerateContext, type GenerateTargetField } from '../GenerateModal';
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { AgentActivityModal } from './AgentActivityModal';
 import { CityAutocomplete } from '../CityAutocomplete';
@@ -210,6 +210,7 @@ export function V2Campaign() {
   const [loadTemplateOpen, setLoadTemplateOpen] = useState(false);
   const loadTemplateBtnRef = useRef<HTMLButtonElement>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateField, setGenerateField] = useState<GenerateTargetField | null>(null);
 
   // Test email modal
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
@@ -794,13 +795,6 @@ export function V2Campaign() {
             <div className="flex items-center justify-between mb-3">
               <div className="font-bold text-[#342e37] dark:text-white">Message Details</div>
               <div className="flex items-center gap-2">
-              <button
-                onClick={() => setGenerateOpen(true)}
-                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#FFCE0A]/60 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
-              >
-                <StarIcon size={11} className="text-[#FFCE0A]" />
-                Generate
-              </button>
               {templates.filter(t => t.channel === campaign.channel).length > 0 && (
                 <div className="relative">
                   <button
@@ -840,7 +834,16 @@ export function V2Campaign() {
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-xs text-gray-400 dark:text-gray-500">Subject</div>
-                    <span className={`text-xs tabular-nums ${draft.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.subject.length}/60</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { setGenerateField('subject'); setGenerateOpen(true); }}
+                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                      >
+                        <StarIcon size={9} className="text-[#FFCE0A]" />
+                        Generate
+                      </button>
+                      <span className={`text-xs tabular-nums ${draft.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.subject.length}/60</span>
+                    </div>
                   </div>
                   <input
                     value={draft.subject}
@@ -853,7 +856,16 @@ export function V2Campaign() {
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-xs text-gray-400 dark:text-gray-500">Preview text <span className="text-gray-300 dark:text-gray-600">(shown after subject in inbox)</span></div>
-                    <span className={`text-xs tabular-nums ${draft.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.preview_text.length}/90</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { setGenerateField('preview'); setGenerateOpen(true); }}
+                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                      >
+                        <StarIcon size={9} className="text-[#FFCE0A]" />
+                        Generate
+                      </button>
+                      <span className={`text-xs tabular-nums ${draft.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.preview_text.length}/90</span>
+                    </div>
                   </div>
                   <input
                     value={draft.preview_text}
@@ -866,7 +878,18 @@ export function V2Campaign() {
               </>
             )}
 
-            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Body</div>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-xs text-gray-400 dark:text-gray-500">Body</div>
+              {draft && (
+                <button
+                  onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
+                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                >
+                  <StarIcon size={9} className="text-[#FFCE0A]" />
+                  Generate
+                </button>
+              )}
+            </div>
 
             {campaign.channel === 'email' ? (
               draft ? (
@@ -1301,7 +1324,7 @@ export function V2Campaign() {
       {/* Generate modal */}
       <GenerateModal
         open={generateOpen}
-        onClose={() => setGenerateOpen(false)}
+        onClose={() => { setGenerateOpen(false); setGenerateField(null); }}
         context={{
           city: criteria?.city ?? '',
           state: criteria?.state ?? '',
@@ -1321,6 +1344,7 @@ export function V2Campaign() {
           body: draft?.body ?? campaign.body ?? '',
         }}
         channel={campaign.channel}
+        targetField={generateField ?? undefined}
         onApply={fields => {
           if (!draft) return;
           updateText({

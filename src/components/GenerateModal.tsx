@@ -39,6 +39,8 @@ interface ParsedFields {
   plain?: string;
 }
 
+export type GenerateTargetField = 'subject' | 'preview' | 'body';
+
 interface GenerateModalProps {
   open: boolean;
   onClose: () => void;
@@ -46,6 +48,7 @@ interface GenerateModalProps {
   current: { subject?: string; preview_text?: string; body?: string };
   channel: string;
   onApply: (fields: { subject?: string; preview_text?: string; body?: string }) => void;
+  targetField?: GenerateTargetField;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -78,25 +81,65 @@ function parseResponse(text: string): ParsedFields {
   return result;
 }
 
+// ─── Helpers for field-targeted generation ────────────────────────────────────
+function getInitialFieldPrompt(targetField: GenerateTargetField, channel: string): string {
+  if (targetField === 'subject') return 'Write a subject line for my campaign.';
+  if (targetField === 'preview') return 'Write preview text for my campaign.';
+  return channel === 'email' ? 'Write a full email body for my campaign.' : 'Write an SMS message for my campaign.';
+}
+
+const FIELD_FORMAT_HINT: Record<GenerateTargetField, string> = {
+  subject: 'Only write the subject line. Use format: SUBJECT: <text>',
+  preview: 'Only write the preview text. Use format: PREVIEW: <text>',
+  body: 'Only write the message body. Use format: BODY:\n<text>',
+};
+
+const FIELD_LABEL: Record<GenerateTargetField, string> = {
+  subject: 'subject line',
+  preview: 'preview text',
+  body: 'message body',
+};
+
 // ─── Preset pills ─────────────────────────────────────────────────────────────
-function getPills(channel: string, current: GenerateModalProps['current']) {
-  const hasContent = !!(current.subject || current.preview_text || stripHtml(current.body ?? ''));
-  const email = channel === 'email';
+function getPills(channel: string, current: GenerateModalProps['current'], targetField?: GenerateTargetField) {
   const pills: { label: string; prompt: string }[] = [];
 
-  if (email) {
-    pills.push({ label: 'Write everything', prompt: 'Write a subject line, preview text, and full email body for my campaign.' });
-    pills.push({ label: 'Subject + preview', prompt: 'Write just a subject line and preview text for my campaign.' });
-    pills.push({ label: 'Message body', prompt: 'Write just the full message body for my campaign.' });
+  if (targetField === 'subject') {
+    pills.push({ label: 'Try again', prompt: 'Write a different subject line.' });
+    pills.push({ label: 'Shorter', prompt: 'Make it shorter.' });
+    pills.push({ label: 'Add urgency', prompt: 'Add a sense of urgency.' });
+    pills.push({ label: 'More casual', prompt: 'More casual tone.' });
+    pills.push({ label: 'Question format', prompt: 'Phrase it as a question.' });
+  } else if (targetField === 'preview') {
+    pills.push({ label: 'Try again', prompt: 'Write a different preview text.' });
+    pills.push({ label: 'Shorter', prompt: 'Make it shorter.' });
+    pills.push({ label: 'More intriguing', prompt: 'Make it more intriguing and curiosity-driven.' });
+    pills.push({ label: 'More casual', prompt: 'More casual tone.' });
+  } else if (targetField === 'body') {
+    const hasBody = !!stripHtml(current.body ?? '');
+    pills.push({ label: 'Try again', prompt: 'Write a completely different message body.' });
+    if (hasBody) {
+      pills.push({ label: 'Shorter', prompt: 'Make it shorter and more concise.' });
+      pills.push({ label: 'More casual', prompt: 'More casual, friendly tone.' });
+      pills.push({ label: 'More professional', prompt: 'More professional tone.' });
+      pills.push({ label: 'Add urgency', prompt: 'Add a sense of urgency.' });
+    }
   } else {
-    pills.push({ label: 'Write message', prompt: 'Write an SMS message for my campaign.' });
-  }
-
-  if (hasContent) {
-    pills.push({ label: 'Make it shorter', prompt: 'Make the current copy shorter and more concise. Keep the same fields.' });
-    pills.push({ label: 'More casual', prompt: 'Rewrite the current copy in a more casual, friendly tone.' });
-    pills.push({ label: 'More professional', prompt: 'Rewrite the current copy in a more professional tone.' });
-    pills.push({ label: 'Different angle', prompt: 'Try a completely different creative angle.' });
+    const hasContent = !!(current.subject || current.preview_text || stripHtml(current.body ?? ''));
+    const email = channel === 'email';
+    if (email) {
+      pills.push({ label: 'Write everything', prompt: 'Write a subject line, preview text, and full email body for my campaign.' });
+      pills.push({ label: 'Subject + preview', prompt: 'Write just a subject line and preview text for my campaign.' });
+      pills.push({ label: 'Message body', prompt: 'Write just the full message body for my campaign.' });
+    } else {
+      pills.push({ label: 'Write message', prompt: 'Write an SMS message for my campaign.' });
+    }
+    if (hasContent) {
+      pills.push({ label: 'Make it shorter', prompt: 'Make the current copy shorter and more concise. Keep the same fields.' });
+      pills.push({ label: 'More casual', prompt: 'Rewrite the current copy in a more casual, friendly tone.' });
+      pills.push({ label: 'More professional', prompt: 'Rewrite the current copy in a more professional tone.' });
+      pills.push({ label: 'Different angle', prompt: 'Try a completely different creative angle.' });
+    }
   }
 
   return pills;
@@ -188,19 +231,21 @@ function AssistantMessage({
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function GenerateModal({ open, onClose, context, current, channel, onApply }: GenerateModalProps) {
+export function GenerateModal({ open, onClose, context, current, channel, onApply, targetField }: GenerateModalProps) {
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sentInitialRef = useRef(false);
 
   // Reset chat when modal opens
   useEffect(() => {
     if (open) {
       setHistory([]);
       setInput('');
-      setTimeout(() => inputRef.current?.focus(), 50);
+      sentInitialRef.current = false;
+      if (!targetField) setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
 
@@ -211,16 +256,31 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
   const send = async (text: string) => {
     if (!text.trim() || loading) return;
 
-    // For pills that reference current content, append it to the API prompt
-    const refersToCurrentContent = /shorter|casual|professional|different angle|rewrite/i.test(text);
+    const refersToCurrentContent = /shorter|casual|professional|different angle|rewrite|try again|urgency|intriguing|question/i.test(text);
     let apiPrompt = text;
+
+    // Append relevant current content for rewrite-style prompts
     if (refersToCurrentContent) {
       const parts: string[] = [];
-      if (current.subject) parts.push(`Current subject: "${current.subject}"`);
-      if (current.preview_text) parts.push(`Current preview: "${current.preview_text}"`);
-      const body = stripHtml(current.body ?? '');
-      if (body) parts.push(`Current body:\n${body}`);
+      if (targetField === 'subject' && current.subject) {
+        parts.push(`Current subject: "${current.subject}"`);
+      } else if (targetField === 'preview' && current.preview_text) {
+        parts.push(`Current preview: "${current.preview_text}"`);
+      } else if (targetField === 'body') {
+        const body = stripHtml(current.body ?? '');
+        if (body) parts.push(`Current body:\n${body}`);
+      } else if (!targetField) {
+        if (current.subject) parts.push(`Current subject: "${current.subject}"`);
+        if (current.preview_text) parts.push(`Current preview: "${current.preview_text}"`);
+        const body = stripHtml(current.body ?? '');
+        if (body) parts.push(`Current body:\n${body}`);
+      }
       if (parts.length) apiPrompt = `${text}\n\n${parts.join('\n')}`;
+    }
+
+    // Constrain AI to the target field's format
+    if (targetField) {
+      apiPrompt = `${apiPrompt}\n\n${FIELD_FORMAT_HINT[targetField]}`;
     }
 
     // API history uses the full prompt; chat display uses the clean pill label
@@ -245,13 +305,20 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
     }
   };
 
+  // Auto-send the initial field-specific prompt when targeting a field
+  useEffect(() => {
+    if (!open || !targetField || loading || sentInitialRef.current || history.length > 0) return;
+    sentInitialRef.current = true;
+    send(getInitialFieldPrompt(targetField, channel));
+  }, [open, targetField, history.length, loading]);
+
   const handleApply = (fields: { subject?: string; preview_text?: string; body?: string }) => {
     onApply(fields);
   };
 
   if (!open) return null;
 
-  const pills = getPills(channel, current);
+  const pills = getPills(channel, current, targetField);
   const contextLabel = [context.city, context.state].filter(Boolean).join(', ');
 
   const modal = (
@@ -266,7 +333,9 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/10 shrink-0">
           <div className="flex items-center gap-2.5">
             <StarIcon size={16} className="text-[#FFCE0A]" />
-            <span className="font-semibold text-[15px] text-gray-900 dark:text-white">Generate with AI</span>
+            <span className="font-semibold text-[15px] text-gray-900 dark:text-white">
+              {targetField ? `Generate ${FIELD_LABEL[targetField]}` : 'Generate with AI'}
+            </span>
             {contextLabel && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400">
                 {contextLabel} · {channel}
@@ -286,12 +355,17 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
                 <StarIcon size={10} className="text-[#FFCE0A]" />
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                Ready to write your{contextLabel ? ` ${contextLabel}` : ''} {channel} campaign. I know your merge tags (
-                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{agent_name}}'}</code>,{' '}
-                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{address}}'}</code>,{' '}
-                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{city}}'}</code>,{' '}
-                <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{price}}'}</code>
-                ) and will use them automatically. What would you like to generate?
+                {targetField
+                  ? `Crafting your ${FIELD_LABEL[targetField]}…`
+                  : <>
+                      Ready to write your{contextLabel ? ` ${contextLabel}` : ''} {channel} campaign. I know your merge tags (
+                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{agent_name}}'}</code>,{' '}
+                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{address}}'}</code>,{' '}
+                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{city}}'}</code>,{' '}
+                      <code className="text-xs bg-gray-100 dark:bg-white/10 px-1 rounded">{'{{price}}'}</code>
+                      ) and will use them automatically. What would you like to generate?
+                    </>
+                }
               </p>
             </div>
           )}

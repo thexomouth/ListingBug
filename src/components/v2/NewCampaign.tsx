@@ -10,7 +10,7 @@ import { SMTPSetupModal } from '../SMTPSetupModal';
 import { RichTextEditor } from './editor/RichTextEditor';
 import { buildPreviewHtml } from './editor/previewUtils';
 import { Mail, Server, CheckCircle2, Plus, Pencil } from 'lucide-react';
-import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal';
+import { GenerateModal, StarIcon, type GenerateContext, type GenerateTargetField } from '../GenerateModal';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 import { buildGmailAuthUrl } from '../../utils/gmailOAuth';
@@ -136,6 +136,7 @@ export function NewCampaign() {
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateField, setGenerateField] = useState<GenerateTargetField | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailsSent, setEmailsSent] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -973,15 +974,6 @@ export function NewCampaign() {
             {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setGenerateOpen(true)}
-            className="shrink-0 flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-lg border border-[#FFCE0A]/60 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors font-medium"
-          >
-            <StarIcon size={13} className="text-[#FFCE0A]" />
-            Generate
-          </button>
-
           <div className="relative shrink-0" ref={templateDropdownRef}>
             <button
               type="button"
@@ -1075,7 +1067,17 @@ export function NewCampaign() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Subject line</label>
-                    <span className={`text-xs tabular-nums ${messageInfo.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.subject.length}/60</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setGenerateField('subject'); setGenerateOpen(true); }}
+                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                      >
+                        <StarIcon size={9} className="text-[#FFCE0A]" />
+                        Generate
+                      </button>
+                      <span className={`text-xs tabular-nums ${messageInfo.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.subject.length}/60</span>
+                    </div>
                   </div>
                   <Input
                     ref={subjectRef}
@@ -1120,7 +1122,17 @@ export function NewCampaign() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span></label>
-                    <span className={`text-xs tabular-nums ${messageInfo.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.preview_text.length}/90</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setGenerateField('preview'); setGenerateOpen(true); }}
+                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                      >
+                        <StarIcon size={9} className="text-[#FFCE0A]" />
+                        Generate
+                      </button>
+                      <span className={`text-xs tabular-nums ${messageInfo.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.preview_text.length}/90</span>
+                    </div>
                   </div>
                   <Input
                     value={messageInfo.preview_text}
@@ -1133,7 +1145,17 @@ export function NewCampaign() {
             )}
 
             <div>
-              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1.5">Message body</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm text-gray-600 dark:text-gray-400">Message body</label>
+                <button
+                  type="button"
+                  onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
+                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                >
+                  <StarIcon size={9} className="text-[#FFCE0A]" />
+                  Generate
+                </button>
+              </div>
               {messageInfo.channel === 'email' ? (
                 <RichTextEditor
                   content={messageInfo.body}
@@ -1507,7 +1529,7 @@ export function NewCampaign() {
       {/* Generate modal */}
       <GenerateModal
         open={generateOpen}
-        onClose={() => setGenerateOpen(false)}
+        onClose={() => { setGenerateOpen(false); setGenerateField(null); }}
         context={{
           city: searchCriteria.city,
           state: searchCriteria.state,
@@ -1527,6 +1549,7 @@ export function NewCampaign() {
           body: messageInfo.body,
         }}
         channel={messageInfo.channel}
+        targetField={generateField ?? undefined}
         onApply={fields => setMessageInfo(m => ({
           ...m,
           ...(fields.subject !== undefined ? { subject: fields.subject } : {}),
