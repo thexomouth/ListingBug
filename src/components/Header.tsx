@@ -342,8 +342,9 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                 </button>
                 <span className="text-[#342e37]/30 font-normal">|</span>
                 */}
-                <button
-                  onClick={() => handleNavigate('use-cases')}
+                <a
+                  href="/use-cases"
+                  onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('use-cases'); }}
                   className={`font-bold text-[18px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
                 >
                   Use Cases
@@ -353,10 +354,11 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   {currentPage !== 'use-cases' && (
                     <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                   )}
-                </button>
+                </a>
                 <span className="text-[#342e37] font-normal">|</span>
-                <button
-                  onClick={() => handleNavigate('pricing')}
+                <a
+                  href="/pricing"
+                  onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('pricing'); }}
                   className={`font-bold text-[17px] relative pb-1 transition-all text-[#342e37] hover:text-white whitespace-nowrap group`}
                 >
                   Pricing
@@ -366,7 +368,7 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                   {currentPage !== 'pricing' && (
                     <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#342e37]/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                   )}
-                </button>
+                </a>
               </nav>
             ) : (
               <nav className="hidden">
@@ -487,8 +489,9 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
             <nav className="flex flex-col p-4">
               {!isLoggedIn ? (
                 <>
-                  <button
-                    onClick={() => handleNavigate('use-cases')}
+                  <a
+                    href="/use-cases"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('use-cases'); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'use-cases'
                         ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
@@ -496,9 +499,10 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     }`}
                   >
                     Use Cases
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('pricing')}
+                  </a>
+                  <a
+                    href="/pricing"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('pricing'); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${
                       currentPage === 'pricing'
                         ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white'
@@ -506,52 +510,58 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
                     }`}
                   >
                     Pricing
-                  </button>
+                  </a>
 
                   <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
 
-                  <button
-                    onClick={() => handleNavigate('login')}
+                  <a
+                    href="/login"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('login'); }}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Login / Sign Up
-                  </button>
+                  </a>
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={() => handleNavigate('search-listings')}
+                  <a
+                    href="/listings"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('search-listings'); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'search-listings' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Listings
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('agents')}
+                  </a>
+                  <a
+                    href="/agents"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('agents'); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'agents' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Agents
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('automations')}
+                  </a>
+                  <a
+                    href="/automations"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('automations'); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'automations' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Automations
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('messaging')}
+                  </a>
+                  <a
+                    href="/messaging"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('messaging'); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'messaging' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Messaging
-                  </button>
+                  </a>
 
                   <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
 
-                  <button
-                    onClick={() => handleNavigate('account')}
+                  <a
+                    href="/account"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('account'); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'account' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Account
-                  </button>
+                  </a>
                 </>
               )}
             </nav>
@@ -593,30 +603,34 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
 
                 {/* Navigation */}
                 <nav className="flex flex-col p-4">
-                  <button
-                    onClick={() => { window.location.href = '/v2/account/profile'; handleCloseAccountMenu(); }}
+                  <a
+                    href="/v2/account/profile"
+                    onClick={handleCloseAccountMenu}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Profile
-                  </button>
-                  <button
-                    onClick={() => { window.location.href = '/v2/account/usage'; handleCloseAccountMenu(); }}
+                  </a>
+                  <a
+                    href="/v2/account/usage"
+                    onClick={handleCloseAccountMenu}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Usage
-                  </button>
-                  <button
-                    onClick={() => { window.location.href = '/v2/account/billing'; handleCloseAccountMenu(); }}
+                  </a>
+                  <a
+                    href="/v2/account/billing"
+                    onClick={handleCloseAccountMenu}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Billing
-                  </button>
-                  <button
-                    onClick={() => { window.location.href = '/v2/setup'; handleCloseAccountMenu(); }}
+                  </a>
+                  <a
+                    href="/v2/setup"
+                    onClick={handleCloseAccountMenu}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Setup
-                  </button>
+                  </a>
 
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
 
@@ -689,36 +703,41 @@ export function Header({ currentPage, isLoggedIn, onNavigate, onSignOut, onAccou
 
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
 
-                  <button
-                    onClick={() => handleNavigate('account', 'profile')}
+                  <a
+                    href="/account"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('account', 'profile'); }}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Profile
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('account', 'usage')}
+                  </a>
+                  <a
+                    href="/account"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('account', 'usage'); }}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Usage
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('account', 'billing')}
+                  </a>
+                  <a
+                    href="/account"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('account', 'billing'); }}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Billing
-                  </button>
-                  <button
-                    onClick={() => handleNavigate('account', 'integrations')}
+                  </a>
+                  <a
+                    href="/account"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('account', 'integrations'); }}
                     className="text-left py-3 px-4 rounded-lg font-bold text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     API
-                  </button>
-                  <button
-                    onClick={() => { handleNavigate('integrations'); setIsAccountMenuOpen(false); }}
+                  </a>
+                  <a
+                    href="/integrations"
+                    onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); handleNavigate('integrations'); setIsAccountMenuOpen(false); }}
                     className={`text-left py-3 px-4 rounded-lg font-bold transition-colors ${currentPage === 'integrations' ? 'bg-[#342e37]/10 text-[#342e37] dark:bg-white/10 dark:text-white' : 'text-[#342e37] dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                   >
                     Integrations
-                  </button>
+                  </a>
 
                   {/* Divider */}
                   <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
