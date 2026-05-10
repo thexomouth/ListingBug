@@ -246,7 +246,7 @@ function AssistantMessage({
 
 // ─── Setup screen constants ───────────────────────────────────────────────────
 const SETUP_GOALS = ['Make Sales', 'Get Engagement', 'Repeat Business', 'Spread Awareness'];
-const SETUP_TONES = ['Friendly', 'Professional', 'Funny', 'Optimistic', 'Formal', 'Informal', 'Entertaining'];
+const SETUP_TONES = ['Friendly', 'Professional', 'Funny', 'Optimistic', 'Formal', 'Informal', 'Entertaining', 'Serious'];
 const SETUP_HOOKS = ['Fast turnaround', 'Best price', 'Premium quality', 'Local market', 'Free consult', 'Intro Offer'];
 
 // ─── Main component ───────────────────────────────────────────────────────────
