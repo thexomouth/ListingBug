@@ -566,7 +566,7 @@ export function V2Campaign() {
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50';
 
   // Shared classes for inline editable inputs in the overview rows
-  const rowInputClass = 'text-sm text-gray-900 dark:text-white font-medium text-right bg-transparent border border-transparent hover:border-gray-200 dark:hover:border-white/20 focus:border-[#FFCE0A] dark:focus:border-[#FFCE0A] rounded-md px-2 py-1 outline-none transition-colors leading-none';
+  const rowInputClass = 'text-sm text-gray-900 dark:text-white font-medium text-right bg-transparent dark:bg-[#2a2a2a] border border-transparent hover:border-gray-200 dark:hover:border-white/20 focus:border-[#FFCE0A] dark:focus:border-[#FFCE0A] rounded-md px-2 py-1 outline-none transition-colors leading-none';
 
   // ---------------------------------------------------------------------------
   // Render
