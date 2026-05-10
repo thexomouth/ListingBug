@@ -27,15 +27,14 @@ ALTER FUNCTION public.handle_new_user()
 -- These are called only from edge functions (service role) or auth triggers.
 -- Revoking from anon and authenticated prevents direct REST API abuse.
 
-REVOKE EXECUTE ON FUNCTION public.increment_listings_fetched(uuid, integer) FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.increment_total_listings_fetched(uuid, integer) FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.increment_total_listings_exported(uuid, integer) FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.increment_sender_count(uuid) FROM anon, authenticated;
-
--- handle_new_user and new_user_alert are auth trigger functions — not meant to be
--- called directly via REST at all.
-REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.new_user_alert(jsonb) FROM anon, authenticated;
+-- Revoke from PUBLIC (the default grant); revoking specific roles alone is insufficient
+-- since anon/authenticated inherit EXECUTE from PUBLIC.
+REVOKE EXECUTE ON FUNCTION public.increment_listings_fetched(uuid, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.increment_total_listings_fetched(uuid, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.increment_total_listings_exported(uuid, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.increment_sender_count(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.new_user_alert(jsonb) FROM PUBLIC;
 
 -- ── FIX PERMISSIVE ALWAYS-TRUE POLICIES ──────────────────────────────────────
 -- automation_run_listings and marketing_sends have USING(true) WITH CHECK(true)
