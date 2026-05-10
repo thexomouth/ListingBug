@@ -89,16 +89,16 @@ function getInitialFieldPrompt(
 ): string {
   if (targetField === 'subject') {
     if (current?.subject?.trim())
-      return `I've started a subject line: "${current.subject.trim()}". Improve or rewrite it — keep the same angle or try a better one.`;
+      return `Here is my subject line draft: "${current.subject.trim()}"\n\nImprove this specific draft. Honor my angle and direction — sharpen, tighten, and refine what I wrote. Do not ignore it or replace it with a generic template.`;
     return 'Write a subject line for my campaign.';
   }
   if (targetField === 'preview') {
     if (current?.preview_text?.trim())
-      return `I've started preview text: "${current.preview_text.trim()}". Improve or rewrite it.`;
+      return `Here is my preview text draft: "${current.preview_text.trim()}"\n\nImprove this specific draft. Keep my intended direction — refine and sharpen it. Do not ignore it or replace it with a generic template.`;
     return 'Write preview text for my campaign.';
   }
   const body = stripHtml(current?.body ?? '');
-  if (body) return `I've started a message body:\n${body}\n\nImprove or rewrite it.`;
+  if (body) return `Here is my message body draft:\n\n${body}\n\nImprove this specific draft. Preserve my voice, angle, and structure where they are working. Refine and sharpen what is there. Do not ignore it or replace it with a generic template.`;
   return channel === 'email' ? 'Write a full email body for my campaign.' : 'Write an SMS message for my campaign.';
 }
 
