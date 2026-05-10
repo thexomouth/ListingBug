@@ -255,14 +255,15 @@ const TONE_MAP: Record<string, string> = {
   'Friendly': 'Warm and approachable. Feels like a peer reaching out, not a salesperson. Genuine, not performative.',
   'Entertaining': 'Make it worth reading. Something unexpected — a vivid image, a sharp observation, an unusual angle. Being boring is the biggest failure.',
   'Professional': 'Competent and credible. Confident without being pushy. Focused on results and reliability. No fluff.',
+  'Serious': 'No humor, no small talk. Measured, direct, and focused on substance. Every sentence is there for a reason. Conveys that this is a professional who takes their work seriously.',
 };
 
 const HOOK_MAP: Record<string, string> = {
-  'Fast turnaround': 'Speed is the differentiator. The agent is under timeline pressure — you can help them move fast. Turnaround time or same-week availability should appear early.',
-  'Best price': 'Value and affordability are the angle. Be concrete — "free quote" or a specific offer beats vague promises about saving money.',
-  'Premium quality': 'Quality and results are the differentiator. Reference outcomes, craftsmanship, or what great work does for the listing.',
-  'Local market': 'Local expertise is the credibility. You know this neighborhood, this market, these listings. Specificity is the hook — mention the city or area.',
-  'Free consult': 'Zero friction is the angle. The first step costs nothing. Make it trivially easy to say yes to a conversation.',
+  'Fast Turnaround': 'Speed is the differentiator. The agent is under timeline pressure — you can help them move fast. Turnaround time or same-week availability should appear early.',
+  'Best Price': 'Value and affordability are the angle. Be concrete — "free quote" or a specific offer beats vague promises about saving money.',
+  'Premium Quality': 'Quality and results are the differentiator. Reference outcomes, craftsmanship, or what great work does for the listing.',
+  'Local Market': 'Local expertise is the credibility. You know this neighborhood, this market, these listings. Specificity is the hook — mention the city or area.',
+  'Free Consult': 'Zero friction is the angle. The first step costs nothing. Make it trivially easy to say yes to a conversation.',
   'Intro Offer': 'A limited introductory rate or discounted first job is the hook. Frame it as a risk-free way to try the service — the goal is to get a first booking, not maximize margin.',
 };
 
@@ -330,6 +331,20 @@ Every message should follow this structure:
 
 The goal is a reply, not a close. Keep the ask small.
 
+━━━ QUALITY STANDARD — APPLY BEFORE WRITING ━━━
+Your first instinct is always the most generic version. Push past it.
+
+Before you write a single word, ask: what is the sharpest, most specific thing I can say to THIS agent about THIS listing? Start there — not with a safe opener.
+
+Before you output, silently score your draft against each of these. If any answer is no, rewrite:
+- Subject: under 60 chars? References a specific address or city? Could this line be sent by any vendor to any agent? If yes, it's not good enough — rewrite.
+- Opener: Does it name the listing? "Saw your listing at {{address}}" outperforms any other opener. No generic greetings.
+- Value sentence: One concrete benefit the agent will feel immediately. Not a feature. Not a company description. A result.
+- CTA: Exactly one ask. Is it genuinely low-friction — something a busy agent can say yes to in under 2 seconds?
+- Length: Read every sentence. Could it be cut without losing meaning? If yes, cut it. Short and sharp always wins over long and vague.
+
+Mediocre output is a failure. A message that an agent deletes in 2 seconds is worthless. The bar is: would a busy, skeptical agent actually pause on this?
+
 ━━━ AVAILABLE MERGE TAGS ━━━
 Always use these — never invent fake names or addresses:
 - {{agent_name}} — the listing agent's name (use to open the message)
@@ -385,6 +400,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         max_tokens: 1024,
+        temperature: 0.85,
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
