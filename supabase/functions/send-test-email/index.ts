@@ -228,7 +228,7 @@ serve(async (req) => {
     if (sender_id) {
       const { data: sender } = await supabase
         .from("integration_connections")
-        .select("id, integration_id, sending_email, from_email, credentials, status")
+        .select("id, integration_id, sending_email, from_email, credentials, config, status")
         .eq("id", sender_id)
         .single();
 
