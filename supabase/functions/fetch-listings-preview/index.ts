@@ -9,8 +9,11 @@
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RENTCAST_API_KEY = Deno.env.get("RENTCAST_API_KEY") ?? "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,6 +86,15 @@ async function fetchListings(criteria: Record<string, unknown>): Promise<unknown
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Auth: require a valid Supabase session
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return json({ error: "Unauthorized" }, 401);
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return json({ error: "Unauthorized" }, 401);
 
   try {
     let body: any;
