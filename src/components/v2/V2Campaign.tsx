@@ -207,6 +207,7 @@ export function V2Campaign() {
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
   const [userContactName, setUserContactName] = useState<string | null>(null);
   const [userBusinessName, setUserBusinessName] = useState<string | null>(null);
+  const [userServiceType, setUserServiceType] = useState<string[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [senderInfo, setSenderInfo] = useState<{ display_name: string; from_email: string; from_name?: string } | null>(null);
   const [allSenders, setAllSenders] = useState<Array<{ id: string; integration_id: string; from_email: string; display_name: string }>>([]);
@@ -248,11 +249,12 @@ export function V2Campaign() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       setUserId(user.id);
-      supabase.from('users').select('business_name, contact_name').eq('id', user.id).single()
+      supabase.from('users').select('business_name, contact_name, service_type').eq('id', user.id).single()
         .then(({ data }) => {
           if (data) {
             setUserContactName(data.contact_name || null);
             setUserBusinessName(data.business_name || null);
+            setUserServiceType(data.service_type ? data.service_type.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
           }
         });
       supabase
@@ -1281,6 +1283,7 @@ export function V2Campaign() {
           channel: campaign.channel,
           business_name: userBusinessName ?? undefined,
           contact_name: userContactName ?? undefined,
+          service_type: userServiceType,
           days_old: criteria?.days_old ?? undefined,
           price_min: criteria?.price_min ?? undefined,
           price_max: criteria?.price_max ?? undefined,

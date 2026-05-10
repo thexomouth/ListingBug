@@ -57,7 +57,12 @@ interface SmsConfig {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const SERVICE_TAGS = ['Roofing', 'Staging', 'Cleaning', 'Landscaping', 'Contracting', 'Photography', 'Inspection'];
+const SERVICE_TAGS = [
+  'Photography', 'Videography', 'Virtual Tours', 'Drone / Aerial',
+  'Staging', 'Inspection', 'Roofing', 'Pest Control', 'HVAC', 'Cleaning', 'Landscaping',
+  'Moving & Storage', 'Mortgage / Lending', 'Title & Escrow', 'Insurance',
+  'Appraisal', 'Contractor / Repair', 'Legal / Attorney',
+];
 
 const MERGE_TAGS = [
   { label: 'Agent Name',    variable: '{{agent_name}}' },
