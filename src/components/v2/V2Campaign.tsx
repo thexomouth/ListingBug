@@ -1059,14 +1059,14 @@ export function V2Campaign() {
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {sortedSends.map(send => {
+                {sortedSends.map((send, idx) => {
                   const hasReply = (send.campaign_replies?.length ?? 0) > 0;
                   const badge = statusBadge(send.status, hasReply);
                   return (
                     <tr
                       key={send.id}
                       onClick={() => setSelectedSend(send)}
-                      className="group border-b border-gray-100 dark:border-white/10 hover:bg-white dark:hover:bg-white/10 transition-colors cursor-pointer"
+                      className={`group border-b border-gray-100 dark:border-white/10 hover:bg-yellow-50 dark:hover:bg-white/10 transition-colors cursor-pointer ${idx % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-gray-50 dark:bg-white/[0.03]'}`}
                     >
                       <td className="py-3 px-3 group-hover:py-4 transition-[padding] duration-150">
                         <div className="font-medium text-gray-900 dark:text-white leading-tight">
