@@ -756,12 +756,12 @@ export function V2DashboardV2() {
                       <React.Fragment key={agent.key}>
                         <tr
                           onClick={() => setExpandedAgentKey(isExpanded ? null : agent.key)}
-                          className="border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 hover:outline hover:outline-2 hover:outline-[#FFCE0A] hover:drop-shadow-lg transition-all duration-300 cursor-pointer"
+                          className="group border-b border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 hover:outline hover:outline-2 hover:outline-[#FFCE0A] hover:drop-shadow-lg transition-all duration-300 cursor-pointer"
                         >
-                          <td className="py-2.5 px-3 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+                          <td className="py-2.5 px-3 group-hover:py-3.5 transition-[padding] duration-150 text-xs text-gray-400 dark:text-gray-500 tabular-nums">
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
                           </td>
-                          <td className="py-2.5 px-3">
+                          <td className="py-2.5 px-3 group-hover:py-3.5 transition-[padding] duration-150">
                             <div className="font-medium text-gray-900 dark:text-white leading-tight truncate max-w-[160px]">
                               {agent.agentName}
                             </div>
@@ -769,19 +769,19 @@ export function V2DashboardV2() {
                               <div className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[160px]">{agent.agentEmail}</div>
                             )}
                           </td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
+                          <td className="hidden sm:table-cell py-2.5 px-3 group-hover:py-3.5 transition-[padding] duration-150 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
                             {agent.brokerage || '—'}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-semibold text-gray-900 dark:text-white tabular-nums">
+                          <td className="py-2.5 px-3 group-hover:py-3.5 transition-[padding] duration-150 text-right font-semibold text-gray-900 dark:text-white tabular-nums">
                             {agent.sent}
                           </td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                          <td className="hidden sm:table-cell py-2.5 px-3 group-hover:py-3.5 transition-[padding] duration-150 text-right text-gray-500 dark:text-gray-400 tabular-nums">
                             {agent.replies}
                           </td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                          <td className="hidden sm:table-cell py-2.5 px-3 group-hover:py-3.5 transition-[padding] duration-150 text-right text-gray-500 dark:text-gray-400 tabular-nums">
                             {agent.clicks}
                           </td>
-                          <td className="hidden sm:table-cell py-2.5 px-3 text-right text-gray-500 dark:text-gray-400 tabular-nums">
+                          <td className="hidden sm:table-cell py-2.5 px-3 group-hover:py-3.5 transition-[padding] duration-150 text-right text-gray-500 dark:text-gray-400 tabular-nums">
                             {agent.opens}
                           </td>
                         </tr>
