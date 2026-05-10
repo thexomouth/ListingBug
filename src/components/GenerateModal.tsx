@@ -82,9 +82,23 @@ function parseResponse(text: string): ParsedFields {
 }
 
 // ─── Helpers for field-targeted generation ────────────────────────────────────
-function getInitialFieldPrompt(targetField: GenerateTargetField, channel: string): string {
-  if (targetField === 'subject') return 'Write a subject line for my campaign.';
-  if (targetField === 'preview') return 'Write preview text for my campaign.';
+function getInitialFieldPrompt(
+  targetField: GenerateTargetField,
+  channel: string,
+  current?: { subject?: string; preview_text?: string; body?: string },
+): string {
+  if (targetField === 'subject') {
+    if (current?.subject?.trim())
+      return `I've started a subject line: "${current.subject.trim()}". Improve or rewrite it — keep the same angle or try a better one.`;
+    return 'Write a subject line for my campaign.';
+  }
+  if (targetField === 'preview') {
+    if (current?.preview_text?.trim())
+      return `I've started preview text: "${current.preview_text.trim()}". Improve or rewrite it.`;
+    return 'Write preview text for my campaign.';
+  }
+  const body = stripHtml(current?.body ?? '');
+  if (body) return `I've started a message body:\n${body}\n\nImprove or rewrite it.`;
   return channel === 'email' ? 'Write a full email body for my campaign.' : 'Write an SMS message for my campaign.';
 }
 
@@ -323,7 +337,7 @@ export function GenerateModal({ open, onClose, context, current, channel, onAppl
   const handleSetupGenerate = () => {
     setSetupDone(true);
     const base = targetField
-      ? getInitialFieldPrompt(targetField, channel)
+      ? getInitialFieldPrompt(targetField, channel, current)
       : channel === 'email'
         ? 'Write everything — subject line, preview text, and full email body.'
         : 'Write an SMS message for my campaign.';
