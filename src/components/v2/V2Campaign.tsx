@@ -6,6 +6,7 @@ import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal'
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { AgentActivityModal } from './AgentActivityModal';
 import { CityAutocomplete } from '../CityAutocomplete';
+import { RichTextEditor } from './editor/RichTextEditor';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
 
@@ -85,6 +86,13 @@ const RANGE_PILL: Record<RangeKey, string> = { 7: '7d', 14: '14d', 30: '30d', 0:
 
 const PROPERTY_TYPES = ['Single Family', 'Condo', 'Townhouse', 'Manufactured', 'Multi-Family', 'Apartment', 'Land'];
 const VARS = ['{{agent_name}}', '{{address}}', '{{price}}', '{{city}}', '{{listing_date}}'];
+const MERGE_TAGS = [
+  { label: 'Agent Name', variable: '{{agent_name}}' },
+  { label: 'Address', variable: '{{address}}' },
+  { label: 'Price', variable: '{{price}}' },
+  { label: 'City', variable: '{{city}}' },
+  { label: 'Listing Date', variable: '{{listing_date}}' },
+];
 const FROM_EMAIL_DISPLAY = 'hello@listingping.com';
 
 function senderLabel(s: { integration_id: string; from_email: string }): string {
@@ -860,34 +868,53 @@ export function V2Campaign() {
 
             <div className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Body</div>
 
-            {/* Variable insertion chips */}
-            <div className="flex flex-wrap gap-1 mb-2">
-              {VARS.map(v => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => insertVar(v)}
-                  className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-400/20 transition-colors font-mono"
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-
-            {draft ? (
-              <textarea
-                ref={bodyRef}
-                value={draft.body}
-                onChange={e => updateText({ body: e.target.value })}
-                onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
-                onBlur={e => { cursorPos.current = e.target.selectionStart; }}
-                className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden"
-                style={{ minHeight: 140 }}
-              />
+            {campaign.channel === 'email' ? (
+              draft ? (
+                <RichTextEditor
+                  content={draft.body}
+                  onChange={html => updateText({ body: html })}
+                  mergeTagOptions={MERGE_TAGS}
+                  placeholder="Hi {{agent_name}}, I noticed your listing at {{address}}…"
+                />
+              ) : (
+                <RichTextEditor
+                  content={campaign.body}
+                  onChange={() => {}}
+                  mergeTagOptions={MERGE_TAGS}
+                  disabled
+                />
+              )
             ) : (
-              <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
-                {campaign.body || '—'}
-              </div>
+              <>
+                {/* Variable insertion chips for SMS */}
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {VARS.map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => insertVar(v)}
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-400/20 transition-colors font-mono"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+                {draft ? (
+                  <textarea
+                    ref={bodyRef}
+                    value={draft.body}
+                    onChange={e => updateText({ body: e.target.value })}
+                    onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
+                    onBlur={e => { cursorPos.current = e.target.selectionStart; }}
+                    className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden"
+                    style={{ minHeight: 140 }}
+                  />
+                ) : (
+                  <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
+                    {campaign.body || '—'}
+                  </div>
+                )}
+              </>
             )}
 
             {campaign.channel === 'email' && (
