@@ -284,7 +284,7 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
             <h1 className="mb-0 text-4xl font-bold text-[33px]">Pricing</h1>
           </div>
           <p className="text-gray-600 dark:text-[#EBF2FA] max-w-2xl leading-relaxed text-[14px]">
-            Pay for messages, not seats. Every plan includes email and SMS outreach, a shared inbox, and campaign templates. Pick the plan that matches your market size.
+            Pay for messages, not seats. Every plan includes email and SMS outreach and campaign templates. Pick the plan that matches your market size.
           </p>
         </div>
 
@@ -313,10 +313,6 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                   <span className="text-[14px]">Email & SMS campaigns</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-[14px]">Shared inbox</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
@@ -356,10 +352,6 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-[14px]">Shared inbox</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                   <span className="text-[14px]">Campaign templates</span>
                 </li>
               </ul>
@@ -390,10 +382,6 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                   <span className="text-[14px]">Email & SMS campaigns</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <span className="text-[14px]">Shared inbox</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
@@ -448,7 +436,6 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
                     {[
                       'Email campaigns',
                       'SMS campaigns',
-                      'Shared inbox',
                       'Campaign templates',
                       'Agent contact lookup',
                       '7-day free trial',
@@ -496,7 +483,6 @@ export function HomePage({ page, onNavigate, onSampleReportGenerated, onSampleRe
                   {[
                     'Email campaigns',
                     'SMS campaigns',
-                    'Shared inbox',
                     'Campaign templates',
                     'Agent contact lookup',
                     '7-day free trial',

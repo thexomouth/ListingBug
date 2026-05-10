@@ -61,57 +61,56 @@ export function ChangePlanModal({
 
   const plans: Plan[] = [
     {
-      id: 'trial',
-      name: 'Trial',
-      price: 0,
-      interval: 'month',
-      features: [
-        'Limited listings',
-        'Limited automations',
-        'All 9 integrations',
-        'Email notifications',
-        'CSV exports',
-        'Basic support',
-      ],
-      limits: { reports: 1000, dataPoints: 10000, users: 1 },
-    },
-    {
-      id: 'starter',
-      name: 'Starter',
+      id: 'city',
+      name: 'City',
       price: 19,
       interval: 'month',
       features: [
-        '4,000 listings/month',
-        '3 automations',
-        'All 9 integrations',
-        'Email notifications',
-        'CSV exports',
-        'Basic support',
+        '2,500 messages/month',
+        '1 active city',
+        'Email & SMS campaigns',
+        'Campaign templates',
+        'Agent contact lookup',
       ],
-      limits: { reports: 4000, dataPoints: 40000, users: 1 },
+      limits: { reports: 2500, dataPoints: 25000, users: 1 },
     },
     {
-      id: 'professional',
-      name: 'Professional',
+      id: 'market',
+      name: 'Market',
       price: 49,
       interval: 'month',
       features: [
-        '10,000 listings/month',
-        '9 automations',
-        'Relisted property alerts',
-        'Priority support',
-        'Advanced search filters',
-        'All 9 integrations',
+        '5,000 messages/month',
+        '3 active cities',
+        'Email & SMS campaigns',
+        'Campaign templates',
+        'Agent contact lookup',
       ],
-      limits: { reports: 10000, dataPoints: 100000, users: 3 },
+      limits: { reports: 5000, dataPoints: 50000, users: 1 },
       popular: true,
+    },
+    {
+      id: 'region',
+      name: 'Region',
+      price: 99,
+      interval: 'month',
+      features: [
+        '10,000 messages/month',
+        '10 active cities',
+        'Email & SMS campaigns',
+        'Campaign templates',
+        'Agent contact lookup',
+      ],
+      limits: { reports: 10000, dataPoints: 100000, users: 1 },
     },
   ];
 
   const isTrialUser = currentPlan.toLowerCase() === 'trial';
-  const isStarterUser = currentPlan.toLowerCase() === 'starter';
-  const isProUser = currentPlan.toLowerCase() === 'professional' || currentPlan.toLowerCase() === 'pro';
-  const currentPlanId = isTrialUser ? 'trial' : isStarterUser ? 'starter' : isProUser ? 'professional' : currentPlan.toLowerCase();
+  // Normalize legacy plan names to current ones
+  const normalizedPlan = currentPlan.toLowerCase() === 'starter' ? 'city'
+    : (currentPlan.toLowerCase() === 'professional' || currentPlan.toLowerCase() === 'pro') ? 'market'
+    : currentPlan.toLowerCase();
+  const currentPlanId = isTrialUser ? 'trial' : normalizedPlan;
   const currentPlanData = plans.find(p => p.id === currentPlanId);
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
@@ -198,14 +197,12 @@ export function ChangePlanModal({
             </div>
 
             <div className="p-6 bg-white dark:bg-[#2F2F2F]">
-              <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                {plans.filter(plan => plan.id !== 'trial').map((plan) => {
+              <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                {plans.map((plan) => {
                   const isCurrent = plan.id === currentPlanId;
                   const isSelected = plan.id === selectedPlan;
                   let cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e]';
-                  if (isCurrent && plan.id === 'starter') {
-                    cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e] border-2 border-green-400 dark:border-green-500 bg-green-50/30 dark:bg-green-500/10';
-                  } else if (isCurrent && plan.id === 'professional') {
+                  if (isCurrent) {
                     cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e] border-2 border-[#FFCE0A] dark:border-[#FFCE0A] shadow-lg dark:shadow-xl dark:shadow-[#FFCE0A]/20';
                   } else if (isSelected) {
                     cardClass = 'relative transition-all bg-white dark:bg-[#1a1a2e] border-2 border-[#342e37] dark:border-[#FFCE0A] shadow-lg dark:shadow-xl dark:shadow-[#FFCE0A]/20';
@@ -222,14 +219,7 @@ export function ChangePlanModal({
                           </Badge>
                         </div>
                       )}
-                      {isCurrent && plan.id === 'starter' && (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                          <Badge className="bg-green-600 text-white border-2 border-white shadow-md">
-                            <CheckCircle className="w-3 h-3 mr-1" />Current Plan
-                          </Badge>
-                        </div>
-                      )}
-                      {isCurrent && plan.id === 'professional' && (
+                      {isCurrent && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <Badge className="bg-[#FFCE0A] text-[#0F1115] border-2 border-white shadow-md">
                             <CheckCircle className="w-3 h-3 mr-1" />Current Plan

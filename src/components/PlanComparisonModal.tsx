@@ -100,7 +100,6 @@ export function PlanComparisonModal({ isOpen, onClose, currentPlan, onSelectPlan
                         `${cfg.messagesPerMonth.toLocaleString()} messages/month`,
                         `${cfg.citiesAllowed} ${cfg.citiesAllowed === 1 ? 'city' : 'cities'}`,
                         'Email & SMS campaigns',
-                        'Shared inbox',
                         'Campaign templates',
                         '7-day free trial',
                       ].map(f => (
