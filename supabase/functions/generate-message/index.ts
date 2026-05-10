@@ -263,6 +263,7 @@ const HOOK_MAP: Record<string, string> = {
   'Premium quality': 'Quality and results are the differentiator. Reference outcomes, craftsmanship, or what great work does for the listing.',
   'Local market': 'Local expertise is the credibility. You know this neighborhood, this market, these listings. Specificity is the hook — mention the city or area.',
   'Free consult': 'Zero friction is the angle. The first step costs nothing. Make it trivially easy to say yes to a conversation.',
+  'Intro Offer': 'A limited introductory rate or discounted first job is the hook. Frame it as a risk-free way to try the service — the goal is to get a first booking, not maximize margin.',
 };
 
 function buildSystemPrompt(ctx: Record<string, unknown>, goal?: string, tone?: string, hook?: string): string {
