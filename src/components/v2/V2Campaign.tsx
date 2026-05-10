@@ -566,7 +566,7 @@ export function V2Campaign() {
   const inputClass = 'w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/50';
 
   // Shared classes for inline editable inputs in the overview rows
-  const rowInputClass = 'text-sm text-gray-900 dark:text-white font-medium text-right bg-transparent border border-transparent hover:border-gray-200 dark:hover:border-white/20 focus:border-[#FFCE0A] dark:focus:border-[#FFCE0A] rounded-md px-2 py-0.5 outline-none transition-colors';
+  const rowInputClass = 'text-sm text-gray-900 dark:text-white font-medium text-right bg-transparent border border-transparent hover:border-gray-200 dark:hover:border-white/20 focus:border-[#FFCE0A] dark:focus:border-[#FFCE0A] rounded-md px-2 py-1 outline-none transition-colors leading-none';
 
   // ---------------------------------------------------------------------------
   // Render
@@ -697,7 +697,7 @@ export function V2Campaign() {
                 <div className="group flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-white/10 gap-2">
                   <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Price range</span>
                   <div className="flex items-center gap-1 min-w-0">
-                    <span className="text-xs text-gray-400">$</span>
+                    <span className="text-sm text-gray-400">$</span>
                     <input
                       type="number"
                       min="0"
@@ -706,7 +706,7 @@ export function V2Campaign() {
                       placeholder="Min"
                       className={`${rowInputClass} w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                     />
-                    <span className="text-xs text-gray-400">–</span>
+                    <span className="text-sm text-gray-400">–</span>
                     <input
                       type="number"
                       min="0"
