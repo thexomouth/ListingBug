@@ -148,7 +148,7 @@ export function V2Onboarding() {
   const subjectCursorEnd = useRef(0);
   const [testModal, setTestModal] = useState({ open: false, address: '', sending: false, sent: false, error: null as string | null });
 
-  type Template = { id: string; template_name: string; channel: string; subject: string | null; body: string; is_shared: boolean };
+  type Template = { id: string; name: string; channel: string; subject: string | null; body: string; is_shared: boolean };
   const [templatePicker, setTemplatePicker] = useState<{ open: boolean; loading: boolean; myTemplates: Template[]; sharedTemplates: Template[] }>({
     open: false, loading: false, myTemplates: [], sharedTemplates: [],
   });
@@ -639,7 +639,7 @@ export function V2Onboarding() {
     // For unauthenticated users, only show shared templates
     const { data } = await supabase
       .from('marketing_templates')
-      .select('id, template_name, channel, subject, body, is_shared')
+      .select('id, name, channel, subject, body, is_shared')
       .eq('is_shared', true)
       .order('created_at', { ascending: false });
     setTemplatePicker(p => ({
@@ -1061,7 +1061,7 @@ export function V2Onboarding() {
                             onClick={() => applyTemplate(t)}
                             className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
                           >
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{t.template_name}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{t.name}</div>
                             <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">
                               {t.channel} · {t.body.slice(0, 45)}{t.body.length > 45 ? '…' : ''}
                             </div>

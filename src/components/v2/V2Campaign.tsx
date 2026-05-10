@@ -6,10 +6,8 @@ import { GenerateModal, StarIcon, type GenerateContext } from '../GenerateModal'
 import { EmailPerformanceTimeline, type RangeKey } from './EmailPerformanceTimeline';
 import { AgentActivityModal } from './AgentActivityModal';
 import { CityAutocomplete } from '../CityAutocomplete';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
 import patternBgLight from 'figma:asset/8435b26aaf23ac49cf6eeff1fe337b24fe375fb0.png';
 import patternBgDark from 'figma:asset/b916b80137b1bd7badbcf865751a03133a7f7893.png';
-import headerLogoSimplified from 'figma:asset/18389b12a0fe14349edcb6b64a2864bb6264d47e.png';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -200,7 +198,7 @@ export function V2Campaign() {
   const [templateModal, setTemplateModal] = useState({ open: false, name: '', saving: false, error: null as string | null, saved: false });
 
   // Load template dropdown
-  const [templates, setTemplates] = useState<{ id: string; template_name: string; channel: string; subject: string | null; body: string }[]>([]);
+  const [templates, setTemplates] = useState<{ id: string; name: string; channel: string; subject: string | null; body: string }[]>([]);
   const [loadTemplateOpen, setLoadTemplateOpen] = useState(false);
   const loadTemplateBtnRef = useRef<HTMLButtonElement>(null);
   const [generateOpen, setGenerateOpen] = useState(false);
@@ -265,9 +263,9 @@ export function V2Campaign() {
         .then(({ data }) => { if (data) setAllSenders(data as any); });
       supabase
         .from('marketing_templates')
-        .select('id, template_name, channel, subject, body')
+        .select('id, name, channel, subject, body')
         .eq('user_id', user.id)
-        .order('template_name')
+        .order('name')
         .then(({ data }) => { if (data) setTemplates(data as any); });
     });
   }, []);
@@ -464,7 +462,7 @@ export function V2Campaign() {
     setTemplateModal(m => ({ ...m, saving: true, error: null }));
     const { error } = await supabase.from('marketing_templates').insert({
       user_id: user.id,
-      template_name: templateModal.name.trim(),
+      name: templateModal.name.trim(),
       channel: campaign.channel,
       subject: draft?.subject ?? campaign.subject,
       body: draft?.body ?? campaign.body,
@@ -482,44 +480,27 @@ export function V2Campaign() {
   // ---------------------------------------------------------------------------
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] relative flex flex-col">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] relative flex items-center justify-center">
         <div className="absolute inset-0 opacity-[0.33] dark:opacity-0 pointer-events-none" style={{ backgroundImage: `url(${patternBgLight})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
         <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
-        <div className="border-b border-[#342e37]/10 bg-[#ffce0a] px-4 py-3 flex items-center justify-center relative z-10">
-          <a href="/v2/dashboard" className="flex items-center" aria-label="ListingBug dashboard">
-            <ImageWithFallback src={headerLogoSimplified} alt="ListingBug" className="h-13 w-13 object-contain" />
-          </a>
-        </div>
-        <div className="flex-1 flex items-center justify-center relative z-10">
-          <div
-            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: '#FFCE0A', borderTopColor: 'transparent' }}
-          />
-        </div>
+        <div
+          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin relative z-10"
+          style={{ borderColor: '#FFCE0A', borderTopColor: 'transparent' }}
+        />
       </div>
     );
   }
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] relative flex flex-col">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] relative flex items-center justify-center">
         <div className="absolute inset-0 opacity-[0.33] dark:opacity-0 pointer-events-none" style={{ backgroundImage: `url(${patternBgLight})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
         <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
-        <div className="border-b border-[#342e37]/10 bg-[#ffce0a] px-4 py-3 flex items-center justify-center relative z-10">
-          <a href="/v2/dashboard" className="flex items-center" aria-label="ListingBug dashboard">
-            <ImageWithFallback src={headerLogoSimplified} alt="ListingBug" className="h-13 w-13 object-contain" />
+        <div className="text-center px-4 relative z-10">
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">Campaign not found.</div>
+          <a href="/v2/dashboard" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+            ← Back to dashboard
           </a>
-        </div>
-        <div className="flex-1 flex items-center justify-center relative z-10">
-          <div className="text-center px-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">Campaign not found.</div>
-            <a
-              href="/v2/dashboard"
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              ← Back to dashboard
-            </a>
-          </div>
         </div>
       </div>
     );
@@ -584,13 +565,6 @@ export function V2Campaign() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] relative">
       <div className="absolute inset-0 opacity-[0.33] dark:opacity-0 pointer-events-none" style={{ backgroundImage: `url(${patternBgLight})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
       <div className="absolute inset-0 opacity-0 dark:opacity-[0.12] pointer-events-none" style={{ backgroundImage: `url(${patternBgDark})`, backgroundRepeat: 'repeat', backgroundSize: '600px' }} />
-
-      {/* Toolbar */}
-      <div className="border-b border-[#342e37]/10 bg-[#ffce0a] px-4 py-3 flex items-center justify-center relative z-10">
-        <a href="/v2/dashboard" className="flex items-center" aria-label="ListingBug dashboard">
-          <ImageWithFallback src={headerLogoSimplified} alt="ListingBug" className="h-13 w-13 object-contain" />
-        </a>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-6 pb-12 relative z-10">
 
@@ -840,7 +814,7 @@ export function V2Campaign() {
                             }}
                             className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors truncate"
                           >
-                            {t.template_name}
+                            {t.name}
                           </button>
                         ))}
                       </div>
