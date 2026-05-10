@@ -14,98 +14,219 @@ function json(data: unknown, status = 200) {
   });
 }
 
-// ─── Service → value prop for listing agents ───────────────────────────────
-const SERVICE_VALUE_MAP: { keywords: string[]; pitch: string }[] = [
+// ─── Service → value prop + subject line strategy ─────────────────────────
+interface ServiceEntry {
+  keywords: string[];
+  pitch: string;
+  subjectAngle: string;
+  subjectFormulas: string[];
+}
+
+const SERVICE_MAP: ServiceEntry[] = [
   {
     keywords: ["photo", "photograph", "headshot"],
     pitch: "Professional listing photos drive more online clicks and showings. A great first impression online is the agent's best tool — and fast turnaround (same week or sooner) lets them publish the listing looking polished from day one.",
+    subjectAngle: "First impression — agents fear losing buyers in the first 3 seconds of a listing click. Lean into speed and quality.",
+    subjectFormulas: [
+      "{{address}} — photos ready 24 hrs",
+      "Pro photos for {{address}} — {{city}}",
+      "listing photos — {{address}}",
+    ],
   },
   {
     keywords: ["video", "reel", "cinematic"],
     pitch: "Listing videos significantly boost engagement on Zillow, Redfin, and social. Agents who use video stand out in their market and attract more buyer leads — which makes them look good to their sellers.",
+    subjectAngle: "Differentiation — video listings get 10x more engagement. Agents want to stand out from competitors in the same neighborhood.",
+    subjectFormulas: [
+      "video walkthrough — {{address}}",
+      "{{address}}: listing video available",
+      "video for {{address}} — {{city}}",
+    ],
   },
   {
     keywords: ["virtual tour", "3d tour", "matterport", "walkthrough"],
     pitch: "Virtual tours reduce wasted in-person showings and pull in serious out-of-area buyers. Agents who offer them look more tech-forward and win more listings.",
+    subjectAngle: "Buyer convenience — 24/7 viewing without scheduling. Lets pre-qualified buyers self-qualify before ever stepping inside.",
+    subjectFormulas: [
+      "3D tour for {{address}}",
+      "interactive tour — {{address}} live",
+      "virtual walkthrough — {{address}}",
+    ],
   },
   {
     keywords: ["drone", "aerial"],
     pitch: "Aerial footage highlights location, lot size, and neighborhood context that ground photography can't capture. It's a premium differentiator for the listing and the agent's brand.",
+    subjectAngle: "Wow factor — dramatic aerials make listings unforgettable. Highlight land, pool, acreage, or neighborhood prestige.",
+    subjectFormulas: [
+      "aerial shots — {{address}}",
+      "drone footage for {{address}} — {{city}}",
+      "{{address}}: aerials available",
+    ],
   },
   {
     keywords: ["stage", "staging", "furnish", "design"],
     pitch: "Staged homes sell faster and at higher prices — which means more commission and a happier seller client. It's one of the highest-ROI services an agent can offer their client.",
+    subjectAngle: "Value unlock — staging increases perceived home value 10–20% and cuts time-on-market. Agents fear 'tired' first impressions.",
+    subjectFormulas: [
+      "staging for {{address}} — {{city}}",
+      "pre-listing staging — {{address}}",
+      "{{address}}: staging consult available",
+    ],
   },
   {
     keywords: ["inspect", "inspection", "inspector"],
     pitch: "A pre-listing inspection surfaces issues before buyers do, preventing last-minute price renegotiations and deal collapses. Proactive agents use pre-listing inspections to protect their transactions.",
+    subjectAngle: "Deal protection — inspections prevent surprises that kill deals after appraisal. Agents fear losing commission to undisclosed issues.",
+    subjectFormulas: [
+      "pre-listing inspection — {{address}}",
+      "{{address}} inspection — 48 hr report",
+      "inspection available — {{address}}",
+    ],
   },
   {
     keywords: ["roof", "roofing"],
     pitch: "Roof issues are one of the top deal-killers in real estate. A roof certification removes that risk and gives buyers' lenders peace of mind — helping the deal close cleanly.",
+    subjectAngle: "Deal-killer prevention — roof problems tank appraisals and kill buyer financing. Agents need proof of soundness to close fast.",
+    subjectFormulas: [
+      "roof cert for {{address}} — fast",
+      "roof clearance — {{address}}",
+      "{{address}}: roof certification available",
+    ],
   },
   {
     keywords: ["pest", "termite", "bug", "rodent"],
     pitch: "Pest and termite clearance prevents nasty surprises in the inspection report that kill deals or force last-minute price concessions. Getting ahead of it positions the agent as thorough.",
+    subjectAngle: "Hidden liability elimination — termites are deal-killers in underwriting. Agents need fast clearance to avoid contingency failures.",
+    subjectFormulas: [
+      "pest clearance — {{address}}",
+      "termite cert for {{address}} — {{city}}",
+      "{{address}}: pest-free certificate",
+    ],
   },
   {
     keywords: ["hvac", "air condition", "heat", "furnace"],
     pitch: "HVAC issues frequently surface in buyer inspections. A clean HVAC report (or a disclosure of known issues) keeps closings on track and agents looking like professionals.",
+    subjectAngle: "System reliability proof — buyers fear $5K+ HVAC replacements. Pre-certification removes buyer objections before they arise.",
+    subjectFormulas: [
+      "HVAC certified — {{address}}",
+      "system check for {{address}} — {{city}}",
+      "{{address}}: HVAC report available",
+    ],
   },
   {
     keywords: ["clean", "cleaning", "maid", "housekeep", "janitorial"],
     pitch: "A professionally cleaned home photographs better, shows better, and communicates that the seller is serious. It sets a tone of care that buyers respond to.",
+    subjectAngle: "Move-in ready perception — sparkling homes increase offer rates. Agents love listings that feel cared-for at first showing.",
+    subjectFormulas: [
+      "turnkey clean — {{address}}",
+      "move-in clean for {{address}} — {{city}}",
+      "{{address}}: listing clean available",
+    ],
   },
   {
     keywords: ["landscap", "lawn", "curb", "garden", "outdoor"],
     pitch: "Curb appeal is the first frame of every online listing photo and the first impression at every showing. A quick landscaping refresh can change how buyers feel before they even walk in.",
+    subjectAngle: "Curb appeal investment — overgrown yards drop perceived value 5–15%. First exterior impression drives traffic before the door opens.",
+    subjectFormulas: [
+      "curb appeal — {{address}}",
+      "landscape refresh for {{address}}",
+      "{{address}}: yard cleanup available",
+    ],
   },
   {
     keywords: ["moving", "mover", "relocation", "storage"],
     pitch: "Recommending a reliable, affordable mover is a genuine value-add that sellers appreciate — and agents who go the extra mile build loyalty and referrals.",
+    subjectAngle: "Coordination relief — agents need movers who understand transaction timelines. Reduces seller friction and last-minute deal delays.",
+    subjectFormulas: [
+      "move coordination — {{address}}",
+      "closing-day movers — {{city}}",
+      "{{address}}: movers available your timeline",
+    ],
   },
   {
     keywords: ["mortgage", "lend", "loan", "financ", "rate"],
     pitch: "Pre-qualified, reliable buyers close faster and with fewer headaches. Agents value lender partners who communicate well and get deals to the finish line.",
+    subjectAngle: "Speed of capital — agents fear financing delays killing deals. Fast pre-approvals that close in days are genuinely valuable.",
+    subjectFormulas: [
+      "fast pre-approvals for {{city}} buyers",
+      "buyers for {{address}} — financing ready",
+      "{{city}} listings: quick loan approvals",
+    ],
   },
   {
     keywords: ["title", "escrow", "closing"],
     pitch: "A smooth, on-time close is what every agent wants. Agents stick with title and escrow partners who make the process easy and don't create surprises at the closing table.",
+    subjectAngle: "Deal finality — agents fear title liens and slow closings. Fast, transparent process = deals done without drama.",
+    subjectFormulas: [
+      "title for {{address}} — fast close",
+      "{{address}}: clean title available",
+      "smooth close — {{address}}, {{city}}",
+    ],
   },
   {
     keywords: ["insur", "homeowner", "policy", "coverage"],
     pitch: "Helping buyers get coverage quickly and affordably removes a friction point that can delay closings. Agents notice when their referral partners make the transaction easier.",
+    subjectAngle: "Underwriting certainty — properties with insurance issues stall closings. Fast coverage removes lender objections.",
+    subjectFormulas: [
+      "coverage ready — {{address}}",
+      "{{address}}: insurance clearance",
+      "insurable — {{address}}, {{city}}",
+    ],
   },
   {
     keywords: ["apprais"],
     pitch: "An accurate pre-listing appraisal helps agents price confidently and defend that price to sellers. It prevents overpricing and the inevitable price reductions that frustrate everyone.",
+    subjectAngle: "No appraisal surprises — shortfalls kill 18% of deals. Pre-appraisal or fast turnaround keeps transactions on track.",
+    subjectFormulas: [
+      "appraisal for {{address}} — {{city}}",
+      "fast appraisal — {{address}}",
+      "{{address}}: value cert available",
+    ],
   },
   {
     keywords: ["contractor", "repair", "handyman", "renovation", "remodel"],
     pitch: "Inspection contingencies often require quick repairs to keep deals alive. A trusted contractor who can turn around repairs fast is genuinely valuable to an active listing agent.",
+    subjectAngle: "Contingency resolution — buyers request repairs; agents need fast quotes to negotiate. Speed wins.",
+    subjectFormulas: [
+      "repair quote — {{address}}",
+      "{{address}}: contractor available now",
+      "inspection fixes — {{address}}, {{city}}",
+    ],
   },
   {
     keywords: ["attorney", "legal", "lawyer"],
     pitch: "Contract complexity and seller-side legal questions come up in every transaction. Agents value having a trusted legal referral who won't slow the deal down.",
+    subjectAngle: "Risk elimination — agents fear legal entanglements. Fast, clear counsel = confident closings.",
+    subjectFormulas: [
+      "contract review — {{address}}",
+      "{{address}}: legal cleared",
+      "real estate attorney — {{city}}",
+    ],
   },
 ];
 
-function matchServicePitches(services: string[]): string {
-  if (!services.length) return "";
+function matchService(services: string[]): ServiceEntry | null {
+  if (!services.length) return null;
+  const lower = services[0].toLowerCase();
+  return SERVICE_MAP.find(entry => entry.keywords.some(kw => lower.includes(kw))) ?? null;
+}
 
-  const matched: string[] = [];
-  for (const service of services) {
-    const lower = service.toLowerCase();
-    const found = SERVICE_VALUE_MAP.find(entry =>
-      entry.keywords.some(kw => lower.includes(kw))
-    );
-    if (found) {
-      matched.push(`${service}:\n  ${found.pitch}`);
-    } else {
-      matched.push(`${service}:\n  Focus on how this saves the agent time or helps them close faster and look more professional to their clients.`);
-    }
+function buildServiceContext(services: string[]): { pitch: string; subjectBlock: string } {
+  const entry = matchService(services);
+  const label = services[0] ?? "your service";
+
+  if (!entry) {
+    return {
+      pitch: `${label}:\n  Focus on how this saves the agent time, protects the deal, or helps their client get a better outcome.`,
+      subjectBlock: `Lead with the property address and make the value clear in under 6 words. Use {{address}} in the subject.`,
+    };
   }
-  return matched.join("\n\n");
+
+  const formulaList = entry.subjectFormulas.map(f => `  • ${f}`).join("\n");
+  return {
+    pitch: `${label}:\n  ${entry.pitch}`,
+    subjectBlock: `Angle: ${entry.subjectAngle}\n\nProven formulas — pick one and adapt it (always include {{address}} or {{city}}):\n${formulaList}`,
+  };
 }
 
 function formatPriceRange(min: number | null | undefined, max: number | null | undefined): string {
@@ -131,12 +252,12 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
   const priceMin      = ctx.price_min as number | null | undefined;
   const priceMax      = ctx.price_max as number | null | undefined;
 
-  const location      = [city, state].filter(Boolean).join(", ");
-  const priceRange    = formatPriceRange(priceMin, priceMax);
-  const senderName    = contactName || "the sender";
-  const senderFull    = businessName ? `${senderName} from ${businessName}` : senderName;
-  const servicePitches = matchServicePitches(serviceTypes);
-  const isSMS         = channel === "sms";
+  const location       = [city, state].filter(Boolean).join(", ");
+  const priceRange     = formatPriceRange(priceMin, priceMax);
+  const senderName     = contactName || "the sender";
+  const senderFull     = businessName ? `${senderName} from ${businessName}` : senderName;
+  const serviceCtx     = buildServiceContext(serviceTypes);
+  const isSMS          = channel === "sms";
 
   return `You are a direct-response copywriter who specializes in real estate vendor outreach. You write short, specific, personalized cold ${isSMS ? "SMS messages" : "emails"} from service providers to listing agents.
 
@@ -147,23 +268,33 @@ Write in first person as ${senderName}. Sound like a real person, not a marketin
 ━━━ THE AUDIENCE ━━━
 Listing agents in ${location || "the target market"} who have active ${listingType}${propertyType ? ` ${propertyType}` : ""} listings${priceRange ? ` priced ${priceRange}` : ""}${daysOld ? ` listed within the last ${daysOld} day${daysOld === 1 ? "" : "s"}` : ""}.
 
-Understand their mindset:
-- They are busy and receive a lot of generic vendor outreach. Most of it goes straight to trash.
+Their mindset:
+- They are busy and receive a flood of generic vendor outreach. Most of it goes straight to trash.
 - They respond when a message references THEIR specific listing and makes the value obvious in 10 seconds.
 - They care about: closing the deal, looking good to their seller client, and not creating extra work for themselves.
 - A well-timed, relevant offer at the moment a listing is fresh is genuinely useful to them — not spam.
-${daysOld && daysOld <= 7 ? "- These are NEW listings — the agent is in active setup mode, making decisions about services right now. Urgency and timing are natural to mention." : ""}
+${daysOld && daysOld <= 7 ? "- These are NEW listings — the agent is in active setup mode, making vendor decisions right now. Timing is natural to mention." : ""}
 
-━━━ VALUE PROPOSITION BY SERVICE ━━━
-Use this to inform your angle. Lead with the benefit to the AGENT (or their seller), not a feature list:
+━━━ VALUE PROPOSITION ━━━
+Lead with the benefit to the AGENT (or their seller), not a feature list:
 
-${servicePitches || "Focus on how your service saves the agent time, protects the deal, or helps their client get a better outcome."}
+${serviceCtx.pitch}
+
+━━━ SUBJECT LINE STRATEGY ━━━
+${isSMS ? "N/A — SMS has no subject line. Get to the point in line 1." : `${serviceCtx.subjectBlock}
+
+Additional rules for subject lines:
+- Under 60 characters — fits iPhone inbox preview
+- Lowercase preferred — feels less sales-y, more peer-to-peer
+- No question marks — statements outperform questions in cold vendor email
+- Lead with {{address}} or {{city}} when possible — specificity is the hook
+- Avoid: "Quick question", "Following up", "Checking in", "Just wanted to…"`}
 
 ━━━ WRITING STRATEGY ━━━
-Every message should follow this structure (even if adapted for tone):
-1. HOOK — Acknowledge their specific listing. "I saw your listing at {{address}}" beats any generic opener.
+Every message should follow this structure:
+1. HOOK — Acknowledge their specific listing. "Saw your listing at {{address}}" beats any generic opener.
 2. VALUE — One sentence on what you can do FOR THIS LISTING. Not your company history.
-3. CTA — A single, low-friction ask. "Would this be helpful for {{address}}?" or "Happy to send availability if timing works."
+3. CTA — A single, low-friction ask. "Worth a quick chat?" or "Happy to send availability if timing works."
 
 The goal is a reply, not a close. Keep the ask small.
 
@@ -175,20 +306,20 @@ Always use these — never invent fake names or addresses:
 - {{price}} — the listing price
 
 ━━━ RULES ━━━
-- Subject lines: under 60 characters — punchy, specific, personalized
+- Subject lines: under 60 characters, lowercase, specific, include {{address}} or {{city}}
 - Preview text: under 90 characters — adds context, doesn't just repeat the subject
-- Body: 2–3 short paragraphs max. Trim ruthlessly.
+- Body: 2–3 short paragraphs max. Trim ruthlessly. Under 100 words is ideal.
 - Use {{agent_name}} in the greeting
-- Use {{address}} at least once in the body${isSMS ? "\n- SMS only: 160 characters max total, plain text, no greeting fluff, get to the point in line 1" : ""}
+- Use {{address}} at least once in the body${isSMS ? "\n- SMS: 160 characters max total, plain text, no greeting fluff, lead with the value in line 1" : ""}
 
 ━━━ WHAT TO AVOID ━━━
 - "I hope this finds you well" — delete it
-- Listing multiple services in one message — pick the most relevant one
-- Vague subject lines like "Quick question" or "Following up"
+- Vague subject lines: "Quick question", "Following up", "Just checking in"
+- Generic subject lines that don't mention the property or service
 - Corporate buzzwords: world-class, industry-leading, cutting-edge, best-in-class
 - Long company backstories — nobody cares yet
-- Pressure: "limited time", "act now", "don't miss out"
-- More than one CTA — pick one
+- Pressure language: "limited time", "act now", "don't miss out"
+- More than one CTA — pick one and stop
 
 ━━━ OUTPUT FORMAT ━━━
 Always label sections on their own line, exactly like this. No commentary outside the labels unless the user asked a general question:
