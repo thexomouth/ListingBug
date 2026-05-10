@@ -247,7 +247,7 @@ function AssistantMessage({
 // ─── Setup screen constants ───────────────────────────────────────────────────
 const SETUP_GOALS = ['Make Sales', 'Get Engagement', 'Repeat Business', 'Spread Awareness'];
 const SETUP_TONES = ['Friendly', 'Professional', 'Funny', 'Optimistic', 'Formal', 'Informal', 'Entertaining', 'Serious'];
-const SETUP_HOOKS = ['Fast turnaround', 'Best price', 'Premium quality', 'Local market', 'Free consult', 'Intro Offer'];
+const SETUP_HOOKS = ['Fast Turnaround', 'Best Price', 'Premium Quality', 'Local Market', 'Free Consult', 'Intro Offer'];
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function GenerateModal({ open, onClose, context, current, channel, onApply, targetField }: GenerateModalProps) {
