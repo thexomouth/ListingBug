@@ -834,79 +834,81 @@ export function V2Campaign() {
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-xs text-gray-400 dark:text-gray-500">Subject</div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => { setGenerateField('subject'); setGenerateOpen(true); }}
-                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
-                      >
-                        <StarIcon size={9} className="text-[#FFCE0A]" />
-                        Generate
-                      </button>
-                      <span className={`text-xs tabular-nums ${draft.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.subject.length}/60</span>
-                    </div>
+                    <span className={`text-xs tabular-nums ${draft.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.subject.length}/60</span>
                   </div>
-                  <input
-                    value={draft.subject}
-                    maxLength={60}
-                    onChange={e => updateText({ subject: e.target.value })}
-                    placeholder="Email subject line"
-                    className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
-                  />
+                  <div className="relative">
+                    <input
+                      value={draft.subject}
+                      maxLength={60}
+                      onChange={e => updateText({ subject: e.target.value })}
+                      placeholder="Email subject line"
+                      className="w-full rounded-lg px-3 py-2 pr-24 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
+                    />
+                    <button
+                      onClick={() => { setGenerateField('subject'); setGenerateOpen(true); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                    >
+                      <StarIcon size={9} className="text-[#FFCE0A]" />
+                      Generate
+                    </button>
+                  </div>
                 </div>
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-xs text-gray-400 dark:text-gray-500">Preview text <span className="text-gray-300 dark:text-gray-600">(shown after subject in inbox)</span></div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => { setGenerateField('preview'); setGenerateOpen(true); }}
-                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
-                      >
-                        <StarIcon size={9} className="text-[#FFCE0A]" />
-                        Generate
-                      </button>
-                      <span className={`text-xs tabular-nums ${draft.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.preview_text.length}/90</span>
-                    </div>
+                    <span className={`text-xs tabular-nums ${draft.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.preview_text.length}/90</span>
                   </div>
-                  <input
-                    value={draft.preview_text}
-                    maxLength={90}
-                    onChange={e => updateText({ preview_text: e.target.value })}
-                    placeholder="Short teaser shown in inbox..."
-                    className="w-full rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
-                  />
+                  <div className="relative">
+                    <input
+                      value={draft.preview_text}
+                      maxLength={90}
+                      onChange={e => updateText({ preview_text: e.target.value })}
+                      placeholder="Short teaser shown in inbox..."
+                      className="w-full rounded-lg px-3 py-2 pr-24 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
+                    />
+                    <button
+                      onClick={() => { setGenerateField('preview'); setGenerateOpen(true); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                    >
+                      <StarIcon size={9} className="text-[#FFCE0A]" />
+                      Generate
+                    </button>
+                  </div>
                 </div>
               </>
             )}
 
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="mb-1.5">
               <div className="text-xs text-gray-400 dark:text-gray-500">Body</div>
-              {draft && (
-                <button
-                  onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
-                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
-                >
-                  <StarIcon size={9} className="text-[#FFCE0A]" />
-                  Generate
-                </button>
-              )}
             </div>
 
             {campaign.channel === 'email' ? (
-              draft ? (
-                <RichTextEditor
-                  content={draft.body}
-                  onChange={html => updateText({ body: html })}
-                  mergeTagOptions={MERGE_TAGS}
-                  placeholder="Hi {{agent_name}}, I noticed your listing at {{address}}…"
-                />
-              ) : (
-                <RichTextEditor
-                  content={campaign.body}
-                  onChange={() => {}}
-                  mergeTagOptions={MERGE_TAGS}
-                  disabled
-                />
-              )
+              <div className="relative">
+                {draft && (
+                  <button
+                    onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
+                    className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                  >
+                    <StarIcon size={9} className="text-[#FFCE0A]" />
+                    Generate
+                  </button>
+                )}
+                {draft ? (
+                  <RichTextEditor
+                    content={draft.body}
+                    onChange={html => updateText({ body: html })}
+                    mergeTagOptions={MERGE_TAGS}
+                    placeholder="Hi {{agent_name}}, I noticed your listing at {{address}}…"
+                  />
+                ) : (
+                  <RichTextEditor
+                    content={campaign.body}
+                    onChange={() => {}}
+                    mergeTagOptions={MERGE_TAGS}
+                    disabled
+                  />
+                )}
+              </div>
             ) : (
               <>
                 {/* Variable insertion chips for SMS */}
@@ -922,21 +924,32 @@ export function V2Campaign() {
                     </button>
                   ))}
                 </div>
-                {draft ? (
-                  <textarea
-                    ref={bodyRef}
-                    value={draft.body}
-                    onChange={e => updateText({ body: e.target.value })}
-                    onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
-                    onBlur={e => { cursorPos.current = e.target.selectionStart; }}
-                    className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden"
-                    style={{ minHeight: 140 }}
-                  />
-                ) : (
-                  <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
-                    {campaign.body || '—'}
-                  </div>
-                )}
+                <div className="relative">
+                  {draft && (
+                    <button
+                      onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
+                      className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                    >
+                      <StarIcon size={9} className="text-[#FFCE0A]" />
+                      Generate
+                    </button>
+                  )}
+                  {draft ? (
+                    <textarea
+                      ref={bodyRef}
+                      value={draft.body}
+                      onChange={e => updateText({ body: e.target.value })}
+                      onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
+                      onBlur={e => { cursorPos.current = e.target.selectionStart; }}
+                      className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden"
+                      style={{ minHeight: 140 }}
+                    />
+                  ) : (
+                    <div className="rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 flex-1">
+                      {campaign.body || '—'}
+                    </div>
+                  )}
+                </div>
               </>
             )}
 

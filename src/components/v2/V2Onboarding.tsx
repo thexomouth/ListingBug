@@ -1099,87 +1099,91 @@ export function V2Onboarding() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Subject line</label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setGenerateField('subject'); setGenerateOpen(true); }}
-                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
-                      >
-                        <StarIcon size={9} className="text-[#FFCE0A]" />
-                        Generate
-                      </button>
-                      <span className={`text-xs tabular-nums ${messageInfo.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.subject.length}/60</span>
-                    </div>
+                    <span className={`text-xs tabular-nums ${messageInfo.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.subject.length}/60</span>
                   </div>
-                  <Input
-                    ref={subjectRef}
-                    value={messageInfo.subject}
-                    maxLength={60}
-                    onFocus={() => {}}
-                    onChange={e => {
-                      subjectCursorPos.current = e.target.selectionStart ?? 0;
-                      subjectCursorEnd.current = e.target.selectionEnd ?? 0;
-                      setMessageInfo(m => ({ ...m, subject: e.target.value }));
-                    }}
-                    onSelect={e => {
-                      subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
-                      subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
-                    }}
-                    onClick={e => {
-                      subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
-                      subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
-                    }}
-                    onKeyUp={e => {
-                      subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
-                      subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
-                    }}
-                    placeholder="e.g. Roof certification for {{address}}"
-                  />
+                  <div className="relative">
+                    <Input
+                      ref={subjectRef}
+                      value={messageInfo.subject}
+                      maxLength={60}
+                      className="pr-24"
+                      onFocus={() => {}}
+                      onChange={e => {
+                        subjectCursorPos.current = e.target.selectionStart ?? 0;
+                        subjectCursorEnd.current = e.target.selectionEnd ?? 0;
+                        setMessageInfo(m => ({ ...m, subject: e.target.value }));
+                      }}
+                      onSelect={e => {
+                        subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
+                        subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
+                      }}
+                      onClick={e => {
+                        subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
+                        subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
+                      }}
+                      onKeyUp={e => {
+                        subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
+                        subjectCursorEnd.current = (e.target as HTMLInputElement).selectionEnd ?? 0;
+                      }}
+                      placeholder="e.g. Roof certification for {{address}}"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setGenerateField('subject'); setGenerateOpen(true); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                    >
+                      <StarIcon size={9} className="text-[#FFCE0A]" />
+                      Generate
+                    </button>
+                  </div>
                   {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span></label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setGenerateField('preview'); setGenerateOpen(true); }}
-                        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
-                      >
-                        <StarIcon size={9} className="text-[#FFCE0A]" />
-                        Generate
-                      </button>
-                      <span className={`text-xs tabular-nums ${messageInfo.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.preview_text.length}/90</span>
-                    </div>
+                    <span className={`text-xs tabular-nums ${messageInfo.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.preview_text.length}/90</span>
                   </div>
-                  <Input
-                    value={messageInfo.preview_text}
-                    maxLength={90}
-                    onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))}
-                    placeholder="e.g. I'd love to help with the listing at {{address}}..."
-                  />
+                  <div className="relative">
+                    <Input
+                      value={messageInfo.preview_text}
+                      maxLength={90}
+                      className="pr-24"
+                      onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))}
+                      placeholder="e.g. I'd love to help with the listing at {{address}}..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setGenerateField('preview'); setGenerateOpen(true); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                    >
+                      <StarIcon size={9} className="text-[#FFCE0A]" />
+                      Generate
+                    </button>
+                  </div>
                 </div>
               </>
             )}
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="mb-1.5">
                 <label className="text-sm text-gray-600 dark:text-gray-400">Message body</label>
+              </div>
+              <div className="relative">
                 <button
                   type="button"
                   onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
-                  className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                  className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
                 >
                   <StarIcon size={9} className="text-[#FFCE0A]" />
                   Generate
                 </button>
+                <RichTextEditor
+                  content={messageInfo.body}
+                  onChange={html => setMessageInfo(m => ({ ...m, body: html }))}
+                  mergeTagOptions={MERGE_TAGS}
+                  placeholder="Hi there, I noticed a new listing at your address in your city…"
+                />
               </div>
-              <RichTextEditor
-                content={messageInfo.body}
-                onChange={html => setMessageInfo(m => ({ ...m, body: html }))}
-                mergeTagOptions={MERGE_TAGS}
-                placeholder="Hi there, I noticed a new listing at your address in your city…"
-              />
               <div className="flex items-center justify-between mt-1.5 min-h-[1.25rem]">
                 {stepErrors.body ? <p className="text-xs text-red-500">{stepErrors.body}</p> : <span />}
                 <span className="text-xs text-gray-400 dark:text-gray-500">
