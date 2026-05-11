@@ -1270,17 +1270,18 @@ export function NewCampaign() {
 
           {/* Preview column - sticky on desktop */}
           {messageInfo.channel === 'email' && (
-            <div className="lg:sticky lg:top-6 lg:self-start">
+            <div className="lg:sticky lg:top-6 lg:self-start space-y-3">
+              {/* Inbox preview */}
               <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] overflow-hidden shadow-sm">
                 {/* Mac window chrome */}
                 <div className="flex items-center gap-1.5 px-3.5 py-2.5 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
                   <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
                   <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
                   <div className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
-                  <span className="ml-2 text-[11px] text-gray-500 dark:text-gray-400">Inbox preview</span>
+                  <span className="ml-2 text-[11px] text-gray-500 dark:text-gray-400">Notification Preview</span>
                 </div>
                 {/* Sender row */}
-                <div className="px-4 py-3.5 flex items-start gap-3 border-b border-gray-100 dark:border-white/10">
+                <div className="px-4 py-3.5 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#FFCE0A] flex items-center justify-center text-sm font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
                     {(businessInfo.business_name || 'Y').charAt(0).toUpperCase()}
                   </div>
@@ -1297,8 +1298,34 @@ export function NewCampaign() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Desktop preview */}
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] overflow-hidden shadow-sm">
+                <div className="flex items-center gap-1.5 px-3.5 py-2.5 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
+                  <span className="ml-2 text-[11px] text-gray-500 dark:text-gray-400">Desktop preview</span>
+                </div>
+                {/* Email header meta */}
+                <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-white/10">
+                  <div className="text-base font-semibold text-gray-900 dark:text-white mb-2.5">
+                    {previewSubjectText ?? <span className="text-gray-400 dark:text-gray-500 font-normal italic text-sm">No subject yet…</span>}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 select-none">
+                      {(businessInfo.business_name || 'Y').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">{businessInfo.business_name || 'Your Name'}</div>
+                      <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senders.find(s => s.id === selectedSender)?.from_email || 'your@email.com'}</div>
+                    </div>
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
+                  </div>
+                </div>
                 {/* Body */}
-                <div className="px-4 py-4 max-h-[480px] overflow-y-auto">
+                <div className="px-4 py-4 max-h-[360px] overflow-y-auto">
                   {activeBody ? (
                     <div
                       className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
@@ -1398,15 +1425,15 @@ export function NewCampaign() {
           Here's what agents in {searchCriteria.city || 'your city'} will receive.
         </div>
 
-        {/* Inbox mockup */}
-        <div className="mb-4 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
+        {/* Notification preview */}
+        <div className="mb-3 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm">
           <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
             <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
             <div className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
-            <span className="ml-2 text-[11px] text-gray-400 dark:text-gray-500">Inbox — listing agent's view</span>
+            <span className="ml-2 text-[11px] text-gray-400 dark:text-gray-500">Notification Preview</span>
           </div>
-          <div className="px-4 py-3 bg-blue-50/60 dark:bg-blue-950/20 border-b border-gray-100 dark:border-white/10 flex items-start gap-3">
+          <div className="px-4 py-3 bg-blue-50/60 dark:bg-blue-950/20 flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 mt-0.5 select-none">
               {fromName.charAt(0).toUpperCase()}
             </div>
@@ -1422,7 +1449,30 @@ export function NewCampaign() {
               }
             </div>
           </div>
-          <div className="px-4 py-5 bg-white dark:bg-[#1a1a1a]">
+        </div>
+
+        {/* Desktop preview */}
+        <div className="mb-4 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] overflow-hidden shadow-sm">
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-white/5 border-b border-gray-200 dark:border-white/10">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400/70" />
+            <span className="ml-2 text-[11px] text-gray-400 dark:text-gray-500">Desktop Preview</span>
+          </div>
+          <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-white/10">
+            <div className="text-base font-semibold text-gray-900 dark:text-white mb-2.5">{previewSubject}</div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 select-none">
+                {fromName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">{fromName}</div>
+                <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senderEmail || 'your@email.com'}</div>
+              </div>
+              <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
+            </div>
+          </div>
+          <div className="px-4 py-4">
             <div
               className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
               dangerouslySetInnerHTML={{ __html: buildPreviewHtml(messageInfo.body, searchCriteria.city) }}
