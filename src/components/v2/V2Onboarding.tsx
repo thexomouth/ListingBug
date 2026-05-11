@@ -1301,6 +1301,7 @@ export function V2Onboarding() {
                   onChange={html => setVariantFields({ body: html })}
                   mergeTagOptions={MERGE_TAGS}
                   placeholder="Hi there, I noticed a new listing at your address in your city…"
+                  withSections
                 />
               </div>
               <div className="flex items-center justify-between mt-1.5 min-h-[1.25rem]">

@@ -1248,6 +1248,7 @@ export function NewCampaign() {
                     onChange={html => setVariantFields({ body: html })}
                     mergeTagOptions={MERGE_TAGS}
                     placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
+                    withSections
                   />
                 ) : (
                   <Textarea

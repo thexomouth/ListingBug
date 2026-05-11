@@ -394,9 +394,9 @@ select option[value=""] {
 .lb-editor .ProseMirror p:last-child { margin-bottom: 0; }
 .lb-editor .ProseMirror h1 { font-size: 1.375rem; font-weight: 700; margin: 0.6em 0 0.3em; line-height: 1.25; }
 .lb-editor .ProseMirror h2 { font-size: 1.125rem; font-weight: 600; margin: 0.5em 0 0.25em; line-height: 1.3; }
-.lb-editor .ProseMirror ul,
-.lb-editor .ProseMirror ol { padding-left: 1.25rem; margin: 0.25rem 0; }
-.lb-editor .ProseMirror li { margin: 0.1rem 0; }
+.lb-editor .ProseMirror ul { padding-left: 1.5rem; margin: 0.25rem 0; list-style-type: disc; }
+.lb-editor .ProseMirror ol { padding-left: 1.5rem; margin: 0.25rem 0; list-style-type: decimal; }
+.lb-editor .ProseMirror li { margin: 0.1rem 0; display: list-item; }
 .lb-editor .ProseMirror blockquote {
   border-left: 3px solid #d1d5db;
   padding: 0.125rem 0 0.125rem 0.75rem;
@@ -415,6 +415,45 @@ select option[value=""] {
 .dark .lb-editor .ProseMirror hr { border-top-color: rgba(255,255,255,0.1); }
 .lb-editor .ProseMirror a { color: #1d4ed8; text-decoration: underline; }
 .dark .lb-editor .ProseMirror a { color: #93c5fd; }
+
+/* Section dividers */
+.lb-editor .ProseMirror .lb-section-divider-view {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 6px;
+  user-select: none;
+  cursor: default;
+  pointer-events: none;
+}
+.lb-editor .ProseMirror .lb-section-divider-view .lb-sd-line {
+  flex: 1;
+  display: block;
+  height: 1px;
+  background: #e5e7eb;
+}
+.lb-editor .ProseMirror .lb-section-divider-view .lb-sd-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+.dark .lb-editor .ProseMirror .lb-section-divider-view .lb-sd-line { background: rgba(255,255,255,0.1); }
+.dark .lb-editor .ProseMirror .lb-section-divider-view .lb-sd-label { color: rgba(255,255,255,0.25); }
+
+/* Column layout tables */
+.lb-editor .ProseMirror table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; table-layout: fixed; }
+.lb-editor .ProseMirror td,
+.lb-editor .ProseMirror th { vertical-align: top; padding: 6px 8px; border: 1px dashed #d1d5db; min-width: 40px; }
+.dark .lb-editor .ProseMirror td,
+.dark .lb-editor .ProseMirror th { border-color: rgba(255,255,255,0.12); }
+
+/* Images */
+.lb-editor .ProseMirror img { max-width: 100%; height: auto; border-radius: 6px; display: block; margin: 6px 0; }
+.lb-editor .ProseMirror img.ProseMirror-selectednode { outline: 2px solid #FFCE0A; }
 
 /* Merge tag chips */
 .merge-tag-chip {
