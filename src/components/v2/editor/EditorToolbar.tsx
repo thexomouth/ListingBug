@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { type Editor } from '@tiptap/react';
 import {
   Bold, Italic, Underline, Strikethrough,
   Heading1, Heading2,
   AlignLeft, AlignCenter, AlignRight,
   List, ListOrdered, Quote, Minus,
-  Link, Link2Off, ChevronDown, Image, LayoutGrid, Type,
+  Link, Link2Off, ChevronDown, Image, LayoutGrid, Type, Braces,
 } from 'lucide-react';
 import { SECTION_DEFAULT_ATTRS } from './SectionNode';
 
@@ -29,14 +29,12 @@ const FONTS = [
   { label: 'Default', value: '' },
   { label: 'Arial', value: 'Arial, sans-serif' },
   { label: 'Georgia', value: 'Georgia, serif' },
-  { label: 'Courier New', value: "'Courier New', monospace" },
+  { label: "Courier New", value: "'Courier New', monospace" },
   { label: 'Trebuchet MS', value: "'Trebuchet MS', sans-serif" },
   { label: 'Verdana', value: 'Verdana, sans-serif' },
 ];
 
-function ToolBtn({
-  onClick, active, title, children,
-}: {
+function ToolBtn({ onClick, active, title, children }: {
   onClick: () => void;
   active?: boolean;
   title: string;
@@ -91,11 +89,8 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
   };
 
   const setFont = (fontValue: string) => {
-    if (!fontValue) {
-      editor.chain().focus().unsetFontFamily().run();
-    } else {
-      editor.chain().focus().setFontFamily(fontValue).run();
-    }
+    if (!fontValue) editor.chain().focus().unsetFontFamily().run();
+    else editor.chain().focus().setFontFamily(fontValue).run();
     setFontOpen(false);
   };
 
@@ -106,7 +101,6 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
 
     editor.chain().command(({ tr, state }) => {
       const { schema } = state;
-
       let innerContent;
       if (cols === 1) {
         innerContent = schema.nodes.paragraph.create();
@@ -114,18 +108,14 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
         const cells = Array.from({ length: cols }, () =>
           schema.nodes.tableCell.createAndFill({}, schema.nodes.paragraph.create())!
         );
-        const row = schema.nodes.tableRow.create({}, cells);
-        innerContent = schema.nodes.table.create({}, row);
+        innerContent = schema.nodes.table.create({}, schema.nodes.tableRow.create({}, cells));
       }
-
       if (usingSections && schema.nodes.section) {
-        const sectionNode = schema.nodes.section.createAndFill(
+        const sec = schema.nodes.section.createAndFill(
           { ...SECTION_DEFAULT_ATTRS, label: nextLabel },
           innerContent,
         );
-        if (sectionNode) {
-          tr.insert(state.doc.content.size, sectionNode);
-        }
+        if (sec) tr.insert(state.doc.content.size, sec);
       } else {
         tr.replaceSelectionWith(innerContent);
       }
@@ -139,25 +129,58 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
 
   return (
     <div className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5">
-      {/* Row 1 — formatting */}
+      {/*
+        Single wrappable toolbar row.
+        Priority order (left → right) so the most-used tools appear first
+        and land on the first visual line before wrapping:
+          B I U S  |  H1 H2 Font  |  Align  |  Lists Quote HR  |  Link Image Blocks  |  Variables
+      */}
       <div className="flex items-center gap-0.5 px-2 py-1.5 flex-wrap">
-        {/* Font picker */}
-        <div className="relative">
+
+        {/* ── Group 1: inline formatting (highest priority) ── */}
+        <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
+          <Bold className="w-3.5 h-3.5" />
+        </ToolBtn>
+        <ToolBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic">
+          <Italic className="w-3.5 h-3.5" />
+        </ToolBtn>
+        <ToolBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline">
+          <Underline className="w-3.5 h-3.5" />
+        </ToolBtn>
+        <ToolBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
+          <Strikethrough className="w-3.5 h-3.5" />
+        </ToolBtn>
+
+        <span className={SEP} />
+
+        {/* ── Group 2: headings + font ── */}
+        <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
+          <Heading1 className="w-3.5 h-3.5" />
+        </ToolBtn>
+        <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
+          <Heading2 className="w-3.5 h-3.5" />
+        </ToolBtn>
+
+        {/* Font picker — compact on mobile (icon only), expanded on sm+ */}
+        <div className="relative shrink-0">
           <button
             type="button"
             title="Font family"
             onMouseDown={e => e.preventDefault()}
             onClick={() => setFontOpen(v => !v)}
-            className={`inline-flex items-center gap-1 h-8 px-1.5 rounded-md text-xs font-medium shrink-0 transition-colors ${fontOpen ? BTN_ACTIVE : BTN_INACTIVE}`}
+            className={`inline-flex items-center gap-1 h-8 rounded-md px-1.5 text-xs font-medium transition-colors shrink-0 ${fontOpen ? BTN_ACTIVE : BTN_INACTIVE}`}
           >
-            <Type className="w-3.5 h-3.5" />
-            <span className="max-w-[52px] truncate">{currentFont?.label ?? 'Default'}</span>
-            <ChevronDown className="w-3 h-3 opacity-60" />
+            <Type className="w-3.5 h-3.5 shrink-0" />
+            {/* Label hidden on xs, shown on sm+ */}
+            <span className="hidden sm:inline max-w-[52px] truncate">
+              {currentFont?.label ?? 'Default'}
+            </span>
+            <ChevronDown className="w-3 h-3 opacity-60 hidden sm:block" />
           </button>
           {fontOpen && (
             <>
               <div className="fixed inset-0 z-40" onMouseDown={() => setFontOpen(false)} />
-              <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
+              <div className="absolute left-0 top-full mt-1 z-50 w-48 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-xl overflow-hidden">
                 {FONTS.map(f => (
                   <button
                     key={f.value}
@@ -167,7 +190,7 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
                     style={{ fontFamily: f.value || undefined }}
                     className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${
                       (currentFont?.value ?? '') === f.value
-                        ? 'text-[#92700a] dark:text-[#FFCE0A] font-medium'
+                        ? 'text-[#92700a] dark:text-[#FFCE0A] font-semibold'
                         : 'text-gray-900 dark:text-white'
                     }`}
                   >
@@ -181,26 +204,7 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
 
         <span className={SEP} />
 
-        <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
-          <Heading1 className="w-3.5 h-3.5" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
-          <Heading2 className="w-3.5 h-3.5" />
-        </ToolBtn>
-        <span className={SEP} />
-        <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
-          <Bold className="w-3.5 h-3.5" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic">
-          <Italic className="w-3.5 h-3.5" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline">
-          <Underline className="w-3.5 h-3.5" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
-          <Strikethrough className="w-3.5 h-3.5" />
-        </ToolBtn>
-        <span className={SEP} />
+        {/* ── Group 3: alignment ── */}
         <ToolBtn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align left">
           <AlignLeft className="w-3.5 h-3.5" />
         </ToolBtn>
@@ -210,7 +214,10 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
         <ToolBtn onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align right">
           <AlignRight className="w-3.5 h-3.5" />
         </ToolBtn>
+
         <span className={SEP} />
+
+        {/* ── Group 4: lists / block formatting ── */}
         <ToolBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
           <List className="w-3.5 h-3.5" />
         </ToolBtn>
@@ -223,8 +230,10 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
         <ToolBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Divider">
           <Minus className="w-3.5 h-3.5" />
         </ToolBtn>
+
         <span className={SEP} />
-        {/* Link */}
+
+        {/* ── Group 5: insert ── */}
         {editor.isActive('link') ? (
           <ToolBtn onClick={() => editor.chain().focus().unsetLink().run()} active title="Remove link">
             <Link2Off className="w-3.5 h-3.5" />
@@ -234,15 +243,15 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
             <Link className="w-3.5 h-3.5" />
           </ToolBtn>
         )}
-        <span className={SEP} />
-        {/* Image */}
+
         {onImageClick && (
           <ToolBtn onClick={onImageClick} title="Insert image">
             <Image className="w-3.5 h-3.5" />
           </ToolBtn>
         )}
+
         {/* Column block dropdown */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             type="button"
             title="Insert content block"
@@ -255,7 +264,7 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
           {blockOpen && (
             <>
               <div className="fixed inset-0 z-40" onMouseDown={() => setBlockOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
+              <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-xl overflow-hidden">
                 <div className="px-3 pt-2.5 pb-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Insert block</span>
                 </div>
@@ -273,17 +282,53 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
                   >
                     <div className="flex gap-0.5 shrink-0">
                       {Array.from({ length: cols }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="h-7 rounded bg-gray-200 dark:bg-white/15"
-                          style={{ width: cols === 1 ? 32 : cols === 2 ? 14 : 9 }}
-                        />
+                        <div key={i} className="h-7 rounded bg-gray-200 dark:bg-white/15"
+                          style={{ width: cols === 1 ? 32 : cols === 2 ? 14 : 9 }} />
                       ))}
                     </div>
                     <div>
                       <div className="text-sm font-medium text-gray-900 dark:text-white">{label}</div>
                       <div className="text-xs text-gray-400 dark:text-gray-500">{desc}</div>
                     </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <span className={SEP} />
+
+        {/* ── Group 6: variables dropdown (replaces the inline chip row) ── */}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => setVarOpen(v => !v)}
+            title="Insert variable"
+            className={`inline-flex items-center gap-1 h-8 px-2 rounded-md text-xs font-medium transition-colors ${varOpen ? BTN_ACTIVE : BTN_INACTIVE}`}
+          >
+            <Braces className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Variable</span>
+            <ChevronDown className="w-3 h-3 opacity-60" />
+          </button>
+          {varOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onMouseDown={() => setVarOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-xl overflow-hidden">
+                <div className="px-3 pt-2.5 pb-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Insert variable</span>
+                </div>
+                {mergeTagOptions.map(opt => (
+                  <button
+                    key={opt.variable}
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => insertMergeTag(opt)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                  >
+                    <span className="font-medium text-sm text-gray-900 dark:text-white block">{opt.label}</span>
+                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{opt.variable}</span>
                   </button>
                 ))}
               </div>
@@ -304,61 +349,14 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
             onKeyDown={e => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') setLinkOpen(false); }}
             className="flex-1 text-sm px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white outline-none focus:border-[#FFCE0A] min-w-0"
           />
-          <button
-            type="button"
-            onClick={applyLink}
-            className="text-sm px-3 py-1.5 rounded-md font-semibold"
-            style={{ background: '#FFCE0A', color: '#342e37' }}
-          >
+          <button type="button" onClick={applyLink} className="text-sm px-3 py-1.5 rounded-md font-semibold shrink-0" style={{ background: '#FFCE0A', color: '#342e37' }}>
             {linkUrl.trim() ? 'Set link' : 'Remove'}
           </button>
-          <button type="button" onClick={() => setLinkOpen(false)} className="text-sm px-2 py-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+          <button type="button" onClick={() => setLinkOpen(false)} className="text-sm px-2 py-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors shrink-0">
             Cancel
           </button>
         </div>
       )}
-
-      {/* Row 2 — merge tags */}
-      <div className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-t border-gray-200 dark:border-white/10">
-        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mr-0.5">Insert</span>
-        {mergeTagOptions.map(opt => (
-          <button
-            key={opt.variable}
-            type="button"
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => insertMergeTag(opt)}
-            className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80 bg-blue-50 text-blue-700 border border-transparent dark:bg-transparent dark:border-white/20 dark:text-gray-300"
-          >
-            {opt.variable}
-          </button>
-        ))}
-        <div className="relative ml-auto">
-          <button
-            type="button"
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => setVarOpen(v => !v)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-          >
-            + variable <ChevronDown className="w-3 h-3" />
-          </button>
-          {varOpen && (
-            <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
-              {mergeTagOptions.map(opt => (
-                <button
-                  key={opt.variable}
-                  type="button"
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => insertMergeTag(opt)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                >
-                  <span className="font-medium text-gray-900 dark:text-white block">{opt.label}</span>
-                  <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{opt.variable}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
