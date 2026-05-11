@@ -45,6 +45,7 @@ interface Send {
   opened_at: string | null;
   clicked_at: string | null;
   channel: string;
+  variant: string | null;
   campaign_replies: { id: string; replied_at: string }[];
 }
 
@@ -263,7 +264,7 @@ export function V2Campaign() {
           listing_address, listing_city, listing_state, listing_price,
           listing_type, listing_property_type, listing_beds, listing_baths,
           listing_sqft, listing_brokerage, listing_mls_number,
-          status, error_message, sent_at, opened_at, clicked_at, channel,
+          status, error_message, sent_at, opened_at, clicked_at, channel, variant,
           campaign_replies ( id, replied_at )
         )
       `)
@@ -591,10 +592,16 @@ export function V2Campaign() {
   const criteria = campaign.campaign_search_criteria?.[0];
   const isActive = campaign.status === 'active';
 
-  const totalSent = sends.filter(s => s.status === 'sent' || s.status === 'opened' || s.status === 'replied').length;
-  const totalReplies = sends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
+  // Filter sends to whichever variant is selected in the ABCD tabs.
+  // Old sends (before variants shipped) have variant=null — treat them as 'A'.
+  const variantSends = activeVariant === 'A'
+    ? sends.filter(s => !s.variant || s.variant === 'A')
+    : sends.filter(s => s.variant === activeVariant);
 
-  const sortedSends = [...sends].sort((a, b) => {
+  const totalSent = variantSends.filter(s => s.status === 'sent' || s.status === 'opened' || s.status === 'replied').length;
+  const totalReplies = variantSends.reduce((acc, s) => acc + (s.campaign_replies?.length ?? 0), 0);
+
+  const sortedSends = [...variantSends].sort((a, b) => {
     let av: string | number = 0;
     let bv: string | number = 0;
     if (sortCol === 'agent') {
@@ -622,7 +629,7 @@ export function V2Campaign() {
   const senderMailbox = senderInfo?.display_name ?? null;
 
   // Windowed stats for animated bubbles
-  const windowedSends = getWindowedSends(sends, currentRange);
+  const windowedSends = getWindowedSends(variantSends, currentRange);
   const wsSent = windowedSends.filter(s => s.status === 'sent' || s.status === 'opened' || s.status === 'replied').length;
   const wsOpens = windowedSends.filter(s => s.opened_at !== null).length;
   const wsClicks = windowedSends.filter(s => s.clicked_at !== null).length;
@@ -1057,9 +1064,12 @@ export function V2Campaign() {
         </div>
 
         {/* Performance section header */}
-        <div className="mb-3 mt-4">
+        <div className="mb-3 mt-4 flex items-baseline gap-2">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Performance</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">This campaign</p>
+          {activeVariant !== 'A' && (
+            <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-[#FFCE0A]/20 text-[#342e37] dark:text-[#FFCE0A]">Variant {activeVariant}</span>
+          )}
+          <p className="text-sm text-gray-600 dark:text-gray-400">This campaign</p>
         </div>
 
         {/* Stat bubbles */}
@@ -1138,25 +1148,32 @@ export function V2Campaign() {
           </div>
         </div>
 
-        {/* Email performance timeline */}
+        {/* Email performance timeline — scoped to selected variant */}
         <EmailPerformanceTimeline
-          campaigns={[campaign]}
+          campaigns={[{ ...campaign, campaign_sends: variantSends }]}
           currentRange={currentRange}
           onRangeChange={handleRangeChange}
           hideHeader
         />
 
         {/* Activity section header */}
-        <div className="mb-3 mt-6">
+        <div className="mb-3 mt-6 flex items-baseline gap-2">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Activity</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+          {activeVariant !== 'A' && (
+            <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-[#FFCE0A]/20 text-[#342e37] dark:text-[#FFCE0A]">Variant {activeVariant}</span>
+          )}
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {totalSent} sent · {totalReplies} repl{totalReplies !== 1 ? 'ies' : 'y'}
           </p>
         </div>
 
         {sortedSends.length === 0 ? (
           <div className="bg-white dark:bg-[#2F2F2F] text-center py-12 rounded-lg border border-gray-200 dark:border-white/10 mb-8">
-            <div className="text-sm text-gray-600 dark:text-gray-400">No sends yet — the campaign will run tonight.</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {sends.length > 0
+                ? `No sends for Variant ${activeVariant} yet.`
+                : 'No sends yet — the campaign will run tonight.'}
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-white/10 mb-8 bg-white dark:bg-[#2F2F2F]">
