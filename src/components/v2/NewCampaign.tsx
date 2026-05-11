@@ -1310,16 +1310,13 @@ export function NewCampaign() {
                 </div>
                 {/* Email header meta */}
                 <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-white/10">
-                  <div className="text-base font-semibold text-gray-900 dark:text-white mb-2.5">
+                  <div className="text-base font-semibold text-gray-900 dark:text-white mb-2">
                     {previewSubjectText ?? <span className="text-gray-400 dark:text-gray-500 font-normal italic text-sm">No subject yet…</span>}
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 select-none">
-                      {(businessInfo.business_name || 'Y').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">{businessInfo.business_name || 'Your Name'}</div>
-                      <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senders.find(s => s.id === selectedSender)?.from_email || 'your@email.com'}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-gray-700 dark:text-gray-300 truncate">
+                      <span className="font-medium">{businessInfo.business_name || 'Your Name'}</span>
+                      <span className="text-gray-400 dark:text-gray-500 ml-1">&lt;{senders.find(s => s.id === selectedSender)?.from_email || 'your@email.com'}&gt;</span>
                     </div>
                     <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
                   </div>
@@ -1460,14 +1457,11 @@ export function NewCampaign() {
             <span className="ml-2 text-[11px] text-gray-400 dark:text-gray-500">Desktop Preview</span>
           </div>
           <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-white/10">
-            <div className="text-base font-semibold text-gray-900 dark:text-white mb-2.5">{previewSubject}</div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#FFCE0A] flex items-center justify-center text-xs font-bold text-[#342e37] shrink-0 select-none">
-                {fromName.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-gray-900 dark:text-white leading-tight">{fromName}</div>
-                <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{senderEmail || 'your@email.com'}</div>
+            <div className="text-base font-semibold text-gray-900 dark:text-white mb-2">{previewSubject}</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-gray-700 dark:text-gray-300 truncate">
+                <span className="font-medium">{fromName}</span>
+                <span className="text-gray-400 dark:text-gray-500 ml-1">&lt;{senderEmail || 'your@email.com'}&gt;</span>
               </div>
               <span className="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">just now</span>
             </div>
