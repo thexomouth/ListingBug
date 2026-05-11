@@ -1233,15 +1233,17 @@ export function NewCampaign() {
               <div className="mb-1.5">
                 <label className="text-sm text-gray-600 dark:text-gray-400">Message body</label>
               </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
-                  className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
-                >
-                  <StarIcon size={9} className="text-[#FFCE0A]" />
-                  Generate
-                </button>
+              <div>
+                <div className="flex justify-end mb-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setGenerateField('body'); setGenerateOpen(true); }}
+                    className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-[#FFCE0A]/50 bg-[#FFCE0A]/10 text-[#342e37] dark:text-[#FFCE0A] hover:bg-[#FFCE0A]/20 transition-colors"
+                  >
+                    <StarIcon size={9} className="text-[#FFCE0A]" />
+                    Generate
+                  </button>
+                </div>
                 {messageInfo.channel === 'email' ? (
                   <RichTextEditor
                     content={activeBody}

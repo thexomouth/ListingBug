@@ -416,33 +416,46 @@ select option[value=""] {
 .lb-editor .ProseMirror a { color: #1d4ed8; text-decoration: underline; }
 .dark .lb-editor .ProseMirror a { color: #93c5fd; }
 
-/* Section dividers */
-.lb-editor .ProseMirror .lb-section-divider-view {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 14px 0 6px;
-  user-select: none;
-  cursor: default;
-  pointer-events: none;
+/* Section containers */
+.lb-editor .ProseMirror .lb-section {
+  position: relative;
+  margin: 4px 0;
+  border-radius: 6px;
+  transition: outline 0.1s;
 }
-.lb-editor .ProseMirror .lb-section-divider-view .lb-sd-line {
-  flex: 1;
-  display: block;
-  height: 1px;
-  background: #e5e7eb;
+.lb-editor .ProseMirror .lb-section:focus-within {
+  outline: 1.5px solid rgba(255, 206, 10, 0.4);
+  outline-offset: 0;
 }
-.lb-editor .ProseMirror .lb-section-divider-view .lb-sd-label {
-  font-size: 10px;
-  font-weight: 600;
+.lb-editor .ProseMirror .lb-section-badge {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  z-index: 10;
+  font-size: 9px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: #9ca3af;
-  white-space: nowrap;
-  padding: 0 2px;
+  background: transparent;
+  border: none;
+  padding: 0 3px;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.4;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
 }
-.dark .lb-editor .ProseMirror .lb-section-divider-view .lb-sd-line { background: rgba(255,255,255,0.1); }
-.dark .lb-editor .ProseMirror .lb-section-divider-view .lb-sd-label { color: rgba(255,255,255,0.25); }
+.lb-editor .ProseMirror .lb-section-badge:hover {
+  color: #6b7280;
+  background: rgba(0,0,0,0.05);
+}
+.dark .lb-editor .ProseMirror .lb-section-badge { color: rgba(255,255,255,0.2); }
+.dark .lb-editor .ProseMirror .lb-section-badge:hover { color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.05); }
+.lb-editor .ProseMirror .lb-section-content {
+  padding-top: 18px; /* clearance for the badge */
+  min-height: 2em;
+}
 
 /* Column layout tables */
 .lb-editor .ProseMirror table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; table-layout: fixed; }

@@ -5,8 +5,9 @@ import {
   Heading1, Heading2,
   AlignLeft, AlignCenter, AlignRight,
   List, ListOrdered, Quote, Minus,
-  Link, Link2Off, ChevronDown, Image, LayoutGrid,
+  Link, Link2Off, ChevronDown, Image, LayoutGrid, Type,
 } from 'lucide-react';
+import { SECTION_DEFAULT_ATTRS } from './SectionNode';
 
 export interface MergeTagOption {
   label: string;
@@ -19,10 +20,19 @@ interface Props {
   onImageClick?: () => void;
 }
 
-const BTN = 'w-8 h-8 inline-flex items-center justify-center rounded-md transition-colors';
+const BTN = 'w-8 h-8 inline-flex items-center justify-center rounded-md transition-colors shrink-0';
 const BTN_INACTIVE = 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white';
 const BTN_ACTIVE = 'bg-[#FFCE0A]/20 text-[#92700a] dark:text-[#FFCE0A]';
-const SEP = 'w-px h-4 bg-gray-200 dark:bg-white/15 mx-0.5 shrink-0';
+const SEP = 'w-px h-4 bg-gray-200 dark:bg-white/15 mx-0.5 shrink-0 self-center';
+
+const FONTS = [
+  { label: 'Default', value: '' },
+  { label: 'Arial', value: 'Arial, sans-serif' },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Courier New', value: "'Courier New', monospace" },
+  { label: 'Trebuchet MS', value: "'Trebuchet MS', sans-serif" },
+  { label: 'Verdana', value: 'Verdana, sans-serif' },
+];
 
 function ToolBtn({
   onClick, active, title, children,
@@ -45,11 +55,15 @@ function ToolBtn({
   );
 }
 
+function hasSections(editor: Editor): boolean {
+  return editor.state.doc.firstChild?.type.name === 'section';
+}
+
 function countBodySections(editor: Editor): number {
   let count = 0;
   editor.state.doc.descendants((node: any) => {
-    if (node.type.name === 'sectionDivider') {
-      const lbl: string = node.attrs.label ?? '';
+    if (node.type.name === 'section') {
+      const lbl: string = node.attrs?.label ?? '';
       if (lbl === 'Body' || /^Body \d+$/.test(lbl)) count++;
     }
   });
@@ -61,7 +75,7 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
   const [linkUrl, setLinkUrl] = useState('');
   const [varOpen, setVarOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
-  const blockBtnRef = useRef<HTMLButtonElement>(null);
+  const [fontOpen, setFontOpen] = useState(false);
 
   const applyLink = () => {
     const url = linkUrl.trim();
@@ -76,34 +90,97 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
     setVarOpen(false);
   };
 
-  const insertColumnBlock = (cols: 1 | 2 | 3) => {
-    const existing = countBodySections(editor);
-    const hasAnySections = editor.state.doc.content.content.some(
-      (n: any) => n.type.name === 'sectionDivider',
-    );
-
-    if (hasAnySections) {
-      const nextNum = existing + 1;
-      const label = `Body ${nextNum}`;
-      editor.chain().focus().insertSectionDivider({ label }).run();
-    }
-
-    if (cols === 1) {
-      editor.chain().focus().insertContent('<p>New column block — type here.</p>').run();
+  const setFont = (fontValue: string) => {
+    if (!fontValue) {
+      editor.chain().focus().unsetFontFamily().run();
     } else {
-      editor.chain().focus().insertTable({ rows: 1, cols, withHeaderRow: false }).run();
+      editor.chain().focus().setFontFamily(fontValue).run();
     }
+    setFontOpen(false);
+  };
+
+  const insertColumnBlock = (cols: 1 | 2 | 3) => {
+    const bodyCount = countBodySections(editor);
+    const usingSections = hasSections(editor);
+    const nextLabel = `Body ${bodyCount + 1}`;
+
+    editor.chain().command(({ tr, state }) => {
+      const { schema } = state;
+
+      let innerContent;
+      if (cols === 1) {
+        innerContent = schema.nodes.paragraph.create();
+      } else {
+        const cells = Array.from({ length: cols }, () =>
+          schema.nodes.tableCell.createAndFill({}, schema.nodes.paragraph.create())!
+        );
+        const row = schema.nodes.tableRow.create({}, cells);
+        innerContent = schema.nodes.table.create({}, row);
+      }
+
+      if (usingSections && schema.nodes.section) {
+        const sectionNode = schema.nodes.section.createAndFill(
+          { ...SECTION_DEFAULT_ATTRS, label: nextLabel },
+          innerContent,
+        );
+        if (sectionNode) {
+          tr.insert(state.doc.content.size, sectionNode);
+        }
+      } else {
+        tr.replaceSelectionWith(innerContent);
+      }
+      return true;
+    }).run();
 
     setBlockOpen(false);
   };
 
-  // Close block dropdown when clicking outside
-  const blockDropdownRef = useRef<HTMLDivElement>(null);
+  const currentFont = FONTS.find(f => f.value && editor.isActive('textStyle', { fontFamily: f.value }));
 
   return (
     <div className="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5">
       {/* Row 1 — formatting */}
       <div className="flex items-center gap-0.5 px-2 py-1.5 flex-wrap">
+        {/* Font picker */}
+        <div className="relative">
+          <button
+            type="button"
+            title="Font family"
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => setFontOpen(v => !v)}
+            className={`inline-flex items-center gap-1 h-8 px-1.5 rounded-md text-xs font-medium shrink-0 transition-colors ${fontOpen ? BTN_ACTIVE : BTN_INACTIVE}`}
+          >
+            <Type className="w-3.5 h-3.5" />
+            <span className="max-w-[52px] truncate">{currentFont?.label ?? 'Default'}</span>
+            <ChevronDown className="w-3 h-3 opacity-60" />
+          </button>
+          {fontOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onMouseDown={() => setFontOpen(false)} />
+              <div className="absolute left-0 top-full mt-1 z-50 w-44 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
+                {FONTS.map(f => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => setFont(f.value)}
+                    style={{ fontFamily: f.value || undefined }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${
+                      (currentFont?.value ?? '') === f.value
+                        ? 'text-[#92700a] dark:text-[#FFCE0A] font-medium'
+                        : 'text-gray-900 dark:text-white'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <span className={SEP} />
+
         <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
           <Heading1 className="w-3.5 h-3.5" />
         </ToolBtn>
@@ -147,33 +224,26 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
           <Minus className="w-3.5 h-3.5" />
         </ToolBtn>
         <span className={SEP} />
-        {/* Link button */}
+        {/* Link */}
         {editor.isActive('link') ? (
           <ToolBtn onClick={() => editor.chain().focus().unsetLink().run()} active title="Remove link">
             <Link2Off className="w-3.5 h-3.5" />
           </ToolBtn>
         ) : (
-          <ToolBtn
-            onClick={() => {
-              setLinkUrl(editor.getAttributes('link').href ?? '');
-              setLinkOpen(v => !v);
-            }}
-            title="Insert link"
-          >
+          <ToolBtn onClick={() => { setLinkUrl(editor.getAttributes('link').href ?? ''); setLinkOpen(v => !v); }} title="Insert link">
             <Link className="w-3.5 h-3.5" />
           </ToolBtn>
         )}
         <span className={SEP} />
-        {/* Image button */}
+        {/* Image */}
         {onImageClick && (
           <ToolBtn onClick={onImageClick} title="Insert image">
             <Image className="w-3.5 h-3.5" />
           </ToolBtn>
         )}
         {/* Column block dropdown */}
-        <div className="relative" ref={blockDropdownRef}>
+        <div className="relative">
           <button
-            ref={blockBtnRef}
             type="button"
             title="Insert content block"
             onMouseDown={e => e.preventDefault()}
@@ -184,19 +254,15 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
           </button>
           {blockOpen && (
             <>
-              {/* backdrop */}
-              <div
-                className="fixed inset-0 z-40"
-                onMouseDown={() => setBlockOpen(false)}
-              />
-              <div className="absolute left-0 top-full mt-1 z-50 w-52 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
+              <div className="fixed inset-0 z-40" onMouseDown={() => setBlockOpen(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-[#2a2a2a] shadow-lg overflow-hidden">
                 <div className="px-3 pt-2.5 pb-1">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Insert block</span>
                 </div>
                 {([
-                  { cols: 1 as const, label: '1 column', desc: 'Full-width block', grid: '█' },
-                  { cols: 2 as const, label: '2 columns', desc: 'Split layout', grid: '▌▐' },
-                  { cols: 3 as const, label: '3 columns', desc: 'Three-column layout', grid: '▌║▐' },
+                  { cols: 1 as const, label: '1 column', desc: 'Full-width block' },
+                  { cols: 2 as const, label: '2 columns', desc: 'Split layout' },
+                  { cols: 3 as const, label: '3 columns', desc: 'Three-column layout' },
                 ] as const).map(({ cols, label, desc }) => (
                   <button
                     key={cols}
@@ -205,7 +271,6 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
                     onClick={() => insertColumnBlock(cols)}
                     className="w-full text-left px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors flex items-center gap-3"
                   >
-                    {/* Column preview grid */}
                     <div className="flex gap-0.5 shrink-0">
                       {Array.from({ length: cols }).map((_, i) => (
                         <div
@@ -247,11 +312,7 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
           >
             {linkUrl.trim() ? 'Set link' : 'Remove'}
           </button>
-          <button
-            type="button"
-            onClick={() => setLinkOpen(false)}
-            className="text-sm px-2 py-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
+          <button type="button" onClick={() => setLinkOpen(false)} className="text-sm px-2 py-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             Cancel
           </button>
         </div>
@@ -271,8 +332,6 @@ export function EditorToolbar({ editor, mergeTagOptions, onImageClick }: Props) 
             {opt.variable}
           </button>
         ))}
-
-        {/* Variable dropdown (mobile-friendly alternative) */}
         <div className="relative ml-auto">
           <button
             type="button"
