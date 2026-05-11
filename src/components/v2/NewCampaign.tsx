@@ -1121,6 +1121,8 @@ export function NewCampaign() {
           </div>
         </div>
 
+        <hr className="border-gray-200 dark:border-white/10 mb-6" />
+
         {/* Split: compose left, preview right */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
 
