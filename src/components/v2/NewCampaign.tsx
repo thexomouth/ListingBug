@@ -1194,7 +1194,7 @@ export function NewCampaign() {
                         type="button"
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => insertVarIntoSubject(opt.variable)}
-                        className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80 bg-blue-50 text-blue-700 dark:bg-white/5 dark:text-gray-400"
+                        className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80 bg-blue-50 text-blue-700 border border-transparent dark:bg-transparent dark:border-white/20 dark:text-gray-300"
                       >
                         {opt.variable}
                       </button>

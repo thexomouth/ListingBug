@@ -1017,7 +1017,7 @@ export function V2Campaign() {
                       key={v}
                       type="button"
                       onClick={() => insertVar(v)}
-                      className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-400/20 transition-colors font-mono"
+                      className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-transparent dark:bg-transparent dark:border-white/20 dark:text-gray-300 hover:bg-yellow-100 dark:hover:bg-yellow-400/10 transition-colors font-mono"
                     >
                       {v}
                     </button>
