@@ -221,6 +221,21 @@ serve(async (req) => {
       .single();
 
     if (campaignErr || !campaign) return json({ error: "Campaign not found" }, 404);
+
+    // Build ordered variant list — only include variants that have a body
+    const activeVariants: Array<{ key: string; subject: string; body: string }> = [
+      { key: "A", subject: campaign.subject ?? "", body: campaign.body ?? "" },
+    ];
+    if (campaign.variant_b_body?.trim()) {
+      activeVariants.push({ key: "B", subject: campaign.variant_b_subject || campaign.subject || "", body: campaign.variant_b_body });
+    }
+    if (campaign.variant_c_body?.trim()) {
+      activeVariants.push({ key: "C", subject: campaign.variant_c_subject || campaign.subject || "", body: campaign.variant_c_body });
+    }
+    if (campaign.variant_d_body?.trim()) {
+      activeVariants.push({ key: "D", subject: campaign.variant_d_subject || campaign.subject || "", body: campaign.variant_d_body });
+    }
+
     if (campaign.channel === "sms") {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/send-campaign-sms`, {
         method: "POST",
@@ -332,6 +347,17 @@ serve(async (req) => {
       return json({ queued: 0, details: "All agents already contacted today or suppressed" });
     }
 
+    // Count existing sends so the variant rotation continues from where it left off
+    let existingSendCount = 0;
+    if (activeVariants.length > 1) {
+      const { count } = await supabase
+        .from("campaign_sends")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaign_id)
+        .neq("status", "failed");
+      existingSendCount = count ?? 0;
+    }
+
     // 7. Enqueue with randomized human-like delays
     let queued = 0;
     const firstSendAt = new Date(Date.now()).toISOString();
@@ -347,8 +373,10 @@ serve(async (req) => {
         listing_date: agent.listedDate,
       };
 
-      const subject = interpolate(campaign.subject, vars);
-      const bodyText = interpolate(campaign.body, vars);
+      const variantIdx = (existingSendCount + i) % activeVariants.length;
+      const selectedVariant = activeVariants[variantIdx];
+      const subject = interpolate(selectedVariant.subject, vars);
+      const bodyText = interpolate(selectedVariant.body, vars);
       const unsubUrl = buildUnsubUrl(
         campaign.user_id,
         campaign_id,
@@ -383,6 +411,7 @@ serve(async (req) => {
           listing_days_on_market: agent.daysOnMarket,
           status: "queued",
           channel: "email",
+          variant: selectedVariant.key,
         })
         .select("id")
         .single();

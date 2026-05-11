@@ -47,6 +47,15 @@ interface MessageInfo {
   subject: string;
   body: string;
   preview_text: string;
+  variant_b_subject: string;
+  variant_b_preview_text: string;
+  variant_b_body: string;
+  variant_c_subject: string;
+  variant_c_preview_text: string;
+  variant_c_body: string;
+  variant_d_subject: string;
+  variant_d_preview_text: string;
+  variant_d_body: string;
 }
 
 interface SmsConfig {
@@ -128,7 +137,18 @@ export function NewCampaign() {
     subject: '',
     body: '',
     preview_text: '',
+    variant_b_subject: '',
+    variant_b_preview_text: '',
+    variant_b_body: '',
+    variant_c_subject: '',
+    variant_c_preview_text: '',
+    variant_c_body: '',
+    variant_d_subject: '',
+    variant_d_preview_text: '',
+    variant_d_body: '',
   });
+  type VariantKey = 'A' | 'B' | 'C' | 'D';
+  const [activeVariant, setActiveVariant] = useState<VariantKey>('A');
   const [smsConfig, setSmsConfig] = useState<SmsConfig>({
     twilio_from_number: '',
     forward_to_phone: '',
@@ -355,17 +375,42 @@ export function NewCampaign() {
   };
 
   // ---------------------------------------------------------------------------
+  // Variant helpers
+  // ---------------------------------------------------------------------------
+  const activeSubject = activeVariant === 'A' ? messageInfo.subject : activeVariant === 'B' ? messageInfo.variant_b_subject : activeVariant === 'C' ? messageInfo.variant_c_subject : messageInfo.variant_d_subject;
+  const activePreviewText = activeVariant === 'A' ? messageInfo.preview_text : activeVariant === 'B' ? messageInfo.variant_b_preview_text : activeVariant === 'C' ? messageInfo.variant_c_preview_text : messageInfo.variant_d_preview_text;
+  const activeBody = activeVariant === 'A' ? messageInfo.body : activeVariant === 'B' ? messageInfo.variant_b_body : activeVariant === 'C' ? messageInfo.variant_c_body : messageInfo.variant_d_body;
+
+  const setVariantFields = (updates: { subject?: string; preview_text?: string; body?: string }) => {
+    if (activeVariant === 'A') { setMessageInfo(m => ({ ...m, ...updates })); return; }
+    const mapped: Partial<MessageInfo> = {};
+    if (activeVariant === 'B') {
+      if (updates.subject !== undefined) mapped.variant_b_subject = updates.subject;
+      if (updates.preview_text !== undefined) mapped.variant_b_preview_text = updates.preview_text;
+      if (updates.body !== undefined) mapped.variant_b_body = updates.body;
+    } else if (activeVariant === 'C') {
+      if (updates.subject !== undefined) mapped.variant_c_subject = updates.subject;
+      if (updates.preview_text !== undefined) mapped.variant_c_preview_text = updates.preview_text;
+      if (updates.body !== undefined) mapped.variant_c_body = updates.body;
+    } else {
+      if (updates.subject !== undefined) mapped.variant_d_subject = updates.subject;
+      if (updates.preview_text !== undefined) mapped.variant_d_preview_text = updates.preview_text;
+      if (updates.body !== undefined) mapped.variant_d_body = updates.body;
+    }
+    setMessageInfo(m => ({ ...m, ...mapped }));
+  };
+
+  // ---------------------------------------------------------------------------
   // Subject variable insertion
   // ---------------------------------------------------------------------------
   const insertVarIntoSubject = (variable: string) => {
     const pos = subjectCursorPos.current;
     const end = subjectCursorEnd.current;
-    const subject = messageInfo.subject;
-    const newSubject = subject.slice(0, pos) + variable + subject.slice(end);
+    const newSubject = activeSubject.slice(0, pos) + variable + activeSubject.slice(end);
     const newPos = pos + variable.length;
     subjectCursorPos.current = newPos;
     subjectCursorEnd.current = newPos;
-    setMessageInfo(m => ({ ...m, subject: newSubject }));
+    setVariantFields({ subject: newSubject });
     const input = subjectRef.current;
     if (input) {
       requestAnimationFrame(() => { input.setSelectionRange(newPos, newPos); input.focus(); });
@@ -432,6 +477,15 @@ export function NewCampaign() {
           preview_text: messageInfo.preview_text || null,
           forward_to: businessInfo.forward_to,
           drip_delay_minutes: 2,
+          variant_b_subject: messageInfo.variant_b_subject || null,
+          variant_b_preview_text: messageInfo.variant_b_preview_text || null,
+          variant_b_body: messageInfo.variant_b_body || null,
+          variant_c_subject: messageInfo.variant_c_subject || null,
+          variant_c_preview_text: messageInfo.variant_c_preview_text || null,
+          variant_c_body: messageInfo.variant_c_body || null,
+          variant_d_subject: messageInfo.variant_d_subject || null,
+          variant_d_preview_text: messageInfo.variant_d_preview_text || null,
+          variant_d_body: messageInfo.variant_d_body || null,
         })
         .select()
         .single();
@@ -508,7 +562,12 @@ export function NewCampaign() {
   };
 
   const applyTemplate = (t: { channel: string; subject: string | null; body: string }) => {
-    setMessageInfo(m => ({ ...m, channel: t.channel, subject: t.subject ?? '', body: t.body }));
+    if (activeVariant === 'A') {
+      setMessageInfo(m => ({ ...m, channel: t.channel, subject: t.subject ?? '', body: t.body }));
+    } else {
+      setMessageInfo(m => ({ ...m, channel: t.channel }));
+      setVariantFields({ subject: t.subject ?? '', body: t.body });
+    }
     setTemplatePicker(p => ({ ...p, open: false }));
   };
 
@@ -913,8 +972,8 @@ export function NewCampaign() {
   );
 
   const renderStep2 = () => {
-    const previewSubjectText = messageInfo.subject
-      ? messageInfo.subject
+    const previewSubjectText = activeSubject
+      ? activeSubject
           .replace(/\{\{agent_name\}\}/g, 'Sarah')
           .replace(/\{\{address\}\}/g, '1842 Maple St')
           .replace(/\{\{city\}\}/g, searchCriteria.city || 'your city')
@@ -923,15 +982,15 @@ export function NewCampaign() {
       : null;
     return (
       <div>
-        {/* Header row — title left, channel toggle right */}
-        <div className="flex items-center justify-between gap-4 mb-6">
+        {/* Header row — title left, channel toggle right (wraps on mobile) */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div className="min-w-0">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Write your intro message</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Sent to every listing agent when a new listing matches your search. Keep it short and personal.
             </p>
           </div>
-          <div className="shrink-0 inline-flex rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-0.5">
+          <div className="self-start inline-flex rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-0.5">
             {['email', 'sms'].map(ch => (
               <button
                 key={ch}
@@ -970,6 +1029,31 @@ export function NewCampaign() {
               placeholder="e.g. $500 Off; New Client Offer"
             />
             {stepErrors.campaign_name && <p className="text-xs text-red-500 mt-1">{stepErrors.campaign_name}</p>}
+            {/* A/B/C/D variant tabs */}
+            <div className="flex items-center gap-1.5 mt-2">
+              {(['A', 'B', 'C', 'D'] as const).map(v => {
+                const hasContent = v === 'A' || !!(v === 'B' ? messageInfo.variant_b_body : v === 'C' ? messageInfo.variant_c_body : messageInfo.variant_d_body);
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setActiveVariant(v)}
+                    className={`w-7 h-7 rounded-md text-xs font-bold transition-colors ${
+                      activeVariant === v
+                        ? 'bg-[#FFCE0A] text-[#342e37]'
+                        : hasContent
+                          ? 'bg-gray-100 dark:bg-white/15 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/25'
+                          : 'bg-gray-50 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-dashed border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
+              <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-0.5">
+                {activeVariant === 'A' ? 'Default message' : `Variant ${activeVariant}`}
+              </span>
+            </div>
           </div>
 
           <div className="relative shrink-0" ref={templateDropdownRef}>
@@ -1065,18 +1149,18 @@ export function NewCampaign() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Subject line</label>
-                    <span className={`text-xs tabular-nums ${messageInfo.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.subject.length}/60</span>
+                    <span className={`text-xs tabular-nums ${activeSubject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{activeSubject.length}/60</span>
                   </div>
                   <div className="relative">
                     <Input
                       ref={subjectRef}
-                      value={messageInfo.subject}
+                      value={activeSubject}
                       maxLength={60}
                       className="pr-24"
                       onChange={e => {
                         subjectCursorPos.current = e.target.selectionStart ?? 0;
                         subjectCursorEnd.current = e.target.selectionEnd ?? 0;
-                        setMessageInfo(m => ({ ...m, subject: e.target.value }));
+                        setVariantFields({ subject: e.target.value });
                       }}
                       onSelect={e => {
                         subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
@@ -1110,8 +1194,7 @@ export function NewCampaign() {
                         type="button"
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => insertVarIntoSubject(opt.variable)}
-                        className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80"
-                        style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
+                        className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80 bg-blue-50 text-blue-700 dark:bg-white/5 dark:text-gray-400"
                       >
                         {opt.variable}
                       </button>
@@ -1121,14 +1204,14 @@ export function NewCampaign() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span></label>
-                    <span className={`text-xs tabular-nums ${messageInfo.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.preview_text.length}/90</span>
+                    <span className={`text-xs tabular-nums ${activePreviewText.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{activePreviewText.length}/90</span>
                   </div>
                   <div className="relative">
                     <Input
-                      value={messageInfo.preview_text}
+                      value={activePreviewText}
                       maxLength={90}
                       className="pr-24"
-                      onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))}
+                      onChange={e => setVariantFields({ preview_text: e.target.value })}
                       placeholder="e.g. I'd love to help with the listing at {{address}}..."
                     />
                     <button
@@ -1159,15 +1242,15 @@ export function NewCampaign() {
                 </button>
                 {messageInfo.channel === 'email' ? (
                   <RichTextEditor
-                    content={messageInfo.body}
-                    onChange={html => setMessageInfo(m => ({ ...m, body: html }))}
+                    content={activeBody}
+                    onChange={html => setVariantFields({ body: html })}
                     mergeTagOptions={MERGE_TAGS}
                     placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
                   />
                 ) : (
                   <Textarea
-                    value={messageInfo.body}
-                    onChange={e => setMessageInfo(m => ({ ...m, body: e.target.value }))}
+                    value={activeBody}
+                    onChange={e => setVariantFields({ body: e.target.value })}
                     rows={9}
                     placeholder="Hi {{agent_name}}, I noticed a new listing at {{address}} in {{city}}..."
                     className="resize-y"
@@ -1177,7 +1260,7 @@ export function NewCampaign() {
               <div className="flex items-center justify-between mt-1.5 min-h-[1.25rem]">
                 {stepErrors.body ? <p className="text-xs text-red-500">{stepErrors.body}</p> : <span />}
                 <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {messageInfo.body.replace(/<[^>]*>/g, '').length} chars
+                  {activeBody.replace(/<[^>]*>/g, '').length} chars
                 </span>
               </div>
             </div>
@@ -1208,16 +1291,16 @@ export function NewCampaign() {
                       {previewSubjectText ?? <span className="text-gray-400 dark:text-gray-500 font-normal italic">No subject yet…</span>}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {messageInfo.preview_text || <span className="italic text-gray-300 dark:text-gray-600">Preview text will appear here…</span>}
+                      {activePreviewText || <span className="italic text-gray-300 dark:text-gray-600">Preview text will appear here…</span>}
                     </div>
                   </div>
                 </div>
                 {/* Body */}
                 <div className="px-4 py-4 max-h-[480px] overflow-y-auto">
-                  {messageInfo.body ? (
+                  {activeBody ? (
                     <div
                       className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: buildPreviewHtml(messageInfo.body, searchCriteria.city) }}
+                      dangerouslySetInnerHTML={{ __html: buildPreviewHtml(activeBody, searchCriteria.city) }}
                     />
                   ) : (
                     <p className="text-sm text-gray-300 dark:text-gray-600 italic">Your message will appear here…</p>
@@ -1546,18 +1629,17 @@ export function NewCampaign() {
           price_max: searchCriteria.price_max ?? undefined,
         } as GenerateContext}
         current={{
-          subject: messageInfo.subject,
-          preview_text: messageInfo.preview_text,
-          body: messageInfo.body,
+          subject: activeSubject,
+          preview_text: activePreviewText,
+          body: activeBody,
         }}
         channel={messageInfo.channel}
         targetField={generateField ?? undefined}
-        onApply={fields => setMessageInfo(m => ({
-          ...m,
+        onApply={fields => setVariantFields({
           ...(fields.subject !== undefined ? { subject: fields.subject } : {}),
           ...(fields.preview_text !== undefined ? { preview_text: fields.preview_text } : {}),
           ...(fields.body !== undefined ? { body: fields.body } : {}),
-        }))}
+        })}
       />
 
       <CityLimitModal

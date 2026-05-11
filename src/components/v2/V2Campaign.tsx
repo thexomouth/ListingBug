@@ -62,6 +62,15 @@ interface Campaign {
   city: string;
   state: string;
   created_at: string;
+  variant_b_subject: string | null;
+  variant_b_preview_text: string | null;
+  variant_b_body: string | null;
+  variant_c_subject: string | null;
+  variant_c_preview_text: string | null;
+  variant_c_body: string | null;
+  variant_d_subject: string | null;
+  variant_d_preview_text: string | null;
+  variant_d_body: string | null;
   campaign_search_criteria: SearchCriteria[];
   campaign_sends: Send[];
 }
@@ -79,6 +88,15 @@ interface Draft {
   price_min: string;
   price_max: string;
   property_type: string;
+  variant_b_subject: string;
+  variant_b_preview_text: string;
+  variant_b_body: string;
+  variant_c_subject: string;
+  variant_c_preview_text: string;
+  variant_c_body: string;
+  variant_d_subject: string;
+  variant_d_preview_text: string;
+  variant_d_body: string;
 }
 
 const RANGE_CYCLE: RangeKey[] = [7, 14, 30, 0];
@@ -185,6 +203,10 @@ export function V2Campaign() {
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [selectedSend, setSelectedSend] = useState<Send | null>(null);
 
+  // Message variant tabs
+  type VariantKey = 'A' | 'B' | 'C' | 'D';
+  const [activeVariant, setActiveVariant] = useState<VariantKey>('A');
+
   // Autosave
   const [draft, setDraft] = useState<Draft | null>(null);
   type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -230,6 +252,9 @@ export function V2Campaign() {
       .select(`
         id, campaign_name, status, channel, subject, preview_text, body, forward_to,
         drip_delay_minutes, sender_id, created_at,
+        variant_b_subject, variant_b_preview_text, variant_b_body,
+        variant_c_subject, variant_c_preview_text, variant_c_body,
+        variant_d_subject, variant_d_preview_text, variant_d_body,
         campaign_search_criteria (
           city, state, listing_type, property_type, days_old, price_min, price_max
         ),
@@ -298,16 +323,25 @@ export function V2Campaign() {
       property_type: c?.property_type ?? 'Single Family',
       city: c?.city ?? '',
       state: c?.state ?? '',
+      variant_b_subject: campaign.variant_b_subject ?? '',
+      variant_b_preview_text: campaign.variant_b_preview_text ?? '',
+      variant_b_body: campaign.variant_b_body ?? '',
+      variant_c_subject: campaign.variant_c_subject ?? '',
+      variant_c_preview_text: campaign.variant_c_preview_text ?? '',
+      variant_c_body: campaign.variant_c_body ?? '',
+      variant_d_subject: campaign.variant_d_subject ?? '',
+      variant_d_preview_text: campaign.variant_d_preview_text ?? '',
+      variant_d_body: campaign.variant_d_body ?? '',
     });
   }, [campaign?.id]);
 
-  // Auto-resize body textarea
+  // Auto-resize body textarea (SMS) — tracks active variant body
   useEffect(() => {
     if (bodyRef.current) {
       bodyRef.current.style.height = 'auto';
       bodyRef.current.style.height = bodyRef.current.scrollHeight + 'px';
     }
-  }, [draft?.body]);
+  }, [draft?.body, draft?.variant_b_body, draft?.variant_c_body, draft?.variant_d_body, activeVariant]);
 
   useEffect(() => {
     if (!campaign?.sender_id) { setSenderInfo(null); return; }
@@ -365,6 +399,15 @@ export function V2Campaign() {
           body: d.body,
           forward_to: d.forward_to.trim() || null,
           drip_delay_minutes: Number(d.drip_delay_minutes) || 2,
+          variant_b_subject: d.variant_b_subject || null,
+          variant_b_preview_text: d.variant_b_preview_text || null,
+          variant_b_body: d.variant_b_body || null,
+          variant_c_subject: d.variant_c_subject || null,
+          variant_c_preview_text: d.variant_c_preview_text || null,
+          variant_c_body: d.variant_c_body || null,
+          variant_d_subject: d.variant_d_subject || null,
+          variant_d_preview_text: d.variant_d_preview_text || null,
+          variant_d_body: d.variant_d_body || null,
         })
         .eq('id', campaignId);
       if (campErr) throw new Error(campErr.message);
@@ -416,13 +459,37 @@ export function V2Campaign() {
     persistDraft(next);
   };
 
+  // Variant-aware field helpers
+  const variantBody = !draft ? '' : activeVariant === 'A' ? draft.body : activeVariant === 'B' ? draft.variant_b_body : activeVariant === 'C' ? draft.variant_c_body : draft.variant_d_body;
+  const variantSubject = !draft ? '' : activeVariant === 'A' ? draft.subject : activeVariant === 'B' ? draft.variant_b_subject : activeVariant === 'C' ? draft.variant_c_subject : draft.variant_d_subject;
+  const variantPreviewText = !draft ? '' : activeVariant === 'A' ? draft.preview_text : activeVariant === 'B' ? draft.variant_b_preview_text : activeVariant === 'C' ? draft.variant_c_preview_text : draft.variant_d_preview_text;
+
+  const updateVariantText = (fields: { subject?: string; preview_text?: string; body?: string }) => {
+    if (activeVariant === 'A') { updateText(fields); return; }
+    const mapped: Partial<Draft> = {};
+    if (activeVariant === 'B') {
+      if (fields.subject !== undefined) mapped.variant_b_subject = fields.subject;
+      if (fields.preview_text !== undefined) mapped.variant_b_preview_text = fields.preview_text;
+      if (fields.body !== undefined) mapped.variant_b_body = fields.body;
+    } else if (activeVariant === 'C') {
+      if (fields.subject !== undefined) mapped.variant_c_subject = fields.subject;
+      if (fields.preview_text !== undefined) mapped.variant_c_preview_text = fields.preview_text;
+      if (fields.body !== undefined) mapped.variant_c_body = fields.body;
+    } else {
+      if (fields.subject !== undefined) mapped.variant_d_subject = fields.subject;
+      if (fields.preview_text !== undefined) mapped.variant_d_preview_text = fields.preview_text;
+      if (fields.body !== undefined) mapped.variant_d_body = fields.body;
+    }
+    updateText(mapped);
+  };
+
   const insertVar = (v: string) => {
     if (!draft) return;
     const pos = cursorPos.current;
-    const newBody = draft.body.slice(0, pos) + v + draft.body.slice(pos);
+    const newBody = variantBody.slice(0, pos) + v + variantBody.slice(pos);
     const newPos = pos + v.length;
     cursorPos.current = newPos;
-    updateText({ body: newBody });
+    updateVariantText({ body: newBody });
     requestAnimationFrame(() => {
       const ta = bodyRef.current;
       if (ta) { ta.setSelectionRange(newPos, newPos); ta.focus(); }
@@ -475,8 +542,8 @@ export function V2Campaign() {
       user_id: user.id,
       name: templateModal.name.trim(),
       channel: campaign.channel,
-      subject: draft?.subject ?? campaign.subject,
-      body: draft?.body ?? campaign.body,
+      subject: variantSubject || campaign.subject,
+      body: variantBody || campaign.body,
     });
     if (error) {
       setTemplateModal(m => ({ ...m, saving: false, error: error.message }));
@@ -631,7 +698,30 @@ export function V2Campaign() {
 
           {/* Left: Campaign Overview */}
           <div className="lg:w-[360px] shrink-0 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
-            <div className="font-bold text-[#342e37] dark:text-white mb-3">Campaign Overview</div>
+            <div className="font-bold text-[#342e37] dark:text-white mb-2">Campaign Overview</div>
+            {/* A/B/C/D variant tabs */}
+            <div className="flex items-center gap-1.5 mb-3">
+              {(['A', 'B', 'C', 'D'] as const).map(v => {
+                const hasContent = v === 'A' || !!(draft && (v === 'B' ? draft.variant_b_body : v === 'C' ? draft.variant_c_body : draft.variant_d_body));
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setActiveVariant(v)}
+                    className={`w-7 h-7 rounded-md text-xs font-bold transition-colors ${
+                      activeVariant === v
+                        ? 'bg-[#FFCE0A] text-[#342e37]'
+                        : hasContent
+                          ? 'bg-gray-100 dark:bg-white/15 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/25'
+                          : 'bg-gray-50 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-dashed border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
+              <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-0.5">message variants</span>
+            </div>
             <div className="space-y-0 flex-1">
 
               {/* Location (City + State) */}
@@ -793,7 +883,9 @@ export function V2Campaign() {
           {/* Right: Message details */}
           <div className="flex-1 bg-white dark:bg-[#2F2F2F] rounded-lg border border-gray-200 dark:border-white/10 p-4 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <div className="font-bold text-[#342e37] dark:text-white">Message Details</div>
+              <div className="font-bold text-[#342e37] dark:text-white">
+                Message Details{activeVariant !== 'A' && <span className="ml-1.5 text-xs font-semibold text-[#FFCE0A]">Variant {activeVariant}</span>}
+              </div>
               <div className="flex items-center gap-2">
               {templates.filter(t => t.channel === campaign.channel).length > 0 && (
                 <div className="relative">
@@ -834,13 +926,13 @@ export function V2Campaign() {
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-xs text-gray-400 dark:text-gray-500">Subject</div>
-                    <span className={`text-xs tabular-nums ${draft.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.subject.length}/60</span>
+                    <span className={`text-xs tabular-nums ${variantSubject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{variantSubject.length}/60</span>
                   </div>
                   <div className="relative">
                     <input
-                      value={draft.subject}
+                      value={variantSubject}
                       maxLength={60}
-                      onChange={e => updateText({ subject: e.target.value })}
+                      onChange={e => updateVariantText({ subject: e.target.value })}
                       placeholder="Email subject line"
                       className="w-full rounded-lg px-3 py-2 pr-24 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
                     />
@@ -856,13 +948,13 @@ export function V2Campaign() {
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-xs text-gray-400 dark:text-gray-500">Preview text <span className="text-gray-300 dark:text-gray-600">(shown after subject in inbox)</span></div>
-                    <span className={`text-xs tabular-nums ${draft.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{draft.preview_text.length}/90</span>
+                    <span className={`text-xs tabular-nums ${variantPreviewText.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{variantPreviewText.length}/90</span>
                   </div>
                   <div className="relative">
                     <input
-                      value={draft.preview_text}
+                      value={variantPreviewText}
                       maxLength={90}
-                      onChange={e => updateText({ preview_text: e.target.value })}
+                      onChange={e => updateVariantText({ preview_text: e.target.value })}
                       placeholder="Short teaser shown in inbox..."
                       className="w-full rounded-lg px-3 py-2 pr-24 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors"
                     />
@@ -895,8 +987,8 @@ export function V2Campaign() {
                 )}
                 {draft ? (
                   <RichTextEditor
-                    content={draft.body}
-                    onChange={html => updateText({ body: html })}
+                    content={variantBody}
+                    onChange={html => updateVariantText({ body: html })}
                     mergeTagOptions={MERGE_TAGS}
                     placeholder="Hi {{agent_name}}, I noticed your listing at {{address}}…"
                   />
@@ -937,8 +1029,8 @@ export function V2Campaign() {
                   {draft ? (
                     <textarea
                       ref={bodyRef}
-                      value={draft.body}
-                      onChange={e => updateText({ body: e.target.value })}
+                      value={variantBody}
+                      onChange={e => updateVariantText({ body: e.target.value })}
                       onSelect={e => { cursorPos.current = (e.target as HTMLTextAreaElement).selectionStart; }}
                       onBlur={e => { cursorPos.current = e.target.selectionStart; }}
                       className="w-full rounded-lg p-3 text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-[#1a1a1a] border border-gray-200 dark:border-white/10 focus:outline-none focus:border-[#FFCE0A] transition-colors resize-none overflow-hidden"
@@ -1172,7 +1264,7 @@ export function V2Campaign() {
       {/* ------------------------------------------------------------------ */}
       {testModal.open && (() => {
         const senderDisplayName = userBusinessName || userContactName || 'ListingBug';
-        const emailData = draft || { subject: campaign?.subject || '', body: campaign?.body || '', city: criteria?.city || '' };
+        const emailData = { subject: variantSubject || campaign?.subject || '', body: variantBody || campaign?.body || '', city: draft?.city || criteria?.city || '' };
         const previewSubject = emailData.subject
           ? emailData.subject
               .replace(/\{\{agent_name\}\}/g, 'Sarah')
@@ -1352,15 +1444,15 @@ export function V2Campaign() {
           price_max: criteria?.price_max ?? undefined,
         } as GenerateContext}
         current={{
-          subject: draft?.subject ?? campaign.subject ?? '',
-          preview_text: draft?.preview_text ?? campaign.preview_text ?? '',
-          body: draft?.body ?? campaign.body ?? '',
+          subject: variantSubject,
+          preview_text: variantPreviewText,
+          body: variantBody,
         }}
         channel={campaign.channel}
         targetField={generateField ?? undefined}
         onApply={fields => {
           if (!draft) return;
-          updateText({
+          updateVariantText({
             ...(fields.subject !== undefined ? { subject: fields.subject } : {}),
             ...(fields.preview_text !== undefined ? { preview_text: fields.preview_text } : {}),
             ...(fields.body !== undefined ? { body: fields.body } : {}),

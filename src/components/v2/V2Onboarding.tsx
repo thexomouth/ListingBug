@@ -47,6 +47,15 @@ interface MessageInfo {
   subject: string;
   body: string;
   preview_text: string;
+  variant_b_subject: string;
+  variant_b_preview_text: string;
+  variant_b_body: string;
+  variant_c_subject: string;
+  variant_c_preview_text: string;
+  variant_c_body: string;
+  variant_d_subject: string;
+  variant_d_preview_text: string;
+  variant_d_body: string;
 }
 
 interface SmsConfig {
@@ -115,7 +124,12 @@ export function V2Onboarding() {
   });
   const [messageInfo, setMessageInfo] = useState<MessageInfo>({
     campaign_name: '', channel: 'email', subject: '', body: '', preview_text: '',
+    variant_b_subject: '', variant_b_preview_text: '', variant_b_body: '',
+    variant_c_subject: '', variant_c_preview_text: '', variant_c_body: '',
+    variant_d_subject: '', variant_d_preview_text: '', variant_d_body: '',
   });
+  type VariantKey = 'A' | 'B' | 'C' | 'D';
+  const [activeVariant, setActiveVariant] = useState<VariantKey>('A');
   const [smsConfig, setSmsConfig] = useState<SmsConfig>({
     twilio_from_number: '', forward_to_phone: '',
   });
@@ -332,16 +346,41 @@ export function V2Onboarding() {
     if (i < step) setStep(i);
   };
 
+  // ---------------------------------------------------------------------------
+  // Variant helpers
+  // ---------------------------------------------------------------------------
+  const activeSubject = activeVariant === 'A' ? messageInfo.subject : activeVariant === 'B' ? messageInfo.variant_b_subject : activeVariant === 'C' ? messageInfo.variant_c_subject : messageInfo.variant_d_subject;
+  const activePreviewText = activeVariant === 'A' ? messageInfo.preview_text : activeVariant === 'B' ? messageInfo.variant_b_preview_text : activeVariant === 'C' ? messageInfo.variant_c_preview_text : messageInfo.variant_d_preview_text;
+  const activeBody = activeVariant === 'A' ? messageInfo.body : activeVariant === 'B' ? messageInfo.variant_b_body : activeVariant === 'C' ? messageInfo.variant_c_body : messageInfo.variant_d_body;
+
+  const setVariantFields = (updates: { subject?: string; preview_text?: string; body?: string }) => {
+    if (activeVariant === 'A') { setMessageInfo(m => ({ ...m, ...updates })); return; }
+    const mapped: Partial<MessageInfo> = {};
+    if (activeVariant === 'B') {
+      if (updates.subject !== undefined) mapped.variant_b_subject = updates.subject;
+      if (updates.preview_text !== undefined) mapped.variant_b_preview_text = updates.preview_text;
+      if (updates.body !== undefined) mapped.variant_b_body = updates.body;
+    } else if (activeVariant === 'C') {
+      if (updates.subject !== undefined) mapped.variant_c_subject = updates.subject;
+      if (updates.preview_text !== undefined) mapped.variant_c_preview_text = updates.preview_text;
+      if (updates.body !== undefined) mapped.variant_c_body = updates.body;
+    } else {
+      if (updates.subject !== undefined) mapped.variant_d_subject = updates.subject;
+      if (updates.preview_text !== undefined) mapped.variant_d_preview_text = updates.preview_text;
+      if (updates.body !== undefined) mapped.variant_d_body = updates.body;
+    }
+    setMessageInfo(m => ({ ...m, ...mapped }));
+  };
+
   // Insert a variable token into the subject line at the last cursor position
   const insertVarIntoSubject = (v: string) => {
     const pos = subjectCursorPos.current;
     const end = subjectCursorEnd.current;
-    const subject = messageInfo.subject;
-    const newSubject = subject.slice(0, pos) + v + subject.slice(end);
+    const newSubject = activeSubject.slice(0, pos) + v + activeSubject.slice(end);
     const newPos = pos + v.length;
     subjectCursorPos.current = newPos;
     subjectCursorEnd.current = newPos;
-    setMessageInfo(m => ({ ...m, subject: newSubject }));
+    setVariantFields({ subject: newSubject });
     const input = subjectRef.current;
     if (input) { requestAnimationFrame(() => { input.setSelectionRange(newPos, newPos); input.focus(); }); }
   };
@@ -378,6 +417,15 @@ export function V2Onboarding() {
         preview_text: messageInfo.preview_text || null,
         forward_to: businessInfo.forward_to,
         drip_delay_minutes: 2,
+        variant_b_subject: messageInfo.variant_b_subject || null,
+        variant_b_preview_text: messageInfo.variant_b_preview_text || null,
+        variant_b_body: messageInfo.variant_b_body || null,
+        variant_c_subject: messageInfo.variant_c_subject || null,
+        variant_c_preview_text: messageInfo.variant_c_preview_text || null,
+        variant_c_body: messageInfo.variant_c_body || null,
+        variant_d_subject: messageInfo.variant_d_subject || null,
+        variant_d_preview_text: messageInfo.variant_d_preview_text || null,
+        variant_d_body: messageInfo.variant_d_body || null,
       })
       .select()
       .single();
@@ -455,6 +503,15 @@ export function V2Onboarding() {
         preview_text: messageInfo.preview_text || null,
         forward_to: businessInfo.forward_to,
         drip_delay_minutes: 2,
+        variant_b_subject: messageInfo.variant_b_subject || null,
+        variant_b_preview_text: messageInfo.variant_b_preview_text || null,
+        variant_b_body: messageInfo.variant_b_body || null,
+        variant_c_subject: messageInfo.variant_c_subject || null,
+        variant_c_preview_text: messageInfo.variant_c_preview_text || null,
+        variant_c_body: messageInfo.variant_c_body || null,
+        variant_d_subject: messageInfo.variant_d_subject || null,
+        variant_d_preview_text: messageInfo.variant_d_preview_text || null,
+        variant_d_body: messageInfo.variant_d_body || null,
       })
       .select()
       .single();
@@ -657,7 +714,23 @@ export function V2Onboarding() {
   };
 
   const applyTemplate = (t: { channel: string; subject: string | null; body: string }) => {
-    setMessageInfo(m => ({ ...m, channel: t.channel, subject: t.subject ?? '', body: t.body }));
+    setMessageInfo(m => {
+      const updates: Partial<typeof m> = { channel: t.channel };
+      if (activeVariant === 'A') {
+        updates.subject = t.subject ?? '';
+        updates.body = t.body;
+      } else if (activeVariant === 'B') {
+        updates.variant_b_subject = t.subject ?? '';
+        updates.variant_b_body = t.body;
+      } else if (activeVariant === 'C') {
+        updates.variant_c_subject = t.subject ?? '';
+        updates.variant_c_body = t.body;
+      } else {
+        updates.variant_d_subject = t.subject ?? '';
+        updates.variant_d_body = t.body;
+      }
+      return { ...m, ...updates };
+    });
     setTemplatePicker(p => ({ ...p, open: false }));
   };
 
@@ -969,8 +1042,8 @@ export function V2Onboarding() {
 
   // Step 3 — Message (identical to NewCampaign)
   const renderStep3 = () => {
-    const previewSubjectText = messageInfo.subject
-      ? messageInfo.subject
+    const previewSubjectText = activeSubject
+      ? activeSubject
           .replace(/\{\{agent_name\}\}/g, 'Sarah')
           .replace(/\{\{address\}\}/g, '1842 Maple St')
           .replace(/\{\{city\}\}/g, searchCriteria.city || 'your city')
@@ -979,15 +1052,15 @@ export function V2Onboarding() {
       : null;
     return (
       <div>
-        {/* Header row — title left, channel toggle right */}
-        <div className="flex items-center justify-between gap-4 mb-6">
+        {/* Header row — title left, channel toggle right (wraps on mobile) */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div className="min-w-0">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Write your intro message</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Sent to every listing agent when a new listing matches your search. Keep it short and personal.
             </p>
           </div>
-          <div className="shrink-0 inline-flex rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-0.5">
+          <div className="self-start inline-flex rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 p-0.5">
             {['email', 'sms'].map(ch => (
               <button
                 key={ch}
@@ -1071,6 +1144,36 @@ export function V2Onboarding() {
           </div>
         </div>
 
+        {/* A/B/C/D variant tabs */}
+        <div className="flex items-center gap-1.5 mb-6">
+          {(['A', 'B', 'C', 'D'] as const).map(v => {
+            const hasContent = v === 'A' || !!(
+              v === 'B' ? messageInfo.variant_b_body :
+              v === 'C' ? messageInfo.variant_c_body :
+              messageInfo.variant_d_body
+            );
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setActiveVariant(v)}
+                className={`w-7 h-7 rounded-md text-xs font-bold transition-colors ${
+                  activeVariant === v
+                    ? 'bg-[#FFCE0A] text-[#342e37]'
+                    : hasContent
+                      ? 'bg-gray-100 dark:bg-white/15 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20'
+                      : 'border border-dashed border-gray-300 dark:border-white/20 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-white/30'
+                }`}
+              >
+                {v}
+              </button>
+            );
+          })}
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 ml-0.5">
+            {activeVariant === 'A' ? 'Default message' : `Variant ${activeVariant}`}
+          </span>
+        </div>
+
         {/* Split: compose left, preview right */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
 
@@ -1099,19 +1202,19 @@ export function V2Onboarding() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Subject line</label>
-                    <span className={`text-xs tabular-nums ${messageInfo.subject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.subject.length}/60</span>
+                    <span className={`text-xs tabular-nums ${activeSubject.length >= 55 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{activeSubject.length}/60</span>
                   </div>
                   <div className="relative">
                     <Input
                       ref={subjectRef}
-                      value={messageInfo.subject}
+                      value={activeSubject}
                       maxLength={60}
                       className="pr-24"
                       onFocus={() => {}}
                       onChange={e => {
                         subjectCursorPos.current = e.target.selectionStart ?? 0;
                         subjectCursorEnd.current = e.target.selectionEnd ?? 0;
-                        setMessageInfo(m => ({ ...m, subject: e.target.value }));
+                        setVariantFields({ subject: e.target.value });
                       }}
                       onSelect={e => {
                         subjectCursorPos.current = (e.target as HTMLInputElement).selectionStart ?? 0;
@@ -1137,18 +1240,32 @@ export function V2Onboarding() {
                     </button>
                   </div>
                   {stepErrors.subject && <p className="text-xs text-red-500 mt-1">{stepErrors.subject}</p>}
+                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide mr-0.5">Insert</span>
+                    {MERGE_TAGS.map(opt => (
+                      <button
+                        key={opt.variable}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => insertVarIntoSubject(opt.variable)}
+                        className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80 bg-blue-50 text-blue-700 dark:bg-white/5 dark:text-gray-400"
+                      >
+                        {opt.variable}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm text-gray-600 dark:text-gray-400">Preview text <span className="text-xs text-gray-400 dark:text-gray-500">(shown after subject in inbox)</span></label>
-                    <span className={`text-xs tabular-nums ${messageInfo.preview_text.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{messageInfo.preview_text.length}/90</span>
+                    <span className={`text-xs tabular-nums ${activePreviewText.length >= 82 ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{activePreviewText.length}/90</span>
                   </div>
                   <div className="relative">
                     <Input
-                      value={messageInfo.preview_text}
+                      value={activePreviewText}
                       maxLength={90}
                       className="pr-24"
-                      onChange={e => setMessageInfo(m => ({ ...m, preview_text: e.target.value }))}
+                      onChange={e => setVariantFields({ preview_text: e.target.value })}
                       placeholder="e.g. I'd love to help with the listing at {{address}}..."
                     />
                     <button
@@ -1178,8 +1295,8 @@ export function V2Onboarding() {
                   Generate
                 </button>
                 <RichTextEditor
-                  content={messageInfo.body}
-                  onChange={html => setMessageInfo(m => ({ ...m, body: html }))}
+                  content={activeBody}
+                  onChange={html => setVariantFields({ body: html })}
                   mergeTagOptions={MERGE_TAGS}
                   placeholder="Hi there, I noticed a new listing at your address in your city…"
                 />
@@ -1187,7 +1304,7 @@ export function V2Onboarding() {
               <div className="flex items-center justify-between mt-1.5 min-h-[1.25rem]">
                 {stepErrors.body ? <p className="text-xs text-red-500">{stepErrors.body}</p> : <span />}
                 <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {(() => { const n = messageInfo.body.replace(/<[^>]*>/g, '').length; return `${n} chars${n >= 100 && n <= 300 ? ' · ideal ✓' : ''}`; })()}
+                  {(() => { const n = activeBody.replace(/<[^>]*>/g, '').length; return `${n} chars${n >= 100 && n <= 300 ? ' · ideal ✓' : ''}`; })()}
                 </span>
               </div>
             </div>
@@ -1218,16 +1335,16 @@ export function V2Onboarding() {
                       {previewSubjectText ?? <span className="text-gray-400 dark:text-gray-500 font-normal italic">No subject yet…</span>}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {messageInfo.preview_text || <span className="italic text-gray-300 dark:text-gray-600">Preview text will appear here…</span>}
+                      {activePreviewText || <span className="italic text-gray-300 dark:text-gray-600">Preview text will appear here…</span>}
                     </div>
                   </div>
                 </div>
                 {/* Body */}
                 <div className="px-4 py-4 max-h-[480px] overflow-y-auto">
-                  {messageInfo.body ? (
+                  {activeBody ? (
                     <div
                       className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: buildPreviewHtml(messageInfo.body, searchCriteria.city) }}
+                      dangerouslySetInnerHTML={{ __html: buildPreviewHtml(activeBody, searchCriteria.city) }}
                     />
                   ) : (
                     <p className="text-sm text-gray-300 dark:text-gray-600 italic">Your message will appear here…</p>
@@ -1737,18 +1854,34 @@ export function V2Onboarding() {
           price_max: searchCriteria.price_max ?? undefined,
         } as GenerateContext}
         current={{
-          subject: messageInfo.subject,
-          preview_text: messageInfo.preview_text,
-          body: messageInfo.body,
+          subject: activeSubject,
+          preview_text: activePreviewText,
+          body: activeBody,
         }}
         channel={messageInfo.channel}
         targetField={generateField ?? undefined}
-        onApply={fields => setMessageInfo(m => ({
-          ...m,
-          ...(fields.subject !== undefined ? { subject: fields.subject } : {}),
-          ...(fields.preview_text !== undefined ? { preview_text: fields.preview_text } : {}),
-          ...(fields.body !== undefined ? { body: fields.body } : {}),
-        }))}
+        onApply={fields => {
+          const updates: Record<string, string> = {};
+          if (fields.subject !== undefined) {
+            if (activeVariant === 'A') updates.subject = fields.subject;
+            else if (activeVariant === 'B') updates.variant_b_subject = fields.subject;
+            else if (activeVariant === 'C') updates.variant_c_subject = fields.subject;
+            else updates.variant_d_subject = fields.subject;
+          }
+          if (fields.preview_text !== undefined) {
+            if (activeVariant === 'A') updates.preview_text = fields.preview_text;
+            else if (activeVariant === 'B') updates.variant_b_preview_text = fields.preview_text;
+            else if (activeVariant === 'C') updates.variant_c_preview_text = fields.preview_text;
+            else updates.variant_d_preview_text = fields.preview_text;
+          }
+          if (fields.body !== undefined) {
+            if (activeVariant === 'A') updates.body = fields.body;
+            else if (activeVariant === 'B') updates.variant_b_body = fields.body;
+            else if (activeVariant === 'C') updates.variant_c_body = fields.body;
+            else updates.variant_d_body = fields.body;
+          }
+          setMessageInfo(m => ({ ...m, ...updates }));
+        }}
       />
 
       {/* SMTP Setup Modal */}
