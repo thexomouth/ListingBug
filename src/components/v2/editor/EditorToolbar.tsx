@@ -166,8 +166,7 @@ export function EditorToolbar({ editor, mergeTagOptions }: Props) {
             type="button"
             onMouseDown={e => e.preventDefault()}
             onClick={() => insertMergeTag(opt)}
-            className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80"
-            style={{ background: 'rgb(239 246 255)', color: 'rgb(29 78 216)' }}
+            className="px-2 py-0.5 rounded-md text-xs font-mono transition-opacity hover:opacity-80 bg-blue-50 text-blue-700 border border-transparent dark:bg-transparent dark:border-white/20 dark:text-gray-300"
           >
             {opt.variable}
           </button>
